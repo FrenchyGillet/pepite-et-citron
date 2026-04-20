@@ -664,9 +664,13 @@ function Scoreboard({ votes, present, tiebreakers = {}, showLemons = true }) {
 // RESULTS VIEW
 // ============================================================
 function ResultsView({ players, match, refreshKey, onMatchUpdate }) {
-  const [votes,   setVotes]   = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [revealing, setRevealing] = useState(false);
+  const [votes,              setVotes]              = useState([]);
+  const [loading,            setLoading]            = useState(true);
+  const [revealing,          setRevealing]          = useState(false);
+  const [localRevealedCount, setLocalRevealedCount] = useState(null);
+
+  // Reset optimistic count whenever the match changes
+  useEffect(() => { setLocalRevealedCount(null); }, [match?.id]);
 
   useEffect(() => {
     if (!match) { setLoading(false); return; }
@@ -718,9 +722,9 @@ function ResultsView({ players, match, refreshKey, onMatchUpdate }) {
 
   // ── COUNTING PHASE : dépouillement ──
   if (phase === "counting") {
-    const revealOrder  = match.reveal_order  || [];
-    const revealedCount = match.revealed_count || 0;
-    const isDone       = revealedCount >= revealOrder.length;
+    const revealOrder   = match.reveal_order || [];
+    const revealedCount = localRevealedCount ?? (match.revealed_count || 0);
+    const isDone        = revealedCount >= revealOrder.length;
 
     const currentVoteId  = !isDone ? revealOrder[revealedCount] : null;
     const currentVote    = currentVoteId ? votes.find(v => v.id === currentVoteId) : null;
@@ -729,11 +733,10 @@ function ResultsView({ players, match, refreshKey, onMatchUpdate }) {
 
     const playerName = (id) => players.find(p => p.id === id)?.name || "?";
 
-    const handleNext = async () => {
-      setRevealing(true);
-      await api.revealNext(match.id, revealedCount + 1);
-      await onMatchUpdate();
-      setRevealing(false);
+    const handleNext = () => {
+      const next = revealedCount + 1;
+      setLocalRevealedCount(next);          // instant — no network wait
+      api.revealNext(match.id, next);       // fire-and-forget
     };
 
     const handleFinish = async () => {
@@ -800,8 +803,8 @@ function ResultsView({ players, match, refreshKey, onMatchUpdate }) {
             </div>
 
             <div style={{ padding: "12px 16px", borderTop: "1px solid var(--separator)" }}>
-              <button className="btn btn-primary btn-full" onClick={handleNext} disabled={revealing}>
-                {revealing ? "…" : revealedCount + 1 < revealOrder.length ? "Vote suivant →" : "Voir le classement final →"}
+              <button className="btn btn-primary btn-full" onClick={handleNext}>
+                {revealedCount + 1 < revealOrder.length ? "Vote suivant →" : "Voir le classement final →"}
               </button>
             </div>
           </div>
