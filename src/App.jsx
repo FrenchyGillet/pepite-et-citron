@@ -291,7 +291,7 @@ let demoState = {
     { id: 7, name: "Guillaume" }, { id: 8, name: "Hugo" },
     { id: 9, name: "Julien" }, { id: 10, name: "Kevin" },
   ],
-  matches: [], votes: [], nextId: 100,
+  matches: [], votes: [], teams: [], nextId: 100,
 };
 
 const demoAPI = {
@@ -309,6 +309,9 @@ const demoAPI = {
   submitVote:  (vote) => { demoState.votes.push({ ...vote, id: demoState.nextId++ }); return Promise.resolve(true); },
   getVotes:    (matchId) => Promise.resolve(demoState.votes.filter(v => v.match_id === matchId)),
   getAllVotes:  ()        => Promise.resolve([...demoState.votes]),
+  getTeams:    ()        => Promise.resolve([...demoState.teams]),
+  createTeam:  (name, playerIds) => { const t = { id: demoState.nextId++, name, player_ids: playerIds }; demoState.teams.push(t); return Promise.resolve(t); },
+  deleteTeam:  (id)      => { demoState.teams = demoState.teams.filter(t => t.id !== id); return Promise.resolve(true); },
 };
 
 const realAPI = {
@@ -323,6 +326,9 @@ const realAPI = {
   submitVote:     async (vote) => { const db = await supabase.from("votes"); return db.insert(vote); },
   getVotes:       async (matchId) => { const db = await supabase.from("votes"); return db.select("*", { filter: `match_id=eq.${matchId}` }); },
   getAllVotes:     async () => { const db = await supabase.from("votes"); return db.select("*"); },
+  getTeams:       async () => { const db = await supabase.from("teams"); return db.select("*", { order: "name.asc" }); },
+  createTeam:     async (name, playerIds) => { const db = await supabase.from("teams"); const r = await db.insert({ name, player_ids: playerIds }); return r[0]; },
+  deleteTeam:     async (id) => { const db = await supabase.from("teams"); return db.delete(`id=eq.${id}`); },
 };
 
 const api = DEMO_MODE ? demoAPI : realAPI;
@@ -721,14 +727,23 @@ function StatsView({ players }) {
 // ADMIN VIEW
 // ============================================================
 function AdminView({ players, onPlayersChange, activeMatch, onMatchChange }) {
-  const [isAdmin,    setIsAdmin]    = useState(false);
-  const [pwd,        setPwd]        = useState("");
-  const [pwdErr,     setPwdErr]     = useState(false);
-  const [newPlayer,  setNewPlayer]  = useState("");
-  const [matchLabel, setMatchLabel] = useState("");
-  const [presentIds, setPresentIds] = useState([]);
-  const [creating,   setCreating]   = useState(false);
-  const [toast,      setToast]      = useState(null);
+  const [isAdmin,      setIsAdmin]      = useState(false);
+  const [pwd,          setPwd]          = useState("");
+  const [pwdErr,       setPwdErr]       = useState(false);
+  const [newPlayer,    setNewPlayer]    = useState("");
+  const [matchLabel,   setMatchLabel]   = useState("");
+  const [presentIds,   setPresentIds]   = useState([]);
+  const [creating,     setCreating]     = useState(false);
+  const [toast,        setToast]        = useState(null);
+  const [teams,        setTeams]        = useState([]);
+  const [teamName,     setTeamName]     = useState("");
+  const [teamIds,      setTeamIds]      = useState([]);
+  const [showNewTeam,  setShowNewTeam]  = useState(false);
+  const [savingTeam,   setSavingTeam]   = useState(false);
+
+  const loadTeams = useCallback(async () => { setTeams(await api.getTeams()); }, []);
+
+  useEffect(() => { loadTeams(); }, []);
 
   const login = () => {
     if (pwd === ADMIN_PASSWORD) { setIsAdmin(true); setPwdErr(false); }
@@ -750,6 +765,9 @@ function AdminView({ players, onPlayersChange, activeMatch, onMatchChange }) {
   };
 
   const togglePresent = (id) => setPresentIds(p => p.includes(id) ? p.filter(x => x !== id) : [...p, id]);
+  const toggleTeamId  = (id) => setTeamIds(p => p.includes(id) ? p.filter(x => x !== id) : [...p, id]);
+
+  const loadTeamIntoMatch = (team) => setPresentIds([...team.player_ids]);
 
   const createMatch = async () => {
     if (!matchLabel.trim() || presentIds.length < 2) return;
@@ -766,6 +784,22 @@ function AdminView({ players, onPlayersChange, activeMatch, onMatchChange }) {
     await api.closeMatch(activeMatch.id);
     onMatchChange();
     setToast("Vote clôturé");
+  };
+
+  const saveTeam = async () => {
+    if (!teamName.trim() || teamIds.length < 2) return;
+    setSavingTeam(true);
+    await api.createTeam(teamName.trim(), teamIds);
+    setTeamName(""); setTeamIds([]); setShowNewTeam(false);
+    setSavingTeam(false);
+    loadTeams();
+    setToast("Équipe sauvegardée !");
+  };
+
+  const deleteTeam = async (id, name) => {
+    if (!confirm(`Supprimer l'équipe "${name}" ?`)) return;
+    await api.deleteTeam(id);
+    loadTeams();
   };
 
   if (!isAdmin) return (
@@ -807,6 +841,21 @@ function AdminView({ players, onPlayersChange, activeMatch, onMatchChange }) {
           <input placeholder="Nom du match — ex: vs Dragons" value={matchLabel}
             onChange={e => setMatchLabel(e.target.value)} style={{ marginBottom: 12 }} />
 
+          {teams.length > 0 && (
+            <>
+              <p className="section-label mb-4">Charger une équipe</p>
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 12 }}>
+                {teams.map(t => (
+                  <button key={t.id} className="tag tag-dim"
+                    style={{ fontSize: 13, padding: "6px 12px" }}
+                    onClick={() => loadTeamIntoMatch(t)}>
+                    {t.name} ({t.player_ids.length})
+                  </button>
+                ))}
+              </div>
+            </>
+          )}
+
           <div className="flex-between mb-4">
             <p className="section-label" style={{ margin: 0 }}>Joueurs présents</p>
             <div className="flex gap-8">
@@ -831,6 +880,55 @@ function AdminView({ players, onPlayersChange, activeMatch, onMatchChange }) {
         </>
       )}
 
+      {/* ── ÉQUIPES ── */}
+      <div className="flex-between mt-16 mb-4">
+        <p className="section-label" style={{ margin: 0 }}>Équipes sauvegardées</p>
+        <button className="tag tag-dim" onClick={() => setShowNewTeam(v => !v)}>
+          {showNewTeam ? "Annuler" : "+ Nouvelle"}
+        </button>
+      </div>
+
+      {showNewTeam && (
+        <div className="group" style={{ padding: "14px 16px", marginBottom: 12 }}>
+          <input placeholder="Nom de l'équipe" value={teamName}
+            onChange={e => setTeamName(e.target.value)} style={{ marginBottom: 12 }} />
+          <p className="section-label mb-4">Joueurs de l'équipe</p>
+          <div className="player-grid">
+            {players.map(p => (
+              <button key={p.id} className={`player-chip ${teamIds.includes(p.id) ? "sel-1st" : ""}`}
+                onClick={() => toggleTeamId(p.id)}>{p.name}</button>
+            ))}
+          </div>
+          <p style={{ fontSize: 12, color: "var(--label3)", margin: "8px 0 12px" }}>
+            {teamIds.length} joueur{teamIds.length !== 1 ? "s" : ""} sélectionné{teamIds.length !== 1 ? "s" : ""}
+          </p>
+          <button className="btn btn-primary btn-full"
+            disabled={!teamName.trim() || teamIds.length < 2 || savingTeam}
+            onClick={saveTeam}>
+            {savingTeam ? "Sauvegarde…" : "Sauvegarder l'équipe"}
+          </button>
+        </div>
+      )}
+
+      <div className="group">
+        {teams.length === 0
+          ? <div className="row"><span style={{ color: "var(--label3)", fontSize: 14 }}>Aucune équipe.</span></div>
+          : teams.map(t => (
+            <div key={t.id} className="row">
+              <div className="row-body">
+                <div className="row-title">{t.name}</div>
+                <div className="row-sub">
+                  {players.filter(p => t.player_ids.includes(p.id)).map(p => p.name).join(", ")}
+                </div>
+              </div>
+              <button className="btn btn-danger" style={{ padding: "5px 12px", fontSize: 13 }}
+                onClick={() => deleteTeam(t.id, t.name)}>Supprimer</button>
+            </div>
+          ))
+        }
+      </div>
+
+      {/* ── JOUEURS ── */}
       <p className="section-label mt-16 mb-4">Joueurs de l'équipe</p>
       <div className="flex gap-8 mb-8">
         <input placeholder="Prénom" value={newPlayer}
