@@ -1,0 +1,426 @@
+import { useState, useEffect, useCallback } from 'react';
+import { api } from '../api.js';
+import { ADMIN_PASSWORD } from '../config.js';
+import { Toast } from './Toast.jsx';
+
+export function AdminView({ players, onPlayersChange, activeMatch, onMatchChange }) {
+  const [isAdmin,      setIsAdmin]      = useState(() => localStorage.getItem("pepite_admin") === "1");
+  const [pwd,          setPwd]          = useState("");
+  const [pwdErr,       setPwdErr]       = useState(false);
+  const [newPlayer,    setNewPlayer]    = useState("");
+  const [matchLabel,   setMatchLabel]   = useState("");
+  const [presentIds,   setPresentIds]   = useState([]);
+  const [creating,     setCreating]     = useState(false);
+  const [toast,        setToast]        = useState(null);
+  const [teams,          setTeams]          = useState([]);
+  const [teamName,       setTeamName]       = useState("");
+  const [teamIds,        setTeamIds]        = useState([]);
+  const [showNewTeam,    setShowNewTeam]    = useState(true);
+  const [savingTeam,     setSavingTeam]     = useState(false);
+  const [selectedTeamId, setSelectedTeamId] = useState(null);
+  const [currentSeason,  setCurrentSeason]  = useState(1);
+  const [guestInput,     setGuestInput]     = useState("");
+  const [guestTokens,    setGuestTokens]    = useState([]);
+  const [copiedToken,    setCopiedToken]    = useState(null);
+
+  const loadTeams = useCallback(async () => { setTeams(await api.getTeams()); }, []);
+  const loadGuests = useCallback(async () => {
+    if (!activeMatch) return;
+    setGuestTokens(await api.getGuestTokens(activeMatch.id));
+  }, [activeMatch?.id]);
+
+  useEffect(() => {
+    Promise.all([api.getTeams(), api.getCurrentSeason()]).then(([t, cs]) => {
+      setTeams(t); setCurrentSeason(cs);
+    });
+  }, []);
+
+  useEffect(() => { loadGuests(); }, [activeMatch?.id]);
+
+  const createGuestLink = async () => {
+    if (!guestInput.trim() || !activeMatch) return;
+    await api.createGuestToken(guestInput.trim(), activeMatch.id);
+    setGuestInput("");
+    loadGuests();
+    setToast(`Lien créé pour ${guestInput.trim()}`);
+  };
+
+  const copyGuestLink = (token) => {
+    navigator.clipboard.writeText(`${window.location.origin}/?guest=${token}`);
+    setCopiedToken(token);
+    setTimeout(() => setCopiedToken(null), 2000);
+  };
+
+  const revokeGuest = async (id) => {
+    await api.deleteGuestToken(id);
+    loadGuests();
+  };
+
+  const login = () => {
+    if (pwd === ADMIN_PASSWORD) {
+      localStorage.setItem("pepite_admin", "1");
+      setIsAdmin(true); setPwdErr(false);
+    } else setPwdErr(true);
+  };
+
+  const addPlayer = async () => {
+    if (!newPlayer.trim()) return;
+    await api.addPlayer(newPlayer.trim());
+    setToast(`${newPlayer.trim()} ajouté`);
+    setNewPlayer("");
+    onPlayersChange();
+  };
+
+  const removePlayer = async (id, name) => {
+    if (!confirm(`Supprimer ${name} ?`)) return;
+    await api.removePlayer(id);
+    onPlayersChange();
+  };
+
+  const togglePresent = (id) => setPresentIds(p => p.includes(id) ? p.filter(x => x !== id) : [...p, id]);
+  const toggleTeamId  = (id) => setTeamIds(p => p.includes(id) ? p.filter(x => x !== id) : [...p, id]);
+
+  const loadTeamIntoMatch = (team) => { setPresentIds([...team.player_ids]); setSelectedTeamId(team.id); };
+
+  const advanceSeason = async () => {
+    if (!confirm(`Démarrer la saison ${currentSeason + 1} ? L'historique de la saison ${currentSeason} est conservé.`)) return;
+    const next = await api.advanceSeason();
+    setCurrentSeason(next);
+    setToast(`Saison ${next} démarrée !`);
+  };
+
+  const createMatch = async () => {
+    if (!matchLabel.trim() || presentIds.length < 2) return;
+    setCreating(true);
+    await api.createMatch(matchLabel.trim(), presentIds, selectedTeamId, currentSeason);
+    setMatchLabel(""); setPresentIds([]); setSelectedTeamId(null);
+    setCreating(false);
+    onMatchChange();
+    setToast("Match ouvert !");
+  };
+
+  const [voteCount,    setVoteCount]    = useState(0);
+  const [startingCount, setStartingCount] = useState(false);
+
+  useEffect(() => {
+    if (!activeMatch || (activeMatch.phase || "voting") !== "voting") { setVoteCount(0); return; }
+    api.getVotes(activeMatch.id).then(v => setVoteCount(v.length));
+    const t = setInterval(() => api.getVotes(activeMatch.id).then(v => setVoteCount(v.length)), 5000);
+    return () => clearInterval(t);
+  }, [activeMatch?.id, activeMatch?.phase]);
+
+  const closeMatch = async () => {
+    if (!activeMatch || !confirm("Fermer définitivement le vote sans dépouillement ?")) return;
+    await api.closeMatch(activeMatch.id);
+    onMatchChange();
+    setToast("Vote clôturé");
+  };
+
+  const startCounting = async () => {
+    setStartingCount(true);
+    const votes = await api.getVotes(activeMatch.id);
+    const shuffled = [...votes].sort(() => Math.random() - 0.5).map(v => v.id);
+    await api.startCounting(activeMatch.id, shuffled);
+    setStartingCount(false);
+    onMatchChange();
+    setToast("Dépouillement lancé !");
+  };
+
+  const saveTeam = async () => {
+    if (!teamName.trim() || teamIds.length < 2) return;
+    setSavingTeam(true);
+    await api.createTeam(teamName.trim(), teamIds);
+    setTeamName(""); setTeamIds([]);
+    setSavingTeam(false);
+    loadTeams();
+    setToast("Équipe sauvegardée !");
+  };
+
+  const deleteTeam = async (id, name) => {
+    if (!confirm(`Supprimer l'équipe "${name}" ?`)) return;
+    await api.deleteTeam(id);
+    loadTeams();
+  };
+
+  if (!isAdmin) return (
+    <div className="content">
+      <p className="section-label mt-8 mb-4">Mot de passe admin</p>
+      <input type="password" placeholder="••••••••" value={pwd}
+        onChange={e => setPwd(e.target.value)}
+        onKeyDown={e => e.key === "Enter" && login()} />
+      {pwdErr && <p style={{ fontSize: 13, color: "var(--red)", marginTop: 8 }}>Mot de passe incorrect.</p>}
+      <button className="btn btn-primary btn-full mt-12" onClick={login}>Connexion</button>
+    </div>
+  );
+
+  const SectionHeader = ({ num, title, subtitle }) => (
+    <div style={{ marginTop: 28, marginBottom: 12 }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 3 }}>
+        <div style={{
+          width: 22, height: 22, borderRadius: "50%",
+          background: "var(--bg3)", color: "var(--label2)",
+          fontSize: 12, fontWeight: 700,
+          display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0,
+        }}>{num}</div>
+        <span style={{ fontSize: 15, fontWeight: 700, color: "var(--label)" }}>{title}</span>
+      </div>
+      <p style={{ fontSize: 12, color: "var(--label3)", paddingLeft: 32 }}>{subtitle}</p>
+    </div>
+  );
+
+  return (
+    <div className="content">
+      {toast && <Toast msg={toast} onDone={() => setToast(null)} />}
+
+      {/* ── 1. MATCH DU JOUR ── */}
+      <SectionHeader num="1" title="Match du jour"
+        subtitle={activeMatch ? "Un vote est en cours. Clore le vote pour en créer un nouveau." : "Lance le vote de ce soir en quelques secondes."} />
+
+      {activeMatch ? (() => {
+        const phase = activeMatch.phase || "voting";
+        return (
+          <div className="group">
+            <div className="row">
+              <div className="row-icon green">⚡</div>
+              <div className="row-body">
+                <div className="row-title">{activeMatch.label}</div>
+                <div className="row-sub">
+                  {phase === "voting"   && `${voteCount} vote${voteCount !== 1 ? "s" : ""} reçu${voteCount !== 1 ? "s" : ""} sur ${activeMatch.present_ids.length} joueurs`}
+                  {phase === "counting" && `Dépouillement — ${activeMatch.revealed_count || 0}/${(activeMatch.reveal_order || []).length} votes révélés`}
+                </div>
+              </div>
+            </div>
+            {phase === "voting" && (
+              <div style={{ padding: "12px 16px", display: "flex", flexDirection: "column", gap: 8 }}>
+                <button className="btn btn-primary btn-full" onClick={startCounting} disabled={startingCount || voteCount === 0}>
+                  {startingCount ? "Préparation…" : `Lancer le dépouillement · ${voteCount} vote${voteCount !== 1 ? "s" : ""}`}
+                </button>
+                <button className="btn btn-danger btn-full" style={{ fontSize: 13 }} onClick={closeMatch}>
+                  Clore sans dépouiller
+                </button>
+              </div>
+            )}
+            {phase === "counting" && (
+              <div style={{ padding: "12px 16px" }}>
+                <p style={{ fontSize: 13, color: "var(--label3)", textAlign: "center" }}>
+                  Le dépouillement est en cours dans l'onglet Résultats.
+                </p>
+              </div>
+            )}
+          </div>
+        );
+      })() : players.length === 0 ? (
+        <div className="group">
+          <div className="row">
+            <div className="row-body">
+              <div className="row-title" style={{ color: "var(--label3)" }}>Aucun joueur enregistré</div>
+              <div className="row-sub">Ajoute d'abord tes joueurs dans la section 3 ci-dessous ↓</div>
+            </div>
+          </div>
+        </div>
+      ) : (
+        <div className="group" style={{ padding: "14px 16px" }}>
+          <p style={{ fontSize: 13, color: "var(--label3)", marginBottom: 8 }}>Nom du match ou de l'adversaire</p>
+          <input placeholder="ex : vs Dragons, Entraînement…" value={matchLabel}
+            onChange={e => setMatchLabel(e.target.value)} style={{ marginBottom: 16 }} />
+
+          {teams.length > 0 && (
+            <>
+              <p style={{ fontSize: 13, color: "var(--label3)", marginBottom: 8 }}>
+                Partir d'une composition sauvegardée <span style={{ color: "var(--label4)" }}>(tu pourras décocher les absents)</span>
+              </p>
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 16 }}>
+                {teams.map(t => (
+                  <button key={t.id}
+                    onClick={() => loadTeamIntoMatch(t)}
+                    style={{
+                      padding: "8px 14px", borderRadius: "var(--radius-sm)", fontSize: 14, fontWeight: 600,
+                      background: presentIds.length > 0 && t.player_ids.every(id => presentIds.includes(id)) && presentIds.length === t.player_ids.length
+                        ? "var(--gold-dim)" : "var(--bg3)",
+                      color: presentIds.length > 0 && t.player_ids.every(id => presentIds.includes(id)) && presentIds.length === t.player_ids.length
+                        ? "var(--gold)" : "var(--label2)",
+                      border: "none", cursor: "pointer",
+                    }}>
+                    {t.name} · {t.player_ids.length} joueurs
+                  </button>
+                ))}
+              </div>
+            </>
+          )}
+
+          <div className="flex-between" style={{ marginBottom: 8 }}>
+            <p style={{ fontSize: 13, color: "var(--label3)" }}>
+              Qui est présent ce soir ?
+              {presentIds.length > 0 && <span style={{ color: "var(--label2)", marginLeft: 6 }}>{presentIds.length} sélectionné{presentIds.length > 1 ? "s" : ""}</span>}
+            </p>
+            <div className="flex gap-8">
+              <button className="tag tag-dim" onClick={() => setPresentIds(players.map(p => p.id))}>Tous</button>
+              <button className="tag tag-dim" onClick={() => setPresentIds([])}>Aucun</button>
+            </div>
+          </div>
+          <div className="player-grid" style={{ marginBottom: 16 }}>
+            {players.map(p => (
+              <button key={p.id} className={`player-chip ${presentIds.includes(p.id) ? "sel-1st" : ""}`}
+                onClick={() => togglePresent(p.id)}>{p.name}</button>
+            ))}
+          </div>
+          {presentIds.length < 2 && (
+            <p style={{ fontSize: 12, color: "var(--label3)", marginBottom: 10 }}>
+              Sélectionne au moins 2 joueurs pour lancer le vote.
+            </p>
+          )}
+          <button className="btn btn-primary btn-full"
+            disabled={!matchLabel.trim() || presentIds.length < 2 || creating}
+            onClick={createMatch}>
+            {creating ? "Lancement…" : `Lancer le vote · ${presentIds.length} joueurs`}
+          </button>
+        </div>
+      )}
+
+      {/* ── INVITÉS (visible quand match en cours) ── */}
+      {activeMatch && (activeMatch.phase || "voting") === "voting" && (
+        <>
+          <div style={{ marginTop: 28, marginBottom: 12 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 3 }}>
+              <span style={{ fontSize: 18 }}>🔗</span>
+              <span style={{ fontSize: 15, fontWeight: 700, color: "var(--label)" }}>Supporters invités</span>
+            </div>
+            <p style={{ fontSize: 12, color: "var(--label3)", paddingLeft: 28 }}>Crée un lien unique par invité pour qu'il puisse voter depuis son téléphone.</p>
+          </div>
+
+          {guestTokens.length > 0 && (
+            <div className="group" style={{ marginBottom: 12 }}>
+              {guestTokens.map((gt, i) => (
+                <div key={gt.id}>
+                  {i > 0 && <div style={{ height: 1, background: "var(--separator)", margin: "0 16px" }} />}
+                  <div className="row">
+                    <div className="row-body">
+                      <div className="row-title" style={{ color: gt.used ? "var(--label3)" : "var(--label)" }}>{gt.name}</div>
+                      <div className="row-sub" style={{ color: gt.used ? "var(--green)" : "var(--label3)" }}>
+                        {gt.used ? "✓ A voté" : "En attente"}
+                      </div>
+                    </div>
+                    {!gt.used && (
+                      <button className="btn btn-secondary" style={{ padding: "6px 12px", fontSize: 13, whiteSpace: "nowrap" }}
+                        onClick={() => copyGuestLink(gt.token)}>
+                        {copiedToken === gt.token ? "Copié !" : "Copier le lien"}
+                      </button>
+                    )}
+                    <button onClick={() => revokeGuest(gt.id)}
+                      style={{ background: "none", border: "none", cursor: "pointer", fontSize: 16, color: "var(--label4)", padding: "4px 8px" }}>✕</button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          <div className="flex gap-8" style={{ marginBottom: 4 }}>
+            <input placeholder="Prénom du supporter" value={guestInput}
+              onChange={e => setGuestInput(e.target.value)}
+              onKeyDown={e => e.key === "Enter" && createGuestLink()} />
+            <button className="btn btn-primary" style={{ whiteSpace: "nowrap", padding: "12px 16px" }}
+              onClick={createGuestLink}>
+              Créer
+            </button>
+          </div>
+          <p style={{ fontSize: 11, color: "var(--label4)", marginBottom: 4 }}>Le lien s'ouvre directement sur le formulaire de vote, pré-rempli au nom de l'invité.</p>
+        </>
+      )}
+
+      {/* ── 2. MES COMPOSITIONS ── */}
+      <SectionHeader num="2" title="Mes compositions"
+        subtitle="Sauvegarde ta liste habituelle pour la recharger en un clic avant chaque match." />
+
+      {teams.length > 0 && (
+        <div className="group" style={{ marginBottom: 12 }}>
+          {teams.map((t, i) => (
+            <div key={t.id}>
+              {i > 0 && <div style={{ height: 1, background: "var(--separator)", margin: "0 16px" }} />}
+              <div className="row">
+                <div className="row-body">
+                  <div className="row-title">{t.name}</div>
+                  <div className="row-sub" style={{ marginTop: 3 }}>
+                    {players.filter(p => t.player_ids.includes(p.id)).map(p => p.name).join(" · ")}
+                  </div>
+                </div>
+                <button className="btn btn-danger" style={{ padding: "5px 12px", fontSize: 13 }}
+                  onClick={() => deleteTeam(t.id, t.name)}>Supprimer</button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      <div style={{ marginBottom: 8 }}>
+        <button className="tag tag-dim" style={{ fontSize: 13, padding: "7px 12px" }}
+          onClick={() => setShowNewTeam(v => !v)}>
+          {showNewTeam ? "▲ Masquer le formulaire" : "＋ Créer une composition"}
+        </button>
+      </div>
+
+      {showNewTeam && (
+        <div className="group" style={{ padding: "14px 16px", marginBottom: 4 }}>
+          <p style={{ fontSize: 13, color: "var(--label3)", marginBottom: 8 }}>Nom de la composition</p>
+          <input placeholder="ex : Équipe A, Jeudi soir…" value={teamName}
+            onChange={e => setTeamName(e.target.value)} style={{ marginBottom: 16 }} />
+          <p style={{ fontSize: 13, color: "var(--label3)", marginBottom: 8 }}>Joueurs à inclure</p>
+          <div className="player-grid" style={{ marginBottom: 12 }}>
+            {players.map(p => (
+              <button key={p.id} className={`player-chip ${teamIds.includes(p.id) ? "sel-1st" : ""}`}
+                onClick={() => toggleTeamId(p.id)}>{p.name}</button>
+            ))}
+          </div>
+          <button className="btn btn-primary btn-full"
+            disabled={!teamName.trim() || teamIds.length < 2 || savingTeam}
+            onClick={saveTeam}>
+            {savingTeam ? "Sauvegarde…" : `Sauvegarder · ${teamIds.length} joueur${teamIds.length !== 1 ? "s" : ""}`}
+          </button>
+        </div>
+      )}
+
+      {/* ── 3. MES JOUEURS ── */}
+      <SectionHeader num="3" title="Mes joueurs"
+        subtitle="La liste complète des joueurs. Ajoute chaque membre de l'équipe ici." />
+
+
+      <div className="flex gap-8" style={{ marginBottom: 12 }}>
+        <input placeholder="Prénom du joueur" value={newPlayer}
+          onChange={e => setNewPlayer(e.target.value)}
+          onKeyDown={e => e.key === "Enter" && addPlayer()} />
+        <button className="btn btn-primary" style={{ whiteSpace: "nowrap", padding: "12px 16px" }} onClick={addPlayer}>
+          Ajouter
+        </button>
+      </div>
+      <div className="group">
+        {players.length === 0
+          ? <div className="row"><span style={{ color: "var(--label3)", fontSize: 14 }}>Aucun joueur. Commence par en ajouter un ci-dessus.</span></div>
+          : players.map(p => (
+            <div key={p.id} className="row">
+              <div className="row-body"><div className="row-title">{p.name}</div></div>
+              <button className="btn btn-danger" style={{ padding: "5px 12px", fontSize: 13 }}
+                onClick={() => removePlayer(p.id, p.name)}>Retirer</button>
+            </div>
+          ))
+        }
+      </div>
+
+      {/* ── 4. SAISON ── */}
+      <SectionHeader num="4" title="Saison"
+        subtitle={`Saison actuelle : ${currentSeason}. Démarre une nouvelle saison pour remettre le classement à zéro sans perdre l'historique.`} />
+      <div className="group">
+        <div className="row">
+          <div className="row-icon green">📅</div>
+          <div className="row-body">
+            <div className="row-title">Saison {currentSeason} en cours</div>
+            <div className="row-sub">Tous les nouveaux matchs appartiennent à cette saison</div>
+          </div>
+        </div>
+        <div style={{ padding: "12px 16px" }}>
+          <button className="btn btn-secondary btn-full" onClick={advanceSeason}>
+            Démarrer la saison {currentSeason + 1}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
