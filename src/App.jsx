@@ -291,7 +291,7 @@ let demoState = {
     { id: 7, name: "Guillaume" }, { id: 8, name: "Hugo" },
     { id: 9, name: "Julien" }, { id: 10, name: "Kevin" },
   ],
-  matches: [], votes: [], teams: [], nextId: 100,
+  matches: [], votes: [], teams: [], nextId: 100, currentSeason: 1,
 };
 
 const demoAPI = {
@@ -300,13 +300,17 @@ const demoAPI = {
   removePlayer:   (id)   => { demoState.players = demoState.players.filter(p => p.id !== id); return Promise.resolve(true); },
   getActiveMatch: ()     => Promise.resolve(demoState.matches.find(m => m.is_open) || null),
   getMatches:     ()     => Promise.resolve([...demoState.matches].reverse()),
-  createMatch: (label, presentIds) => {
-    const m = { id: demoState.nextId++, label, present_ids: presentIds, is_open: true, phase: "voting", reveal_order: [], revealed_count: 0, created_at: new Date().toISOString() };
+  createMatch: (label, presentIds, teamId, season) => {
+    const m = { id: demoState.nextId++, label, present_ids: presentIds, is_open: true, phase: "voting", reveal_order: [], revealed_count: 0, season: season || demoState.currentSeason, team_id: teamId || null, created_at: new Date().toISOString() };
     demoState.matches.push(m); return Promise.resolve(m);
   },
-  closeMatch:     (id) => { const m = demoState.matches.find(m => m.id === id); if (m) { m.is_open = false; m.phase = "closed"; } return Promise.resolve(true); },
-  startCounting:  (id, order) => { const m = demoState.matches.find(m => m.id === id); if (m) { m.phase = "counting"; m.reveal_order = order; m.revealed_count = 0; } return Promise.resolve(true); },
-  revealNext:     (id, count) => { const m = demoState.matches.find(m => m.id === id); if (m) m.revealed_count = count; return Promise.resolve(true); },
+  closeMatch:       (id) => { const m = demoState.matches.find(m => m.id === id); if (m) { m.is_open = false; m.phase = "closed"; } return Promise.resolve(true); },
+  startCounting:    (id, order) => { const m = demoState.matches.find(m => m.id === id); if (m) { m.phase = "counting"; m.reveal_order = order; m.revealed_count = 0; } return Promise.resolve(true); },
+  revealNext:       (id, count) => { const m = demoState.matches.find(m => m.id === id); if (m) m.revealed_count = count; return Promise.resolve(true); },
+  updateMatch:      (id, data) => { const m = demoState.matches.find(m => m.id === id); if (m) Object.assign(m, data); return Promise.resolve(true); },
+  deleteMatch:      (id) => { demoState.matches = demoState.matches.filter(m => m.id !== id); demoState.votes = demoState.votes.filter(v => v.match_id !== id); return Promise.resolve(true); },
+  getCurrentSeason: () => Promise.resolve(demoState.currentSeason),
+  advanceSeason:    () => { demoState.currentSeason++; return Promise.resolve(demoState.currentSeason); },
   hasVoted:    (matchId, voterName) => Promise.resolve(demoState.votes.some(v => v.match_id === matchId && v.voter_name === voterName)),
   submitVote:  (vote) => { demoState.votes.push({ ...vote, id: demoState.nextId++ }); return Promise.resolve(true); },
   getVotes:    (matchId) => Promise.resolve(demoState.votes.filter(v => v.match_id === matchId)),
@@ -322,10 +326,14 @@ const realAPI = {
   removePlayer:   async (id)   => { const db = await supabase.from("players"); return db.delete(`id=eq.${id}`); },
   getActiveMatch: async () => { const db = await supabase.from("matches"); const r = await db.select("*", { filter: "is_open=eq.true", order: "created_at.desc" }); return r[0] || null; },
   getMatches:     async () => { const db = await supabase.from("matches"); return db.select("*", { order: "created_at.desc" }); },
-  createMatch:    async (label, presentIds) => { const db = await supabase.from("matches"); const r = await db.insert({ label, present_ids: presentIds, is_open: true, phase: "voting" }); return r[0]; },
+  createMatch:    async (label, presentIds, teamId, season) => { const db = await supabase.from("matches"); const r = await db.insert({ label, present_ids: presentIds, is_open: true, phase: "voting", team_id: teamId || null, season: season || 1 }); return r[0]; },
   closeMatch:     async (id) => { const db = await supabase.from("matches"); return db.update({ is_open: false, phase: "closed" }, `id=eq.${id}`); },
   startCounting:  async (id, order) => { const db = await supabase.from("matches"); return db.update({ phase: "counting", reveal_order: order, revealed_count: 0 }, `id=eq.${id}`); },
   revealNext:     async (id, count) => { const db = await supabase.from("matches"); return db.update({ revealed_count: count }, `id=eq.${id}`); },
+  updateMatch:    async (id, data) => { const db = await supabase.from("matches"); return db.update(data, `id=eq.${id}`); },
+  deleteMatch:    async (id) => { const vdb = await supabase.from("votes"); await vdb.delete(`match_id=eq.${id}`); const db = await supabase.from("matches"); return db.delete(`id=eq.${id}`); },
+  getCurrentSeason: async () => { try { const db = await supabase.from("settings"); const r = await db.select("value", { filter: "key=eq.current_season" }); return parseInt(r[0]?.value || "1"); } catch { return 1; } },
+  advanceSeason:  async () => { const db = await supabase.from("settings"); const cur = await realAPI.getCurrentSeason(); const next = cur + 1; await db.update({ value: String(next) }, "key=eq.current_season"); return next; },
   hasVoted:       async (matchId, voterName) => { const db = await supabase.from("votes"); const r = await db.select("id", { filter: `match_id=eq.${matchId}&voter_name=eq.${voterName}` }); return r.length > 0; },
   submitVote:     async (vote) => { const db = await supabase.from("votes"); return db.insert(vote); },
   getVotes:       async (matchId) => { const db = await supabase.from("votes"); return db.select("*", { filter: `match_id=eq.${matchId}` }); },
@@ -770,23 +778,40 @@ function ResultsView({ players, match, refreshKey, onMatchUpdate }) {
 // STATS VIEW
 // ============================================================
 function StatsView({ players }) {
-  const [allVotes,   setAllVotes]   = useState([]);
-  const [allMatches, setAllMatches] = useState([]);
-  const [loading,    setLoading]    = useState(true);
+  const [allVotes,       setAllVotes]       = useState([]);
+  const [allMatches,     setAllMatches]     = useState([]);
+  const [allTeams,       setAllTeams]       = useState([]);
+  const [currentSeason,  setCurrentSeason]  = useState(1);
+  const [selectedSeason, setSelectedSeason] = useState(null);
+  const [selectedTeamId, setSelectedTeamId] = useState(null);
+  const [expandedId,     setExpandedId]     = useState(null);
+  const [editingMatch,   setEditingMatch]   = useState(null);
+  const [loading,        setLoading]        = useState(true);
 
-  useEffect(() => {
-    Promise.all([api.getAllVotes(), api.getMatches()]).then(([v, m]) => {
-      setAllVotes(v); setAllMatches(m); setLoading(false);
-    });
+  const reload = useCallback(async () => {
+    const [v, m, t, cs] = await Promise.all([api.getAllVotes(), api.getMatches(), api.getTeams(), api.getCurrentSeason()]);
+    setAllVotes(v); setAllMatches(m); setAllTeams(t); setCurrentSeason(cs);
+    setSelectedSeason(prev => prev ?? cs);
+    setLoading(false);
   }, []);
 
+  useEffect(() => { reload(); }, []);
+
   if (loading) return <div className="content"><div className="empty">Chargement…</div></div>;
-  if (!allVotes.length) return <div className="content"><div className="empty">Pas encore de stats.<br />Joue quelques matchs !</div></div>;
+
+  const seasons = [...new Set(allMatches.map(m => m.season || 1))].sort((a, b) => a - b);
+  const activeSeason = selectedSeason ?? currentSeason;
+
+  const filteredMatches = allMatches.filter(m =>
+    (m.season || 1) === activeSeason &&
+    (selectedTeamId === null || m.team_id === selectedTeamId)
+  );
+  const filteredMatchIds = new Set(filteredMatches.map(m => m.id));
+  const filteredVotes = allVotes.filter(v => filteredMatchIds.has(v.match_id));
 
   const stats = {};
   players.forEach(p => { stats[p.id] = { name: p.name, bestPts: 0, lemonPts: 0, wins: 0, lemons: 0 }; });
-
-  allMatches.forEach(match => {
+  filteredMatches.forEach(match => {
     const mv = allVotes.filter(v => v.match_id === match.id);
     const pp = players.filter(p => (match.present_ids || []).includes(p.id));
     const { best, lemon } = computeScores(mv, pp);
@@ -801,53 +826,167 @@ function StatsView({ players }) {
     if (bW && stats[bW]) stats[bW].wins++;
     if (lW && stats[lW]) stats[lW].lemons++;
   });
-
   const ranked = Object.values(stats).filter(s => s.bestPts > 0 || s.lemonPts > 0).sort((a, b) => b.bestPts - a.bestPts);
   const maxPts = ranked[0]?.bestPts || 1;
 
+  const handleDelete = async (match) => {
+    if (!confirm(`Supprimer "${match.label}" et tous ses votes ?`)) return;
+    await api.deleteMatch(match.id);
+    if (expandedId === match.id) setExpandedId(null);
+    reload();
+  };
+
+  const handleSaveEdit = async () => {
+    if (!editingMatch) return;
+    await api.updateMatch(editingMatch.id, { label: editingMatch.label, team_id: editingMatch.team_id || null });
+    setEditingMatch(null);
+    reload();
+  };
+
+  const TabBar = ({ items, active, onChange }) => (
+    <div style={{ display: "flex", flexWrap: "wrap", gap: 4, marginBottom: 4 }}>
+      {items.map(({ id, label }) => (
+        <button key={id} onClick={() => onChange(id)} style={{
+          padding: "7px 14px", borderRadius: "var(--radius-sm)", fontSize: 13, fontWeight: 600,
+          background: active === id ? "var(--label)" : "var(--bg3)",
+          color: active === id ? "var(--bg)" : "var(--label3)",
+          border: "none", cursor: "pointer",
+        }}>{label}</button>
+      ))}
+    </div>
+  );
+
   return (
     <div className="content">
-      <p className="section-label mt-4 mb-4">Classement saison</p>
-      <div style={{ fontSize: 12, color: "var(--label3)", marginBottom: 8 }}>
-        {allMatches.length} match{allMatches.length !== 1 ? "s" : ""}
-      </div>
-      <div className="group">
-        {ranked.map((s, i) => (
-          <div key={s.name} className="row">
-            <div style={{ width: 24, fontWeight: 700, fontSize: 13, flexShrink: 0,
-              color: i === 0 ? "var(--gold)" : "var(--label3)" }}>{i + 1}</div>
-            <div className="row-body">
-              <div className="row-title">{s.name}</div>
-              <div className="flex gap-8 mt-4">
-                {s.wins   > 0 && <span className="tag tag-gold">⭐ ×{s.wins}</span>}
-                {s.lemons > 0 && <span className="tag tag-lemon">🍋 ×{s.lemons}</span>}
-              </div>
-            </div>
-            <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 4 }}>
-              <div className="flex gap-8" style={{ alignItems: "center" }}>
-                <div className="score-bar-wrap">
-                  <div className="score-bar" style={{ width: `${(s.bestPts / maxPts) * 100}%`,
-                    background: i === 0 ? "var(--gold)" : "var(--label3)" }} />
-                </div>
-                <div className="row-value gold" style={{ minWidth: 24, textAlign: "right" }}>{s.bestPts}</div>
-              </div>
-              <div style={{ fontSize: 12, color: "var(--label3)" }}>{s.lemonPts} 🍋</div>
-            </div>
-          </div>
-        ))}
-      </div>
+      {/* Season tabs */}
+      {seasons.length > 0 && (
+        <div style={{ marginTop: 12, marginBottom: 16 }}>
+          <TabBar
+            items={seasons.map(s => ({ id: s, label: `Saison ${s}${s === currentSeason ? " ·" : ""}` }))}
+            active={activeSeason}
+            onChange={s => { setSelectedSeason(s); setSelectedTeamId(null); setExpandedId(null); }}
+          />
+          <p style={{ fontSize: 11, color: "var(--label4)", marginTop: 4 }}>
+            {filteredMatches.length} match{filteredMatches.length !== 1 ? "s" : ""}
+            {filteredVotes.length > 0 && ` · ${filteredVotes.length} vote${filteredVotes.length > 1 ? "s" : ""}`}
+          </p>
+        </div>
+      )}
 
-      <p className="section-label mb-4" style={{ color: "var(--lemon)" }}>Hall of Shame</p>
-      <div className="group">
-        {Object.values(stats).filter(s => s.lemonPts > 0).sort((a, b) => b.lemonPts - a.lemonPts).map(s => (
-          <div key={s.name} className="row">
-            <div className="row-icon lemon">🍋</div>
-            <div className="row-body"><div className="row-title">{s.name}</div></div>
-            <div style={{ fontSize: 12, color: "var(--label3)", marginRight: 10 }}>{s.lemons} fois</div>
-            <div className="row-value lemon">{s.lemonPts}</div>
+      {/* Team filter */}
+      {allTeams.length > 0 && (
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 16 }}>
+          <button className={`tag ${selectedTeamId === null ? "tag-gold" : "tag-dim"}`}
+            onClick={() => setSelectedTeamId(null)}>Toutes</button>
+          {allTeams.map(t => (
+            <button key={t.id} className={`tag ${selectedTeamId === t.id ? "tag-gold" : "tag-dim"}`}
+              onClick={() => setSelectedTeamId(t.id)}>{t.name}</button>
+          ))}
+        </div>
+      )}
+
+      {filteredMatches.length === 0 ? (
+        <div className="empty">Aucun match pour cette sélection.</div>
+      ) : (
+        <>
+          {/* Season ranking */}
+          <p className="section-label mb-4">Classement</p>
+          {ranked.length === 0
+            ? <div className="group" style={{ marginBottom: 12 }}><div className="row"><span style={{ color: "var(--label3)", fontSize: 14 }}>Aucun vote enregistré.</span></div></div>
+            : (
+              <div className="group" style={{ marginBottom: 12 }}>
+                {ranked.map((s, i) => (
+                  <div key={s.name} className="row">
+                    <div style={{ width: 24, fontWeight: 700, fontSize: 13, flexShrink: 0, color: i === 0 ? "var(--gold)" : "var(--label3)" }}>{i + 1}</div>
+                    <div className="row-body">
+                      <div className="row-title">{s.name}</div>
+                      <div className="flex gap-8 mt-4">
+                        {s.wins   > 0 && <span className="tag tag-gold">⭐ ×{s.wins}</span>}
+                        {s.lemons > 0 && <span className="tag tag-lemon">🍋 ×{s.lemons}</span>}
+                      </div>
+                    </div>
+                    <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 4 }}>
+                      <div className="flex gap-8" style={{ alignItems: "center" }}>
+                        <div className="score-bar-wrap">
+                          <div className="score-bar" style={{ width: `${(s.bestPts / maxPts) * 100}%`, background: i === 0 ? "var(--gold)" : "var(--label3)" }} />
+                        </div>
+                        <div className="row-value gold" style={{ minWidth: 24, textAlign: "right" }}>{s.bestPts}</div>
+                      </div>
+                      <div style={{ fontSize: 12, color: "var(--label3)" }}>{s.lemonPts} 🍋</div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )
+          }
+
+          {/* Match list */}
+          <p className="section-label mb-8">Matchs</p>
+          <div style={{ display: "flex", flexDirection: "column", gap: 6, marginBottom: 20 }}>
+            {filteredMatches.map(match => {
+              const matchVotes  = allVotes.filter(v => v.match_id === match.id);
+              const matchPresent = players.filter(p => (match.present_ids || []).includes(p.id));
+              const isExpanded  = expandedId === match.id;
+              const isEditing   = editingMatch?.id === match.id;
+              const teamName    = allTeams.find(t => t.id === match.team_id)?.name;
+
+              return (
+                <div key={match.id} style={{ background: "var(--bg2)", borderRadius: "var(--radius-lg)", overflow: "hidden" }}>
+                  <button onClick={() => setExpandedId(isExpanded ? null : match.id)}
+                    style={{ width: "100%", background: "none", border: "none", cursor: "pointer", padding: "13px 16px", display: "flex", alignItems: "center", gap: 10, textAlign: "left" }}>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontSize: 15, fontWeight: 600, color: "var(--label)" }}>{match.label}</div>
+                      <div style={{ fontSize: 12, color: "var(--label3)", marginTop: 2 }}>
+                        {formatDate(match.created_at)}
+                        {teamName && <span> · <span style={{ color: "var(--gold)" }}>{teamName}</span></span>}
+                        {' · '}{matchVotes.length} vote{matchVotes.length !== 1 ? "s" : ""}
+                      </div>
+                    </div>
+                    <span style={{ color: "var(--label4)", fontSize: 11 }}>{isExpanded ? "▲" : "▼"}</span>
+                  </button>
+
+                  {isExpanded && (
+                    <div style={{ borderTop: "1px solid var(--separator)", padding: "12px 16px" }}>
+                      {matchVotes.length === 0
+                        ? <p style={{ fontSize: 14, color: "var(--label3)", marginBottom: 12 }}>Aucun vote.</p>
+                        : <Scoreboard votes={matchVotes} present={matchPresent} />
+                      }
+
+                      {isEditing ? (
+                        <div style={{ marginTop: 12, display: "flex", flexDirection: "column", gap: 8 }}>
+                          <input value={editingMatch.label}
+                            onChange={e => setEditingMatch(em => ({ ...em, label: e.target.value }))}
+                            placeholder="Nom du match" />
+                          {allTeams.length > 0 && (
+                            <select value={editingMatch.team_id || ""}
+                              onChange={e => setEditingMatch(em => ({ ...em, team_id: e.target.value ? parseInt(e.target.value) : null }))}
+                              style={{ background: "var(--bg3)", color: "var(--label)", border: "none", borderRadius: "var(--radius-sm)", padding: "12px 14px", fontSize: 15, width: "100%", outline: "none" }}>
+                              <option value="">Sans équipe</option>
+                              {allTeams.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
+                            </select>
+                          )}
+                          <div className="flex gap-8">
+                            <button className="btn btn-secondary" onClick={() => setEditingMatch(null)}>Annuler</button>
+                            <button className="btn btn-primary" style={{ flex: 1 }} onClick={handleSaveEdit}>Sauvegarder</button>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="flex gap-8" style={{ marginTop: 12 }}>
+                          <button className="btn btn-secondary" style={{ flex: 1 }}
+                            onClick={() => setEditingMatch({ id: match.id, label: match.label, team_id: match.team_id || null })}>
+                            Modifier
+                          </button>
+                          <button className="btn btn-danger" onClick={() => handleDelete(match)}>Supprimer</button>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
           </div>
-        ))}
-      </div>
+        </>
+      )}
     </div>
   );
 }
@@ -864,15 +1003,21 @@ function AdminView({ players, onPlayersChange, activeMatch, onMatchChange }) {
   const [presentIds,   setPresentIds]   = useState([]);
   const [creating,     setCreating]     = useState(false);
   const [toast,        setToast]        = useState(null);
-  const [teams,        setTeams]        = useState([]);
-  const [teamName,     setTeamName]     = useState("");
-  const [teamIds,      setTeamIds]      = useState([]);
-  const [showNewTeam,  setShowNewTeam]  = useState(true);
-  const [savingTeam,   setSavingTeam]   = useState(false);
+  const [teams,          setTeams]          = useState([]);
+  const [teamName,       setTeamName]       = useState("");
+  const [teamIds,        setTeamIds]        = useState([]);
+  const [showNewTeam,    setShowNewTeam]    = useState(true);
+  const [savingTeam,     setSavingTeam]     = useState(false);
+  const [selectedTeamId, setSelectedTeamId] = useState(null);
+  const [currentSeason,  setCurrentSeason]  = useState(1);
 
   const loadTeams = useCallback(async () => { setTeams(await api.getTeams()); }, []);
 
-  useEffect(() => { loadTeams(); }, []);
+  useEffect(() => {
+    Promise.all([api.getTeams(), api.getCurrentSeason()]).then(([t, cs]) => {
+      setTeams(t); setCurrentSeason(cs);
+    });
+  }, []);
 
   const login = () => {
     if (pwd === ADMIN_PASSWORD) {
@@ -898,13 +1043,20 @@ function AdminView({ players, onPlayersChange, activeMatch, onMatchChange }) {
   const togglePresent = (id) => setPresentIds(p => p.includes(id) ? p.filter(x => x !== id) : [...p, id]);
   const toggleTeamId  = (id) => setTeamIds(p => p.includes(id) ? p.filter(x => x !== id) : [...p, id]);
 
-  const loadTeamIntoMatch = (team) => setPresentIds([...team.player_ids]);
+  const loadTeamIntoMatch = (team) => { setPresentIds([...team.player_ids]); setSelectedTeamId(team.id); };
+
+  const advanceSeason = async () => {
+    if (!confirm(`Démarrer la saison ${currentSeason + 1} ? L'historique de la saison ${currentSeason} est conservé.`)) return;
+    const next = await api.advanceSeason();
+    setCurrentSeason(next);
+    setToast(`Saison ${next} démarrée !`);
+  };
 
   const createMatch = async () => {
     if (!matchLabel.trim() || presentIds.length < 2) return;
     setCreating(true);
-    await api.createMatch(matchLabel.trim(), presentIds);
-    setMatchLabel(""); setPresentIds([]);
+    await api.createMatch(matchLabel.trim(), presentIds, selectedTeamId, currentSeason);
+    setMatchLabel(""); setPresentIds([]); setSelectedTeamId(null);
     setCreating(false);
     onMatchChange();
     setToast("Match ouvert !");
@@ -1143,6 +1295,7 @@ function AdminView({ players, onPlayersChange, activeMatch, onMatchChange }) {
       <SectionHeader num="3" title="Mes joueurs"
         subtitle="La liste complète des joueurs. Ajoute chaque membre de l'équipe ici." />
 
+
       <div className="flex gap-8" style={{ marginBottom: 12 }}>
         <input placeholder="Prénom du joueur" value={newPlayer}
           onChange={e => setNewPlayer(e.target.value)}
@@ -1162,6 +1315,24 @@ function AdminView({ players, onPlayersChange, activeMatch, onMatchChange }) {
             </div>
           ))
         }
+      </div>
+
+      {/* ── 4. SAISON ── */}
+      <SectionHeader num="4" title="Saison"
+        subtitle={`Saison actuelle : ${currentSeason}. Démarre une nouvelle saison pour remettre le classement à zéro sans perdre l'historique.`} />
+      <div className="group">
+        <div className="row">
+          <div className="row-icon green">📅</div>
+          <div className="row-body">
+            <div className="row-title">Saison {currentSeason} en cours</div>
+            <div className="row-sub">Tous les nouveaux matchs appartiennent à cette saison</div>
+          </div>
+        </div>
+        <div style={{ padding: "12px 16px" }}>
+          <button className="btn btn-secondary btn-full" onClick={advanceSeason}>
+            Démarrer la saison {currentSeason + 1}
+          </button>
+        </div>
       </div>
     </div>
   );
