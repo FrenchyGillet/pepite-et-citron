@@ -256,6 +256,14 @@ const GlobalStyle = () => (
       from { opacity: 0; transform: translateX(-50%) translateY(8px); }
       to   { opacity: 1; transform: translateX(-50%) translateY(0);   }
     }
+    @keyframes livePulse {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50%       { opacity: 0.35; transform: scale(0.75); }
+    }
+    @keyframes revealPop {
+      0%   { opacity: 0; transform: translateY(6px) scale(0.97); }
+      100% { opacity: 1; transform: translateY(0)   scale(1);    }
+    }
 
     .demo-banner {
       background: rgba(255,214,10,0.06);
@@ -717,44 +725,55 @@ function ResultsView({ players, match, refreshKey, onMatchUpdate }) {
         <MatchHeader badge={<span className="badge" style={{ background: "rgba(170,221,0,0.15)", color: "var(--lemon)" }}>Dépouillement</span>} />
 
         {!isDone && currentVote ? (
-          <div style={{
+          <div key={revealedCount} style={{
             background: "var(--bg2)", borderRadius: "var(--radius-lg)",
             border: "1px solid var(--separator2)", marginBottom: 16, overflow: "hidden",
+            animation: "revealPop 0.3s ease",
           }}>
-            <div style={{ padding: "12px 16px 10px", borderBottom: "1px solid var(--separator)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-              <span style={{ fontSize: 12, fontWeight: 600, color: "var(--label3)", textTransform: "uppercase", letterSpacing: "0.06em" }}>
-                Vote {revealedCount + 1} sur {revealOrder.length}
+            {/* Progress header */}
+            <div style={{ padding: "10px 16px", borderBottom: "1px solid var(--separator)", display: "flex", justifyContent: "space-between", alignItems: "center", background: "var(--bg3)" }}>
+              <span style={{ fontSize: 12, fontWeight: 700, color: "var(--label2)", textTransform: "uppercase", letterSpacing: "0.08em" }}>
+                Vote {revealedCount + 1} / {revealOrder.length}
               </span>
-              <div style={{ display: "flex", gap: 3 }}>
+              <div style={{ display: "flex", gap: 4 }}>
                 {revealOrder.map((_, i) => (
-                  <div key={i} style={{ width: 6, height: 6, borderRadius: "50%", background: i < revealedCount ? "var(--label2)" : i === revealedCount ? "var(--gold)" : "var(--bg4)" }} />
+                  <div key={i} style={{
+                    width: i === revealedCount ? 14 : 7, height: 7,
+                    borderRadius: 4,
+                    background: i < revealedCount ? "var(--label2)" : i === revealedCount ? "var(--gold)" : "var(--bg4)",
+                    transition: "all 0.3s ease",
+                  }} />
                 ))}
               </div>
             </div>
 
-            <div style={{ padding: "16px 16px 4px" }}>
-              <div className="row" style={{ padding: "10px 0", borderBottom: "1px solid var(--separator)" }}>
-                <div className="row-icon gold">⭐</div>
-                <div className="row-body">
-                  <div style={{ fontSize: 11, fontWeight: 600, color: "var(--label3)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 2 }}>La Pépite · 2 pts</div>
-                  <div style={{ fontSize: 18, fontWeight: 700, color: "var(--gold)" }}>{playerName(currentVote.best1_id)}</div>
-                  {currentVote.best1_comment && <div style={{ fontSize: 13, color: "var(--label3)", fontStyle: "italic", marginTop: 3 }}>"{currentVote.best1_comment}"</div>}
+            {/* Vote rows */}
+            <div>
+              {/* Pépite 1 */}
+              <div style={{ display: "flex", alignItems: "flex-start", gap: 14, padding: "16px 16px 14px", borderBottom: "1px solid var(--separator)", borderLeft: "4px solid var(--gold)" }}>
+                <div style={{ fontSize: 26, lineHeight: 1 }}>⭐</div>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: 10, fontWeight: 700, color: "var(--gold)", textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: 4 }}>La Pépite · 2 pts</div>
+                  <div style={{ fontSize: 22, fontWeight: 800, color: "var(--gold)", letterSpacing: "-0.3px", lineHeight: 1.1 }}>{playerName(currentVote.best1_id)}</div>
+                  {currentVote.best1_comment && <div style={{ fontSize: 12, color: "var(--label3)", fontStyle: "italic", marginTop: 5 }}>"{currentVote.best1_comment}"</div>}
                 </div>
               </div>
-              <div className="row" style={{ padding: "10px 0", borderBottom: "1px solid var(--separator)" }}>
-                <div className="row-icon" style={{ background: "var(--gold-subtle)" }}>⭐</div>
-                <div className="row-body">
-                  <div style={{ fontSize: 11, fontWeight: 600, color: "var(--label3)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 2 }}>2ème · 1 pt</div>
-                  <div style={{ fontSize: 18, fontWeight: 700 }}>{playerName(currentVote.best2_id)}</div>
-                  {currentVote.best2_comment && <div style={{ fontSize: 13, color: "var(--label3)", fontStyle: "italic", marginTop: 3 }}>"{currentVote.best2_comment}"</div>}
+              {/* Pépite 2 */}
+              <div style={{ display: "flex", alignItems: "flex-start", gap: 14, padding: "14px 16px", borderBottom: "1px solid var(--separator)", borderLeft: "4px solid rgba(255,214,10,0.35)" }}>
+                <div style={{ fontSize: 22, lineHeight: 1, opacity: 0.5 }}>⭐</div>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: 10, fontWeight: 700, color: "rgba(255,214,10,0.5)", textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: 4 }}>2ème · 1 pt</div>
+                  <div style={{ fontSize: 19, fontWeight: 700, color: "var(--label)", letterSpacing: "-0.2px" }}>{playerName(currentVote.best2_id)}</div>
+                  {currentVote.best2_comment && <div style={{ fontSize: 12, color: "var(--label3)", fontStyle: "italic", marginTop: 5 }}>"{currentVote.best2_comment}"</div>}
                 </div>
               </div>
-              <div className="row" style={{ padding: "10px 0" }}>
-                <div className="row-icon lemon">🍋</div>
-                <div className="row-body">
-                  <div style={{ fontSize: 11, fontWeight: 600, color: "var(--label3)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 2 }}>Le Citron</div>
-                  <div style={{ fontSize: 18, fontWeight: 700, color: "var(--lemon)" }}>{playerName(currentVote.lemon_id)}</div>
-                  {currentVote.lemon_comment && <div style={{ fontSize: 13, color: "var(--label3)", fontStyle: "italic", marginTop: 3 }}>"{currentVote.lemon_comment}"</div>}
+              {/* Citron */}
+              <div style={{ display: "flex", alignItems: "flex-start", gap: 14, padding: "14px 16px 16px", borderLeft: "4px solid var(--lemon)" }}>
+                <div style={{ fontSize: 24, lineHeight: 1 }}>🍋</div>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: 10, fontWeight: 700, color: "var(--lemon)", textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: 4 }}>Le Citron</div>
+                  <div style={{ fontSize: 22, fontWeight: 800, color: "var(--lemon)", letterSpacing: "-0.3px", lineHeight: 1.1 }}>{playerName(currentVote.lemon_id)}</div>
+                  {currentVote.lemon_comment && <div style={{ fontSize: 12, color: "var(--label3)", fontStyle: "italic", marginTop: 5 }}>"{currentVote.lemon_comment}"</div>}
                 </div>
               </div>
             </div>
@@ -775,12 +794,25 @@ function ResultsView({ players, match, refreshKey, onMatchUpdate }) {
         ) : null}
 
         {revealedCount > 0 && (
-          <>
-            <p className="section-label mb-4" style={{ marginTop: 8 }}>
-              Classement · {revealedCount}/{revealOrder.length} vote{revealedCount > 1 ? "s" : ""} révélé{revealedCount > 1 ? "s" : ""}
-            </p>
+          <div style={{
+            border: "1px dashed var(--separator2)",
+            borderRadius: "var(--radius-lg)",
+            padding: "14px 14px 4px",
+            marginTop: 4,
+          }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 14 }}>
+              <div style={{
+                width: 8, height: 8, borderRadius: "50%",
+                background: "var(--lemon)",
+                animation: "livePulse 1.4s ease-in-out infinite",
+                flexShrink: 0,
+              }} />
+              <span style={{ fontSize: 11, fontWeight: 700, color: "var(--label3)", textTransform: "uppercase", letterSpacing: "0.08em" }}>
+                Classement provisoire · {revealedCount}/{revealOrder.length} vote{revealedCount > 1 ? "s" : ""} révélé{revealedCount > 1 ? "s" : ""}
+              </span>
+            </div>
             <Scoreboard votes={revealedVotes} present={present} />
-          </>
+          </div>
         )}
       </div>
     );
