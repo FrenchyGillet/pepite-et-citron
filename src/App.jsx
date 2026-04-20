@@ -400,6 +400,8 @@ function VoteView({ players, match, onVoted }) {
       best2_id: best2?.id, best2_comment: best2Comment,
       lemon_id: lemon?.id, lemon_comment: lemonComment,
     });
+    const voted = JSON.parse(localStorage.getItem("pepite_voted") || "[]");
+    if (!voted.includes(match.id)) localStorage.setItem("pepite_voted", JSON.stringify([...voted, match.id]));
     setSubmitting(false);
     onVoted();
   };
@@ -554,14 +556,24 @@ function VoteView({ players, match, onVoted }) {
 // ============================================================
 // SHARED SCOREBOARD
 // ============================================================
-function Scoreboard({ votes, present, showLemons = true }) {
+function Scoreboard({ votes, present, tiebreakers = {}, showLemons = true }) {
   const { best, lemon } = computeScores(votes, present);
-  const bestRanked = present
-    .map(p => ({ ...p, pts: best[p.id]?.pts || 0, comments: best[p.id]?.comments || [] }))
-    .filter(p => p.pts > 0).sort((a, b) => b.pts - a.pts);
-  const lemonRanked = present
-    .map(p => ({ ...p, pts: lemon[p.id]?.pts || 0, comments: lemon[p.id]?.comments || [] }))
-    .filter(p => p.pts > 0).sort((a, b) => b.pts - a.pts);
+
+  const withRanks = (arr) => {
+    let rank = 1;
+    return arr.map((p, i) => { if (i > 0 && p.pts < arr[i - 1].pts) rank = i + 1; return { ...p, rank }; });
+  };
+
+  const bestRanked = withRanks(
+    present.map(p => ({ ...p, pts: best[p.id]?.pts || 0, comments: best[p.id]?.comments || [] }))
+      .filter(p => p.pts > 0)
+      .sort((a, b) => b.pts !== a.pts ? b.pts - a.pts : tiebreakers.best_id === a.id ? -1 : tiebreakers.best_id === b.id ? 1 : 0)
+  );
+  const lemonRanked = withRanks(
+    present.map(p => ({ ...p, pts: lemon[p.id]?.pts || 0, comments: lemon[p.id]?.comments || [] }))
+      .filter(p => p.pts > 0)
+      .sort((a, b) => b.pts !== a.pts ? b.pts - a.pts : tiebreakers.lemon_id === a.id ? -1 : tiebreakers.lemon_id === b.id ? 1 : 0)
+  );
   const maxBest  = bestRanked[0]?.pts || 1;
   const maxLemon = lemonRanked[0]?.pts || 1;
 
@@ -571,38 +583,47 @@ function Scoreboard({ votes, present, showLemons = true }) {
       <div className="group">
         {bestRanked.length === 0
           ? <div className="row"><span style={{ color: "var(--label3)", fontSize: 14 }}>Aucun vote révélé…</span></div>
-          : bestRanked.map((p, i) => (
-            <div key={p.id}>
-              <div className="row">
-                <div style={{ width: 24, fontWeight: 700, fontSize: 13, flexShrink: 0, color: i === 0 ? "var(--gold)" : "var(--label3)" }}>{i + 1}</div>
-                <div className="row-body"><div className="row-title">{p.name}</div></div>
-                <div className="score-bar-wrap">
-                  <div className="score-bar" style={{ width: `${(p.pts / maxBest) * 100}%`, background: i === 0 ? "var(--gold)" : "var(--label3)" }} />
+          : bestRanked.map((p) => {
+            const isBeer = tiebreakers.best_id === p.id;
+            const isFirst = p.rank === 1;
+            return (
+              <div key={p.id}>
+                <div className="row">
+                  <div style={{ width: 24, fontWeight: 700, fontSize: isBeer ? 16 : 13, flexShrink: 0, color: isFirst ? "var(--gold)" : "var(--label3)" }}>
+                    {isBeer ? "🍺" : p.rank}
+                  </div>
+                  <div className="row-body"><div className="row-title">{p.name}</div></div>
+                  <div className="score-bar-wrap">
+                    <div className="score-bar" style={{ width: `${(p.pts / maxBest) * 100}%`, background: isFirst ? "var(--gold)" : "var(--label3)" }} />
+                  </div>
+                  <div className="row-value gold" style={{ minWidth: 28, textAlign: "right" }}>{p.pts}</div>
                 </div>
-                <div className="row-value gold" style={{ minWidth: 28, textAlign: "right" }}>{p.pts}</div>
+                {p.comments.map((c, j) => <div key={j} className="comment">"{c}"</div>)}
               </div>
-              {p.comments.map((c, j) => <div key={j} className="comment">"{c}"</div>)}
-            </div>
-          ))
+            );
+          })
         }
       </div>
       {showLemons && lemonRanked.length > 0 && (
         <>
           <p className="section-label mb-4" style={{ color: "var(--lemon)" }}>Citrons</p>
           <div className="group">
-            {lemonRanked.map((p) => (
-              <div key={p.id}>
-                <div className="row">
-                  <div className="row-icon lemon">🍋</div>
-                  <div className="row-body"><div className="row-title">{p.name}</div></div>
-                  <div className="score-bar-wrap">
-                    <div className="score-bar" style={{ width: `${(p.pts / maxLemon) * 100}%`, background: "var(--lemon)" }} />
+            {lemonRanked.map((p) => {
+              const isBeer = tiebreakers.lemon_id === p.id;
+              return (
+                <div key={p.id}>
+                  <div className="row">
+                    <div className="row-icon lemon">{isBeer ? "🍺" : "🍋"}</div>
+                    <div className="row-body"><div className="row-title">{p.name}</div></div>
+                    <div className="score-bar-wrap">
+                      <div className="score-bar" style={{ width: `${(p.pts / maxLemon) * 100}%`, background: "var(--lemon)" }} />
+                    </div>
+                    <div className="row-value lemon" style={{ minWidth: 28, textAlign: "right" }}>{p.pts}</div>
                   </div>
-                  <div className="row-value lemon" style={{ minWidth: 28, textAlign: "right" }}>{p.pts}</div>
+                  {p.comments.map((c, j) => <div key={j} className="comment">"{c}"</div>)}
                 </div>
-                {p.comments.map((c, j) => <div key={j} className="comment">"{c}"</div>)}
-              </div>
-            ))}
+              );
+            })}
           </div>
         </>
       )}
@@ -766,10 +787,48 @@ function ResultsView({ players, match, refreshKey, onMatchUpdate }) {
   }
 
   // ── CLOSED : full results ──
+  const tiebreakers = match.tiebreakers || {};
+  const isAdmin = localStorage.getItem("pepite_admin") === "1";
+
+  const { best: bestScores, lemon: lemonScores } = computeScores(votes, present);
+  const topBestPts  = Math.max(...present.map(p => bestScores[p.id]?.pts || 0));
+  const topLemonPts = Math.max(...present.map(p => lemonScores[p.id]?.pts || 0));
+  const bestTied  = topBestPts  > 0 && present.filter(p => (bestScores[p.id]?.pts  || 0) === topBestPts).length  > 1;
+  const lemonTied = topLemonPts > 0 && present.filter(p => (lemonScores[p.id]?.pts || 0) === topLemonPts).length > 1;
+  const bestTiedPlayers  = present.filter(p => (bestScores[p.id]?.pts  || 0) === topBestPts);
+  const lemonTiedPlayers = present.filter(p => (lemonScores[p.id]?.pts || 0) === topLemonPts);
+
+  const setTiebreaker = async (field, playerId) => {
+    await api.updateMatch(match.id, { tiebreakers: { ...tiebreakers, [field]: playerId } });
+    await onMatchUpdate();
+  };
+
+  const TiebreakerCard = ({ title, color, field, players }) => (
+    <div style={{
+      background: color === "gold" ? "rgba(255,214,10,0.06)" : "rgba(170,221,0,0.06)",
+      border: `1px solid ${color === "gold" ? "var(--gold-dim)" : "var(--lemon-dim)"}`,
+      borderRadius: "var(--radius-lg)", padding: "16px", marginBottom: 12,
+    }}>
+      <div style={{ fontSize: 15, fontWeight: 700, marginBottom: 4 }}>🍺 Égalité — {title}</div>
+      <div style={{ fontSize: 13, color: "var(--label3)", marginBottom: 12 }}>
+        {players.map(p => p.name).join(" et ")} sont à égalité.<br />Qui a gagné le concours de bière ?
+      </div>
+      <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+        {players.map(p => (
+          <button key={p.id} className="btn btn-secondary" onClick={() => setTiebreaker(field, p.id)}>
+            🍺 {p.name}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+
   return (
     <div className="content">
       <MatchHeader badge={<span className="badge badge-closed">Clôturé</span>} />
-      <Scoreboard votes={votes} present={present} />
+      {isAdmin && bestTied  && !tiebreakers.best_id  && <TiebreakerCard title="Pépite" color="gold"  field="best_id"  players={bestTiedPlayers}  />}
+      {isAdmin && lemonTied && !tiebreakers.lemon_id && <TiebreakerCard title="Citron" color="lemon" field="lemon_id" players={lemonTiedPlayers} />}
+      <Scoreboard votes={votes} present={present} tiebreakers={tiebreakers} />
     </div>
   );
 }
@@ -826,8 +885,12 @@ function StatsView({ players }) {
     if (bW && stats[bW]) stats[bW].wins++;
     if (lW && stats[lW]) stats[lW].lemons++;
   });
-  const ranked = Object.values(stats).filter(s => s.bestPts > 0 || s.lemonPts > 0).sort((a, b) => b.bestPts - a.bestPts);
-  const maxPts = ranked[0]?.bestPts || 1;
+  const allStats = Object.values(stats).filter(s => s.bestPts > 0 || s.lemonPts > 0);
+  const rankedBest  = [...allStats].filter(s => s.bestPts  > 0).sort((a, b) => b.bestPts  - a.bestPts);
+  const rankedLemon = [...allStats].filter(s => s.lemonPts > 0).sort((a, b) => b.lemonPts - a.lemonPts);
+  const ranked = rankedBest; // keep for empty-check below
+  const maxPts      = rankedBest[0]?.bestPts   || 1;
+  const maxLemonPts = rankedLemon[0]?.lemonPts || 1;
 
   const handleDelete = async (match) => {
     if (!confirm(`Supprimer "${match.label}" et tous ses votes ?`)) return;
@@ -889,30 +952,49 @@ function StatsView({ players }) {
         <div className="empty">Aucun match pour cette sélection.</div>
       ) : (
         <>
-          {/* Season ranking */}
-          <p className="section-label mb-4">Classement</p>
-          {ranked.length === 0
+          {/* Pépites ranking */}
+          <p className="section-label mb-4">Classement Pépites ⭐</p>
+          {rankedBest.length === 0
             ? <div className="group" style={{ marginBottom: 12 }}><div className="row"><span style={{ color: "var(--label3)", fontSize: 14 }}>Aucun vote enregistré.</span></div></div>
             : (
               <div className="group" style={{ marginBottom: 12 }}>
-                {ranked.map((s, i) => (
+                {rankedBest.map((s, i) => (
                   <div key={s.name} className="row">
                     <div style={{ width: 24, fontWeight: 700, fontSize: 13, flexShrink: 0, color: i === 0 ? "var(--gold)" : "var(--label3)" }}>{i + 1}</div>
                     <div className="row-body">
                       <div className="row-title">{s.name}</div>
-                      <div className="flex gap-8 mt-4">
-                        {s.wins   > 0 && <span className="tag tag-gold">⭐ ×{s.wins}</span>}
-                        {s.lemons > 0 && <span className="tag tag-lemon">🍋 ×{s.lemons}</span>}
-                      </div>
+                      {s.wins > 0 && <div className="flex gap-8 mt-4"><span className="tag tag-gold">⭐ ×{s.wins}</span></div>}
                     </div>
-                    <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 4 }}>
-                      <div className="flex gap-8" style={{ alignItems: "center" }}>
-                        <div className="score-bar-wrap">
-                          <div className="score-bar" style={{ width: `${(s.bestPts / maxPts) * 100}%`, background: i === 0 ? "var(--gold)" : "var(--label3)" }} />
-                        </div>
-                        <div className="row-value gold" style={{ minWidth: 24, textAlign: "right" }}>{s.bestPts}</div>
+                    <div className="flex gap-8" style={{ alignItems: "center" }}>
+                      <div className="score-bar-wrap">
+                        <div className="score-bar" style={{ width: `${(s.bestPts / maxPts) * 100}%`, background: i === 0 ? "var(--gold)" : "var(--label3)" }} />
                       </div>
-                      <div style={{ fontSize: 12, color: "var(--label3)" }}>{s.lemonPts} 🍋</div>
+                      <div className="row-value gold" style={{ minWidth: 24, textAlign: "right" }}>{s.bestPts}</div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )
+          }
+
+          {/* Citrons ranking */}
+          <p className="section-label mb-4">Classement Citrons 🍋</p>
+          {rankedLemon.length === 0
+            ? <div className="group" style={{ marginBottom: 12 }}><div className="row"><span style={{ color: "var(--label3)", fontSize: 14 }}>Aucun vote enregistré.</span></div></div>
+            : (
+              <div className="group" style={{ marginBottom: 12 }}>
+                {rankedLemon.map((s, i) => (
+                  <div key={s.name} className="row">
+                    <div style={{ width: 24, fontWeight: 700, fontSize: 13, flexShrink: 0, color: i === 0 ? "#f5c542" : "var(--label3)" }}>{i + 1}</div>
+                    <div className="row-body">
+                      <div className="row-title">{s.name}</div>
+                      {s.lemons > 0 && <div className="flex gap-8 mt-4"><span className="tag tag-lemon">🍋 ×{s.lemons}</span></div>}
+                    </div>
+                    <div className="flex gap-8" style={{ alignItems: "center" }}>
+                      <div className="score-bar-wrap">
+                        <div className="score-bar" style={{ width: `${(s.lemonPts / maxLemonPts) * 100}%`, background: i === 0 ? "#f5c542" : "var(--label3)" }} />
+                      </div>
+                      <div className="row-value" style={{ minWidth: 24, textAlign: "right", color: "#f5c542" }}>{s.lemonPts}</div>
                     </div>
                   </div>
                 ))}
@@ -952,7 +1034,7 @@ function StatsView({ players }) {
                         : <Scoreboard votes={matchVotes} present={matchPresent} />
                       }
 
-                      {isEditing ? (
+                      {localStorage.getItem("pepite_admin") === "1" && (isEditing ? (
                         <div style={{ marginTop: 12, display: "flex", flexDirection: "column", gap: 8 }}>
                           <input value={editingMatch.label}
                             onChange={e => setEditingMatch(em => ({ ...em, label: e.target.value }))}
@@ -978,7 +1060,7 @@ function StatsView({ players }) {
                           </button>
                           <button className="btn btn-danger" onClick={() => handleDelete(match)}>Supprimer</button>
                         </div>
-                      )}
+                      ))}
                     </div>
                   )}
                 </div>
@@ -1363,6 +1445,9 @@ export default function App() {
     return () => clearInterval(t);
   }, [activeMatch?.is_open]);
 
+  const hasVotedLocally = (matchId) =>
+    matchId && JSON.parse(localStorage.getItem("pepite_voted") || "[]").includes(matchId);
+
   const handleVoted = () => {
     setVotedThisSession(true);
     setTab("results");
@@ -1399,10 +1484,10 @@ export default function App() {
 
         {DEMO_MODE && <div className="demo-banner">Mode démo · Configure Supabase pour le multi-device</div>}
 
-        {tab === "vote" && !votedThisSession && activeMatch && (activeMatch.phase || "voting") === "voting" && (
+        {tab === "vote" && !votedThisSession && !hasVotedLocally(activeMatch?.id) && activeMatch && (activeMatch.phase || "voting") === "voting" && (
           <VoteView players={players} match={activeMatch} onVoted={handleVoted} />
         )}
-        {tab === "vote" && votedThisSession && (
+        {tab === "vote" && (votedThisSession || hasVotedLocally(activeMatch?.id)) && (activeMatch?.phase || "voting") === "voting" && (
           <div className="content" style={{ textAlign: "center", paddingTop: 60 }}>
             <div style={{ fontSize: 52, marginBottom: 16 }}>✅</div>
             <div style={{ fontSize: 20, fontWeight: 700, marginBottom: 8 }}>Vote enregistré</div>
