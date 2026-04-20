@@ -320,7 +320,7 @@ let demoState = {
     { id: 7, name: "Guillaume" }, { id: 8, name: "Hugo" },
     { id: 9, name: "Julien" }, { id: 10, name: "Kevin" },
   ],
-  matches: [], votes: [], teams: [], nextId: 100, currentSeason: 1,
+  matches: [], votes: [], teams: [], guestTokens: [], nextId: 100, currentSeason: 1,
 };
 
 const demoAPI = {
@@ -347,6 +347,15 @@ const demoAPI = {
   getTeams:    ()        => Promise.resolve([...demoState.teams]),
   createTeam:  (name, playerIds) => { const t = { id: demoState.nextId++, name, player_ids: playerIds }; demoState.teams.push(t); return Promise.resolve(t); },
   deleteTeam:  (id)      => { demoState.teams = demoState.teams.filter(t => t.id !== id); return Promise.resolve(true); },
+  createGuestToken: (name, matchId) => {
+    const token = Math.random().toString(36).slice(2) + Math.random().toString(36).slice(2);
+    demoState.guestTokens.push({ id: demoState.nextId++, token, name, match_id: matchId, used: false, created_at: new Date().toISOString() });
+    return Promise.resolve(token);
+  },
+  getGuestTokens:     (matchId) => Promise.resolve(demoState.guestTokens.filter(t => t.match_id === matchId)),
+  validateGuestToken: (token)   => Promise.resolve(demoState.guestTokens.find(t => t.token === token) || null),
+  useGuestToken:      (token)   => { const t = demoState.guestTokens.find(t => t.token === token); if (t) t.used = true; return Promise.resolve(true); },
+  deleteGuestToken:   (id)      => { demoState.guestTokens = demoState.guestTokens.filter(t => t.id !== id); return Promise.resolve(true); },
 };
 
 const realAPI = {
@@ -370,6 +379,17 @@ const realAPI = {
   getTeams:       async () => { const db = await supabase.from("teams"); return db.select("*", { order: "name.asc" }); },
   createTeam:     async (name, playerIds) => { const db = await supabase.from("teams"); const r = await db.insert({ name, player_ids: playerIds }); return r[0]; },
   deleteTeam:     async (id) => { const db = await supabase.from("teams"); return db.delete(`id=eq.${id}`); },
+  createGuestToken: async (name, matchId) => {
+    const bytes = crypto.getRandomValues(new Uint8Array(12));
+    const token = Array.from(bytes).map(b => b.toString(16).padStart(2, "0")).join("");
+    const db = await supabase.from("guest_tokens");
+    await db.insert({ token, name, match_id: matchId });
+    return token;
+  },
+  getGuestTokens:     async (matchId) => { const db = await supabase.from("guest_tokens"); return db.select("*", { filter: `match_id=eq.${matchId}`, order: "created_at.asc" }); },
+  validateGuestToken: async (token)   => { const db = await supabase.from("guest_tokens"); const r = await db.select("*", { filter: `token=eq.${token}` }); return r[0] || null; },
+  useGuestToken:      async (token)   => { const db = await supabase.from("guest_tokens"); return db.update({ used: true }, `token=eq.${token}`); },
+  deleteGuestToken:   async (id)      => { const db = await supabase.from("guest_tokens"); return db.delete(`id=eq.${id}`); },
 };
 
 const api = DEMO_MODE ? demoAPI : realAPI;
@@ -397,9 +417,9 @@ function Toast({ msg, onDone }) {
 // ============================================================
 // VOTE VIEW
 // ============================================================
-function VoteView({ players, match, onVoted }) {
-  const [voterName,    setVoterName]    = useState("");
-  const [step,         setStep]         = useState(0);
+function VoteView({ players, match, onVoted, guestName = null, onGuestVoted = null }) {
+  const [voterName,    setVoterName]    = useState(guestName || "");
+  const [step,         setStep]         = useState(guestName ? 1 : 0);
   const [best1,        setBest1]        = useState(null);
   const [best1Comment, setBest1Comment] = useState("");
   const [best2,        setBest2]        = useState(null);
@@ -429,6 +449,7 @@ function VoteView({ players, match, onVoted }) {
       best2_id: best2?.id, best2_comment: best2Comment,
       lemon_id: lemon?.id, lemon_comment: lemonComment,
     });
+    if (onGuestVoted) await onGuestVoted();
     const voted = JSON.parse(localStorage.getItem("pepite_voted") || "[]");
     if (!voted.includes(match.id)) localStorage.setItem("pepite_voted", JSON.stringify([...voted, match.id]));
     setSubmitting(false);
@@ -441,7 +462,16 @@ function VoteView({ players, match, onVoted }) {
 
   return (
     <div className="content">
-      {step === 0 && (
+      {guestName && (
+        <div style={{ background: "var(--gold-subtle)", border: "1px solid var(--gold-dim)", borderRadius: "var(--radius-lg)", padding: "12px 16px", marginBottom: 16, display: "flex", alignItems: "center", gap: 12 }}>
+          <span style={{ fontSize: 22 }}>👋</span>
+          <div>
+            <div style={{ fontSize: 15, fontWeight: 700, color: "var(--gold)" }}>Bienvenu(e), {guestName} !</div>
+            <div style={{ fontSize: 12, color: "var(--label3)", marginTop: 2 }}>Tu votes en tant que supporter.</div>
+          </div>
+        </div>
+      )}
+      {step === 0 && !guestName && (
         <>
           <p className="section-label mt-8 mb-4">Qui es-tu ?</p>
           <div className="player-grid">
@@ -1283,14 +1313,42 @@ function AdminView({ players, onPlayersChange, activeMatch, onMatchChange }) {
   const [savingTeam,     setSavingTeam]     = useState(false);
   const [selectedTeamId, setSelectedTeamId] = useState(null);
   const [currentSeason,  setCurrentSeason]  = useState(1);
+  const [guestInput,     setGuestInput]     = useState("");
+  const [guestTokens,    setGuestTokens]    = useState([]);
+  const [copiedToken,    setCopiedToken]    = useState(null);
 
   const loadTeams = useCallback(async () => { setTeams(await api.getTeams()); }, []);
+  const loadGuests = useCallback(async () => {
+    if (!activeMatch) return;
+    setGuestTokens(await api.getGuestTokens(activeMatch.id));
+  }, [activeMatch?.id]);
 
   useEffect(() => {
     Promise.all([api.getTeams(), api.getCurrentSeason()]).then(([t, cs]) => {
       setTeams(t); setCurrentSeason(cs);
     });
   }, []);
+
+  useEffect(() => { loadGuests(); }, [activeMatch?.id]);
+
+  const createGuestLink = async () => {
+    if (!guestInput.trim() || !activeMatch) return;
+    await api.createGuestToken(guestInput.trim(), activeMatch.id);
+    setGuestInput("");
+    loadGuests();
+    setToast(`Lien créé pour ${guestInput.trim()}`);
+  };
+
+  const copyGuestLink = (token) => {
+    navigator.clipboard.writeText(`${window.location.origin}/?guest=${token}`);
+    setCopiedToken(token);
+    setTimeout(() => setCopiedToken(null), 2000);
+  };
+
+  const revokeGuest = async (id) => {
+    await api.deleteGuestToken(id);
+    loadGuests();
+  };
 
   const login = () => {
     if (pwd === ADMIN_PASSWORD) {
@@ -1513,6 +1571,56 @@ function AdminView({ players, onPlayersChange, activeMatch, onMatchChange }) {
         </div>
       )}
 
+      {/* ── INVITÉS (visible quand match en cours) ── */}
+      {activeMatch && (activeMatch.phase || "voting") === "voting" && (
+        <>
+          <div style={{ marginTop: 28, marginBottom: 12 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 3 }}>
+              <span style={{ fontSize: 18 }}>🔗</span>
+              <span style={{ fontSize: 15, fontWeight: 700, color: "var(--label)" }}>Supporters invités</span>
+            </div>
+            <p style={{ fontSize: 12, color: "var(--label3)", paddingLeft: 28 }}>Crée un lien unique par invité pour qu'il puisse voter depuis son téléphone.</p>
+          </div>
+
+          {guestTokens.length > 0 && (
+            <div className="group" style={{ marginBottom: 12 }}>
+              {guestTokens.map((gt, i) => (
+                <div key={gt.id}>
+                  {i > 0 && <div style={{ height: 1, background: "var(--separator)", margin: "0 16px" }} />}
+                  <div className="row">
+                    <div className="row-body">
+                      <div className="row-title" style={{ color: gt.used ? "var(--label3)" : "var(--label)" }}>{gt.name}</div>
+                      <div className="row-sub" style={{ color: gt.used ? "var(--green)" : "var(--label3)" }}>
+                        {gt.used ? "✓ A voté" : "En attente"}
+                      </div>
+                    </div>
+                    {!gt.used && (
+                      <button className="btn btn-secondary" style={{ padding: "6px 12px", fontSize: 13, whiteSpace: "nowrap" }}
+                        onClick={() => copyGuestLink(gt.token)}>
+                        {copiedToken === gt.token ? "Copié !" : "Copier le lien"}
+                      </button>
+                    )}
+                    <button onClick={() => revokeGuest(gt.id)}
+                      style={{ background: "none", border: "none", cursor: "pointer", fontSize: 16, color: "var(--label4)", padding: "4px 8px" }}>✕</button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          <div className="flex gap-8" style={{ marginBottom: 4 }}>
+            <input placeholder="Prénom du supporter" value={guestInput}
+              onChange={e => setGuestInput(e.target.value)}
+              onKeyDown={e => e.key === "Enter" && createGuestLink()} />
+            <button className="btn btn-primary" style={{ whiteSpace: "nowrap", padding: "12px 16px" }}
+              onClick={createGuestLink}>
+              Créer
+            </button>
+          </div>
+          <p style={{ fontSize: 11, color: "var(--label4)", marginBottom: 4 }}>Le lien s'ouvre directement sur le formulaire de vote, pré-rempli au nom de l'invité.</p>
+        </>
+      )}
+
       {/* ── 2. MES COMPOSITIONS ── */}
       <SectionHeader num="2" title="Mes compositions"
         subtitle="Sauvegarde ta liste habituelle pour la recharger en un clic avant chaque match." />
@@ -1621,11 +1729,31 @@ export default function App() {
   const [refreshKey,       setRefreshKey]       = useState(0);
   const [votedThisSession, setVotedThisSession] = useState(false);
   const [theme,            setTheme]            = useState(() => localStorage.getItem("pepite_theme") || "dark");
+  const [guestToken,       setGuestToken]       = useState(null);
+  const [guestName,        setGuestName]        = useState(null);
+  const [guestStatus,      setGuestStatus]      = useState(null); // null | "valid" | "invalid" | "checking"
 
   useEffect(() => {
     document.documentElement.setAttribute("data-theme", theme);
     localStorage.setItem("pepite_theme", theme);
   }, [theme]);
+
+  useEffect(() => {
+    const token = new URLSearchParams(window.location.search).get("guest");
+    if (!token) return;
+    setGuestStatus("checking");
+    api.validateGuestToken(token).then(result => {
+      if (result && !result.used) {
+        setGuestToken(token);
+        setGuestName(result.name);
+        setGuestStatus("valid");
+        setTab("vote");
+      } else {
+        setGuestStatus("invalid");
+        setTab("vote");
+      }
+    });
+  }, []);
 
   const loadPlayers = useCallback(async () => { setPlayers(await api.getPlayers()); }, []);
   const loadMatch   = useCallback(async () => {
@@ -1649,6 +1777,11 @@ export default function App() {
     setVotedThisSession(true);
     setTab("results");
     setRefreshKey(k => k + 1);
+  };
+
+  const handleGuestVoted = async () => {
+    if (guestToken) await api.useGuestToken(guestToken);
+    setGuestToken(null);
   };
 
   return (
@@ -1690,10 +1823,19 @@ export default function App() {
 
         {DEMO_MODE && <div className="demo-banner">Mode démo · Configure Supabase pour le multi-device</div>}
 
-        {tab === "vote" && !votedThisSession && !hasVotedLocally(activeMatch?.id) && activeMatch && (activeMatch.phase || "voting") === "voting" && (
-          <VoteView players={players} match={activeMatch} onVoted={handleVoted} />
+        {/* Guest token states */}
+        {tab === "vote" && guestStatus === "checking" && (
+          <div className="content"><div className="empty">Vérification du lien…</div></div>
         )}
-        {tab === "vote" && (votedThisSession || hasVotedLocally(activeMatch?.id)) && (activeMatch?.phase || "voting") === "voting" && (
+        {tab === "vote" && guestStatus === "invalid" && (
+          <div className="content"><div className="empty">🔒 Ce lien est invalide ou a déjà été utilisé.</div></div>
+        )}
+
+        {/* Normal + guest vote flow */}
+        {tab === "vote" && guestStatus !== "checking" && guestStatus !== "invalid" && !votedThisSession && !hasVotedLocally(activeMatch?.id) && activeMatch && (activeMatch.phase || "voting") === "voting" && (
+          <VoteView players={players} match={activeMatch} onVoted={handleVoted} guestName={guestName} onGuestVoted={handleGuestVoted} />
+        )}
+        {tab === "vote" && guestStatus !== "checking" && guestStatus !== "invalid" && (votedThisSession || hasVotedLocally(activeMatch?.id)) && (activeMatch?.phase || "voting") === "voting" && (
           <div className="content" style={{ textAlign: "center", paddingTop: 60 }}>
             <div style={{ fontSize: 52, marginBottom: 16 }}>✅</div>
             <div style={{ fontSize: 20, fontWeight: 700, marginBottom: 8 }}>Vote enregistré</div>
@@ -1703,10 +1845,10 @@ export default function App() {
             <button className="btn btn-primary" onClick={() => setTab("results")}>Voir les résultats</button>
           </div>
         )}
-        {tab === "vote" && !activeMatch && (
+        {tab === "vote" && guestStatus !== "checking" && guestStatus !== "invalid" && !guestName && !activeMatch && (
           <div className="content"><div className="empty">Aucun vote en cours.<br />L'admin doit ouvrir un match.</div></div>
         )}
-        {tab === "vote" && activeMatch && (activeMatch.phase || "voting") !== "voting" && (
+        {tab === "vote" && guestStatus !== "checking" && guestStatus !== "invalid" && !guestName && activeMatch && (activeMatch.phase || "voting") !== "voting" && (
           <div className="content"><div className="empty">🔒 La période de vote est terminée.<br />Consulte l'onglet Résultats.</div></div>
         )}
 
