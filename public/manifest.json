@@ -1,0 +1,17 @@
+{
+  "name": "Pépite & Citron",
+  "short_name": "P&C",
+  "description": "Vote pour la pépite et le citron de chaque match",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#000000",
+  "theme_color": "#000000",
+  "icons": [
+    {
+      "src": "/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}
