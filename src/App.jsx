@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 
 // ============================================================
 // CONFIGURATION — variables d'environnement Vite
@@ -356,6 +356,7 @@ const demoAPI = {
   validateGuestToken: (token)   => Promise.resolve(demoState.guestTokens.find(t => t.token === token) || null),
   useGuestToken:      (token)   => { const t = demoState.guestTokens.find(t => t.token === token); if (t) t.used = true; return Promise.resolve(true); },
   deleteGuestToken:   (id)      => { demoState.guestTokens = demoState.guestTokens.filter(t => t.id !== id); return Promise.resolve(true); },
+  getMatchById:       (id)      => Promise.resolve(demoState.matches.find(m => m.id === id) || null),
 };
 
 const realAPI = {
@@ -390,6 +391,7 @@ const realAPI = {
   validateGuestToken: async (token)   => { const db = await supabase.from("guest_tokens"); const r = await db.select("*", { filter: `token=eq.${token}` }); return r[0] || null; },
   useGuestToken:      async (token)   => { const db = await supabase.from("guest_tokens"); return db.update({ used: true }, `token=eq.${token}`); },
   deleteGuestToken:   async (id)      => { const db = await supabase.from("guest_tokens"); return db.delete(`id=eq.${id}`); },
+  getMatchById:       async (id)      => { const db = await supabase.from("matches"); const r = await db.select("*", { filter: `id=eq.${id}` }); return r[0] || null; },
 };
 
 const api = DEMO_MODE ? demoAPI : realAPI;
@@ -1744,6 +1746,8 @@ export default function App() {
   const [tab,              setTab]              = useState("vote");
   const [players,          setPlayers]          = useState([]);
   const [activeMatch,      setActiveMatch]      = useState(null);
+  const [lastMatch,        setLastMatch]        = useState(null); // persiste même après fermeture
+  const lastMatchIdRef = useRef(null);
   const [refreshKey,       setRefreshKey]       = useState(0);
   const [votedThisSession, setVotedThisSession] = useState(false);
   const [theme,            setTheme]            = useState(() => localStorage.getItem("pepite_theme") || "dark");
@@ -1777,6 +1781,14 @@ export default function App() {
   const loadMatch   = useCallback(async () => {
     const m = await api.getActiveMatch();
     setActiveMatch(m);
+    if (m) {
+      setLastMatch(m);
+      lastMatchIdRef.current = m.id;
+    } else if (lastMatchIdRef.current) {
+      // Match vient d'être fermé — re-fetch pour obtenir phase:"closed"
+      const closed = await api.getMatchById(lastMatchIdRef.current);
+      if (closed) setLastMatch(closed);
+    }
     setRefreshKey(k => k + 1);
   }, []);
 
@@ -1863,14 +1875,17 @@ export default function App() {
             <button className="btn btn-primary" onClick={() => setTab("results")}>Voir les résultats</button>
           </div>
         )}
-        {tab === "vote" && guestStatus !== "checking" && guestStatus !== "invalid" && !guestName && !activeMatch && (
+        {tab === "vote" && guestStatus !== "checking" && guestStatus !== "invalid" && !guestName && !activeMatch && !lastMatch && (
           <div className="content"><div className="empty">Aucun vote en cours.<br />L'admin doit ouvrir un match.</div></div>
         )}
-        {tab === "vote" && guestStatus !== "checking" && guestStatus !== "invalid" && !guestName && activeMatch && (activeMatch.phase || "voting") !== "voting" && (
+        {tab === "vote" && guestStatus !== "checking" && guestStatus !== "invalid" && !guestName && (
+          (!activeMatch && lastMatch) ||
+          (activeMatch && (activeMatch.phase || "voting") !== "voting")
+        ) && (
           <div className="content"><div className="empty">🔒 La période de vote est terminée.<br />Consulte l'onglet Résultats.</div></div>
         )}
 
-        {tab === "results" && <ResultsView players={players} match={activeMatch} refreshKey={refreshKey} onMatchUpdate={loadMatch} />}
+        {tab === "results" && <ResultsView players={players} match={lastMatch} refreshKey={refreshKey} onMatchUpdate={loadMatch} />}
         {tab === "stats"   && <StatsView players={players} />}
         {tab === "admin"   && <AdminView players={players} onPlayersChange={loadPlayers} activeMatch={activeMatch} onMatchChange={loadMatch} />}
       </div>
