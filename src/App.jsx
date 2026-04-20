@@ -283,6 +283,27 @@ const GlobalStyle = () => (
     .mb-8   { margin-bottom: 8px;  }
     .mb-12  { margin-bottom: 12px; }
     .empty  { text-align: center; color: var(--label3); padding: 60px 20px; font-size: 14px; line-height: 1.6; }
+
+    /* LIGHT MODE */
+    [data-theme="light"] {
+      --bg:           #f2f2f7;
+      --bg2:          #ffffff;
+      --bg3:          #e5e5ea;
+      --bg4:          #d1d1d6;
+      --separator:    rgba(0,0,0,0.08);
+      --separator2:   rgba(0,0,0,0.12);
+      --label:        #000000;
+      --label2:       rgba(60,60,67,0.6);
+      --label3:       rgba(60,60,67,0.35);
+      --label4:       rgba(60,60,67,0.18);
+      color-scheme: light;
+    }
+    [data-theme="light"] body { background: #f2f2f7; }
+    [data-theme="light"] .header,
+    [data-theme="light"] .nav  { background: rgba(242,242,247,0.88); border-bottom-color: rgba(0,0,0,0.08); }
+    [data-theme="light"] input,
+    [data-theme="light"] textarea { background: var(--bg3); color: var(--label); }
+    [data-theme="light"] .demo-banner { background: rgba(255,180,0,0.08); color: rgba(160,100,0,0.7); border-color: rgba(255,180,0,0.15); }
   `}</style>
 );
 
@@ -661,6 +682,120 @@ function Scoreboard({ votes, present, tiebreakers = {}, showLemons = true }) {
 }
 
 // ============================================================
+// PODIUM VIEW  (used in closed phase)
+// ============================================================
+function PodiumView({ votes, present, tiebreakers = {} }) {
+  const [podiumTab, setPodiumTab] = useState("pepite");
+  const { best, lemon } = computeScores(votes, present);
+
+  const buildRanked = (scores, tieKey) =>
+    present
+      .map(p => ({ ...p, pts: scores[p.id]?.pts || 0, comments: scores[p.id]?.comments || [] }))
+      .filter(p => p.pts > 0)
+      .sort((a, b) => b.pts !== a.pts ? b.pts - a.pts : tiebreakers[tieKey] === a.id ? -1 : tiebreakers[tieKey] === b.id ? 1 : 0);
+
+  const isPepite = podiumTab === "pepite";
+  const ranked   = isPepite ? buildRanked(best, "best_id") : buildRanked(lemon, "lemon_id");
+  const color    = isPepite ? "var(--gold)"  : "var(--lemon)";
+  const colorDim = isPepite ? "var(--gold-dim)" : "var(--lemon-dim)";
+
+  const [first, second, third] = ranked;
+
+  const Slot = ({ player, place, height }) => {
+    const isFirst = place === 1;
+    const nameColor = isFirst ? color : place === 2 ? "var(--label2)" : "var(--label3)";
+    return (
+      <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center" }}>
+        {player ? (
+          <>
+            {isFirst && <div style={{ fontSize: 26, lineHeight: 1, marginBottom: 5 }}>👑</div>}
+            <div style={{ fontSize: isFirst ? 15 : 13, fontWeight: 700, color: nameColor, textAlign: "center", lineHeight: 1.2, marginBottom: 3, padding: "0 4px" }}>{player.name}</div>
+            <div style={{ fontSize: 12, color: "var(--label3)", marginBottom: 8 }}>{player.pts} pts</div>
+          </>
+        ) : (
+          <div style={{ height: 56 }} />
+        )}
+        <div style={{
+          height, width: "100%", borderRadius: "8px 8px 0 0",
+          background: isFirst ? colorDim : "var(--bg3)",
+          border: isFirst ? `1px solid ${color}` : "none",
+          display: "flex", alignItems: "center", justifyContent: "center",
+        }}>
+          <span style={{ fontSize: isFirst ? 28 : 20, fontWeight: 800, color: isFirst ? color : "var(--label4)" }}>{place}</span>
+        </div>
+      </div>
+    );
+  };
+
+  return (
+    <>
+      {/* Tab switcher */}
+      <div style={{ display: "flex", background: "var(--bg2)", borderRadius: "var(--radius-lg)", padding: 4, marginBottom: 20 }}>
+        {[{ id: "pepite", label: "⭐  Pépites" }, { id: "citron", label: "🍋  Citrons" }].map(({ id, label }) => (
+          <button key={id} onClick={() => setPodiumTab(id)} style={{
+            flex: 1, padding: "10px", borderRadius: 10, fontSize: 14, fontWeight: 700,
+            background: podiumTab === id ? "var(--bg3)" : "transparent",
+            color: podiumTab === id ? "var(--label)" : "var(--label3)",
+            border: "none", cursor: "pointer", transition: "all 0.2s",
+          }}>{label}</button>
+        ))}
+      </div>
+
+      {ranked.length === 0 ? (
+        <div className="group" style={{ marginBottom: 16 }}>
+          <div className="row"><span style={{ color: "var(--label3)", fontSize: 14 }}>Aucun vote.</span></div>
+        </div>
+      ) : (
+        <>
+          {/* Podium */}
+          <div style={{ display: "flex", alignItems: "flex-end", gap: 4 }}>
+            <Slot player={second} place={2} height={80} />
+            <Slot player={first}  place={1} height={112} />
+            <Slot player={third}  place={3} height={56} />
+          </div>
+          <div style={{ height: 4, background: "var(--bg3)", borderRadius: "0 0 8px 8px", marginBottom: 24 }} />
+
+          {/* Winner comments */}
+          {first?.comments?.length > 0 && (
+            <>
+              <p className="section-label mb-4">Commentaires sur {first.name}</p>
+              <div className="group" style={{ marginBottom: 16 }}>
+                {first.comments.map((c, i) => (
+                  <div key={i} style={{ padding: "12px 16px", borderBottom: "1px solid var(--separator)" }}>
+                    <div style={{ fontSize: 13, color: "var(--label2)", fontStyle: "italic", lineHeight: 1.5 }}>"{c}"</div>
+                  </div>
+                ))}
+              </div>
+            </>
+          )}
+
+          {/* 4th+ */}
+          {ranked.length > 3 && (
+            <>
+              <p className="section-label mb-4">Suite du classement</p>
+              <div className="group" style={{ marginBottom: 16 }}>
+                {ranked.slice(3).map((p, i) => (
+                  <div key={p.id} className="row">
+                    <div style={{ width: 24, fontWeight: 700, fontSize: 13, flexShrink: 0, color: "var(--label3)" }}>{i + 4}</div>
+                    <div className="row-body"><div className="row-title">{p.name}</div></div>
+                    <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+                      <div className="score-bar-wrap">
+                        <div className="score-bar" style={{ width: `${(p.pts / (ranked[0]?.pts || 1)) * 100}%`, background: "var(--label3)" }} />
+                      </div>
+                      <div className="row-value" style={{ color: "var(--label3)", minWidth: 24, textAlign: "right" }}>{p.pts}</div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </>
+          )}
+        </>
+      )}
+    </>
+  );
+}
+
+// ============================================================
 // RESULTS VIEW
 // ============================================================
 function ResultsView({ players, match, refreshKey, onMatchUpdate }) {
@@ -884,7 +1019,7 @@ function ResultsView({ players, match, refreshKey, onMatchUpdate }) {
       <MatchHeader badge={<span className="badge badge-closed">Clôturé</span>} />
       {isAdmin && bestTied  && !tiebreakers.best_id  && <TiebreakerCard title="Pépite" color="gold"  field="best_id"  players={bestTiedPlayers}  />}
       {isAdmin && lemonTied && !tiebreakers.lemon_id && <TiebreakerCard title="Citron" color="lemon" field="lemon_id" players={lemonTiedPlayers} />}
-      <Scoreboard votes={votes} present={present} tiebreakers={tiebreakers} />
+      <PodiumView votes={votes} present={present} tiebreakers={tiebreakers} />
     </div>
   );
 }
@@ -1485,6 +1620,12 @@ export default function App() {
   const [activeMatch,      setActiveMatch]      = useState(null);
   const [refreshKey,       setRefreshKey]       = useState(0);
   const [votedThisSession, setVotedThisSession] = useState(false);
+  const [theme,            setTheme]            = useState(() => localStorage.getItem("pepite_theme") || "dark");
+
+  useEffect(() => {
+    document.documentElement.setAttribute("data-theme", theme);
+    localStorage.setItem("pepite_theme", theme);
+  }, [theme]);
 
   const loadPlayers = useCallback(async () => { setPlayers(await api.getPlayers()); }, []);
   const loadMatch   = useCallback(async () => {
@@ -1515,13 +1656,22 @@ export default function App() {
       <GlobalStyle />
       <div className="app-wrapper">
         <div className="header">
-          <div className="header-logo">
-            <span className="header-pepite">Pépite</span>
-            <span className="header-amp"> & </span>
-            <span className="header-citron">Citron</span>
-          </div>
-          <div className="header-sub">
-            {activeMatch ? activeMatch.label : "Aucun match en cours"}
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+            <div>
+              <div className="header-logo">
+                <span className="header-pepite">Pépite</span>
+                <span className="header-amp"> & </span>
+                <span className="header-citron">Citron</span>
+              </div>
+              <div className="header-sub">
+                {activeMatch ? activeMatch.label : "Aucun match en cours"}
+              </div>
+            </div>
+            <button onClick={() => setTheme(t => t === "dark" ? "light" : "dark")} style={{
+              background: "var(--bg3)", border: "none", borderRadius: "var(--radius-sm)",
+              padding: "7px 10px", fontSize: 16, cursor: "pointer", lineHeight: 1,
+              color: "var(--label2)", marginTop: 2,
+            }}>{theme === "dark" ? "☀️" : "🌙"}</button>
           </div>
         </div>
 
