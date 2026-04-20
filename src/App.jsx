@@ -301,10 +301,12 @@ const demoAPI = {
   getActiveMatch: ()     => Promise.resolve(demoState.matches.find(m => m.is_open) || null),
   getMatches:     ()     => Promise.resolve([...demoState.matches].reverse()),
   createMatch: (label, presentIds) => {
-    const m = { id: demoState.nextId++, label, present_ids: presentIds, is_open: true, created_at: new Date().toISOString() };
+    const m = { id: demoState.nextId++, label, present_ids: presentIds, is_open: true, phase: "voting", reveal_order: [], revealed_count: 0, created_at: new Date().toISOString() };
     demoState.matches.push(m); return Promise.resolve(m);
   },
-  closeMatch:  (id)  => { const m = demoState.matches.find(m => m.id === id); if (m) m.is_open = false; return Promise.resolve(true); },
+  closeMatch:     (id) => { const m = demoState.matches.find(m => m.id === id); if (m) { m.is_open = false; m.phase = "closed"; } return Promise.resolve(true); },
+  startCounting:  (id, order) => { const m = demoState.matches.find(m => m.id === id); if (m) { m.phase = "counting"; m.reveal_order = order; m.revealed_count = 0; } return Promise.resolve(true); },
+  revealNext:     (id, count) => { const m = demoState.matches.find(m => m.id === id); if (m) m.revealed_count = count; return Promise.resolve(true); },
   hasVoted:    (matchId, voterName) => Promise.resolve(demoState.votes.some(v => v.match_id === matchId && v.voter_name === voterName)),
   submitVote:  (vote) => { demoState.votes.push({ ...vote, id: demoState.nextId++ }); return Promise.resolve(true); },
   getVotes:    (matchId) => Promise.resolve(demoState.votes.filter(v => v.match_id === matchId)),
@@ -320,8 +322,10 @@ const realAPI = {
   removePlayer:   async (id)   => { const db = await supabase.from("players"); return db.delete(`id=eq.${id}`); },
   getActiveMatch: async () => { const db = await supabase.from("matches"); const r = await db.select("*", { filter: "is_open=eq.true", order: "created_at.desc" }); return r[0] || null; },
   getMatches:     async () => { const db = await supabase.from("matches"); return db.select("*", { order: "created_at.desc" }); },
-  createMatch:    async (label, presentIds) => { const db = await supabase.from("matches"); const r = await db.insert({ label, present_ids: presentIds, is_open: true }); return r[0]; },
-  closeMatch:     async (id) => { const db = await supabase.from("matches"); return db.update({ is_open: false }, `id=eq.${id}`); },
+  createMatch:    async (label, presentIds) => { const db = await supabase.from("matches"); const r = await db.insert({ label, present_ids: presentIds, is_open: true, phase: "voting" }); return r[0]; },
+  closeMatch:     async (id) => { const db = await supabase.from("matches"); return db.update({ is_open: false, phase: "closed" }, `id=eq.${id}`); },
+  startCounting:  async (id, order) => { const db = await supabase.from("matches"); return db.update({ phase: "counting", reveal_order: order, revealed_count: 0 }, `id=eq.${id}`); },
+  revealNext:     async (id, count) => { const db = await supabase.from("matches"); return db.update({ revealed_count: count }, `id=eq.${id}`); },
   hasVoted:       async (matchId, voterName) => { const db = await supabase.from("votes"); const r = await db.select("id", { filter: `match_id=eq.${matchId}&voter_name=eq.${voterName}` }); return r.length > 0; },
   submitVote:     async (vote) => { const db = await supabase.from("votes"); return db.insert(vote); },
   getVotes:       async (matchId) => { const db = await supabase.from("votes"); return db.select("*", { filter: `match_id=eq.${matchId}` }); },
@@ -540,70 +544,32 @@ function VoteView({ players, match, onVoted }) {
 }
 
 // ============================================================
-// RESULTS VIEW
+// SHARED SCOREBOARD
 // ============================================================
-function ResultsView({ players, match, refreshKey }) {
-  const [votes,   setVotes]   = useState([]);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    if (!match) { setLoading(false); return; }
-    setLoading(true);
-    api.getVotes(match.id).then(v => { setVotes(v); setLoading(false); });
-  }, [match?.id, refreshKey]);
-
-  useEffect(() => {
-    if (!match?.is_open) return;
-    const t = setInterval(() => api.getVotes(match.id).then(setVotes), 5000);
-    return () => clearInterval(t);
-  }, [match?.id, match?.is_open]);
-
-  if (!match)  return <div className="content"><div className="empty">Aucun match en cours.</div></div>;
-  if (loading) return <div className="content"><div className="empty">Chargement…</div></div>;
-
-  const present = players.filter(p => match.present_ids.includes(p.id));
+function Scoreboard({ votes, present, showLemons = true }) {
   const { best, lemon } = computeScores(votes, present);
-
   const bestRanked = present
     .map(p => ({ ...p, pts: best[p.id]?.pts || 0, comments: best[p.id]?.comments || [] }))
     .filter(p => p.pts > 0).sort((a, b) => b.pts - a.pts);
-
   const lemonRanked = present
     .map(p => ({ ...p, pts: lemon[p.id]?.pts || 0, comments: lemon[p.id]?.comments || [] }))
     .filter(p => p.pts > 0).sort((a, b) => b.pts - a.pts);
-
-  const maxBest  = bestRanked[0]?.pts  || 1;
+  const maxBest  = bestRanked[0]?.pts || 1;
   const maxLemon = lemonRanked[0]?.pts || 1;
 
   return (
-    <div className="content">
-      <div className="flex-between mt-4 mb-12">
-        <div>
-          <div style={{ fontSize: 18, fontWeight: 700 }}>{match.label}</div>
-          <div style={{ fontSize: 12, color: "var(--label3)", marginTop: 2 }}>
-            {formatDate(match.created_at)} · {votes.length} vote{votes.length !== 1 ? "s" : ""}
-          </div>
-        </div>
-        <span className={`badge ${match.is_open ? "badge-open" : "badge-closed"}`}>
-          {match.is_open ? "En cours" : "Clôturé"}
-        </span>
-      </div>
-
+    <>
       <p className="section-label mb-4">Pépites</p>
       <div className="group">
         {bestRanked.length === 0
-          ? <div className="row"><span style={{ color: "var(--label3)", fontSize: 14 }}>Aucun vote encore…</span></div>
+          ? <div className="row"><span style={{ color: "var(--label3)", fontSize: 14 }}>Aucun vote révélé…</span></div>
           : bestRanked.map((p, i) => (
             <div key={p.id}>
               <div className="row">
-                <div style={{ width: 24, fontWeight: 700, fontSize: 13, flexShrink: 0,
-                  color: i === 0 ? "var(--gold)" : "var(--label3)" }}>{i + 1}</div>
+                <div style={{ width: 24, fontWeight: 700, fontSize: 13, flexShrink: 0, color: i === 0 ? "var(--gold)" : "var(--label3)" }}>{i + 1}</div>
                 <div className="row-body"><div className="row-title">{p.name}</div></div>
                 <div className="score-bar-wrap">
-                  <div className="score-bar" style={{
-                    width: `${(p.pts / maxBest) * 100}%`,
-                    background: i === 0 ? "var(--gold)" : "var(--label3)"
-                  }} />
+                  <div className="score-bar" style={{ width: `${(p.pts / maxBest) * 100}%`, background: i === 0 ? "var(--gold)" : "var(--label3)" }} />
                 </div>
                 <div className="row-value gold" style={{ minWidth: 28, textAlign: "right" }}>{p.pts}</div>
               </div>
@@ -612,8 +578,7 @@ function ResultsView({ players, match, refreshKey }) {
           ))
         }
       </div>
-
-      {lemonRanked.length > 0 && (
+      {showLemons && lemonRanked.length > 0 && (
         <>
           <p className="section-label mb-4" style={{ color: "var(--lemon)" }}>Citrons</p>
           <div className="group">
@@ -633,6 +598,170 @@ function ResultsView({ players, match, refreshKey }) {
           </div>
         </>
       )}
+    </>
+  );
+}
+
+// ============================================================
+// RESULTS VIEW
+// ============================================================
+function ResultsView({ players, match, refreshKey, onMatchUpdate }) {
+  const [votes,   setVotes]   = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [revealing, setRevealing] = useState(false);
+
+  useEffect(() => {
+    if (!match) { setLoading(false); return; }
+    setLoading(true);
+    api.getVotes(match.id).then(v => { setVotes(v); setLoading(false); });
+  }, [match?.id, refreshKey]);
+
+  useEffect(() => {
+    if (!match?.is_open) return;
+    const t = setInterval(() => api.getVotes(match.id).then(setVotes), 5000);
+    return () => clearInterval(t);
+  }, [match?.id, match?.is_open]);
+
+  if (!match)  return <div className="content"><div className="empty">Aucun match en cours.</div></div>;
+  if (loading) return <div className="content"><div className="empty">Chargement…</div></div>;
+
+  const present = players.filter(p => match.present_ids.includes(p.id));
+  const phase = match.phase || "voting";
+
+  const MatchHeader = ({ badge }) => (
+    <div className="flex-between mt-4 mb-12">
+      <div>
+        <div style={{ fontSize: 18, fontWeight: 700 }}>{match.label}</div>
+        <div style={{ fontSize: 12, color: "var(--label3)", marginTop: 2 }}>{formatDate(match.created_at)}</div>
+      </div>
+      {badge}
+    </div>
+  );
+
+  // ── VOTING PHASE : results hidden ──
+  if (phase === "voting") {
+    return (
+      <div className="content">
+        <MatchHeader badge={<span className="badge badge-open">Vote en cours</span>} />
+        <div style={{
+          background: "var(--bg2)", borderRadius: "var(--radius-lg)",
+          padding: "40px 20px", textAlign: "center",
+        }}>
+          <div style={{ fontSize: 40, marginBottom: 12 }}>🔒</div>
+          <div style={{ fontSize: 17, fontWeight: 600, marginBottom: 6 }}>Résultats masqués</div>
+          <div style={{ fontSize: 13, color: "var(--label3)", lineHeight: 1.6 }}>
+            Le classement sera révélé une fois le vote clôturé.<br />
+            <span style={{ color: "var(--label2)", fontWeight: 500 }}>{votes.length}</span> vote{votes.length !== 1 ? "s" : ""} reçu{votes.length !== 1 ? "s" : ""} sur {present.length} joueur{present.length !== 1 ? "s" : ""}.
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // ── COUNTING PHASE : dépouillement ──
+  if (phase === "counting") {
+    const revealOrder  = match.reveal_order  || [];
+    const revealedCount = match.revealed_count || 0;
+    const isDone       = revealedCount >= revealOrder.length;
+
+    const currentVoteId  = !isDone ? revealOrder[revealedCount] : null;
+    const currentVote    = currentVoteId ? votes.find(v => v.id === currentVoteId) : null;
+    const revealedVoteIds = revealOrder.slice(0, revealedCount);
+    const revealedVotes  = votes.filter(v => revealedVoteIds.includes(v.id));
+
+    const playerName = (id) => players.find(p => p.id === id)?.name || "?";
+
+    const handleNext = async () => {
+      setRevealing(true);
+      await api.revealNext(match.id, revealedCount + 1);
+      await onMatchUpdate();
+      setRevealing(false);
+    };
+
+    const handleFinish = async () => {
+      await api.closeMatch(match.id);
+      await onMatchUpdate();
+    };
+
+    return (
+      <div className="content">
+        <MatchHeader badge={<span className="badge" style={{ background: "rgba(170,221,0,0.15)", color: "var(--lemon)" }}>Dépouillement</span>} />
+
+        {!isDone && currentVote ? (
+          <div style={{
+            background: "var(--bg2)", borderRadius: "var(--radius-lg)",
+            border: "1px solid var(--separator2)", marginBottom: 16, overflow: "hidden",
+          }}>
+            <div style={{ padding: "12px 16px 10px", borderBottom: "1px solid var(--separator)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <span style={{ fontSize: 12, fontWeight: 600, color: "var(--label3)", textTransform: "uppercase", letterSpacing: "0.06em" }}>
+                Vote {revealedCount + 1} sur {revealOrder.length}
+              </span>
+              <div style={{ display: "flex", gap: 3 }}>
+                {revealOrder.map((_, i) => (
+                  <div key={i} style={{ width: 6, height: 6, borderRadius: "50%", background: i < revealedCount ? "var(--label2)" : i === revealedCount ? "var(--gold)" : "var(--bg4)" }} />
+                ))}
+              </div>
+            </div>
+
+            <div style={{ padding: "16px 16px 4px" }}>
+              <div className="row" style={{ padding: "10px 0", borderBottom: "1px solid var(--separator)" }}>
+                <div className="row-icon gold">⭐</div>
+                <div className="row-body">
+                  <div style={{ fontSize: 11, fontWeight: 600, color: "var(--label3)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 2 }}>La Pépite · 2 pts</div>
+                  <div style={{ fontSize: 18, fontWeight: 700, color: "var(--gold)" }}>{playerName(currentVote.best1_id)}</div>
+                  {currentVote.best1_comment && <div style={{ fontSize: 13, color: "var(--label3)", fontStyle: "italic", marginTop: 3 }}>"{currentVote.best1_comment}"</div>}
+                </div>
+              </div>
+              <div className="row" style={{ padding: "10px 0", borderBottom: "1px solid var(--separator)" }}>
+                <div className="row-icon" style={{ background: "var(--gold-subtle)" }}>⭐</div>
+                <div className="row-body">
+                  <div style={{ fontSize: 11, fontWeight: 600, color: "var(--label3)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 2 }}>2ème · 1 pt</div>
+                  <div style={{ fontSize: 18, fontWeight: 700 }}>{playerName(currentVote.best2_id)}</div>
+                  {currentVote.best2_comment && <div style={{ fontSize: 13, color: "var(--label3)", fontStyle: "italic", marginTop: 3 }}>"{currentVote.best2_comment}"</div>}
+                </div>
+              </div>
+              <div className="row" style={{ padding: "10px 0" }}>
+                <div className="row-icon lemon">🍋</div>
+                <div className="row-body">
+                  <div style={{ fontSize: 11, fontWeight: 600, color: "var(--label3)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 2 }}>Le Citron</div>
+                  <div style={{ fontSize: 18, fontWeight: 700, color: "var(--lemon)" }}>{playerName(currentVote.lemon_id)}</div>
+                  {currentVote.lemon_comment && <div style={{ fontSize: 13, color: "var(--label3)", fontStyle: "italic", marginTop: 3 }}>"{currentVote.lemon_comment}"</div>}
+                </div>
+              </div>
+            </div>
+
+            <div style={{ padding: "12px 16px", borderTop: "1px solid var(--separator)" }}>
+              <button className="btn btn-primary btn-full" onClick={handleNext} disabled={revealing}>
+                {revealing ? "…" : revealedCount + 1 < revealOrder.length ? "Vote suivant →" : "Voir le classement final →"}
+              </button>
+            </div>
+          </div>
+        ) : isDone ? (
+          <div style={{ background: "var(--bg2)", borderRadius: "var(--radius-lg)", padding: "24px 16px", textAlign: "center", marginBottom: 16 }}>
+            <div style={{ fontSize: 32, marginBottom: 8 }}>🎉</div>
+            <div style={{ fontSize: 16, fontWeight: 700, marginBottom: 4 }}>Tous les votes ont été révélés !</div>
+            <div style={{ fontSize: 13, color: "var(--label3)", marginBottom: 16 }}>Affiche le classement définitif pour tout le monde.</div>
+            <button className="btn btn-primary btn-full" onClick={handleFinish}>Afficher le classement final</button>
+          </div>
+        ) : null}
+
+        {revealedCount > 0 && (
+          <>
+            <p className="section-label mb-4" style={{ marginTop: 8 }}>
+              Classement · {revealedCount}/{revealOrder.length} vote{revealedCount > 1 ? "s" : ""} révélé{revealedCount > 1 ? "s" : ""}
+            </p>
+            <Scoreboard votes={revealedVotes} present={present} />
+          </>
+        )}
+      </div>
+    );
+  }
+
+  // ── CLOSED : full results ──
+  return (
+    <div className="content">
+      <MatchHeader badge={<span className="badge badge-closed">Clôturé</span>} />
+      <Scoreboard votes={votes} present={present} />
     </div>
   );
 }
@@ -781,11 +910,31 @@ function AdminView({ players, onPlayersChange, activeMatch, onMatchChange }) {
     setToast("Match ouvert !");
   };
 
+  const [voteCount,    setVoteCount]    = useState(0);
+  const [startingCount, setStartingCount] = useState(false);
+
+  useEffect(() => {
+    if (!activeMatch || (activeMatch.phase || "voting") !== "voting") { setVoteCount(0); return; }
+    api.getVotes(activeMatch.id).then(v => setVoteCount(v.length));
+    const t = setInterval(() => api.getVotes(activeMatch.id).then(v => setVoteCount(v.length)), 5000);
+    return () => clearInterval(t);
+  }, [activeMatch?.id, activeMatch?.phase]);
+
   const closeMatch = async () => {
-    if (!activeMatch || !confirm("Fermer le vote ?")) return;
+    if (!activeMatch || !confirm("Fermer définitivement le vote sans dépouillement ?")) return;
     await api.closeMatch(activeMatch.id);
     onMatchChange();
     setToast("Vote clôturé");
+  };
+
+  const startCounting = async () => {
+    setStartingCount(true);
+    const votes = await api.getVotes(activeMatch.id);
+    const shuffled = [...votes].sort(() => Math.random() - 0.5).map(v => v.id);
+    await api.startCounting(activeMatch.id, shuffled);
+    setStartingCount(false);
+    onMatchChange();
+    setToast("Dépouillement lancé !");
   };
 
   const saveTeam = async () => {
@@ -838,22 +987,40 @@ function AdminView({ players, onPlayersChange, activeMatch, onMatchChange }) {
       <SectionHeader num="1" title="Match du jour"
         subtitle={activeMatch ? "Un vote est en cours. Clore le vote pour en créer un nouveau." : "Lance le vote de ce soir en quelques secondes."} />
 
-      {activeMatch ? (
-        <div className="group">
-          <div className="row">
-            <div className="row-icon green">⚡</div>
-            <div className="row-body">
-              <div className="row-title">{activeMatch.label}</div>
-              <div className="row-sub">Ouvert depuis le {formatDate(activeMatch.created_at)}</div>
+      {activeMatch ? (() => {
+        const phase = activeMatch.phase || "voting";
+        return (
+          <div className="group">
+            <div className="row">
+              <div className="row-icon green">⚡</div>
+              <div className="row-body">
+                <div className="row-title">{activeMatch.label}</div>
+                <div className="row-sub">
+                  {phase === "voting"   && `${voteCount} vote${voteCount !== 1 ? "s" : ""} reçu${voteCount !== 1 ? "s" : ""} sur ${activeMatch.present_ids.length} joueurs`}
+                  {phase === "counting" && `Dépouillement — ${activeMatch.revealed_count || 0}/${(activeMatch.reveal_order || []).length} votes révélés`}
+                </div>
+              </div>
             </div>
+            {phase === "voting" && (
+              <div style={{ padding: "12px 16px", display: "flex", flexDirection: "column", gap: 8 }}>
+                <button className="btn btn-primary btn-full" onClick={startCounting} disabled={startingCount || voteCount === 0}>
+                  {startingCount ? "Préparation…" : `Lancer le dépouillement · ${voteCount} vote${voteCount !== 1 ? "s" : ""}`}
+                </button>
+                <button className="btn btn-danger btn-full" style={{ fontSize: 13 }} onClick={closeMatch}>
+                  Clore sans dépouiller
+                </button>
+              </div>
+            )}
+            {phase === "counting" && (
+              <div style={{ padding: "12px 16px" }}>
+                <p style={{ fontSize: 13, color: "var(--label3)", textAlign: "center" }}>
+                  Le dépouillement est en cours dans l'onglet Résultats.
+                </p>
+              </div>
+            )}
           </div>
-          <div style={{ padding: "12px 16px" }}>
-            <button className="btn btn-danger btn-full" onClick={closeMatch}>
-              Terminer le vote
-            </button>
-          </div>
-        </div>
-      ) : players.length === 0 ? (
+        );
+      })() : players.length === 0 ? (
         <div className="group">
           <div className="row">
             <div className="row-body">
@@ -1061,7 +1228,7 @@ export default function App() {
 
         {DEMO_MODE && <div className="demo-banner">Mode démo · Configure Supabase pour le multi-device</div>}
 
-        {tab === "vote" && !votedThisSession && activeMatch && (
+        {tab === "vote" && !votedThisSession && activeMatch && (activeMatch.phase || "voting") === "voting" && (
           <VoteView players={players} match={activeMatch} onVoted={handleVoted} />
         )}
         {tab === "vote" && votedThisSession && (
@@ -1077,8 +1244,11 @@ export default function App() {
         {tab === "vote" && !activeMatch && (
           <div className="content"><div className="empty">Aucun vote en cours.<br />L'admin doit ouvrir un match.</div></div>
         )}
+        {tab === "vote" && activeMatch && (activeMatch.phase || "voting") !== "voting" && (
+          <div className="content"><div className="empty">🔒 La période de vote est terminée.<br />Consulte l'onglet Résultats.</div></div>
+        )}
 
-        {tab === "results" && <ResultsView players={players} match={activeMatch} refreshKey={refreshKey} />}
+        {tab === "results" && <ResultsView players={players} match={activeMatch} refreshKey={refreshKey} onMatchUpdate={loadMatch} />}
         {tab === "stats"   && <StatsView players={players} />}
         {tab === "admin"   && <AdminView players={players} onPlayersChange={loadPlayers} activeMatch={activeMatch} onMatchChange={loadMatch} />}
       </div>
