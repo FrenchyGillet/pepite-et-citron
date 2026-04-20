@@ -1719,6 +1719,24 @@ function AdminView({ players, onPlayersChange, activeMatch, onMatchChange }) {
   );
 }
 
+// ── Test helpers (only used by test files) ──────────────────
+export function __resetDemoState() {
+  demoState.players = [
+    { id: 1, name: "Antoine" }, { id: 2, name: "Baptiste" },
+    { id: 3, name: "Clément" }, { id: 4, name: "David" },
+    { id: 5, name: "Étienne" }, { id: 6, name: "Florian" },
+    { id: 7, name: "Guillaume" }, { id: 8, name: "Hugo" },
+    { id: 9, name: "Julien" }, { id: 10, name: "Kevin" },
+  ];
+  demoState.matches = [];
+  demoState.votes = [];
+  demoState.teams = [];
+  demoState.guestTokens = [];
+  demoState.nextId = 100;
+  demoState.currentSeason = 1;
+}
+export { demoAPI as __demoAPI };
+
 // ============================================================
 // APP ROOT
 // ============================================================
