@@ -815,142 +815,186 @@ function AdminView({ players, onPlayersChange, activeMatch, onMatchChange }) {
     </div>
   );
 
+  const SectionHeader = ({ num, title, subtitle }) => (
+    <div style={{ marginTop: 28, marginBottom: 12 }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 3 }}>
+        <div style={{
+          width: 22, height: 22, borderRadius: "50%",
+          background: "var(--bg3)", color: "var(--label2)",
+          fontSize: 12, fontWeight: 700,
+          display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0,
+        }}>{num}</div>
+        <span style={{ fontSize: 15, fontWeight: 700, color: "var(--label)" }}>{title}</span>
+      </div>
+      <p style={{ fontSize: 12, color: "var(--label3)", paddingLeft: 32 }}>{subtitle}</p>
+    </div>
+  );
+
   return (
     <div className="content">
       {toast && <Toast msg={toast} onDone={() => setToast(null)} />}
 
-      {activeMatch && (
-        <>
-          <p className="section-label mt-4 mb-4">Match en cours</p>
-          <div className="group">
-            <div className="row">
-              <div className="row-icon green">⚡</div>
-              <div className="row-body">
-                <div className="row-title">{activeMatch.label}</div>
-                <div className="row-sub">{formatDate(activeMatch.created_at)}</div>
-              </div>
-              <button className="btn btn-danger" style={{ padding: "7px 14px", fontSize: 13 }} onClick={closeMatch}>
-                Clore
-              </button>
+      {/* ── 1. MATCH DU JOUR ── */}
+      <SectionHeader num="1" title="Match du jour"
+        subtitle={activeMatch ? "Un vote est en cours. Clore le vote pour en créer un nouveau." : "Lance le vote de ce soir en quelques secondes."} />
+
+      {activeMatch ? (
+        <div className="group">
+          <div className="row">
+            <div className="row-icon green">⚡</div>
+            <div className="row-body">
+              <div className="row-title">{activeMatch.label}</div>
+              <div className="row-sub">Ouvert depuis le {formatDate(activeMatch.created_at)}</div>
             </div>
           </div>
-        </>
-      )}
-
-      {!activeMatch && (
-        <>
-          <p className="section-label mt-4 mb-4">Nouveau match</p>
-          <input placeholder="Nom du match — ex: vs Dragons" value={matchLabel}
-            onChange={e => setMatchLabel(e.target.value)} style={{ marginBottom: 12 }} />
+          <div style={{ padding: "12px 16px" }}>
+            <button className="btn btn-danger btn-full" onClick={closeMatch}>
+              Terminer le vote
+            </button>
+          </div>
+        </div>
+      ) : players.length === 0 ? (
+        <div className="group">
+          <div className="row">
+            <div className="row-body">
+              <div className="row-title" style={{ color: "var(--label3)" }}>Aucun joueur enregistré</div>
+              <div className="row-sub">Ajoute d'abord tes joueurs dans la section 3 ci-dessous ↓</div>
+            </div>
+          </div>
+        </div>
+      ) : (
+        <div className="group" style={{ padding: "14px 16px" }}>
+          <p style={{ fontSize: 13, color: "var(--label3)", marginBottom: 8 }}>Nom du match ou de l'adversaire</p>
+          <input placeholder="ex : vs Dragons, Entraînement…" value={matchLabel}
+            onChange={e => setMatchLabel(e.target.value)} style={{ marginBottom: 16 }} />
 
           {teams.length > 0 && (
             <>
-              <p className="section-label mb-4">Charger une équipe</p>
-              <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 12 }}>
+              <p style={{ fontSize: 13, color: "var(--label3)", marginBottom: 8 }}>
+                Partir d'une composition sauvegardée <span style={{ color: "var(--label4)" }}>(tu pourras décocher les absents)</span>
+              </p>
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 16 }}>
                 {teams.map(t => (
-                  <button key={t.id} className="tag tag-dim"
-                    style={{ fontSize: 13, padding: "6px 12px" }}
-                    onClick={() => loadTeamIntoMatch(t)}>
-                    {t.name} ({t.player_ids.length})
+                  <button key={t.id}
+                    onClick={() => loadTeamIntoMatch(t)}
+                    style={{
+                      padding: "8px 14px", borderRadius: "var(--radius-sm)", fontSize: 14, fontWeight: 600,
+                      background: presentIds.length > 0 && t.player_ids.every(id => presentIds.includes(id)) && presentIds.length === t.player_ids.length
+                        ? "var(--gold-dim)" : "var(--bg3)",
+                      color: presentIds.length > 0 && t.player_ids.every(id => presentIds.includes(id)) && presentIds.length === t.player_ids.length
+                        ? "var(--gold)" : "var(--label2)",
+                      border: "none", cursor: "pointer",
+                    }}>
+                    {t.name} · {t.player_ids.length} joueurs
                   </button>
                 ))}
               </div>
             </>
           )}
 
-          <div className="flex-between mb-4">
-            <p className="section-label" style={{ margin: 0 }}>Joueurs présents</p>
+          <div className="flex-between" style={{ marginBottom: 8 }}>
+            <p style={{ fontSize: 13, color: "var(--label3)" }}>
+              Qui est présent ce soir ?
+              {presentIds.length > 0 && <span style={{ color: "var(--label2)", marginLeft: 6 }}>{presentIds.length} sélectionné{presentIds.length > 1 ? "s" : ""}</span>}
+            </p>
             <div className="flex gap-8">
               <button className="tag tag-dim" onClick={() => setPresentIds(players.map(p => p.id))}>Tous</button>
               <button className="tag tag-dim" onClick={() => setPresentIds([])}>Aucun</button>
             </div>
           </div>
-          <div className="player-grid">
+          <div className="player-grid" style={{ marginBottom: 16 }}>
             {players.map(p => (
               <button key={p.id} className={`player-chip ${presentIds.includes(p.id) ? "sel-1st" : ""}`}
                 onClick={() => togglePresent(p.id)}>{p.name}</button>
             ))}
           </div>
-          <p style={{ fontSize: 12, color: "var(--label3)", margin: "8px 0 12px" }}>
-            {presentIds.length} joueur{presentIds.length !== 1 ? "s" : ""} sélectionné{presentIds.length !== 1 ? "s" : ""}
-          </p>
+          {presentIds.length < 2 && (
+            <p style={{ fontSize: 12, color: "var(--label3)", marginBottom: 10 }}>
+              Sélectionne au moins 2 joueurs pour lancer le vote.
+            </p>
+          )}
           <button className="btn btn-primary btn-full"
             disabled={!matchLabel.trim() || presentIds.length < 2 || creating}
             onClick={createMatch}>
-            {creating ? "Création…" : "Ouvrir le vote"}
+            {creating ? "Lancement…" : `Lancer le vote · ${presentIds.length} joueurs`}
           </button>
-        </>
+        </div>
       )}
 
-      {/* ── ÉQUIPES ── */}
-      <div className="flex-between mt-16 mb-4">
-        <p className="section-label" style={{ margin: 0 }}>Équipes sauvegardées</p>
-        <button className="tag tag-dim" onClick={() => setShowNewTeam(v => !v)}>
-          {showNewTeam ? "Annuler" : "+ Nouvelle"}
+      {/* ── 2. MES COMPOSITIONS ── */}
+      <SectionHeader num="2" title="Mes compositions"
+        subtitle="Sauvegarde ta liste habituelle pour la recharger en un clic avant chaque match." />
+
+      {teams.length > 0 && (
+        <div className="group" style={{ marginBottom: 12 }}>
+          {teams.map((t, i) => (
+            <div key={t.id}>
+              {i > 0 && <div style={{ height: 1, background: "var(--separator)", margin: "0 16px" }} />}
+              <div className="row">
+                <div className="row-body">
+                  <div className="row-title">{t.name}</div>
+                  <div className="row-sub" style={{ marginTop: 3 }}>
+                    {players.filter(p => t.player_ids.includes(p.id)).map(p => p.name).join(" · ")}
+                  </div>
+                </div>
+                <button className="btn btn-danger" style={{ padding: "5px 12px", fontSize: 13 }}
+                  onClick={() => deleteTeam(t.id, t.name)}>Supprimer</button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      <div style={{ marginBottom: 8 }}>
+        <button className="tag tag-dim" style={{ fontSize: 13, padding: "7px 12px" }}
+          onClick={() => setShowNewTeam(v => !v)}>
+          {showNewTeam ? "▲ Masquer le formulaire" : "＋ Créer une composition"}
         </button>
       </div>
 
       {showNewTeam && (
-        <div className="group" style={{ padding: "14px 16px", marginBottom: 12 }}>
-          <input placeholder="Nom de l'équipe" value={teamName}
-            onChange={e => setTeamName(e.target.value)} style={{ marginBottom: 12 }} />
-          <p className="section-label mb-4">Joueurs de l'équipe</p>
-          <div className="player-grid">
+        <div className="group" style={{ padding: "14px 16px", marginBottom: 4 }}>
+          <p style={{ fontSize: 13, color: "var(--label3)", marginBottom: 8 }}>Nom de la composition</p>
+          <input placeholder="ex : Équipe A, Jeudi soir…" value={teamName}
+            onChange={e => setTeamName(e.target.value)} style={{ marginBottom: 16 }} />
+          <p style={{ fontSize: 13, color: "var(--label3)", marginBottom: 8 }}>Joueurs à inclure</p>
+          <div className="player-grid" style={{ marginBottom: 12 }}>
             {players.map(p => (
               <button key={p.id} className={`player-chip ${teamIds.includes(p.id) ? "sel-1st" : ""}`}
                 onClick={() => toggleTeamId(p.id)}>{p.name}</button>
             ))}
           </div>
-          <p style={{ fontSize: 12, color: "var(--label3)", margin: "8px 0 12px" }}>
-            {teamIds.length} joueur{teamIds.length !== 1 ? "s" : ""} sélectionné{teamIds.length !== 1 ? "s" : ""}
-          </p>
           <button className="btn btn-primary btn-full"
             disabled={!teamName.trim() || teamIds.length < 2 || savingTeam}
             onClick={saveTeam}>
-            {savingTeam ? "Sauvegarde…" : "Sauvegarder l'équipe"}
+            {savingTeam ? "Sauvegarde…" : `Sauvegarder · ${teamIds.length} joueur${teamIds.length !== 1 ? "s" : ""}`}
           </button>
         </div>
       )}
 
-      <div className="group">
-        {teams.length === 0
-          ? <div className="row"><span style={{ color: "var(--label3)", fontSize: 14 }}>Aucune équipe.</span></div>
-          : teams.map(t => (
-            <div key={t.id} className="row">
-              <div className="row-body">
-                <div className="row-title">{t.name}</div>
-                <div className="row-sub">
-                  {players.filter(p => t.player_ids.includes(p.id)).map(p => p.name).join(", ")}
-                </div>
-              </div>
-              <button className="btn btn-danger" style={{ padding: "5px 12px", fontSize: 13 }}
-                onClick={() => deleteTeam(t.id, t.name)}>Supprimer</button>
-            </div>
-          ))
-        }
-      </div>
+      {/* ── 3. MES JOUEURS ── */}
+      <SectionHeader num="3" title="Mes joueurs"
+        subtitle="La liste complète des joueurs. Ajoute chaque membre de l'équipe ici." />
 
-      {/* ── JOUEURS ── */}
-      <p className="section-label mt-16 mb-4">Joueurs de l'équipe</p>
-      <div className="flex gap-8 mb-8">
-        <input placeholder="Prénom" value={newPlayer}
+      <div className="flex gap-8" style={{ marginBottom: 12 }}>
+        <input placeholder="Prénom du joueur" value={newPlayer}
           onChange={e => setNewPlayer(e.target.value)}
           onKeyDown={e => e.key === "Enter" && addPlayer()} />
-        <button className="btn btn-secondary" style={{ whiteSpace: "nowrap", padding: "12px 16px" }} onClick={addPlayer}>
+        <button className="btn btn-primary" style={{ whiteSpace: "nowrap", padding: "12px 16px" }} onClick={addPlayer}>
           Ajouter
         </button>
       </div>
       <div className="group">
-        {players.map(p => (
-          <div key={p.id} className="row">
-            <div className="row-body"><div className="row-title">{p.name}</div></div>
-            <button className="btn btn-danger" style={{ padding: "5px 12px", fontSize: 13 }}
-              onClick={() => removePlayer(p.id, p.name)}>Supprimer</button>
-          </div>
-        ))}
-        {players.length === 0 && (
-          <div className="row"><span style={{ color: "var(--label3)", fontSize: 14 }}>Aucun joueur.</span></div>
-        )}
+        {players.length === 0
+          ? <div className="row"><span style={{ color: "var(--label3)", fontSize: 14 }}>Aucun joueur. Commence par en ajouter un ci-dessus.</span></div>
+          : players.map(p => (
+            <div key={p.id} className="row">
+              <div className="row-body"><div className="row-title">{p.name}</div></div>
+              <button className="btn btn-danger" style={{ padding: "5px 12px", fontSize: 13 }}
+                onClick={() => removePlayer(p.id, p.name)}>Retirer</button>
+            </div>
+          ))
+        }
       </div>
     </div>
   );
