@@ -727,7 +727,7 @@ function StatsView({ players }) {
 // ADMIN VIEW
 // ============================================================
 function AdminView({ players, onPlayersChange, activeMatch, onMatchChange }) {
-  const [isAdmin,      setIsAdmin]      = useState(false);
+  const [isAdmin,      setIsAdmin]      = useState(() => localStorage.getItem("pepite_admin") === "1");
   const [pwd,          setPwd]          = useState("");
   const [pwdErr,       setPwdErr]       = useState(false);
   const [newPlayer,    setNewPlayer]    = useState("");
@@ -738,7 +738,7 @@ function AdminView({ players, onPlayersChange, activeMatch, onMatchChange }) {
   const [teams,        setTeams]        = useState([]);
   const [teamName,     setTeamName]     = useState("");
   const [teamIds,      setTeamIds]      = useState([]);
-  const [showNewTeam,  setShowNewTeam]  = useState(false);
+  const [showNewTeam,  setShowNewTeam]  = useState(true);
   const [savingTeam,   setSavingTeam]   = useState(false);
 
   const loadTeams = useCallback(async () => { setTeams(await api.getTeams()); }, []);
@@ -746,8 +746,10 @@ function AdminView({ players, onPlayersChange, activeMatch, onMatchChange }) {
   useEffect(() => { loadTeams(); }, []);
 
   const login = () => {
-    if (pwd === ADMIN_PASSWORD) { setIsAdmin(true); setPwdErr(false); }
-    else setPwdErr(true);
+    if (pwd === ADMIN_PASSWORD) {
+      localStorage.setItem("pepite_admin", "1");
+      setIsAdmin(true); setPwdErr(false);
+    } else setPwdErr(true);
   };
 
   const addPlayer = async () => {
@@ -790,7 +792,7 @@ function AdminView({ players, onPlayersChange, activeMatch, onMatchChange }) {
     if (!teamName.trim() || teamIds.length < 2) return;
     setSavingTeam(true);
     await api.createTeam(teamName.trim(), teamIds);
-    setTeamName(""); setTeamIds([]); setShowNewTeam(false);
+    setTeamName(""); setTeamIds([]);
     setSavingTeam(false);
     loadTeams();
     setToast("Équipe sauvegardée !");
