@@ -449,7 +449,14 @@ function VoteView({ players, match, onVoted }) {
 
           {step === 1 && (
             <>
-              <p className="section-label mb-4">La Pépite — 2 points</p>
+              <div style={{ background: "var(--gold-subtle)", border: "1px solid var(--gold-dim)", borderRadius: "var(--radius-lg)", padding: "14px 16px", marginBottom: 14, display: "flex", alignItems: "center", gap: 14 }}>
+                <div style={{ fontSize: 34, lineHeight: 1, flexShrink: 0 }}>⭐</div>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: 20, fontWeight: 800, color: "var(--gold)", letterSpacing: "-0.3px", lineHeight: 1.1 }}>La Pépite</div>
+                  <div style={{ fontSize: 12, color: "var(--label3)", marginTop: 3 }}>Qui a été le meilleur joueur ?</div>
+                </div>
+                <div style={{ background: "var(--gold)", color: "#000", borderRadius: 20, padding: "4px 11px", fontSize: 13, fontWeight: 800, flexShrink: 0 }}>2 pts</div>
+              </div>
               <div className="player-grid">
                 {present.filter(p => p.name !== voterName).map(p => (
                   <button key={p.id} className={`player-chip ${best1?.id === p.id ? "sel-1st" : ""}`}
@@ -458,7 +465,7 @@ function VoteView({ players, match, onVoted }) {
               </div>
               {best1 && (
                 <>
-                  <p className="section-label mt-12 mb-4">Commentaire</p>
+                  <p className="section-label mt-12 mb-4">Commentaire (optionnel)</p>
                   <input placeholder={`Pourquoi ${best1.name} ?`} value={best1Comment}
                     onChange={e => setBest1Comment(e.target.value)} />
                 </>
@@ -471,7 +478,14 @@ function VoteView({ players, match, onVoted }) {
 
           {step === 2 && (
             <>
-              <p className="section-label mb-4">2ème meilleur — 1 point</p>
+              <div style={{ background: "rgba(255,214,10,0.04)", border: "1px solid rgba(255,214,10,0.12)", borderRadius: "var(--radius-lg)", padding: "14px 16px", marginBottom: 14, display: "flex", alignItems: "center", gap: 14 }}>
+                <div style={{ fontSize: 28, lineHeight: 1, flexShrink: 0, opacity: 0.6 }}>⭐</div>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: 20, fontWeight: 800, color: "rgba(255,214,10,0.7)", letterSpacing: "-0.3px", lineHeight: 1.1 }}>2ème meilleur</div>
+                  <div style={{ fontSize: 12, color: "var(--label3)", marginTop: 3 }}>Le deuxième joueur le plus performant</div>
+                </div>
+                <div style={{ background: "rgba(255,214,10,0.15)", color: "var(--gold)", borderRadius: 20, padding: "4px 11px", fontSize: 13, fontWeight: 800, flexShrink: 0 }}>1 pt</div>
+              </div>
               <div className="player-grid">
                 {present.filter(p => p.name !== voterName && p.id !== best1?.id).map(p => (
                   <button key={p.id} className={`player-chip ${best2?.id === p.id ? "sel-2nd" : ""}`}
@@ -480,7 +494,7 @@ function VoteView({ players, match, onVoted }) {
               </div>
               {best2 && (
                 <>
-                  <p className="section-label mt-12 mb-4">Commentaire</p>
+                  <p className="section-label mt-12 mb-4">Commentaire (optionnel)</p>
                   <input placeholder={`Pourquoi ${best2.name} ?`} value={best2Comment}
                     onChange={e => setBest2Comment(e.target.value)} />
                 </>
@@ -494,7 +508,14 @@ function VoteView({ players, match, onVoted }) {
 
           {step === 3 && (
             <>
-              <p className="section-label mb-4" style={{ color: "var(--lemon)" }}>Le Citron — 1 point</p>
+              <div style={{ background: "var(--lemon-subtle)", border: "1px solid var(--lemon-dim)", borderRadius: "var(--radius-lg)", padding: "14px 16px", marginBottom: 14, display: "flex", alignItems: "center", gap: 14 }}>
+                <div style={{ fontSize: 34, lineHeight: 1, flexShrink: 0 }}>🍋</div>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: 20, fontWeight: 800, color: "var(--lemon)", letterSpacing: "-0.3px", lineHeight: 1.1 }}>Le Citron</div>
+                  <div style={{ fontSize: 12, color: "var(--label3)", marginTop: 3 }}>Qui a le moins performé ce soir ?</div>
+                </div>
+                <div style={{ background: "var(--lemon-dim)", color: "var(--lemon)", borderRadius: 20, padding: "4px 11px", fontSize: 13, fontWeight: 800, flexShrink: 0 }}>1 pt</div>
+              </div>
               <div className="player-grid">
                 {present.filter(p => p.name !== voterName && p.id !== best1?.id && p.id !== best2?.id).map(p => (
                   <button key={p.id} className={`player-chip ${lemon?.id === p.id ? "sel-lemon" : ""}`}
@@ -503,7 +524,7 @@ function VoteView({ players, match, onVoted }) {
               </div>
               {lemon && (
                 <>
-                  <p className="section-label mt-12 mb-4">Commentaire</p>
+                  <p className="section-label mt-12 mb-4">Commentaire (optionnel)</p>
                   <input placeholder={`Pourquoi ${lemon.name} ?`} value={lemonComment}
                     onChange={e => setLemonComment(e.target.value)} />
                 </>
