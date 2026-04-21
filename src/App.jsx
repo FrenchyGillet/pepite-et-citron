@@ -1,13 +1,15 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { DEMO_MODE, api, setCurrentOrgId } from './api.js';
-import { GlobalStyle } from './GlobalStyle.jsx';
-import { AuthView }      from './components/AuthView.jsx';
-import { OrgSetupView }  from './components/OrgSetupView.jsx';
-import { VoteView }      from './components/VoteView.jsx';
-import { ResultsView }   from './components/ResultsView.jsx';
-import { StatsView }     from './components/StatsView.jsx';
-import { AdminView }     from './components/AdminView.jsx';
-import { EmptyState }   from './components/EmptyState.jsx';
+import { GlobalStyle }       from './GlobalStyle.jsx';
+import { AuthView }          from './components/AuthView.jsx';
+import { OrgSetupView }      from './components/OrgSetupView.jsx';
+import { VoteView }          from './components/VoteView.jsx';
+import { ResultsView }       from './components/ResultsView.jsx';
+import { StatsView }         from './components/StatsView.jsx';
+import { AdminView }         from './components/AdminView.jsx';
+import { EmptyState }        from './components/EmptyState.jsx';
+import { ErrorBoundary }     from './components/ErrorBoundary.jsx';
+import { OnboardingModal }   from './components/OnboardingModal.jsx';
 
 export default function App() {
   // ── Auth & org ─────────────────────────────────────────────────────────────
@@ -48,6 +50,7 @@ export default function App() {
   const [guestToken,        setGuestToken]        = useState(null);
   const [guestName,         setGuestName]         = useState(null);
   const [guestStatus,       setGuestStatus]       = useState(null);
+  const [showOnboarding,    setShowOnboarding]    = useState(false);
 
   // ── Thème ──────────────────────────────────────────────────────────────────
   useEffect(() => {
@@ -240,6 +243,10 @@ export default function App() {
             setCurrentOrgId(org.id);
             loadPlayers();
             loadMatch();
+            // Nouvelle équipe → montrer l'onboarding
+            if (!localStorage.getItem(`pepite_onboarded_${org.id}`)) {
+              setShowOnboarding(true);
+            }
           }}
         />
       </>
@@ -341,17 +348,35 @@ export default function App() {
           />
         )}
 
-        {tab === "results" && <ResultsView players={players} match={lastMatch} refreshKey={refreshKey} onMatchUpdate={loadMatch} isAdmin={isAdmin} />}
-        {tab === "stats"   && <StatsView players={players} activeMatch={activeMatch} isAdmin={isAdmin} />}
-        {tab === "admin"   && isAdmin && (
-          <AdminView
-            players={players}
-            onPlayersChange={loadPlayers}
-            activeMatch={activeMatch}
-            onMatchChange={loadMatch}
-            currentOrg={currentOrg}
-            onSignOut={handleSignOut}
-          />
+        {tab === "results" && (
+          <ErrorBoundary label="Résultats">
+            <ResultsView players={players} match={lastMatch} refreshKey={refreshKey} onMatchUpdate={loadMatch} isAdmin={isAdmin} />
+          </ErrorBoundary>
+        )}
+        {tab === "stats" && (
+          <ErrorBoundary label="Saison">
+            <StatsView players={players} activeMatch={activeMatch} isAdmin={isAdmin} />
+          </ErrorBoundary>
+        )}
+        {tab === "admin" && isAdmin && (
+          <ErrorBoundary label="Admin">
+            <AdminView
+              players={players}
+              onPlayersChange={loadPlayers}
+              activeMatch={activeMatch}
+              onMatchChange={loadMatch}
+              currentOrg={currentOrg}
+              onSignOut={handleSignOut}
+              onShowGuide={() => setShowOnboarding(true)}
+            />
+          </ErrorBoundary>
+        )}
+
+        {showOnboarding && (
+          <OnboardingModal onClose={() => {
+            setShowOnboarding(false);
+            if (currentOrg?.id) localStorage.setItem(`pepite_onboarded_${currentOrg.id}`, "1");
+          }} />
         )}
       </div>
       <nav className="tab-bar">

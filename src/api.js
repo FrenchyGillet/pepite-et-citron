@@ -3,6 +3,23 @@ import { supabase, authClient } from './supabaseClient.js';
 
 export const DEMO_MODE = SUPABASE_URL.includes("VOTRE_PROJET");
 
+// ─── Retry helper ─────────────────────────────────────────────────────────────
+// Réessaie automatiquement les erreurs réseau transitoires (pas les 4xx auth).
+async function withRetry(fn, retries = 2) {
+  for (let attempt = 0; attempt <= retries; attempt++) {
+    try {
+      return await fn();
+    } catch (err) {
+      const isLast      = attempt === retries;
+      const isNetworkErr = err.name === 'AbortError' || err.name === 'TypeError'
+        || err.message?.includes('fetch') || err.message?.includes('network');
+      const isClientErr  = /Erreur 4\d\d/.test(err.message);   // 4xx → ne pas retenter
+      if (isLast || isClientErr || !isNetworkErr) throw err;
+      await new Promise(r => setTimeout(r, 400 * (attempt + 1)));
+    }
+  }
+}
+
 // Org courante (défini au login ou via ?org=slug)
 let _orgId = null;
 export function setCurrentOrgId(id) { _orgId = id; }
@@ -136,35 +153,40 @@ export const realAPI = {
   },
 
   // ── Joueurs ───────────────────────────────────────────────────────────────
-  getPlayers: async () => {
-    const db = await supabase.from("players");
-    return db.select("*", { filter: `org_id=eq.${_orgId}`, order: "name.asc" });
-  },
-  addPlayer: async (name) => {
-    const db = await supabase.from("players");
-    const r = await db.insert({ name, org_id: _orgId });
-    return Array.isArray(r) ? r[0] : r;
-  },
+  getPlayers: async () =>
+    withRetry(async () => {
+      const db = await supabase.from("players");
+      return db.select("*", { filter: `org_id=eq.${_orgId}`, order: "name.asc" });
+    }),
+  addPlayer: async (name) =>
+    withRetry(async () => {
+      const db = await supabase.from("players");
+      const r = await db.insert({ name, org_id: _orgId });
+      return Array.isArray(r) ? r[0] : r;
+    }),
   removePlayer: async (id) => {
     const db = await supabase.from("players");
     return db.delete(`id=eq.${id}`);
   },
 
   // ── Matchs ────────────────────────────────────────────────────────────────
-  getActiveMatch: async () => {
-    const db = await supabase.from("matches");
-    const r = await db.select("*", { filter: `is_open=eq.true&org_id=eq.${_orgId}`, order: "created_at.desc" });
-    return Array.isArray(r) ? (r[0] || null) : null;
-  },
-  getMatches: async () => {
-    const db = await supabase.from("matches");
-    return db.select("*", { filter: `org_id=eq.${_orgId}`, order: "created_at.desc" });
-  },
-  createMatch: async (label, presentIds, teamId, season) => {
-    const db = await supabase.from("matches");
-    const r = await db.insert({ label, present_ids: presentIds, is_open: true, phase: "voting", team_id: teamId || null, season: season || 1, org_id: _orgId });
-    return Array.isArray(r) ? r[0] : r;
-  },
+  getActiveMatch: async () =>
+    withRetry(async () => {
+      const db = await supabase.from("matches");
+      const r = await db.select("*", { filter: `is_open=eq.true&org_id=eq.${_orgId}`, order: "created_at.desc" });
+      return Array.isArray(r) ? (r[0] || null) : null;
+    }),
+  getMatches: async () =>
+    withRetry(async () => {
+      const db = await supabase.from("matches");
+      return db.select("*", { filter: `org_id=eq.${_orgId}`, order: "created_at.desc" });
+    }),
+  createMatch: async (label, presentIds, teamId, season) =>
+    withRetry(async () => {
+      const db = await supabase.from("matches");
+      const r = await db.insert({ label, present_ids: presentIds, is_open: true, phase: "voting", team_id: teamId || null, season: season || 1, org_id: _orgId });
+      return Array.isArray(r) ? r[0] : r;
+    }),
   closeMatch:    async (id) => { const db = await supabase.from("matches"); return db.update({ is_open: false, phase: "closed" }, `id=eq.${id}`); },
   startCounting: async (id, order) => { const db = await supabase.from("matches"); return db.update({ phase: "counting", reveal_order: order, revealed_count: 0 }, `id=eq.${id}`); },
   revealNext:    async (id, count) => { const db = await supabase.from("matches"); return db.update({ revealed_count: count }, `id=eq.${id}`); },

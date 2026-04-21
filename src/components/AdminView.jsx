@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { api, DEMO_MODE } from '../api.js';
 import { Toast } from './Toast.jsx';
 
-export function AdminView({ players, onPlayersChange, activeMatch, onMatchChange, currentOrg, onSignOut }) {
+export function AdminView({ players, onPlayersChange, activeMatch, onMatchChange, currentOrg, onSignOut, onShowGuide }) {
   const [newPlayer,    setNewPlayer]    = useState("");
   const [matchLabel,   setMatchLabel]   = useState("");
   const [presentIds,   setPresentIds]   = useState([]);
@@ -205,6 +205,9 @@ export function AdminView({ players, onPlayersChange, activeMatch, onMatchChange
                   </button>
                 </div>
               )}
+              <button className="btn btn-secondary btn-full" style={{ fontSize: 13, marginBottom: 8 }} onClick={onShowGuide}>
+                📖 Comment ça marche
+              </button>
               <button className="btn btn-danger btn-full" style={{ fontSize: 13 }} onClick={onSignOut}>
                 Se déconnecter
               </button>
