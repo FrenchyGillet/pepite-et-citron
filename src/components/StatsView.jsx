@@ -4,7 +4,7 @@ import { computeScores, formatDate } from '../utils.js';
 import { Scoreboard } from './Scoreboard.jsx';
 import { EmptyState } from './EmptyState.jsx';
 
-export function StatsView({ players, activeMatch }) {
+export function StatsView({ players, activeMatch, isAdmin }) {
   const [allVotes,       setAllVotes]       = useState([]);
   const [allMatches,     setAllMatches]     = useState([]);
   const [allTeams,       setAllTeams]       = useState([]);

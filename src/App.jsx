@@ -16,7 +16,28 @@ export default function App() {
   const [authLoading, setAuthLoading] = useState(!DEMO_MODE);
 
   // ── App state ──────────────────────────────────────────────────────────────
-  const [tab,               setTab]               = useState("vote");
+  const VALID_TABS = ["vote", "results", "stats", "admin"];
+  const [tab, setTabRaw] = useState(() => {
+    const hash = window.location.hash.slice(1);
+    return VALID_TABS.includes(hash) ? hash : "vote";
+  });
+
+  // Synchronise tab ↔ hash URL (pour que back/forward du navigateur fonctionne)
+  const setTab = useCallback((t) => {
+    setTabRaw(t);
+    if (window.location.hash.slice(1) !== t) {
+      history.pushState(null, "", `#${t}`);
+    }
+  }, []);
+
+  useEffect(() => {
+    const onPop = () => {
+      const hash = window.location.hash.slice(1);
+      setTabRaw(VALID_TABS.includes(hash) ? hash : "vote");
+    };
+    window.addEventListener("popstate", onPop);
+    return () => window.removeEventListener("popstate", onPop);
+  }, []);
   const [players,           setPlayers]           = useState([]);
   const [activeMatch,       setActiveMatch]       = useState(null);
   const [lastMatch,         setLastMatch]         = useState(null);

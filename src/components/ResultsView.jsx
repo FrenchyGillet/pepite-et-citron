@@ -37,7 +37,7 @@ export function ResultsView({ players, match, refreshKey, onMatchUpdate, isAdmin
   );
   if (loading) return <div className="content"><div className="empty">Chargement…</div></div>;
 
-  const present = players.filter(p => match.present_ids.includes(p.id));
+  const present = players.filter(p => (match.present_ids || []).includes(p.id));
   const phase = match.phase || "voting";
 
   const MatchHeader = ({ badge }) => (
@@ -196,8 +196,8 @@ export function ResultsView({ players, match, refreshKey, onMatchUpdate, isAdmin
   const tiebreakers = match.tiebreakers || {};
 
   const { best: bestScores, lemon: lemonScores } = computeScores(votes, present);
-  const topBestPts  = Math.max(...present.map(p => bestScores[p.id]?.pts || 0));
-  const topLemonPts = Math.max(...present.map(p => lemonScores[p.id]?.pts || 0));
+  const topBestPts  = present.length ? Math.max(...present.map(p => bestScores[p.id]?.pts  || 0)) : 0;
+  const topLemonPts = present.length ? Math.max(...present.map(p => lemonScores[p.id]?.pts || 0)) : 0;
   const bestTied  = topBestPts  > 0 && present.filter(p => (bestScores[p.id]?.pts  || 0) === topBestPts).length  > 1;
   const lemonTied = topLemonPts > 0 && present.filter(p => (lemonScores[p.id]?.pts || 0) === topLemonPts).length > 1;
   const bestTiedPlayers  = present.filter(p => (bestScores[p.id]?.pts  || 0) === topBestPts);

@@ -14,7 +14,7 @@ export function VoteView({ players, match, onVoted, guestName = null, onGuestVot
   const [alreadyVoted, setAlreadyVoted] = useState(false);
   const [checking,     setChecking]     = useState(false);
 
-  const present = players.filter(p => match.present_ids.includes(p.id));
+  const present = players.filter(p => (match.present_ids || []).includes(p.id));
 
   const checkAndNext = async () => {
     if (!voterName) return;

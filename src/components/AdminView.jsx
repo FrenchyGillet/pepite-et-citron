@@ -11,7 +11,7 @@ export function AdminView({ players, onPlayersChange, activeMatch, onMatchChange
   const [teams,          setTeams]          = useState([]);
   const [teamName,       setTeamName]       = useState("");
   const [teamIds,        setTeamIds]        = useState([]);
-  const [showNewTeam,    setShowNewTeam]    = useState(true);
+  const [showNewTeam,    setShowNewTeam]    = useState(false);
   const [savingTeam,     setSavingTeam]     = useState(false);
   const [selectedTeamId, setSelectedTeamId] = useState(null);
   const [currentSeason,  setCurrentSeason]  = useState(1);
