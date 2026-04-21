@@ -156,7 +156,7 @@ export const realAPI = {
     let members;
     try {
       const mdb = await supabase.from("org_members");
-      members = await mdb.select("org_id, role", {});
+      members = await mdb.select("org_id,role", {});  // pas d'espace → PostgREST parse correctement
     } catch {
       // Colonne role absente → fallback v1
       const mdb = await supabase.from("org_members");

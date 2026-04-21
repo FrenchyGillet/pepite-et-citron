@@ -111,21 +111,27 @@ export default function App() {
   }, []);
 
   // ── Chargement des orgs ───────────────────────────────────────────────────
-  const loadOrgs = async () => {
+  // useCallback pour éviter les stale closures dans bootstrap/onAuthChange.
+  // currentOrgIdRef permet de lire l'id courant sans capturer currentOrg en closure.
+  const currentOrgIdRef = useRef(null);
+  useEffect(() => { currentOrgIdRef.current = currentOrg?.id ?? null; }, [currentOrg?.id]);
+
+  const loadOrgs = useCallback(async () => {
     try {
       const orgs = await api.getMyOrgs();
       setMyOrgs(orgs);
       if (!orgs.length) return null;
-      // Auto-sélectionne si 1 seul org; sinon conserve le currentOrg s'il est valide
-      const current = orgs.find(o => o.id === currentOrg?.id) || orgs[0];
+      // Auto-sélectionne si 1 seul org; sinon garde le currentOrg si toujours valide
+      const current = orgs.find(o => o.id === currentOrgIdRef.current) || orgs[0];
       setCurrentOrg(current);
       setCurrentOrgId(current.id);
+      currentOrgIdRef.current = current.id;
       return current;
     } catch (err) {
       console.error("loadOrgs:", err);
       return null;
     }
-  };
+  }, []);
   // Alias pour la compatibilité (bootstrap, onAuthChange)
   const loadOrg = loadOrgs;
 
@@ -153,11 +159,11 @@ export default function App() {
       setGuestStatus("checking");
       api.validateGuestToken(guestParam).then(async result => {
         if (result && !result.used) {
-          // Récupérer l'org depuis le match du token
           const match = await api.getMatchById(result.match_id);
           if (match?.org_id) {
             setCurrentOrgId(match.org_id);
-            setCurrentOrg({ id: match.org_id });
+            // Ne pas écraser currentOrg si le user a une session (l'admin peut voter sur son propre match)
+            setCurrentOrg(prev => prev ?? { id: match.org_id, role: null });
           }
           setGuestToken(guestParam);
           setGuestName(result.name);
@@ -168,11 +174,12 @@ export default function App() {
         }
       });
     } else if (orgSlug && !DEMO_MODE) {
-      // Voter avec lien ?org=slug partagé par le capitaine
+      // Voter anonyme via lien ?org=slug — ne pas écraser un currentOrg déjà résolu
+      // (un admin qui ouvre son propre lien doit garder son rôle admin)
       api.getOrgBySlug(orgSlug).then(org => {
         if (org) {
-          setCurrentOrg(org);
           setCurrentOrgId(org.id);
+          setCurrentOrg(prev => prev ?? org);   // preserve si déjà résolu via session
         }
       });
     }
@@ -239,8 +246,11 @@ export default function App() {
     setTab("vote");
   };
 
-  // Admin = connecté avec une org admin (en mode réel) OU toujours en démo
-  const isAdmin = DEMO_MODE || (!!session && currentOrg?.role === "admin");
+  // Admin = connecté avec une org dont le rôle N'EST PAS "voter" (ou pas encore défini).
+  // - "admin" explicite → admin ✓
+  // - undefined / null  → admin ✓ (rétrocompatibilité : migration pas encore appliquée)
+  // - "voter" explicite → pas admin ✓
+  const isAdmin = DEMO_MODE || (!!session && !!currentOrg && currentOrg.role !== "voter");
 
   // ── États de chargement ────────────────────────────────────────────────────
   if (authLoading) {
