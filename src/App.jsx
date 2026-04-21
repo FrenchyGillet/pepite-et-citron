@@ -350,7 +350,7 @@ export default function App() {
 
         {tab === "results" && (
           <ErrorBoundary label="Résultats">
-            <ResultsView players={players} match={lastMatch} refreshKey={refreshKey} onMatchUpdate={loadMatch} isAdmin={isAdmin} />
+            <ResultsView players={players} match={lastMatch} refreshKey={refreshKey} onMatchUpdate={loadMatch} isAdmin={isAdmin} isDark={theme === "dark"} />
           </ErrorBoundary>
         )}
         {tab === "stats" && (

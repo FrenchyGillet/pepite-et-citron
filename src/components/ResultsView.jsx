@@ -4,8 +4,9 @@ import { computeScores, formatDate } from '../utils.js';
 import { Scoreboard } from './Scoreboard.jsx';
 import { PodiumView } from './PodiumView.jsx';
 import { EmptyState } from './EmptyState.jsx';
+import { SharePodiumButton } from './SharePodiumButton.jsx';
 
-export function ResultsView({ players, match, refreshKey, onMatchUpdate, isAdmin }) {
+export function ResultsView({ players, match, refreshKey, onMatchUpdate, isAdmin, isDark }) {
   const [votes,              setVotes]              = useState([]);
   const [loading,            setLoading]            = useState(true);
   const [revealing,          setRevealing]          = useState(false);
@@ -197,6 +198,7 @@ export function ResultsView({ players, match, refreshKey, onMatchUpdate, isAdmin
 
   const { best: bestScores, lemon: lemonScores } = computeScores(votes, present, players);
   const everyone    = players.length ? players : present;
+  const presentIds  = new Set(present.map(p => p.id));
   const topBestPts  = present.length  ? Math.max(...present.map(p  => bestScores[p.id]?.pts  || 0)) : 0;
   const topLemonPts = everyone.length ? Math.max(...everyone.map(p => lemonScores[p.id]?.pts || 0)) : 0;
   const bestTied  = topBestPts  > 0 && present.filter(p  => (bestScores[p.id]?.pts  || 0) === topBestPts).length  > 1;
@@ -235,6 +237,17 @@ export function ResultsView({ players, match, refreshKey, onMatchUpdate, isAdmin
     (lemonScores[p.id]?.pts || 0) === 0
   );
 
+  // Données formatées pour l'image de partage
+  const pepiteRanked = present
+    .map(p => ({ id: p.id, name: p.name, pts: bestScores[p.id]?.pts || 0 }))
+    .filter(p => p.pts > 0)
+    .sort((a, b) => b.pts - a.pts);
+
+  const lemonRanked = everyone
+    .map(p => ({ id: p.id, name: p.name, pts: lemonScores[p.id]?.pts || 0, absent: !presentIds.has(p.id) }))
+    .filter(p => p.pts > 0)
+    .sort((a, b) => b.pts - a.pts);
+
   return (
     <div className="content">
       <MatchHeader badge={<span className="badge badge-closed">Clôturé</span>} />
@@ -254,17 +267,26 @@ export function ResultsView({ players, match, refreshKey, onMatchUpdate, isAdmin
           <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
             {ghosts.map(p => (
               <div key={p.id} style={{
-                padding: "7px 14px",
-                background: "var(--bg2)",
-                borderRadius: 20,
-                fontSize: 13,
-                color: "var(--label4)",
-                fontWeight: 500,
+                padding: "7px 14px", background: "var(--bg2)",
+                borderRadius: 20, fontSize: 13,
+                color: "var(--label4)", fontWeight: 500,
               }}>
                 {p.name}
               </div>
             ))}
           </div>
+        </div>
+      )}
+
+      {/* Partage */}
+      {pepiteRanked.length > 0 && (
+        <div style={{ marginTop: 16, marginBottom: 8 }}>
+          <SharePodiumButton
+            match={match}
+            pepiteRanked={pepiteRanked}
+            lemonRanked={lemonRanked}
+            isDark={isDark !== false}
+          />
         </div>
       )}
     </div>
