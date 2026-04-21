@@ -45,8 +45,12 @@ export const demoAPI = {
   getSession:   () => Promise.resolve({ user: { id: "demo", email: "demo@demo.com" } }),
   onAuthChange: ()  => ({ unsubscribe: () => {} }),
   createOrg:    (name, slug) => Promise.resolve({ id: "demo-org", name, slug }),
-  getMyOrg:     () => Promise.resolve({ id: "demo-org", name: "Demo", slug: "demo" }),
+  getMyOrg:     () => Promise.resolve({ id: "demo-org", name: "Demo", slug: "demo", role: "admin" }),
+  getMyOrgs:    () => Promise.resolve([{ id: "demo-org", name: "Demo", slug: "demo", role: "admin" }]),
   getOrgBySlug: () => Promise.resolve({ id: "demo-org", name: "Demo", slug: "demo" }),
+  getOrgMembers: () => Promise.resolve([]),
+  addMember:    () => Promise.resolve(),
+  removeMember: () => Promise.resolve(),
 
   // Données
   getPlayers:     () => Promise.resolve([...demoState.players]),
@@ -136,15 +140,39 @@ export const realAPI = {
     if (!org?.id) throw new Error("Erreur création organisation");
     return org;
   },
-  getMyOrg: async () => {
-    // Récupère l'org du user connecté via org_members
+  getMyOrgs: async () => {
     const mdb = await supabase.from("org_members");
-    const members = await mdb.select("org_id", {});
-    if (!members?.length) return null;
-    const orgId = members[0].org_id;
+    const members = await mdb.select("org_id, role", {});
+    if (!members?.length) return [];
+    const orgIds = members.map(m => m.org_id).join(",");
     const odb = await supabase.from("organizations");
-    const orgs = await odb.select("*", { filter: `id=eq.${orgId}` });
-    return orgs[0] || null;
+    const orgs = await odb.select("*", { filter: `id=in.(${orgIds})` });
+    return members.map(m => {
+      const org = orgs.find(o => o.id === m.org_id);
+      return org ? { ...org, role: m.role } : null;
+    }).filter(Boolean);
+  },
+  getMyOrg: async () => {
+    const orgs = await realAPI.getMyOrgs();
+    // Préfère l'org admin, sinon la première
+    return orgs.find(o => o.role === "admin") || orgs[0] || null;
+  },
+  getOrgMembers: async (orgId) => {
+    const { data, error } = await authClient.rpc("get_org_members", { target_org_id: orgId });
+    if (error) throw new Error(error.message);
+    return data || [];
+  },
+  addMember: async (email, orgId, role = "voter") => {
+    const { error } = await authClient.rpc("add_org_member", {
+      member_email: email,
+      target_org_id: orgId,
+      member_role: role,
+    });
+    if (error) throw new Error(error.message);
+  },
+  removeMember: async (userId, orgId) => {
+    const db = await supabase.from("org_members");
+    return db.delete(`user_id=eq.${userId}&org_id=eq.${orgId}`);
   },
   getOrgBySlug: async (slug) => {
     const db = await supabase.from("organizations");

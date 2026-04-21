@@ -40,6 +40,7 @@ export default function App() {
     window.addEventListener("popstate", onPop);
     return () => window.removeEventListener("popstate", onPop);
   }, []);
+
   const [players,           setPlayers]           = useState([]);
   const [activeMatch,       setActiveMatch]       = useState(null);
   const [lastMatch,         setLastMatch]         = useState(null);
@@ -51,6 +52,18 @@ export default function App() {
   const [guestName,         setGuestName]         = useState(null);
   const [guestStatus,       setGuestStatus]       = useState(null);
   const [showOnboarding,    setShowOnboarding]    = useState(false);
+  const [myOrgs,            setMyOrgs]            = useState([]);
+  const [orgPickerOpen,     setOrgPickerOpen]     = useState(false);
+
+  // Ferme le org picker quand on clique à l'extérieur
+  useEffect(() => {
+    if (!orgPickerOpen) return;
+    const close = (e) => {
+      if (!e.target.closest('[data-org-picker]')) setOrgPickerOpen(false);
+    };
+    document.addEventListener('mousedown', close);
+    return () => document.removeEventListener('mousedown', close);
+  }, [orgPickerOpen]);
 
   // ── Thème ──────────────────────────────────────────────────────────────────
   useEffect(() => {
@@ -97,20 +110,35 @@ export default function App() {
     return () => sub?.unsubscribe?.();
   }, []);
 
-  // ── Chargement de l'org ───────────────────────────────────────────────────
-  const loadOrg = async () => {
+  // ── Chargement des orgs ───────────────────────────────────────────────────
+  const loadOrgs = async () => {
     try {
-      const org = await api.getMyOrg();
-      if (org) {
-        setCurrentOrg(org);
-        setCurrentOrgId(org.id);
-      }
-      return org;
+      const orgs = await api.getMyOrgs();
+      setMyOrgs(orgs);
+      if (!orgs.length) return null;
+      // Auto-sélectionne si 1 seul org; sinon conserve le currentOrg s'il est valide
+      const current = orgs.find(o => o.id === currentOrg?.id) || orgs[0];
+      setCurrentOrg(current);
+      setCurrentOrgId(current.id);
+      return current;
     } catch (err) {
-      console.error("loadOrg:", err);
+      console.error("loadOrgs:", err);
       return null;
     }
   };
+  // Alias pour la compatibilité (bootstrap, onAuthChange)
+  const loadOrg = loadOrgs;
+
+  const switchOrg = useCallback((org) => {
+    setCurrentOrg(org);
+    setCurrentOrgId(org.id);
+    setOrgPickerOpen(false);
+    setActiveMatch(null);
+    setLastMatch(null);
+    setPlayers([]);
+    setVotedThisSession(false);
+    lastMatchIdRef.current = null;
+  }, []);
 
   // ── Résolution de l'org pour les visitors (sans session) ─────────────────
   // Priorité : ?guest=TOKEN > ?org=slug > session
@@ -211,8 +239,8 @@ export default function App() {
     setTab("vote");
   };
 
-  // Admin = connecté avec une org (en mode réel) OU toujours en démo
-  const isAdmin = DEMO_MODE || (!!session && !!currentOrg);
+  // Admin = connecté avec une org admin (en mode réel) OU toujours en démo
+  const isAdmin = DEMO_MODE || (!!session && currentOrg?.role === "admin");
 
   // ── États de chargement ────────────────────────────────────────────────────
   if (authLoading) {
@@ -241,9 +269,11 @@ export default function App() {
         <GlobalStyle />
         <OrgSetupView
           userEmail={session.user?.email}
-          onOrgCreated={(org) => {
-            setCurrentOrg(org);
+          onOrgCreated={async (org) => {
+            const orgWithRole = { ...org, role: "admin" };
+            setCurrentOrg(orgWithRole);
             setCurrentOrgId(org.id);
+            setMyOrgs([orgWithRole]);
             loadPlayers();
             loadMatch();
             // Nouvelle équipe → montrer l'onboarding
@@ -270,8 +300,68 @@ export default function App() {
                 <span className="header-citron">Citron</span>
               </div>
               {currentOrg?.name && !DEMO_MODE && (
-                <div className="header-sub" style={{ color: "var(--gold)", fontWeight: 600 }}>
-                  {currentOrg.name}
+                <div style={{ position: "relative" }} data-org-picker>
+                  {myOrgs.length > 1 ? (
+                    <button
+                      onClick={() => setOrgPickerOpen(v => !v)}
+                      style={{
+                        background: "none", border: "none", padding: 0,
+                        cursor: "pointer", display: "flex", alignItems: "center", gap: 5,
+                      }}
+                    >
+                      <span className="header-sub" style={{ color: "var(--gold)", fontWeight: 600 }}>
+                        {currentOrg.name}
+                      </span>
+                      <span style={{ fontSize: 9, color: "var(--gold)", opacity: 0.7, marginTop: 1 }}>▼</span>
+                      {currentOrg.role === "voter" && (
+                        <span style={{
+                          fontSize: 10, fontWeight: 700, background: "rgba(170,221,0,0.15)",
+                          color: "var(--lemon)", borderRadius: 4, padding: "1px 5px",
+                        }}>votant</span>
+                      )}
+                    </button>
+                  ) : (
+                    <div className="header-sub" style={{ color: "var(--gold)", fontWeight: 600, display: "flex", alignItems: "center", gap: 5 }}>
+                      {currentOrg.name}
+                      {currentOrg.role === "voter" && (
+                        <span style={{
+                          fontSize: 10, fontWeight: 700, background: "rgba(170,221,0,0.15)",
+                          color: "var(--lemon)", borderRadius: 4, padding: "1px 5px",
+                        }}>votant</span>
+                      )}
+                    </div>
+                  )}
+                  {orgPickerOpen && myOrgs.length > 1 && (
+                    <div style={{
+                      position: "absolute", top: "calc(100% + 6px)", left: 0, zIndex: 100,
+                      background: "var(--bg2)", borderRadius: "var(--radius-lg)",
+                      border: "1px solid var(--separator2)", overflow: "hidden",
+                      boxShadow: "0 8px 24px rgba(0,0,0,0.3)", minWidth: 180,
+                    }}>
+                      {myOrgs.map(org => (
+                        <button
+                          key={org.id}
+                          onClick={() => switchOrg(org)}
+                          style={{
+                            width: "100%", background: org.id === currentOrg.id ? "var(--bg3)" : "none",
+                            border: "none", padding: "12px 14px", cursor: "pointer",
+                            display: "flex", justifyContent: "space-between", alignItems: "center",
+                            textAlign: "left",
+                          }}
+                        >
+                          <span style={{ fontSize: 14, fontWeight: 600, color: "var(--label)" }}>{org.name}</span>
+                          <span style={{
+                            fontSize: 11, fontWeight: 700,
+                            color: org.role === "admin" ? "var(--gold)" : "var(--lemon)",
+                            background: org.role === "admin" ? "rgba(255,214,10,0.12)" : "rgba(170,221,0,0.12)",
+                            borderRadius: 4, padding: "2px 6px",
+                          }}>
+                            {org.role === "admin" ? "Admin" : "Votant"}
+                          </span>
+                        </button>
+                      ))}
+                    </div>
+                  )}
                 </div>
               )}
               <div className="header-sub">

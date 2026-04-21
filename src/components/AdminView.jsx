@@ -24,12 +24,25 @@ export function AdminView({ players, onPlayersChange, activeMatch, onMatchChange
   const [voteCount,      setVoteCount]      = useState(0);
   const [startingCount,  setStartingCount]  = useState(false);
   const [showAccount,    setShowAccount]    = useState(false);
+  const [members,       setMembers]       = useState([]);
+  const [memberEmail,   setMemberEmail]   = useState("");
+  const [addingMember,  setAddingMember]  = useState(false);
 
   const loadTeams  = useCallback(async () => { setTeams(await api.getTeams()); }, []);
   const loadGuests = useCallback(async () => {
     if (!activeMatch) return;
     setGuestTokens(await api.getGuestTokens(activeMatch.id));
   }, [activeMatch?.id]);
+
+  const loadMembers = useCallback(async () => {
+    if (!currentOrg?.id) return;
+    try {
+      const m = await api.getOrgMembers(currentOrg.id);
+      setMembers(m);
+    } catch { /* RPC pas encore créée → silencieux */ }
+  }, [currentOrg?.id]);
+
+  useEffect(() => { loadMembers(); }, [currentOrg?.id]);
 
   useEffect(() => {
     Promise.all([api.getTeams(), api.getCurrentSeason()]).then(async ([t, cs]) => {
@@ -47,6 +60,32 @@ export function AdminView({ players, onPlayersChange, activeMatch, onMatchChange
     const t = setInterval(() => api.getVotes(activeMatch.id).then(v => setVoteCount(v.length)), 5000);
     return () => clearInterval(t);
   }, [activeMatch?.id, activeMatch?.phase]);
+
+  const handleAddMember = async () => {
+    if (!memberEmail.trim()) return;
+    setAddingMember(true);
+    try {
+      await api.addMember(memberEmail.trim(), currentOrg.id, "voter");
+      setMemberEmail("");
+      await loadMembers();
+      setToast(`${memberEmail.trim()} ajouté comme votant`);
+    } catch (err) {
+      setToast(`Erreur : ${err.message}`);
+    } finally {
+      setAddingMember(false);
+    }
+  };
+
+  const handleRemoveMember = async (userId, email) => {
+    if (!confirm(`Retirer ${email} ?`)) return;
+    try {
+      await api.removeMember(userId, currentOrg.id);
+      await loadMembers();
+      setToast(`${email} retiré`);
+    } catch (err) {
+      setToast(`Erreur : ${err.message}`);
+    }
+  };
 
   const createGuestLink = async () => {
     if (!guestInput.trim() || !activeMatch) return;
@@ -493,6 +532,53 @@ export function AdminView({ players, onPlayersChange, activeMatch, onMatchChange
           </button>
         </div>
       </div>
+
+      {/* ── 5. MEMBRES ── */}
+      {!DEMO_MODE && currentOrg?.id && (
+        <>
+          <SectionHeader num="5" title="Membres"
+            subtitle="Invite des joueurs à voter avec leur compte. Ils auront accès en mode votant uniquement." />
+          {members.length > 0 && (
+            <div className="group" style={{ marginBottom: 12 }}>
+              {members.map((m, i) => (
+                <div key={m.user_id}>
+                  {i > 0 && <div style={{ height: 1, background: "var(--separator)", margin: "0 16px" }} />}
+                  <div className="row">
+                    <div className="row-body">
+                      <div className="row-title">{m.email}</div>
+                      <div className="row-sub" style={{
+                        color: m.role === "admin" ? "var(--gold)" : "var(--lemon)"
+                      }}>
+                        {m.role === "admin" ? "Admin" : "Votant"}
+                      </div>
+                    </div>
+                    {m.role !== "admin" && (
+                      <button className="btn btn-danger" style={{ padding: "5px 12px", fontSize: 13 }}
+                        onClick={() => handleRemoveMember(m.user_id, m.email)}>
+                        Retirer
+                      </button>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+          <div className="flex gap-8" style={{ marginBottom: 24 }}>
+            <input
+              placeholder="Email du votant"
+              value={memberEmail}
+              type="email"
+              onChange={e => setMemberEmail(e.target.value)}
+              onKeyDown={e => e.key === "Enter" && handleAddMember()}
+            />
+            <button className="btn btn-primary" style={{ whiteSpace: "nowrap", padding: "12px 16px" }}
+              disabled={!memberEmail.trim() || addingMember}
+              onClick={handleAddMember}>
+              {addingMember ? "…" : "Inviter"}
+            </button>
+          </div>
+        </>
+      )}
     </div>
   );
 }
