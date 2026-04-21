@@ -126,18 +126,12 @@ export function AdminView({ players, onPlayersChange, activeMatch, onMatchChange
     await api.deleteTeam(id); loadTeams();
   };
 
-  const SectionHeader = ({ num, title, subtitle }) => (
-    <div style={{ marginTop: 28, marginBottom: 12 }}>
-      <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 3 }}>
-        <div style={{
-          width: 22, height: 22, borderRadius: "50%",
-          background: "var(--bg3)", color: "var(--label2)",
-          fontSize: 12, fontWeight: 700,
-          display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0,
-        }}>{num}</div>
-        <span style={{ fontSize: 15, fontWeight: 700, color: "var(--label)" }}>{title}</span>
+  const SectionHeader = ({ num: _num, title, subtitle }) => (
+    <div style={{ marginTop: 28, marginBottom: 10 }}>
+      <div style={{ fontSize: 18, fontWeight: 700, color: "var(--label)", letterSpacing: "-0.02em", marginBottom: 3 }}>
+        {title}
       </div>
-      {subtitle && <p style={{ fontSize: 12, color: "var(--label3)", paddingLeft: 32 }}>{subtitle}</p>}
+      {subtitle && <p style={{ fontSize: 13, color: "var(--label3)" }}>{subtitle}</p>}
     </div>
   );
 
@@ -159,7 +153,10 @@ export function AdminView({ players, onPlayersChange, activeMatch, onMatchChange
               borderBottomRightRadius: showAccount ? 0 : "var(--radius-lg)",
             }}>
             <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-              <span style={{ fontSize: 18 }}>👤</span>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="12" cy="8" r="4"/>
+                <path d="M20 21a8 8 0 10-16 0"/>
+              </svg>
               <div style={{ textAlign: "left" }}>
                 <div style={{ fontSize: 14, fontWeight: 600, color: "var(--label)" }}>
                   {currentOrg?.name || "Mon équipe"}
@@ -210,7 +207,13 @@ export function AdminView({ players, onPlayersChange, activeMatch, onMatchChange
         return (
           <div className="group">
             <div className="row">
-              <div className="row-icon green">⚡</div>
+              <div className="row-icon green" style={{ position: "relative" }}>
+                <div style={{
+                  width: 8, height: 8, borderRadius: "50%",
+                  background: "var(--green)",
+                  animation: "livePulse 1.8s ease-in-out infinite",
+                }} />
+              </div>
               <div className="row-body">
                 <div className="row-title">{activeMatch.label}</div>
                 <div className="row-sub">
@@ -427,7 +430,6 @@ export function AdminView({ players, onPlayersChange, activeMatch, onMatchChange
         subtitle={`Saison actuelle : ${currentSeason}. Démarre une nouvelle saison pour remettre le classement à zéro sans perdre l'historique.`} />
       <div className="group" style={{ marginBottom: 24 }}>
         <div className="row">
-          <div className="row-icon green">📅</div>
           <div className="row-body">
             <div className="row-title">Saison {currentSeason} en cours</div>
             <div className="row-sub">Tous les nouveaux matchs appartiennent à cette saison</div>

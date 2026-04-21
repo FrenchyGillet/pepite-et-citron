@@ -241,26 +241,26 @@ export default function App() {
             </div>
             <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
               <button onClick={() => setTheme(t => t === "dark" ? "light" : "dark")} style={{
-                background: "var(--bg3)", border: "none", borderRadius: "var(--radius-sm)",
-                padding: "7px 10px", fontSize: 16, cursor: "pointer", lineHeight: 1,
-                color: "var(--label2)", marginTop: 2,
-              }}>{theme === "dark" ? "☀️" : "🌙"}</button>
+                background: "var(--bg3)", border: "none", borderRadius: "10px",
+                padding: "8px", cursor: "pointer",
+                color: "var(--label2)", display: "flex", alignItems: "center",
+                width: 36, height: 36, justifyContent: "center",
+              }}>
+                {theme === "dark" ? (
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
+                    <circle cx="12" cy="12" r="5"/>
+                    <path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/>
+                  </svg>
+                ) : (
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/>
+                  </svg>
+                )}
+              </button>
             </div>
           </div>
         </div>
 
-        <nav className="nav">
-          {[
-            { id: "vote",    label: "Vote"      },
-            { id: "results", label: "Résultats" },
-            { id: "stats",   label: "Saison"    },
-            ...(isAdmin ? [{ id: "admin", label: "Admin" }] : []),
-          ].map(t => (
-            <button key={t.id} className={`nav-btn ${tab === t.id ? "active" : ""}`} onClick={() => setTab(t.id)}>
-              {t.label}
-            </button>
-          ))}
-        </nav>
 
         {DEMO_MODE && <div className="demo-banner">Mode démo · Configure Supabase pour le multi-device</div>}
 
@@ -309,6 +309,37 @@ export default function App() {
           />
         )}
       </div>
+      <nav className="tab-bar">
+        {[
+          {
+            id: "vote",
+            label: "Vote",
+            icon: <><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></>,
+          },
+          {
+            id: "results",
+            label: "Résultats",
+            icon: <path d="M18 20V10M12 20V4M6 20v-6"/>,
+          },
+          {
+            id: "stats",
+            label: "Saison",
+            icon: <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>,
+          },
+          ...(isAdmin ? [{
+            id: "admin",
+            label: "Admin",
+            icon: <><circle cx="12" cy="8" r="4"/><path d="M20 21a8 8 0 10-16 0"/></>,
+          }] : []),
+        ].map(t => (
+          <button key={t.id} className={`tab-bar-item ${tab === t.id ? "active" : ""}`} onClick={() => setTab(t.id)}>
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" stroke="currentColor">
+              {t.icon}
+            </svg>
+            <span>{t.label}</span>
+          </button>
+        ))}
+      </nav>
     </>
   );
 }
