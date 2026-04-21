@@ -285,6 +285,31 @@ export function AdminView({ players, onPlayersChange, activeMatch, onMatchChange
             </div>
             {phase === "voting" && (
               <div style={{ padding: "12px 16px", display: "flex", flexDirection: "column", gap: 8 }}>
+                {/* Lien de vote à partager */}
+                {currentOrg?.slug && (
+                  <div style={{
+                    background: "var(--bg3)", borderRadius: "var(--radius-sm)",
+                    padding: "10px 12px", display: "flex", alignItems: "center", gap: 10,
+                  }}>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontSize: 11, fontWeight: 700, color: "var(--label3)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 2 }}>
+                        🔗 Lien de vote
+                      </div>
+                      <div style={{ fontSize: 12, color: "var(--label2)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                        {window.location.origin}/?org={currentOrg.slug}
+                      </div>
+                    </div>
+                    <button
+                      className="btn btn-secondary"
+                      style={{ padding: "6px 12px", fontSize: 13, whiteSpace: "nowrap", flexShrink: 0 }}
+                      onClick={() => {
+                        navigator.clipboard.writeText(`${window.location.origin}/?org=${currentOrg.slug}`);
+                        setToast("Lien copié !");
+                      }}>
+                      Copier
+                    </button>
+                  </div>
+                )}
                 <button className="btn btn-primary btn-full" onClick={startCounting} disabled={startingCount || voteCount === 0}>
                   {startingCount ? "Préparation…" : `Lancer le dépouillement · ${voteCount} vote${voteCount !== 1 ? "s" : ""}`}
                 </button>
