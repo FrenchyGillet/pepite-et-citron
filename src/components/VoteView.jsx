@@ -52,8 +52,9 @@ export function VoteView({ players, match, onVoted, guestName = null, onGuestVot
     }
   };
 
-  if (!match.is_open) return (
-    <div className="content"><div className="empty">🔒 Vote fermé.<br />Consulte les résultats.</div></div>
+  // Bloque le vote si le match est fermé ou si le dépouillement est lancé
+  if (!match.is_open || (match.phase && match.phase !== "voting")) return (
+    <div className="content"><div className="empty">🔒 Vote clôturé.<br />Consulte les résultats.</div></div>
   );
 
   return (

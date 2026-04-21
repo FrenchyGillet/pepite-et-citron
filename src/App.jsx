@@ -178,12 +178,15 @@ export default function App() {
     }
   }, [currentOrg?.id]);
 
-  // Polling en phase de vote
+  // Polling en phase de vote ET de dépouillement
+  // (is_open devient false au dépouillement, mais on continue à poller
+  //  pour que les spectateurs voient les révélations en temps réel)
+  const matchIsActive = activeMatch?.is_open || activeMatch?.phase === "counting";
   useEffect(() => {
-    if (!activeMatch?.is_open) return;
+    if (!matchIsActive) return;
     const t = setInterval(loadMatch, 5000);
     return () => clearInterval(t);
-  }, [activeMatch?.is_open]);
+  }, [matchIsActive]);
 
   // ── Helpers ────────────────────────────────────────────────────────────────
   const hasVotedLocally = (matchId) =>

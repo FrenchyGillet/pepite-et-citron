@@ -52,14 +52,14 @@ export const demoAPI = {
   getPlayers:     () => Promise.resolve([...demoState.players]),
   addPlayer:      (name) => { const p = { id: demoState.nextId++, name }; demoState.players.push(p); return Promise.resolve(p); },
   removePlayer:   (id)   => { demoState.players = demoState.players.filter(p => p.id !== id); return Promise.resolve(true); },
-  getActiveMatch: ()     => Promise.resolve(demoState.matches.find(m => m.is_open) || null),
+  getActiveMatch: ()     => Promise.resolve(demoState.matches.find(m => m.is_open || m.phase === "counting") || null),
   getMatches:     ()     => Promise.resolve([...demoState.matches].reverse()),
   createMatch: (label, presentIds, teamId, season) => {
     const m = { id: demoState.nextId++, label, present_ids: presentIds, is_open: true, phase: "voting", reveal_order: [], revealed_count: 0, season: season || demoState.currentSeason, team_id: teamId || null, created_at: new Date().toISOString() };
     demoState.matches.push(m); return Promise.resolve(m);
   },
   closeMatch:       (id)        => { const m = demoState.matches.find(m => m.id === id); if (m) { m.is_open = false; m.phase = "closed"; } return Promise.resolve(true); },
-  startCounting:    (id, order) => { const m = demoState.matches.find(m => m.id === id); if (m) { m.phase = "counting"; m.reveal_order = order; m.revealed_count = 0; } return Promise.resolve(true); },
+  startCounting:    (id, order) => { const m = demoState.matches.find(m => m.id === id); if (m) { m.is_open = false; m.phase = "counting"; m.reveal_order = order; m.revealed_count = 0; } return Promise.resolve(true); },
   revealNext:       (id, count) => { const m = demoState.matches.find(m => m.id === id); if (m) m.revealed_count = count; return Promise.resolve(true); },
   updateMatch:      (id, data)  => { const m = demoState.matches.find(m => m.id === id); if (m) Object.assign(m, data); return Promise.resolve(true); },
   deleteMatch:      (id)        => { demoState.matches = demoState.matches.filter(m => m.id !== id); demoState.votes = demoState.votes.filter(v => v.match_id !== id); return Promise.resolve(true); },
@@ -173,7 +173,13 @@ export const realAPI = {
   getActiveMatch: async () =>
     withRetry(async () => {
       const db = await supabase.from("matches");
-      const r = await db.select("*", { filter: `is_open=eq.true&org_id=eq.${_orgId}`, order: "created_at.desc" });
+      // Retourne le match en cours de vote OU en cours de dépouillement.
+      // is_open=false dès que le dépouillement commence (pour bloquer les votes tardifs),
+      // mais on le récupère quand même via phase=counting.
+      const r = await db.select("*", {
+        filter: `or=(is_open.eq.true,phase.eq.counting)&org_id=eq.${_orgId}`,
+        order: "created_at.desc",
+      });
       return Array.isArray(r) ? (r[0] || null) : null;
     }),
   getMatches: async () =>
@@ -188,7 +194,7 @@ export const realAPI = {
       return Array.isArray(r) ? r[0] : r;
     }),
   closeMatch:    async (id) => { const db = await supabase.from("matches"); return db.update({ is_open: false, phase: "closed" }, `id=eq.${id}`); },
-  startCounting: async (id, order) => { const db = await supabase.from("matches"); return db.update({ phase: "counting", reveal_order: order, revealed_count: 0 }, `id=eq.${id}`); },
+  startCounting: async (id, order) => { const db = await supabase.from("matches"); return db.update({ is_open: false, phase: "counting", reveal_order: order, revealed_count: 0 }, `id=eq.${id}`); },
   revealNext:    async (id, count) => { const db = await supabase.from("matches"); return db.update({ revealed_count: count }, `id=eq.${id}`); },
   updateMatch:   async (id, data)  => { const db = await supabase.from("matches"); return db.update(data, `id=eq.${id}`); },
   deleteMatch:   async (id) => {
