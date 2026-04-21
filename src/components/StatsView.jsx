@@ -17,18 +17,23 @@ export function StatsView({ players, activeMatch, isAdmin }) {
   const [loading,        setLoading]        = useState(true);
 
   const reload = useCallback(async () => {
-    const [v, m, t, cs] = await Promise.all([api.getAllVotes(), api.getMatches(), api.getTeams(), api.getCurrentSeason()]);
-    setAllVotes(v); setAllMatches(m); setAllTeams(t); setCurrentSeason(cs);
-    setSelectedSeason(prev => prev ?? cs);
-    // Charge les noms de saisons
-    const uniqueSeasons = [...new Set(m.map(match => match.season || 1))];
-    const names = {};
-    await Promise.all(uniqueSeasons.map(async s => {
-      const name = await api.getSeasonName(s);
-      if (name) names[s] = name;
-    }));
-    setSeasonNames(names);
-    setLoading(false);
+    try {
+      const [v, m, t, cs] = await Promise.all([api.getAllVotes(), api.getMatches(), api.getTeams(), api.getCurrentSeason()]);
+      setAllVotes(v); setAllMatches(m); setAllTeams(t); setCurrentSeason(cs);
+      setSelectedSeason(prev => prev ?? cs);
+      // Charge les noms de saisons
+      const uniqueSeasons = [...new Set(m.map(match => match.season || 1))];
+      const names = {};
+      await Promise.all(uniqueSeasons.map(async s => {
+        const name = await api.getSeasonName(s);
+        if (name) names[s] = name;
+      }));
+      setSeasonNames(names);
+    } catch (err) {
+      console.error("StatsView reload failed:", err?.message || err);
+    } finally {
+      setLoading(false);
+    }
   }, []);
 
   useEffect(() => { reload(); }, []);

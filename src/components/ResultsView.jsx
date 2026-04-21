@@ -18,7 +18,10 @@ export function ResultsView({ players, match, refreshKey, onMatchUpdate, isAdmin
   useEffect(() => {
     if (!match) { setLoading(false); return; }
     setLoading(true);
-    api.getVotes(match.id).then(v => { setVotes(v); setLoading(false); });
+    api.getVotes(match.id)
+      .then(v => { setVotes(v); })
+      .catch(err => console.error("ResultsView getVotes:", err))
+      .finally(() => setLoading(false));
   }, [match?.id, refreshKey]);
 
   useEffect(() => {
