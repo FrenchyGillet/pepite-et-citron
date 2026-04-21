@@ -88,10 +88,14 @@ export function AdminView({ players, onPlayersChange, activeMatch, onMatchChange
   const loadTeamIntoMatch = (team) => { setPresentIds([...team.player_ids]); setSelectedTeamId(team.id); };
 
   const saveSeasonName = async () => {
-    await api.setSeasonName(currentSeason, seasonNameDraft.trim());
-    setSeasonName(seasonNameDraft.trim());
-    setEditingSeason(false);
-    setToast("Nom de saison sauvegardé !");
+    try {
+      await api.setSeasonName(currentSeason, seasonNameDraft.trim());
+      setSeasonName(seasonNameDraft.trim());
+      setEditingSeason(false);
+      setToast("Nom de saison sauvegardé !");
+    } catch (err) {
+      setToast(`Erreur : ${err.message}`);
+    }
   };
 
   const advanceSeason = async () => {

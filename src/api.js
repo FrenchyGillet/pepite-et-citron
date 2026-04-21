@@ -229,12 +229,18 @@ export const realAPI = {
     } catch { return null; }
   },
   setSeasonName: async (season, name) => {
-    const db = await supabase.from("settings");
-    const existing = await db.select("id", { filter: `key=eq.season_name_${season}&org_id=eq.${_orgId}` });
-    if (existing?.length > 0) {
+    const db  = await supabase.from("settings");
+    // Utilise "value" (colonne connue) pour vérifier l'existence — pas "id"
+    const existing = await db.select("value", { filter: `key=eq.season_name_${season}&org_id=eq.${_orgId}` });
+    if (Array.isArray(existing) && existing.length > 0) {
       await db.update({ value: name }, `key=eq.season_name_${season}&org_id=eq.${_orgId}`);
     } else {
-      await db.insert({ key: `season_name_${season}`, value: name, org_id: _orgId });
+      // INSERT avec fallback UPDATE (même pattern que advanceSeason)
+      try {
+        await db.insert({ key: `season_name_${season}`, value: name, org_id: _orgId });
+      } catch {
+        await db.update({ value: name }, `key=eq.season_name_${season}&org_id=eq.${_orgId}`);
+      }
     }
   },
 
