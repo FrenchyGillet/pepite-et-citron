@@ -151,26 +151,33 @@ export const realAPI = {
     return org;
   },
   getMyOrgs: async () => {
-    // Tente d'abord avec la colonne role (migration v2).
-    // Si elle n'existe pas encore, fallback sur org_id seulement (migration v1).
-    let members;
+    // Utilise le RPC SECURITY DEFINER pour éviter les problèmes de RLS
+    // quand le JWT n'est pas transmis correctement par le client REST custom.
     try {
-      const mdb = await supabase.from("org_members");
-      members = await mdb.select("org_id,role", {});  // pas d'espace → PostgREST parse correctement
-    } catch {
-      // Colonne role absente → fallback v1
-      const mdb = await supabase.from("org_members");
-      const rows = await mdb.select("org_id", {});
-      members = (rows || []).map(r => ({ org_id: r.org_id, role: "admin" }));
+      const { data, error } = await rpcWithTimeout(() => authClient.rpc("get_my_orgs"));
+      if (error) throw new Error(error.message);
+      return data || [];
+    } catch (rpcErr) {
+      // Fallback REST si le RPC n'est pas encore déployé
+      console.warn("get_my_orgs RPC indisponible, fallback REST:", rpcErr.message);
+      let members;
+      try {
+        const mdb = await supabase.from("org_members");
+        members = await mdb.select("org_id,role", {});
+      } catch {
+        const mdb = await supabase.from("org_members");
+        const rows = await mdb.select("org_id", {});
+        members = (rows || []).map(r => ({ org_id: r.org_id, role: "admin" }));
+      }
+      if (!members?.length) return [];
+      const orgIds = members.map(m => m.org_id).join(",");
+      const odb = await supabase.from("organizations");
+      const orgs = await odb.select("*", { filter: `id=in.(${orgIds})` });
+      return members.map(m => {
+        const org = orgs.find(o => o.id === m.org_id);
+        return org ? { ...org, role: m.role || "admin" } : null;
+      }).filter(Boolean);
     }
-    if (!members?.length) return [];
-    const orgIds = members.map(m => m.org_id).join(",");
-    const odb = await supabase.from("organizations");
-    const orgs = await odb.select("*", { filter: `id=in.(${orgIds})` });
-    return members.map(m => {
-      const org = orgs.find(o => o.id === m.org_id);
-      return org ? { ...org, role: m.role || "admin" } : null;
-    }).filter(Boolean);
   },
   getMyOrg: async () => {
     const orgs = await realAPI.getMyOrgs();

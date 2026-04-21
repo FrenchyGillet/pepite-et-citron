@@ -54,6 +54,8 @@ export default function App() {
   const [showOnboarding,    setShowOnboarding]    = useState(false);
   const [myOrgs,            setMyOrgs]            = useState([]);
   const [orgPickerOpen,     setOrgPickerOpen]     = useState(false);
+  const [orgsResolved,      setOrgsResolved]      = useState(false);   // a-t-on tenté au moins une fois ?
+  const [orgsLoadError,     setOrgsLoadError]     = useState(false);   // échec du dernier chargement
 
   // Ferme le org picker quand on clique à l'extérieur
   useEffect(() => {
@@ -117,19 +119,25 @@ export default function App() {
   useEffect(() => { currentOrgIdRef.current = currentOrg?.id ?? null; }, [currentOrg?.id]);
 
   const loadOrgs = useCallback(async () => {
+    setOrgsLoadError(false);
     try {
       const orgs = await api.getMyOrgs();
       setMyOrgs(orgs);
-      if (!orgs.length) return null;
-      // Auto-sélectionne si 1 seul org; sinon garde le currentOrg si toujours valide
-      const current = orgs.find(o => o.id === currentOrgIdRef.current) || orgs[0];
-      setCurrentOrg(current);
-      setCurrentOrgId(current.id);
-      currentOrgIdRef.current = current.id;
-      return current;
+      if (orgs.length) {
+        // Auto-sélectionne si 1 seul org; sinon garde le currentOrg si toujours valide
+        const current = orgs.find(o => o.id === currentOrgIdRef.current) || orgs[0];
+        setCurrentOrg(current);
+        setCurrentOrgId(current.id);
+        currentOrgIdRef.current = current.id;
+        return current;
+      }
+      return null;      // Zéro orgs = l'utilisateur n'en a vraiment aucune
     } catch (err) {
       console.error("loadOrgs:", err);
+      setOrgsLoadError(true);   // Erreur réseau / auth → ne PAS afficher OrgSetupView
       return null;
+    } finally {
+      setOrgsResolved(true);    // On a tenté au moins une fois
     }
   }, []);
   // Alias pour la compatibilité (bootstrap, onAuthChange)
@@ -281,8 +289,44 @@ export default function App() {
     );
   }
 
-  // OrgSetup : seulement pour les comptes connectés sans équipe
-  if (!DEMO_MODE && session && !currentOrg) {
+  // Session connue mais orgs pas encore résolues (bref moment en bootstrap)
+  if (!DEMO_MODE && session && !orgsResolved && !isVoterLink) {
+    return (
+      <>
+        <GlobalStyle />
+        <div style={{ minHeight: "100dvh", display: "flex", alignItems: "center", justifyContent: "center", background: "var(--bg)" }}>
+          <div style={{ fontSize: 14, color: "var(--label3)" }}>Chargement…</div>
+        </div>
+      </>
+    );
+  }
+
+  // Erreur de chargement des orgs (réseau, auth…) → ne jamais afficher OrgSetupView !
+  if (!DEMO_MODE && session && orgsResolved && orgsLoadError) {
+    return (
+      <>
+        <GlobalStyle />
+        <div style={{ minHeight: "100dvh", display: "flex", alignItems: "center", justifyContent: "center", background: "var(--bg)", padding: 24 }}>
+          <div style={{ background: "var(--bg2)", borderRadius: 16, padding: "32px 24px", maxWidth: 360, width: "100%", textAlign: "center" }}>
+            <div style={{ fontSize: 36, marginBottom: 12 }}>⚠️</div>
+            <div style={{ fontSize: 17, fontWeight: 700, marginBottom: 8, color: "var(--label)" }}>Impossible de charger tes équipes</div>
+            <div style={{ fontSize: 14, color: "var(--label3)", marginBottom: 24, lineHeight: 1.6 }}>
+              Erreur de connexion au serveur.<br />Vérifie ta connexion et réessaie.
+            </div>
+            <button className="btn btn-primary btn-full" onClick={() => { setOrgsResolved(false); loadOrgs(); }}>
+              Réessayer
+            </button>
+            <button className="btn btn-secondary btn-full" style={{ marginTop: 10 }} onClick={handleSignOut}>
+              Se déconnecter
+            </button>
+          </div>
+        </div>
+      </>
+    );
+  }
+
+  // OrgSetup : seulement pour les comptes connectés CONFIRMÉS sans équipe (pas d'erreur de chargement)
+  if (!DEMO_MODE && session && orgsResolved && !orgsLoadError && !currentOrg) {
     return (
       <>
         <GlobalStyle />
@@ -293,6 +337,8 @@ export default function App() {
             setCurrentOrg(orgWithRole);
             setCurrentOrgId(org.id);
             setMyOrgs([orgWithRole]);
+            setOrgsResolved(true);
+            setOrgsLoadError(false);
             loadPlayers();
             loadMatch();
             // Nouvelle équipe → montrer l'onboarding
