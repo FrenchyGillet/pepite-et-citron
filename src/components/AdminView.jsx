@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { api, DEMO_MODE } from '../api.js';
 import { Toast } from './Toast.jsx';
 
-export function AdminView({ players, onPlayersChange, activeMatch, onMatchChange, currentOrg, onSignOut, onShowGuide }) {
+export function AdminView({ players, onPlayersChange, activeMatch, onMatchChange, currentOrg, onSignOut, onShowGuide, onGoToResults }) {
   const [newPlayer,    setNewPlayer]    = useState("");
   const [matchLabel,   setMatchLabel]   = useState("");
   const [presentIds,   setPresentIds]   = useState([]);
@@ -167,8 +167,9 @@ export function AdminView({ players, onPlayersChange, activeMatch, onMatchChange
     const votes = await api.getVotes(activeMatch.id);
     const shuffled = [...votes].sort(() => Math.random() - 0.5).map(v => v.id);
     await api.startCounting(activeMatch.id, shuffled);
-    setStartingCount(false); onMatchChange();
-    setToast("Dépouillement lancé !");
+    setStartingCount(false);
+    await onMatchChange();
+    onGoToResults?.();   // bascule automatiquement sur l'onglet Résultats
   };
 
   const saveTeam = async () => {

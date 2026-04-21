@@ -480,6 +480,7 @@ export default function App() {
               currentOrg={currentOrg}
               onSignOut={handleSignOut}
               onShowGuide={() => setShowOnboarding(true)}
+              onGoToResults={() => setTab("results")}
             />
           </ErrorBoundary>
         )}
