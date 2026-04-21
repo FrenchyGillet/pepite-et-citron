@@ -4,8 +4,8 @@
   "description": "Vote pour la pépite et le citron de chaque match",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#000000",
-  "theme_color": "#000000",
+  "background_color": "#FF8000",
+  "theme_color": "#FF8000",
   "icons": [
     {
       "src": "/icon-192x192.png",
