@@ -24,7 +24,7 @@ async function parseResponse(r) {
 }
 
 // Fetch avec timeout (évite les hangs réseau indéfinis)
-function fetchWithTimeout(url, options, ms = 8000) {
+function fetchWithTimeout(url, options, ms = 5000) {
   const ctrl = new AbortController();
   const timer = setTimeout(() => ctrl.abort(), ms);
   return fetch(url, { ...options, signal: ctrl.signal }).finally(() => clearTimeout(timer));

@@ -153,8 +153,9 @@ export const realAPI = {
   getMyOrgs: async () => {
     // Utilise le RPC SECURITY DEFINER pour éviter les problèmes de RLS
     // quand le JWT n'est pas transmis correctement par le client REST custom.
+    // Timeout court (4 s) : si la fonction n'existe pas, Supabase répond immédiatement.
     try {
-      const { data, error } = await rpcWithTimeout(() => authClient.rpc("get_my_orgs"));
+      const { data, error } = await rpcWithTimeout(() => authClient.rpc("get_my_orgs"), 4000);
       if (error) throw new Error(error.message);
       return data || [];
     } catch (rpcErr) {

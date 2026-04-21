@@ -77,11 +77,17 @@ export default function App() {
   useEffect(() => {
     if (DEMO_MODE) return;
 
-    // Sécurité : si le SDK Supabase ne répond pas, on sort du loading après 6 s
+    // Sécurité : si le SDK Supabase ne répond pas, on sort du loading après 12 s
+    // Couvre à la fois authLoading ET orgsResolved pour éviter tout chargement infini.
     const safetyTimer = setTimeout(() => {
-      console.warn("bootstrap timeout — forcing authLoading = false");
+      console.warn("bootstrap safety timeout — forcing all loading states off");
       setAuthLoading(false);
-    }, 6000);
+      if (!orgsResolvedRef.current) {
+        orgsResolvedRef.current = true;
+        setOrgsResolved(true);
+        setOrgsLoadError(true);   // inconnu → afficher erreur+retry plutôt que OrgSetupView
+      }
+    }, 12000);
 
     const bootstrap = async () => {
       try {
@@ -115,7 +121,8 @@ export default function App() {
   // ── Chargement des orgs ───────────────────────────────────────────────────
   // useCallback pour éviter les stale closures dans bootstrap/onAuthChange.
   // currentOrgIdRef permet de lire l'id courant sans capturer currentOrg en closure.
-  const currentOrgIdRef = useRef(null);
+  const currentOrgIdRef  = useRef(null);
+  const orgsResolvedRef  = useRef(false);   // copie sync de orgsResolved pour les timers
   useEffect(() => { currentOrgIdRef.current = currentOrg?.id ?? null; }, [currentOrg?.id]);
 
   const loadOrgs = useCallback(async () => {
@@ -137,6 +144,7 @@ export default function App() {
       setOrgsLoadError(true);   // Erreur réseau / auth → ne PAS afficher OrgSetupView
       return null;
     } finally {
+      orgsResolvedRef.current = true;
       setOrgsResolved(true);    // On a tenté au moins une fois
     }
   }, []);
