@@ -3,7 +3,7 @@ import { api } from '../api.js';
 import { computeScores, formatDate } from '../utils.js';
 import { Scoreboard } from './Scoreboard.jsx';
 
-export function StatsView({ players }) {
+export function StatsView({ players, activeMatch }) {
   const [allVotes,       setAllVotes]       = useState([]);
   const [allMatches,     setAllMatches]     = useState([]);
   const [allTeams,       setAllTeams]       = useState([]);
@@ -24,6 +24,17 @@ export function StatsView({ players }) {
   useEffect(() => { reload(); }, []);
 
   if (loading) return <div className="content"><div className="empty">Chargement…</div></div>;
+
+  const votingInProgress = activeMatch?.is_open && (activeMatch.phase || "voting") === "voting";
+  if (votingInProgress) return (
+    <div className="content" style={{ textAlign: "center", paddingTop: 60 }}>
+      <div style={{ fontSize: 48, marginBottom: 16 }}>🔒</div>
+      <div style={{ fontSize: 18, fontWeight: 700, marginBottom: 8 }}>Classements masqués</div>
+      <div style={{ fontSize: 14, color: "var(--label3)" }}>
+        Les résultats de saison sont cachés pendant la période de vote<br />pour ne pas influencer les choix.
+      </div>
+    </div>
+  );
 
   const seasons = [...new Set(allMatches.map(m => m.season || 1))].sort((a, b) => a - b);
   const activeSeason = selectedSeason ?? currentSeason;
@@ -201,7 +212,7 @@ export function StatsView({ players }) {
                         : <Scoreboard votes={matchVotes} present={matchPresent} />
                       }
 
-                      {localStorage.getItem("pepite_admin") === "1" && (isEditing ? (
+                      {isAdmin && (isEditing ? (
                         <div style={{ marginTop: 12, display: "flex", flexDirection: "column", gap: 8 }}>
                           <input value={editingMatch.label}
                             onChange={e => setEditingMatch(em => ({ ...em, label: e.target.value }))}

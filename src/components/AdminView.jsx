@@ -1,12 +1,8 @@
 import { useState, useEffect, useCallback } from 'react';
-import { api } from '../api.js';
-import { ADMIN_PASSWORD } from '../config.js';
+import { api, DEMO_MODE } from '../api.js';
 import { Toast } from './Toast.jsx';
 
-export function AdminView({ players, onPlayersChange, activeMatch, onMatchChange }) {
-  const [isAdmin,      setIsAdmin]      = useState(() => localStorage.getItem("pepite_admin") === "1");
-  const [pwd,          setPwd]          = useState("");
-  const [pwdErr,       setPwdErr]       = useState(false);
+export function AdminView({ players, onPlayersChange, activeMatch, onMatchChange, currentOrg, onSignOut }) {
   const [newPlayer,    setNewPlayer]    = useState("");
   const [matchLabel,   setMatchLabel]   = useState("");
   const [presentIds,   setPresentIds]   = useState([]);
@@ -22,8 +18,11 @@ export function AdminView({ players, onPlayersChange, activeMatch, onMatchChange
   const [guestInput,     setGuestInput]     = useState("");
   const [guestTokens,    setGuestTokens]    = useState([]);
   const [copiedToken,    setCopiedToken]    = useState(null);
+  const [voteCount,      setVoteCount]      = useState(0);
+  const [startingCount,  setStartingCount]  = useState(false);
+  const [showAccount,    setShowAccount]    = useState(false);
 
-  const loadTeams = useCallback(async () => { setTeams(await api.getTeams()); }, []);
+  const loadTeams  = useCallback(async () => { setTeams(await api.getTeams()); }, []);
   const loadGuests = useCallback(async () => {
     if (!activeMatch) return;
     setGuestTokens(await api.getGuestTokens(activeMatch.id));
@@ -37,48 +36,43 @@ export function AdminView({ players, onPlayersChange, activeMatch, onMatchChange
 
   useEffect(() => { loadGuests(); }, [activeMatch?.id]);
 
+  useEffect(() => {
+    if (!activeMatch || (activeMatch.phase || "voting") !== "voting") { setVoteCount(0); return; }
+    api.getVotes(activeMatch.id).then(v => setVoteCount(v.length));
+    const t = setInterval(() => api.getVotes(activeMatch.id).then(v => setVoteCount(v.length)), 5000);
+    return () => clearInterval(t);
+  }, [activeMatch?.id, activeMatch?.phase]);
+
   const createGuestLink = async () => {
     if (!guestInput.trim() || !activeMatch) return;
     await api.createGuestToken(guestInput.trim(), activeMatch.id);
-    setGuestInput("");
-    loadGuests();
+    setGuestInput(""); loadGuests();
     setToast(`Lien créé pour ${guestInput.trim()}`);
   };
 
   const copyGuestLink = (token) => {
-    navigator.clipboard.writeText(`${window.location.origin}/?guest=${token}`);
+    const url = `${window.location.origin}/?guest=${token}`;
+    navigator.clipboard.writeText(url);
     setCopiedToken(token);
     setTimeout(() => setCopiedToken(null), 2000);
   };
 
-  const revokeGuest = async (id) => {
-    await api.deleteGuestToken(id);
-    loadGuests();
-  };
-
-  const login = () => {
-    if (pwd === ADMIN_PASSWORD) {
-      localStorage.setItem("pepite_admin", "1");
-      setIsAdmin(true); setPwdErr(false);
-    } else setPwdErr(true);
-  };
+  const revokeGuest = async (id) => { await api.deleteGuestToken(id); loadGuests(); };
 
   const addPlayer = async () => {
     if (!newPlayer.trim()) return;
     await api.addPlayer(newPlayer.trim());
     setToast(`${newPlayer.trim()} ajouté`);
-    setNewPlayer("");
-    onPlayersChange();
+    setNewPlayer(""); onPlayersChange();
   };
 
   const removePlayer = async (id, name) => {
     if (!confirm(`Supprimer ${name} ?`)) return;
-    await api.removePlayer(id);
-    onPlayersChange();
+    await api.removePlayer(id); onPlayersChange();
   };
 
   const togglePresent = (id) => setPresentIds(p => p.includes(id) ? p.filter(x => x !== id) : [...p, id]);
-  const toggleTeamId  = (id) => setTeamIds(p => p.includes(id) ? p.filter(x => x !== id) : [...p, id]);
+  const toggleTeamId  = (id) => setTeamIds(p  => p.includes(id) ? p.filter(x => x !== id) : [...p, id]);
 
   const loadTeamIntoMatch = (team) => { setPresentIds([...team.player_ids]); setSelectedTeamId(team.id); };
 
@@ -94,25 +88,13 @@ export function AdminView({ players, onPlayersChange, activeMatch, onMatchChange
     setCreating(true);
     await api.createMatch(matchLabel.trim(), presentIds, selectedTeamId, currentSeason);
     setMatchLabel(""); setPresentIds([]); setSelectedTeamId(null);
-    setCreating(false);
-    onMatchChange();
+    setCreating(false); onMatchChange();
     setToast("Match ouvert !");
   };
 
-  const [voteCount,    setVoteCount]    = useState(0);
-  const [startingCount, setStartingCount] = useState(false);
-
-  useEffect(() => {
-    if (!activeMatch || (activeMatch.phase || "voting") !== "voting") { setVoteCount(0); return; }
-    api.getVotes(activeMatch.id).then(v => setVoteCount(v.length));
-    const t = setInterval(() => api.getVotes(activeMatch.id).then(v => setVoteCount(v.length)), 5000);
-    return () => clearInterval(t);
-  }, [activeMatch?.id, activeMatch?.phase]);
-
   const closeMatch = async () => {
     if (!activeMatch || !confirm("Fermer définitivement le vote sans dépouillement ?")) return;
-    await api.closeMatch(activeMatch.id);
-    onMatchChange();
+    await api.closeMatch(activeMatch.id); onMatchChange();
     setToast("Vote clôturé");
   };
 
@@ -121,8 +103,7 @@ export function AdminView({ players, onPlayersChange, activeMatch, onMatchChange
     const votes = await api.getVotes(activeMatch.id);
     const shuffled = [...votes].sort(() => Math.random() - 0.5).map(v => v.id);
     await api.startCounting(activeMatch.id, shuffled);
-    setStartingCount(false);
-    onMatchChange();
+    setStartingCount(false); onMatchChange();
     setToast("Dépouillement lancé !");
   };
 
@@ -130,28 +111,14 @@ export function AdminView({ players, onPlayersChange, activeMatch, onMatchChange
     if (!teamName.trim() || teamIds.length < 2) return;
     setSavingTeam(true);
     await api.createTeam(teamName.trim(), teamIds);
-    setTeamName(""); setTeamIds([]);
-    setSavingTeam(false);
-    loadTeams();
-    setToast("Équipe sauvegardée !");
+    setTeamName(""); setTeamIds([]); setSavingTeam(false);
+    loadTeams(); setToast("Équipe sauvegardée !");
   };
 
   const deleteTeam = async (id, name) => {
     if (!confirm(`Supprimer l'équipe "${name}" ?`)) return;
-    await api.deleteTeam(id);
-    loadTeams();
+    await api.deleteTeam(id); loadTeams();
   };
-
-  if (!isAdmin) return (
-    <div className="content">
-      <p className="section-label mt-8 mb-4">Mot de passe admin</p>
-      <input type="password" placeholder="••••••••" value={pwd}
-        onChange={e => setPwd(e.target.value)}
-        onKeyDown={e => e.key === "Enter" && login()} />
-      {pwdErr && <p style={{ fontSize: 13, color: "var(--red)", marginTop: 8 }}>Mot de passe incorrect.</p>}
-      <button className="btn btn-primary btn-full mt-12" onClick={login}>Connexion</button>
-    </div>
-  );
 
   const SectionHeader = ({ num, title, subtitle }) => (
     <div style={{ marginTop: 28, marginBottom: 12 }}>
@@ -164,7 +131,7 @@ export function AdminView({ players, onPlayersChange, activeMatch, onMatchChange
         }}>{num}</div>
         <span style={{ fontSize: 15, fontWeight: 700, color: "var(--label)" }}>{title}</span>
       </div>
-      <p style={{ fontSize: 12, color: "var(--label3)", paddingLeft: 32 }}>{subtitle}</p>
+      {subtitle && <p style={{ fontSize: 12, color: "var(--label3)", paddingLeft: 32 }}>{subtitle}</p>}
     </div>
   );
 
@@ -172,9 +139,65 @@ export function AdminView({ players, onPlayersChange, activeMatch, onMatchChange
     <div className="content">
       {toast && <Toast msg={toast} onDone={() => setToast(null)} />}
 
+      {/* ── COMPTE (visible si pas DEMO_MODE) ── */}
+      {!DEMO_MODE && (
+        <div style={{ marginBottom: 4 }}>
+          <button
+            onClick={() => setShowAccount(v => !v)}
+            style={{
+              width: "100%", background: "var(--bg2)", border: "none",
+              borderRadius: "var(--radius-lg)", padding: "13px 16px",
+              display: "flex", alignItems: "center", justifyContent: "space-between",
+              cursor: "pointer", marginBottom: showAccount ? 0 : 4,
+              borderBottomLeftRadius: showAccount ? 0 : "var(--radius-lg)",
+              borderBottomRightRadius: showAccount ? 0 : "var(--radius-lg)",
+            }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+              <span style={{ fontSize: 18 }}>👤</span>
+              <div style={{ textAlign: "left" }}>
+                <div style={{ fontSize: 14, fontWeight: 600, color: "var(--label)" }}>
+                  {currentOrg?.name || "Mon équipe"}
+                </div>
+                <div style={{ fontSize: 11, color: "var(--label3)" }}>Compte admin</div>
+              </div>
+            </div>
+            <span style={{ color: "var(--label4)", fontSize: 11 }}>{showAccount ? "▲" : "▼"}</span>
+          </button>
+          {showAccount && (
+            <div style={{
+              background: "var(--bg2)", borderBottomLeftRadius: "var(--radius-lg)",
+              borderBottomRightRadius: "var(--radius-lg)", padding: "12px 16px",
+              borderTop: "1px solid var(--separator)",
+            }}>
+              {currentOrg?.slug && (
+                <div style={{ marginBottom: 12 }}>
+                  <p style={{ fontSize: 12, color: "var(--label3)", marginBottom: 4 }}>
+                    Lien de vote à partager avec ton équipe
+                  </p>
+                  <div style={{
+                    background: "var(--bg3)", borderRadius: "var(--radius-sm)",
+                    padding: "10px 12px", fontSize: 12, color: "var(--label2)",
+                    wordBreak: "break-all",
+                  }}>
+                    {window.location.origin}/?org={currentOrg.slug}
+                  </div>
+                  <button className="btn btn-secondary btn-full" style={{ marginTop: 8, fontSize: 13 }}
+                    onClick={() => { navigator.clipboard.writeText(`${window.location.origin}/?org=${currentOrg.slug}`); setToast("Lien copié !"); }}>
+                    Copier le lien
+                  </button>
+                </div>
+              )}
+              <button className="btn btn-danger btn-full" style={{ fontSize: 13 }} onClick={onSignOut}>
+                Se déconnecter
+              </button>
+            </div>
+          )}
+        </div>
+      )}
+
       {/* ── 1. MATCH DU JOUR ── */}
       <SectionHeader num="1" title="Match du jour"
-        subtitle={activeMatch ? "Un vote est en cours. Clore le vote pour en créer un nouveau." : "Lance le vote de ce soir en quelques secondes."} />
+        subtitle={activeMatch ? "Un vote est en cours." : "Lance le vote de ce soir en quelques secondes."} />
 
       {activeMatch ? (() => {
         const phase = activeMatch.phase || "voting";
@@ -227,20 +250,18 @@ export function AdminView({ players, onPlayersChange, activeMatch, onMatchChange
           {teams.length > 0 && (
             <>
               <p style={{ fontSize: 13, color: "var(--label3)", marginBottom: 8 }}>
-                Partir d'une composition sauvegardée <span style={{ color: "var(--label4)" }}>(tu pourras décocher les absents)</span>
+                Partir d'une composition sauvegardée
               </p>
               <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 16 }}>
                 {teams.map(t => (
-                  <button key={t.id}
-                    onClick={() => loadTeamIntoMatch(t)}
-                    style={{
-                      padding: "8px 14px", borderRadius: "var(--radius-sm)", fontSize: 14, fontWeight: 600,
-                      background: presentIds.length > 0 && t.player_ids.every(id => presentIds.includes(id)) && presentIds.length === t.player_ids.length
-                        ? "var(--gold-dim)" : "var(--bg3)",
-                      color: presentIds.length > 0 && t.player_ids.every(id => presentIds.includes(id)) && presentIds.length === t.player_ids.length
-                        ? "var(--gold)" : "var(--label2)",
-                      border: "none", cursor: "pointer",
-                    }}>
+                  <button key={t.id} onClick={() => loadTeamIntoMatch(t)} style={{
+                    padding: "8px 14px", borderRadius: "var(--radius-sm)", fontSize: 14, fontWeight: 600,
+                    background: presentIds.length > 0 && t.player_ids.every(id => presentIds.includes(id)) && presentIds.length === t.player_ids.length
+                      ? "var(--gold-dim)" : "var(--bg3)",
+                    color: presentIds.length > 0 && t.player_ids.every(id => presentIds.includes(id)) && presentIds.length === t.player_ids.length
+                      ? "var(--gold)" : "var(--label2)",
+                    border: "none", cursor: "pointer",
+                  }}>
                     {t.name} · {t.player_ids.length} joueurs
                   </button>
                 ))}
@@ -266,7 +287,7 @@ export function AdminView({ players, onPlayersChange, activeMatch, onMatchChange
           </div>
           {presentIds.length < 2 && (
             <p style={{ fontSize: 12, color: "var(--label3)", marginBottom: 10 }}>
-              Sélectionne au moins 2 joueurs pour lancer le vote.
+              Sélectionne au moins 2 joueurs.
             </p>
           )}
           <button className="btn btn-primary btn-full"
@@ -277,7 +298,7 @@ export function AdminView({ players, onPlayersChange, activeMatch, onMatchChange
         </div>
       )}
 
-      {/* ── INVITÉS (visible quand match en cours) ── */}
+      {/* ── SUPPORTERS INVITÉS ── */}
       {activeMatch && (activeMatch.phase || "voting") === "voting" && (
         <>
           <div style={{ marginTop: 28, marginBottom: 12 }}>
@@ -285,9 +306,10 @@ export function AdminView({ players, onPlayersChange, activeMatch, onMatchChange
               <span style={{ fontSize: 18 }}>🔗</span>
               <span style={{ fontSize: 15, fontWeight: 700, color: "var(--label)" }}>Supporters invités</span>
             </div>
-            <p style={{ fontSize: 12, color: "var(--label3)", paddingLeft: 28 }}>Crée un lien unique par invité pour qu'il puisse voter depuis son téléphone.</p>
+            <p style={{ fontSize: 12, color: "var(--label3)", paddingLeft: 28 }}>
+              Crée un lien unique par invité pour qu'il puisse voter depuis son téléphone.
+            </p>
           </div>
-
           {guestTokens.length > 0 && (
             <div className="group" style={{ marginBottom: 12 }}>
               {guestTokens.map((gt, i) => (
@@ -313,24 +335,19 @@ export function AdminView({ players, onPlayersChange, activeMatch, onMatchChange
               ))}
             </div>
           )}
-
           <div className="flex gap-8" style={{ marginBottom: 4 }}>
             <input placeholder="Prénom du supporter" value={guestInput}
               onChange={e => setGuestInput(e.target.value)}
               onKeyDown={e => e.key === "Enter" && createGuestLink()} />
             <button className="btn btn-primary" style={{ whiteSpace: "nowrap", padding: "12px 16px" }}
-              onClick={createGuestLink}>
-              Créer
-            </button>
+              onClick={createGuestLink}>Créer</button>
           </div>
-          <p style={{ fontSize: 11, color: "var(--label4)", marginBottom: 4 }}>Le lien s'ouvre directement sur le formulaire de vote, pré-rempli au nom de l'invité.</p>
         </>
       )}
 
-      {/* ── 2. MES COMPOSITIONS ── */}
+      {/* ── 2. COMPOSITIONS ── */}
       <SectionHeader num="2" title="Mes compositions"
-        subtitle="Sauvegarde ta liste habituelle pour la recharger en un clic avant chaque match." />
-
+        subtitle="Sauvegarde ta liste habituelle pour la recharger en un clic." />
       {teams.length > 0 && (
         <div className="group" style={{ marginBottom: 12 }}>
           {teams.map((t, i) => (
@@ -350,14 +367,12 @@ export function AdminView({ players, onPlayersChange, activeMatch, onMatchChange
           ))}
         </div>
       )}
-
       <div style={{ marginBottom: 8 }}>
         <button className="tag tag-dim" style={{ fontSize: 13, padding: "7px 12px" }}
           onClick={() => setShowNewTeam(v => !v)}>
-          {showNewTeam ? "▲ Masquer le formulaire" : "＋ Créer une composition"}
+          {showNewTeam ? "▲ Masquer" : "＋ Créer une composition"}
         </button>
       </div>
-
       {showNewTeam && (
         <div className="group" style={{ padding: "14px 16px", marginBottom: 4 }}>
           <p style={{ fontSize: 13, color: "var(--label3)", marginBottom: 8 }}>Nom de la composition</p>
@@ -378,18 +393,15 @@ export function AdminView({ players, onPlayersChange, activeMatch, onMatchChange
         </div>
       )}
 
-      {/* ── 3. MES JOUEURS ── */}
+      {/* ── 3. JOUEURS ── */}
       <SectionHeader num="3" title="Mes joueurs"
-        subtitle="La liste complète des joueurs. Ajoute chaque membre de l'équipe ici." />
-
-
+        subtitle="La liste complète des joueurs de l'équipe." />
       <div className="flex gap-8" style={{ marginBottom: 12 }}>
         <input placeholder="Prénom du joueur" value={newPlayer}
           onChange={e => setNewPlayer(e.target.value)}
           onKeyDown={e => e.key === "Enter" && addPlayer()} />
-        <button className="btn btn-primary" style={{ whiteSpace: "nowrap", padding: "12px 16px" }} onClick={addPlayer}>
-          Ajouter
-        </button>
+        <button className="btn btn-primary" style={{ whiteSpace: "nowrap", padding: "12px 16px" }}
+          onClick={addPlayer}>Ajouter</button>
       </div>
       <div className="group">
         {players.length === 0
@@ -407,7 +419,7 @@ export function AdminView({ players, onPlayersChange, activeMatch, onMatchChange
       {/* ── 4. SAISON ── */}
       <SectionHeader num="4" title="Saison"
         subtitle={`Saison actuelle : ${currentSeason}. Démarre une nouvelle saison pour remettre le classement à zéro sans perdre l'historique.`} />
-      <div className="group">
+      <div className="group" style={{ marginBottom: 24 }}>
         <div className="row">
           <div className="row-icon green">📅</div>
           <div className="row-body">

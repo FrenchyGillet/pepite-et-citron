@@ -8,45 +8,25 @@ beforeEach(() => {
 });
 
 describe("Admin flow", () => {
-  it("shows password form when not logged in", async () => {
-    render(<App />);
-    const user = userEvent.setup();
-    const adminBtn = await screen.findByRole("button", { name: /admin/i });
-    await user.click(adminBtn);
-    expect(screen.getByPlaceholderText("••••••••")).toBeInTheDocument();
-  });
-
-  it("shows error on wrong password", async () => {
-    render(<App />);
-    const user = userEvent.setup();
-    const adminBtn = await screen.findByRole("button", { name: /admin/i });
-    await user.click(adminBtn);
-    await user.type(screen.getByPlaceholderText("••••••••"), "wrongpass");
-    await user.click(screen.getByRole("button", { name: /connexion/i }));
-    expect(await screen.findByText("Mot de passe incorrect.")).toBeInTheDocument();
-  });
-
-  it("shows admin UI after correct login", async () => {
-    render(<App />);
-    const user = userEvent.setup();
-    const adminBtn = await screen.findByRole("button", { name: /admin/i });
-    await user.click(adminBtn);
-    await user.type(screen.getByPlaceholderText("••••••••"), "hockeyadmin");
-    await user.click(screen.getByRole("button", { name: /connexion/i }));
-    expect(await screen.findByText("Match du jour")).toBeInTheDocument();
-  });
-
-  it("persists login via localStorage", async () => {
-    localStorage.setItem("pepite_admin", "1");
+  // En DEMO_MODE, l'admin est toujours connecté — pas de formulaire de mot de passe
+  it("shows admin tab and UI directly in demo mode", async () => {
     render(<App />);
     const user = userEvent.setup();
     const adminBtn = await screen.findByRole("button", { name: /admin/i });
     await user.click(adminBtn);
     expect(await screen.findByText("Match du jour")).toBeInTheDocument();
+  });
+
+  it("shows admin UI when navigating to admin tab", async () => {
+    render(<App />);
+    const user = userEvent.setup();
+    const adminBtn = await screen.findByRole("button", { name: /admin/i });
+    await user.click(adminBtn);
+    expect(await screen.findByText("Match du jour")).toBeInTheDocument();
+    expect(await screen.findByText("Mes joueurs")).toBeInTheDocument();
   });
 
   it("can create a match", async () => {
-    localStorage.setItem("pepite_admin", "1");
     render(<App />);
     const user = userEvent.setup();
 
@@ -83,7 +63,6 @@ describe("Admin flow", () => {
     // Create a match via API directly
     await __demoAPI.createMatch("Match actif", [1, 2, 3, 4, 5], null, 1);
 
-    localStorage.setItem("pepite_admin", "1");
     render(<App />);
     const user = userEvent.setup();
 
@@ -96,7 +75,6 @@ describe("Admin flow", () => {
   it("can create a guest token", async () => {
     await __demoAPI.createMatch("Match actif", [1, 2, 3, 4, 5], null, 1);
 
-    localStorage.setItem("pepite_admin", "1");
     render(<App />);
     const user = userEvent.setup();
 
