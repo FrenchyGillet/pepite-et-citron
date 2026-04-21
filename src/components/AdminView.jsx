@@ -15,6 +15,9 @@ export function AdminView({ players, onPlayersChange, activeMatch, onMatchChange
   const [savingTeam,     setSavingTeam]     = useState(false);
   const [selectedTeamId, setSelectedTeamId] = useState(null);
   const [currentSeason,  setCurrentSeason]  = useState(1);
+  const [seasonName,     setSeasonName]     = useState("");
+  const [seasonNameDraft,setSeasonNameDraft]= useState("");
+  const [editingSeason,  setEditingSeason]  = useState(false);
   const [guestInput,     setGuestInput]     = useState("");
   const [guestTokens,    setGuestTokens]    = useState([]);
   const [copiedToken,    setCopiedToken]    = useState(null);
@@ -29,8 +32,10 @@ export function AdminView({ players, onPlayersChange, activeMatch, onMatchChange
   }, [activeMatch?.id]);
 
   useEffect(() => {
-    Promise.all([api.getTeams(), api.getCurrentSeason()]).then(([t, cs]) => {
+    Promise.all([api.getTeams(), api.getCurrentSeason()]).then(async ([t, cs]) => {
       setTeams(t); setCurrentSeason(cs);
+      const name = await api.getSeasonName(cs);
+      setSeasonName(name || ""); setSeasonNameDraft(name || "");
     });
   }, []);
 
@@ -82,10 +87,20 @@ export function AdminView({ players, onPlayersChange, activeMatch, onMatchChange
 
   const loadTeamIntoMatch = (team) => { setPresentIds([...team.player_ids]); setSelectedTeamId(team.id); };
 
+  const saveSeasonName = async () => {
+    await api.setSeasonName(currentSeason, seasonNameDraft.trim());
+    setSeasonName(seasonNameDraft.trim());
+    setEditingSeason(false);
+    setToast("Nom de saison sauvegardé !");
+  };
+
   const advanceSeason = async () => {
-    if (!confirm(`Démarrer la saison ${currentSeason + 1} ? L'historique de la saison ${currentSeason} est conservé.`)) return;
+    const label = seasonName ? `"${seasonName}"` : `Saison ${currentSeason}`;
+    if (!confirm(`Démarrer la saison ${currentSeason + 1} ? L'historique de ${label} est conservé.`)) return;
     const next = await api.advanceSeason();
     setCurrentSeason(next);
+    const nextName = await api.getSeasonName(next);
+    setSeasonName(nextName || ""); setSeasonNameDraft(nextName || "");
     setToast(`Saison ${next} démarrée !`);
   };
 
@@ -259,7 +274,7 @@ export function AdminView({ players, onPlayersChange, activeMatch, onMatchChange
           {teams.length > 0 && (
             <>
               <p style={{ fontSize: 13, color: "var(--label3)", marginBottom: 8 }}>
-                Partir d'une composition sauvegardée
+                Partir d'une équipe sauvegardée
               </p>
               <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 16 }}>
                 {teams.map(t => (
@@ -354,8 +369,8 @@ export function AdminView({ players, onPlayersChange, activeMatch, onMatchChange
         </>
       )}
 
-      {/* ── 2. COMPOSITIONS ── */}
-      <SectionHeader num="2" title="Mes compositions"
+      {/* ── 2. ÉQUIPES ── */}
+      <SectionHeader num="2" title="Mes équipes"
         subtitle="Sauvegarde ta liste habituelle pour la recharger en un clic." />
       {teams.length > 0 && (
         <div className="group" style={{ marginBottom: 12 }}>
@@ -379,15 +394,24 @@ export function AdminView({ players, onPlayersChange, activeMatch, onMatchChange
       <div style={{ marginBottom: 8 }}>
         <button className="tag tag-dim" style={{ fontSize: 13, padding: "7px 12px" }}
           onClick={() => setShowNewTeam(v => !v)}>
-          {showNewTeam ? "▲ Masquer" : "＋ Créer une composition"}
+          {showNewTeam ? "▲ Masquer" : "＋ Créer une équipe"}
         </button>
       </div>
       {showNewTeam && (
         <div className="group" style={{ padding: "14px 16px", marginBottom: 4 }}>
-          <p style={{ fontSize: 13, color: "var(--label3)", marginBottom: 8 }}>Nom de la composition</p>
+          <p style={{ fontSize: 13, color: "var(--label3)", marginBottom: 8 }}>Nom de l'équipe</p>
           <input placeholder="ex : Équipe A, Jeudi soir…" value={teamName}
             onChange={e => setTeamName(e.target.value)} style={{ marginBottom: 16 }} />
-          <p style={{ fontSize: 13, color: "var(--label3)", marginBottom: 8 }}>Joueurs à inclure</p>
+          <div className="flex-between" style={{ marginBottom: 8 }}>
+            <p style={{ fontSize: 13, color: "var(--label3)" }}>
+              Joueurs à inclure
+              {teamIds.length > 0 && <span style={{ color: "var(--label2)", marginLeft: 6 }}>{teamIds.length} sélectionné{teamIds.length > 1 ? "s" : ""}</span>}
+            </p>
+            <div className="flex gap-8">
+              <button className="tag tag-dim" onClick={() => setTeamIds(players.map(p => p.id))}>Tous</button>
+              <button className="tag tag-dim" onClick={() => setTeamIds([])}>Aucun</button>
+            </div>
+          </div>
           <div className="player-grid" style={{ marginBottom: 12 }}>
             {players.map(p => (
               <button key={p.id} className={`player-chip ${teamIds.includes(p.id) ? "sel-1st" : ""}`}
@@ -427,15 +451,36 @@ export function AdminView({ players, onPlayersChange, activeMatch, onMatchChange
 
       {/* ── 4. SAISON ── */}
       <SectionHeader num="4" title="Saison"
-        subtitle={`Saison actuelle : ${currentSeason}. Démarre une nouvelle saison pour remettre le classement à zéro sans perdre l'historique.`} />
+        subtitle="Nomme la saison et démarre-en une nouvelle sans perdre l'historique." />
       <div className="group" style={{ marginBottom: 24 }}>
         <div className="row">
           <div className="row-body">
-            <div className="row-title">Saison {currentSeason} en cours</div>
-            <div className="row-sub">Tous les nouveaux matchs appartiennent à cette saison</div>
+            <div className="row-title">{seasonName || `Saison ${currentSeason}`}</div>
+            <div className="row-sub">Saison {currentSeason} · en cours</div>
           </div>
+          <button className="btn btn-secondary" style={{ padding: "5px 12px", fontSize: 13 }}
+            onClick={() => { setSeasonNameDraft(seasonName); setEditingSeason(v => !v); }}>
+            {editingSeason ? "Annuler" : "Renommer"}
+          </button>
         </div>
-        <div style={{ padding: "12px 16px" }}>
+        {editingSeason && (
+          <div style={{ padding: "0 16px 14px" }}>
+            <input
+              placeholder={`ex : Hiver 2025, Saison ${currentSeason}…`}
+              value={seasonNameDraft}
+              onChange={e => setSeasonNameDraft(e.target.value)}
+              onKeyDown={e => e.key === "Enter" && saveSeasonName()}
+              style={{ marginBottom: 8 }}
+              autoFocus
+            />
+            <button className="btn btn-primary btn-full"
+              disabled={!seasonNameDraft.trim()}
+              onClick={saveSeasonName}>
+              Sauvegarder le nom
+            </button>
+          </div>
+        )}
+        <div style={{ padding: "0 16px 14px" }}>
           <button className="btn btn-secondary btn-full" onClick={advanceSeason}>
             Démarrer la saison {currentSeason + 1}
           </button>

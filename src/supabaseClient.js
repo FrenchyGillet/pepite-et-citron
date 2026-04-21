@@ -16,6 +16,20 @@ async function buildHeaders() {
   };
 }
 
+// Parse la réponse en toute sécurité (gère les corps vides et le non-JSON)
+async function parseResponse(r) {
+  const text = await r.text();
+  if (!text) return null;
+  try { return JSON.parse(text); } catch { return null; }
+}
+
+// Fetch avec timeout (évite les hangs réseau indéfinis)
+function fetchWithTimeout(url, options, ms = 8000) {
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), ms);
+  return fetch(url, { ...options, signal: ctrl.signal }).finally(() => clearTimeout(timer));
+}
+
 // Client REST minimal (même API qu'avant, maintenant avec JWT dynamique)
 export const supabase = {
   async from(table) {
@@ -26,29 +40,32 @@ export const supabase = {
         let url = `${base}?select=${cols}`;
         if (opts.filter) url += `&${opts.filter}`;
         if (opts.order) url += `&order=${opts.order}`;
-        const r = await fetch(url, { headers });
-        const json = await r.json();
-        if (!r.ok) throw new Error(json?.message || `Erreur ${r.status}`);
-        return json;
+        const r = await fetchWithTimeout(url, { headers });
+        const json = await parseResponse(r);
+        if (!r.ok) throw new Error(json?.message || json?.error || `Erreur ${r.status}`);
+        return json ?? [];
       },
       async insert(data) {
         const headers = await buildHeaders();
-        const r = await fetch(base, { method: "POST", headers, body: JSON.stringify(data) });
-        const json = await r.json();
-        if (!r.ok) throw new Error(json?.message || `Erreur ${r.status}`);
+        const r = await fetchWithTimeout(base, { method: "POST", headers, body: JSON.stringify(data) });
+        const json = await parseResponse(r);
+        if (!r.ok) throw new Error(json?.message || json?.error || `Erreur ${r.status}`);
         return json;
       },
       async update(data, filter) {
         const headers = await buildHeaders();
-        const r = await fetch(`${base}?${filter}`, { method: "PATCH", headers, body: JSON.stringify(data) });
-        const json = await r.json();
-        if (!r.ok) throw new Error(json?.message || `Erreur ${r.status}`);
+        const r = await fetchWithTimeout(`${base}?${filter}`, { method: "PATCH", headers, body: JSON.stringify(data) });
+        const json = await parseResponse(r);
+        if (!r.ok) throw new Error(json?.message || json?.error || `Erreur ${r.status}`);
         return json;
       },
       async delete(filter) {
         const headers = await buildHeaders();
-        const r = await fetch(`${base}?${filter}`, { method: "DELETE", headers });
-        if (!r.ok) { const json = await r.json().catch(() => ({})); throw new Error(json?.message || `Erreur ${r.status}`); }
+        const r = await fetchWithTimeout(`${base}?${filter}`, { method: "DELETE", headers });
+        if (!r.ok) {
+          const json = await parseResponse(r);
+          throw new Error(json?.message || json?.error || `Erreur ${r.status}`);
+        }
         return true;
       },
     };

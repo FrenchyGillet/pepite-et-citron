@@ -17,7 +17,7 @@ export let demoState = {
     { id: 7, name: "Guillaume" }, { id: 8, name: "Hugo" },
     { id: 9, name: "Julien" }, { id: 10, name: "Kevin" },
   ],
-  matches: [], votes: [], teams: [], guestTokens: [], nextId: 100, currentSeason: 1,
+  matches: [], votes: [], teams: [], guestTokens: [], nextId: 100, currentSeason: 1, seasonNames: {},
 };
 
 export const demoAPI = {
@@ -48,6 +48,8 @@ export const demoAPI = {
   deleteMatch:      (id)        => { demoState.matches = demoState.matches.filter(m => m.id !== id); demoState.votes = demoState.votes.filter(v => v.match_id !== id); return Promise.resolve(true); },
   getCurrentSeason: () => Promise.resolve(demoState.currentSeason),
   advanceSeason:    () => { demoState.currentSeason++; return Promise.resolve(demoState.currentSeason); },
+  getSeasonName:    (season) => Promise.resolve(demoState.seasonNames[season] || null),
+  setSeasonName:    (season, name) => { demoState.seasonNames[season] = name; return Promise.resolve(); },
   hasVoted:         (matchId, voterName) => Promise.resolve(demoState.votes.some(v => v.match_id === matchId && v.voter_name === voterName)),
   submitVote:       (vote) => { demoState.votes.push({ ...vote, id: demoState.nextId++ }); return Promise.resolve(true); },
   getVotes:         (matchId) => Promise.resolve(demoState.votes.filter(v => v.match_id === matchId)),
@@ -197,6 +199,22 @@ export const realAPI = {
     }
     return next;
   },
+  getSeasonName: async (season) => {
+    try {
+      const db = await supabase.from("settings");
+      const r = await db.select("value", { filter: `key=eq.season_name_${season}&org_id=eq.${_orgId}` });
+      return r[0]?.value || null;
+    } catch { return null; }
+  },
+  setSeasonName: async (season, name) => {
+    const db = await supabase.from("settings");
+    const existing = await db.select("id", { filter: `key=eq.season_name_${season}&org_id=eq.${_orgId}` });
+    if (existing?.length > 0) {
+      await db.update({ value: name }, `key=eq.season_name_${season}&org_id=eq.${_orgId}`);
+    } else {
+      await db.insert({ key: `season_name_${season}`, value: name, org_id: _orgId });
+    }
+  },
 
   // ── Votes ─────────────────────────────────────────────────────────────────
   hasVoted: async (matchId, voterName) => {
@@ -278,8 +296,9 @@ export function __resetDemoState() {
   demoState.votes       = [];
   demoState.teams       = [];
   demoState.guestTokens = [];
-  demoState.nextId      = 100;
+  demoState.nextId        = 100;
   demoState.currentSeason = 1;
+  demoState.seasonNames   = {};
 }
 
 export { demoAPI as __demoAPI };

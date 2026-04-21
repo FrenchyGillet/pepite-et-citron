@@ -7,6 +7,7 @@ import { VoteView }      from './components/VoteView.jsx';
 import { ResultsView }   from './components/ResultsView.jsx';
 import { StatsView }     from './components/StatsView.jsx';
 import { AdminView }     from './components/AdminView.jsx';
+import { EmptyState }   from './components/EmptyState.jsx';
 
 export default function App() {
   // ── Auth & org ─────────────────────────────────────────────────────────────
@@ -37,6 +38,12 @@ export default function App() {
   useEffect(() => {
     if (DEMO_MODE) return;
 
+    // Sécurité : si le SDK Supabase ne répond pas, on sort du loading après 6 s
+    const safetyTimer = setTimeout(() => {
+      console.warn("bootstrap timeout — forcing authLoading = false");
+      setAuthLoading(false);
+    }, 6000);
+
     const bootstrap = async () => {
       try {
         const session = await api.getSession();
@@ -47,6 +54,7 @@ export default function App() {
       } catch (err) {
         console.error("bootstrap:", err);
       } finally {
+        clearTimeout(safetyTimer);
         setAuthLoading(false);
       }
     };
@@ -230,13 +238,13 @@ export default function App() {
                 <span className="header-amp"> & </span>
                 <span className="header-citron">Citron</span>
               </div>
+              {currentOrg?.name && !DEMO_MODE && (
+                <div className="header-sub" style={{ color: "var(--gold)", fontWeight: 600 }}>
+                  {currentOrg.name}
+                </div>
+              )}
               <div className="header-sub">
-                {currentOrg?.name && !DEMO_MODE
-                  ? <span style={{ color: "var(--gold)", fontWeight: 600 }}>{currentOrg.name}</span>
-                  : null
-                }
-                {currentOrg?.name && !DEMO_MODE && activeMatch ? " · " : null}
-                {activeMatch ? activeMatch.label : ((!currentOrg?.name || DEMO_MODE) ? "Aucun match en cours" : "Aucun match en cours")}
+                {activeMatch ? activeMatch.label : "Aucun match en cours"}
               </div>
             </div>
             <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
@@ -266,10 +274,18 @@ export default function App() {
 
         {/* Guest token states */}
         {tab === "vote" && guestStatus === "checking" && (
-          <div className="content"><div className="empty">Vérification du lien…</div></div>
+          <EmptyState
+            icon={<><circle cx="12" cy="12" r="9"/><path d="M12 8v4l2.5 2.5" strokeLinecap="round"/></>}
+            title="Vérification…"
+            subtitle="Validation de ton lien d'invitation"
+          />
         )}
         {tab === "vote" && guestStatus === "invalid" && (
-          <div className="content"><div className="empty">🔒 Ce lien est invalide ou a déjà été utilisé.</div></div>
+          <EmptyState
+            icon={<><circle cx="12" cy="12" r="9"/><path d="M15 9l-6 6M9 9l6 6"/></>}
+            title="Lien invalide"
+            subtitle="Ce lien a déjà été utilisé ou n'existe pas."
+          />
         )}
 
         {/* Vote flow */}
@@ -277,26 +293,34 @@ export default function App() {
           <VoteView players={players} match={activeMatch} onVoted={handleVoted} guestName={guestName} onGuestVoted={handleGuestVoted} />
         )}
         {tab === "vote" && guestStatus !== "checking" && guestStatus !== "invalid" && (votedThisSession || hasVotedLocally(activeMatch?.id)) && (activeMatch?.phase || "voting") === "voting" && (
-          <div className="content" style={{ textAlign: "center", paddingTop: 60 }}>
-            <div style={{ fontSize: 52, marginBottom: 16 }}>✅</div>
-            <div style={{ fontSize: 20, fontWeight: 700, marginBottom: 8 }}>Vote enregistré</div>
-            <div style={{ fontSize: 14, color: "var(--label3)", marginBottom: 24 }}>
-              Les résultats se mettent à jour en temps réel.
-            </div>
-            <button className="btn btn-primary" onClick={() => setTab("results")}>Voir les résultats</button>
-          </div>
+          <EmptyState
+            icon={<><path d="M22 11.08V12a10 10 0 11-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></>}
+            title="Vote enregistré"
+            subtitle="Les résultats se mettent à jour en temps réel."
+            action={{ label: "Voir les résultats", onClick: () => setTab("results") }}
+          />
         )}
         {tab === "vote" && guestStatus !== "checking" && guestStatus !== "invalid" && !guestName && !activeMatch && !lastMatch && (
-          <div className="content"><div className="empty">Aucun vote en cours.<br />{isAdmin ? "Ouvrez un match dans l'onglet Admin." : "L'admin doit ouvrir un match."}</div></div>
+          <EmptyState
+            icon={<><rect x="3" y="3" width="18" height="18" rx="3"/><path d="M8 12h8M12 8v8"/></>}
+            title="Pas de match ce soir"
+            subtitle={isAdmin ? "Ouvre un match depuis l'onglet Admin pour lancer le vote." : "Ton capitaine n'a pas encore ouvert le vote."}
+            action={isAdmin ? { label: "Ouvrir un match", onClick: () => setTab("admin") } : null}
+          />
         )}
         {tab === "vote" && guestStatus !== "checking" && guestStatus !== "invalid" && !guestName && (
           (!activeMatch && lastMatch) ||
           (activeMatch && (activeMatch.phase || "voting") !== "voting")
         ) && (
-          <div className="content"><div className="empty">🔒 La période de vote est terminée.<br />Consulte l'onglet Résultats.</div></div>
+          <EmptyState
+            icon={<><rect x="3" y="11" width="18" height="10" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></>}
+            title="Vote terminé"
+            subtitle="La période de vote est clôturée."
+            action={{ label: "Voir les résultats", onClick: () => setTab("results") }}
+          />
         )}
 
-        {tab === "results" && <ResultsView players={players} match={lastMatch} refreshKey={refreshKey} onMatchUpdate={loadMatch} />}
+        {tab === "results" && <ResultsView players={players} match={lastMatch} refreshKey={refreshKey} onMatchUpdate={loadMatch} isAdmin={isAdmin} />}
         {tab === "stats"   && <StatsView players={players} activeMatch={activeMatch} isAdmin={isAdmin} />}
         {tab === "admin"   && isAdmin && (
           <AdminView

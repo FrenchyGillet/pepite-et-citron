@@ -152,7 +152,7 @@ export function VoteView({ players, match, onVoted, guestName = null, onGuestVot
                 <div style={{ background: "var(--lemon-dim)", color: "var(--lemon)", borderRadius: 20, padding: "4px 11px", fontSize: 13, fontWeight: 800, flexShrink: 0 }}>1 pt</div>
               </div>
               <div className="player-grid">
-                {present.filter(p => p.name !== voterName && p.id !== best1?.id && p.id !== best2?.id).map(p => (
+                {present.map(p => (
                   <button key={p.id} className={`player-chip ${lemon?.id === p.id ? "sel-lemon" : ""}`}
                     onClick={() => setLemon(p)}>{p.name}</button>
                 ))}

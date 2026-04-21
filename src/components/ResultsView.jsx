@@ -3,8 +3,9 @@ import { api } from '../api.js';
 import { computeScores, formatDate } from '../utils.js';
 import { Scoreboard } from './Scoreboard.jsx';
 import { PodiumView } from './PodiumView.jsx';
+import { EmptyState } from './EmptyState.jsx';
 
-export function ResultsView({ players, match, refreshKey, onMatchUpdate }) {
+export function ResultsView({ players, match, refreshKey, onMatchUpdate, isAdmin }) {
   const [votes,              setVotes]              = useState([]);
   const [loading,            setLoading]            = useState(true);
   const [revealing,          setRevealing]          = useState(false);
@@ -25,7 +26,15 @@ export function ResultsView({ players, match, refreshKey, onMatchUpdate }) {
     return () => clearInterval(t);
   }, [match?.id, match?.is_open]);
 
-  if (!match)  return <div className="content"><div className="empty">Aucun match en cours.</div></div>;
+  if (!match)  return (
+    <div className="content">
+      <EmptyState
+        icon={<><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></>}
+        title="Aucun match récent"
+        subtitle="Les résultats s'afficheront ici une fois le premier match clôturé."
+      />
+    </div>
+  );
   if (loading) return <div className="content"><div className="empty">Chargement…</div></div>;
 
   const present = players.filter(p => match.present_ids.includes(p.id));
@@ -185,7 +194,6 @@ export function ResultsView({ players, match, refreshKey, onMatchUpdate }) {
 
   // ── CLOSED : full results ──
   const tiebreakers = match.tiebreakers || {};
-  const isAdmin = localStorage.getItem("pepite_admin") === "1";
 
   const { best: bestScores, lemon: lemonScores } = computeScores(votes, present);
   const topBestPts  = Math.max(...present.map(p => bestScores[p.id]?.pts || 0));

@@ -2,6 +2,7 @@ import { useState, useCallback, useEffect } from 'react';
 import { api } from '../api.js';
 import { computeScores, formatDate } from '../utils.js';
 import { Scoreboard } from './Scoreboard.jsx';
+import { EmptyState } from './EmptyState.jsx';
 
 export function StatsView({ players, activeMatch }) {
   const [allVotes,       setAllVotes]       = useState([]);
@@ -12,12 +13,21 @@ export function StatsView({ players, activeMatch }) {
   const [selectedTeamId, setSelectedTeamId] = useState(null);
   const [expandedId,     setExpandedId]     = useState(null);
   const [editingMatch,   setEditingMatch]   = useState(null);
+  const [seasonNames,    setSeasonNames]    = useState({});
   const [loading,        setLoading]        = useState(true);
 
   const reload = useCallback(async () => {
     const [v, m, t, cs] = await Promise.all([api.getAllVotes(), api.getMatches(), api.getTeams(), api.getCurrentSeason()]);
     setAllVotes(v); setAllMatches(m); setAllTeams(t); setCurrentSeason(cs);
     setSelectedSeason(prev => prev ?? cs);
+    // Charge les noms de saisons
+    const uniqueSeasons = [...new Set(m.map(match => match.season || 1))];
+    const names = {};
+    await Promise.all(uniqueSeasons.map(async s => {
+      const name = await api.getSeasonName(s);
+      if (name) names[s] = name;
+    }));
+    setSeasonNames(names);
     setLoading(false);
   }, []);
 
@@ -27,12 +37,12 @@ export function StatsView({ players, activeMatch }) {
 
   const votingInProgress = activeMatch?.is_open && (activeMatch.phase || "voting") === "voting";
   if (votingInProgress) return (
-    <div className="content" style={{ textAlign: "center", paddingTop: 60 }}>
-      <div style={{ fontSize: 48, marginBottom: 16 }}>🔒</div>
-      <div style={{ fontSize: 18, fontWeight: 700, marginBottom: 8 }}>Classements masqués</div>
-      <div style={{ fontSize: 14, color: "var(--label3)" }}>
-        Les résultats de saison sont cachés pendant la période de vote<br />pour ne pas influencer les choix.
-      </div>
+    <div className="content">
+      <EmptyState
+        icon={<><rect x="3" y="11" width="18" height="10" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></>}
+        title="Classements masqués"
+        subtitle="Les stats de saison sont cachées pendant le vote pour ne pas influencer les choix."
+      />
     </div>
   );
 
@@ -103,7 +113,7 @@ export function StatsView({ players, activeMatch }) {
       {seasons.length > 0 && (
         <div style={{ marginTop: 12, marginBottom: 16 }}>
           <TabBar
-            items={seasons.map(s => ({ id: s, label: `Saison ${s}${s === currentSeason ? " ·" : ""}` }))}
+            items={seasons.map(s => ({ id: s, label: `${seasonNames[s] || `Saison ${s}`}${s === currentSeason ? " ·" : ""}` }))}
             active={activeSeason}
             onChange={s => { setSelectedSeason(s); setSelectedTeamId(null); setExpandedId(null); }}
           />
@@ -127,7 +137,11 @@ export function StatsView({ players, activeMatch }) {
       )}
 
       {filteredMatches.length === 0 ? (
-        <div className="empty">Aucun match pour cette sélection.</div>
+        <EmptyState
+          icon={<><path d="M18 20V10M12 20V4M6 20v-6"/></>}
+          title="Pas encore de match"
+          subtitle="Les statistiques s'afficheront dès que le premier match de cette saison sera clôturé."
+        />
       ) : (
         <>
           {/* Pépites ranking */}
