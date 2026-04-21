@@ -89,6 +89,6 @@ describe("Player voting flow", () => {
 
     render(<App />);
 
-    expect(await screen.findByText(/La période de vote est terminée/i)).toBeInTheDocument();
+    expect(await screen.findByText(/Vote terminé/i)).toBeInTheDocument();
   });
 });

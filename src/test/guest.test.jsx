@@ -34,7 +34,7 @@ describe("Guest token flow", () => {
     render(<App />);
 
     expect(
-      await screen.findByText(/Ce lien est invalide ou a déjà été utilisé\./i)
+      await screen.findByText(/Ce lien a déjà été utilisé ou n'existe pas\./i)
     ).toBeInTheDocument();
   });
 
@@ -51,7 +51,7 @@ describe("Guest token flow", () => {
     render(<App />);
 
     expect(
-      await screen.findByText(/Ce lien est invalide ou a déjà été utilisé\./i)
+      await screen.findByText(/Ce lien a déjà été utilisé ou n'existe pas\./i)
     ).toBeInTheDocument();
   });
 

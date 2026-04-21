@@ -84,7 +84,8 @@ describe("Admin flow", () => {
 
     const guestInput = screen.getByPlaceholderText(/Prénom du supporter/i);
     await user.type(guestInput, "Tonton");
-    await user.click(screen.getByRole("button", { name: /Créer/i }));
+    // Cible exactement "Créer" (et non "＋ Créer une équipe" dans la section Équipes)
+    await user.click(screen.getByRole("button", { name: /^Créer$/i }));
 
     expect(await screen.findByText("Tonton")).toBeInTheDocument();
     expect(await screen.findByText("En attente")).toBeInTheDocument();
