@@ -251,8 +251,19 @@ export const realAPI = {
     return Array.isArray(r) && r.length > 0;
   },
   submitVote: async (vote) => {
-    const db = await supabase.from("votes");
-    return db.insert(vote);
+    // withRetry n'est pas utilisé ici pour éviter les doublons.
+    // En cas d'erreur réseau l'UI affiche un message et l'utilisateur peut réessayer.
+    // Si le vote existe déjà (contrainte unique), Supabase renvoie 409 → on ignore.
+    try {
+      const db = await supabase.from("votes");
+      await db.insert(vote);
+    } catch (err) {
+      // 409 Conflict = vote déjà enregistré (idempotent) → succès
+      if (err.message?.includes("409") || err.message?.includes("duplicate") || err.message?.includes("unique")) {
+        return;
+      }
+      throw err;
+    }
   },
   getVotes: async (matchId) => {
     const db = await supabase.from("votes");

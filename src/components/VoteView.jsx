@@ -11,6 +11,7 @@ export function VoteView({ players, match, onVoted, guestName = null, onGuestVot
   const [lemon,        setLemon]        = useState(null);
   const [lemonComment, setLemonComment] = useState("");
   const [submitting,   setSubmitting]   = useState(false);
+  const [submitError,  setSubmitError]  = useState(null);
   const [alreadyVoted, setAlreadyVoted] = useState(false);
   const [checking,     setChecking]     = useState(false);
 
@@ -29,17 +30,26 @@ export function VoteView({ players, match, onVoted, guestName = null, onGuestVot
 
   const submit = async () => {
     setSubmitting(true);
-    await api.submitVote({
-      match_id: match.id, voter_name: voterName,
-      best1_id: best1?.id, best1_comment: best1Comment,
-      best2_id: best2?.id, best2_comment: best2Comment,
-      lemon_id: lemon?.id, lemon_comment: lemonComment,
-    });
-    if (onGuestVoted) await onGuestVoted();
-    const voted = JSON.parse(localStorage.getItem("pepite_voted") || "[]");
-    if (!voted.includes(match.id)) localStorage.setItem("pepite_voted", JSON.stringify([...voted, match.id]));
-    setSubmitting(false);
-    onVoted();
+    setSubmitError(null);
+    try {
+      await api.submitVote({
+        match_id: match.id, voter_name: voterName,
+        best1_id: best1?.id, best1_comment: best1Comment,
+        best2_id: best2?.id, best2_comment: best2Comment,
+        lemon_id: lemon?.id, lemon_comment: lemonComment,
+      });
+      if (onGuestVoted) await onGuestVoted();
+      const voted = JSON.parse(localStorage.getItem("pepite_voted") || "[]");
+      if (!voted.includes(match.id)) localStorage.setItem("pepite_voted", JSON.stringify([...voted, match.id]));
+      onVoted();
+    } catch (err) {
+      console.error("submitVote:", err);
+      setSubmitError(err.message?.includes("network") || err.name === "AbortError"
+        ? "Erreur réseau — vérifie ta connexion et réessaie."
+        : (err.message || "Erreur lors de l'envoi, réessaie."));
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   if (!match.is_open) return (
@@ -226,10 +236,19 @@ export function VoteView({ players, match, onVoted, guestName = null, onGuestVot
           <p style={{ fontSize: 12, color: "var(--label3)", textAlign: "center", marginBottom: 12 }}>
             Ton vote est anonyme.
           </p>
+          {submitError && (
+            <div style={{
+              background: "rgba(255,59,48,0.1)", border: "1px solid rgba(255,59,48,0.25)",
+              borderRadius: 10, padding: "10px 14px", marginBottom: 12,
+              fontSize: 13, color: "var(--red, #ff3b30)", textAlign: "center",
+            }}>
+              ⚠️ {submitError}
+            </div>
+          )}
           <div className="flex gap-8">
             <button className="btn btn-secondary" onClick={() => setStep(3)}>Modifier</button>
             <button className="btn btn-primary" style={{ flex: 1 }} disabled={submitting} onClick={submit}>
-              {submitting ? "Envoi…" : "Valider"}
+              {submitting ? "Envoi…" : submitError ? "Réessayer" : "Valider"}
             </button>
           </div>
         </>
