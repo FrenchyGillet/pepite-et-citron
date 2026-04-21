@@ -14,3 +14,7 @@ AS $$
   WHERE m.user_id = auth.uid()
   ORDER BY m.role, o.name;
 $$;
+
+-- Sans ce GRANT, les utilisateurs connectés (rôle "authenticated") n'ont pas
+-- le droit d'appeler la fonction → "permission denied" → fallback REST → bugs
+GRANT EXECUTE ON FUNCTION get_my_orgs() TO authenticated;

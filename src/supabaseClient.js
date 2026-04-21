@@ -4,10 +4,20 @@ import { SUPABASE_URL, SUPABASE_ANON_KEY } from './config.js';
 // Auth client (Supabase JS SDK — gère le refresh de token automatiquement)
 export const authClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-// Construit les headers avec le JWT de session si disponible
+// Construit les headers avec le JWT de session si disponible.
+// On plafonne à 3 s : si le SDK est en train de rafraîchir le token sur réseau lent,
+// on n'attend pas — on tombe sur la clé anonyme plutôt que de bloquer toute la requête.
 async function buildHeaders() {
-  const { data: { session } } = await authClient.auth.getSession();
-  const token = session?.access_token ?? SUPABASE_ANON_KEY;
+  let token = SUPABASE_ANON_KEY;
+  try {
+    const result = await Promise.race([
+      authClient.auth.getSession(),
+      new Promise(resolve => setTimeout(() => resolve({ data: { session: null } }), 3000)),
+    ]);
+    token = result?.data?.session?.access_token ?? SUPABASE_ANON_KEY;
+  } catch {
+    // ignore — on utilisera la clé anonyme
+  }
   return {
     apikey:        SUPABASE_ANON_KEY,
     Authorization: `Bearer ${token}`,
