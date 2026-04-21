@@ -185,7 +185,7 @@ export function ResultsView({ players, match, refreshKey, onMatchUpdate, isAdmin
                 Classement provisoire · {revealedCount}/{revealOrder.length} vote{revealedCount > 1 ? "s" : ""} révélé{revealedCount > 1 ? "s" : ""}
               </span>
             </div>
-            <Scoreboard votes={revealedVotes} present={present} />
+            <Scoreboard votes={revealedVotes} present={present} allPlayers={players} />
           </div>
         )}
       </div>
@@ -195,13 +195,14 @@ export function ResultsView({ players, match, refreshKey, onMatchUpdate, isAdmin
   // ── CLOSED : full results ──
   const tiebreakers = match.tiebreakers || {};
 
-  const { best: bestScores, lemon: lemonScores } = computeScores(votes, present);
-  const topBestPts  = present.length ? Math.max(...present.map(p => bestScores[p.id]?.pts  || 0)) : 0;
-  const topLemonPts = present.length ? Math.max(...present.map(p => lemonScores[p.id]?.pts || 0)) : 0;
-  const bestTied  = topBestPts  > 0 && present.filter(p => (bestScores[p.id]?.pts  || 0) === topBestPts).length  > 1;
-  const lemonTied = topLemonPts > 0 && present.filter(p => (lemonScores[p.id]?.pts || 0) === topLemonPts).length > 1;
-  const bestTiedPlayers  = present.filter(p => (bestScores[p.id]?.pts  || 0) === topBestPts);
-  const lemonTiedPlayers = present.filter(p => (lemonScores[p.id]?.pts || 0) === topLemonPts);
+  const { best: bestScores, lemon: lemonScores } = computeScores(votes, present, players);
+  const everyone    = players.length ? players : present;
+  const topBestPts  = present.length  ? Math.max(...present.map(p  => bestScores[p.id]?.pts  || 0)) : 0;
+  const topLemonPts = everyone.length ? Math.max(...everyone.map(p => lemonScores[p.id]?.pts || 0)) : 0;
+  const bestTied  = topBestPts  > 0 && present.filter(p  => (bestScores[p.id]?.pts  || 0) === topBestPts).length  > 1;
+  const lemonTied = topLemonPts > 0 && everyone.filter(p => (lemonScores[p.id]?.pts || 0) === topLemonPts).length > 1;
+  const bestTiedPlayers  = present.filter(p  => (bestScores[p.id]?.pts  || 0) === topBestPts);
+  const lemonTiedPlayers = everyone.filter(p => (lemonScores[p.id]?.pts || 0) === topLemonPts);
 
   const setTiebreaker = async (field, playerId) => {
     await api.updateMatch(match.id, { tiebreakers: { ...tiebreakers, [field]: playerId } });
@@ -239,7 +240,7 @@ export function ResultsView({ players, match, refreshKey, onMatchUpdate, isAdmin
       <MatchHeader badge={<span className="badge badge-closed">Clôturé</span>} />
       {isAdmin && bestTied  && !tiebreakers.best_id  && <TiebreakerCard title="Pépite" color="gold"  field="best_id"  players={bestTiedPlayers}  />}
       {isAdmin && lemonTied && !tiebreakers.lemon_id && <TiebreakerCard title="Citron" color="lemon" field="lemon_id" players={lemonTiedPlayers} />}
-      <PodiumView votes={votes} present={present} tiebreakers={tiebreakers} />
+      <PodiumView votes={votes} present={present} allPlayers={players} tiebreakers={tiebreakers} />
 
       {ghosts.length > 0 && (
         <div style={{ marginTop: 8, marginBottom: 16 }}>

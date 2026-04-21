@@ -1,18 +1,20 @@
 import { useState } from 'react';
 import { computeScores } from '../utils.js';
 
-export function PodiumView({ votes, present, tiebreakers = {} }) {
+export function PodiumView({ votes, present, allPlayers, tiebreakers = {} }) {
   const [podiumTab, setPodiumTab] = useState("pepite");
-  const { best, lemon } = computeScores(votes, present);
+  const { best, lemon } = computeScores(votes, present, allPlayers);
+  const everyone    = allPlayers || present;
+  const presentIds  = new Set(present.map(p => p.id));
 
-  const buildRanked = (scores, tieKey) =>
-    present
-      .map(p => ({ ...p, pts: scores[p.id]?.pts || 0, comments: scores[p.id]?.comments || [] }))
+  const buildRanked = (scores, tieKey, pool) =>
+    pool
+      .map(p => ({ ...p, pts: scores[p.id]?.pts || 0, comments: scores[p.id]?.comments || [], absent: !presentIds.has(p.id) }))
       .filter(p => p.pts > 0)
       .sort((a, b) => b.pts !== a.pts ? b.pts - a.pts : tiebreakers[tieKey] === a.id ? -1 : tiebreakers[tieKey] === b.id ? 1 : 0);
 
   const isPepite = podiumTab === "pepite";
-  const ranked   = isPepite ? buildRanked(best, "best_id") : buildRanked(lemon, "lemon_id");
+  const ranked   = isPepite ? buildRanked(best, "best_id", present) : buildRanked(lemon, "lemon_id", everyone);
   const color    = isPepite ? "var(--gold)"  : "var(--lemon)";
   const colorDim = isPepite ? "var(--gold-dim)" : "var(--lemon-dim)";
 
@@ -26,8 +28,9 @@ export function PodiumView({ votes, present, tiebreakers = {} }) {
         {player ? (
           <>
             {isFirst && <div style={{ fontSize: 26, lineHeight: 1, marginBottom: 5 }}>👑</div>}
-            <div style={{ fontSize: isFirst ? 15 : 13, fontWeight: 700, color: nameColor, textAlign: "center", lineHeight: 1.2, marginBottom: 3, padding: "0 4px" }}>{player.name}</div>
-            <div style={{ fontSize: 12, color: "var(--label3)", marginBottom: 8 }}>{player.pts} pts</div>
+            <div style={{ fontSize: isFirst ? 15 : 13, fontWeight: 700, color: nameColor, textAlign: "center", lineHeight: 1.2, marginBottom: 2, padding: "0 4px" }}>{player.name}</div>
+            {player.absent && <div style={{ fontSize: 10, color: "var(--label4)", marginBottom: 2, fontStyle: "italic" }}>absent</div>}
+            <div style={{ fontSize: 12, color: "var(--label3)", marginBottom: 8 }}>{player.pts} pt{player.pts > 1 ? "s" : ""}</div>
           </>
         ) : (
           <div style={{ height: 56 }} />

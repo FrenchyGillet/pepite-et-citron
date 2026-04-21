@@ -1,7 +1,8 @@
 import { computeScores } from '../utils.js';
 
-export function Scoreboard({ votes, present, tiebreakers = {}, showLemons = true }) {
-  const { best, lemon } = computeScores(votes, present);
+export function Scoreboard({ votes, present, allPlayers, tiebreakers = {}, showLemons = true }) {
+  const { best, lemon } = computeScores(votes, present, allPlayers);
+  const everyone = allPlayers || present;
 
   const withRanks = (arr) => {
     let rank = 1;
@@ -14,10 +15,11 @@ export function Scoreboard({ votes, present, tiebreakers = {}, showLemons = true
       .sort((a, b) => b.pts !== a.pts ? b.pts - a.pts : tiebreakers.best_id === a.id ? -1 : tiebreakers.best_id === b.id ? 1 : 0)
   );
   const lemonRanked = withRanks(
-    present.map(p => ({ ...p, pts: lemon[p.id]?.pts || 0, comments: lemon[p.id]?.comments || [] }))
+    everyone.map(p => ({ ...p, pts: lemon[p.id]?.pts || 0, comments: lemon[p.id]?.comments || [] }))
       .filter(p => p.pts > 0)
       .sort((a, b) => b.pts !== a.pts ? b.pts - a.pts : tiebreakers.lemon_id === a.id ? -1 : tiebreakers.lemon_id === b.id ? 1 : 0)
   );
+  const presentIds = new Set(present.map(p => p.id));
   const maxBest  = bestRanked[0]?.pts || 1;
   const maxLemon = lemonRanked[0]?.pts || 1;
 
@@ -53,12 +55,16 @@ export function Scoreboard({ votes, present, tiebreakers = {}, showLemons = true
           <p className="section-label mb-4" style={{ color: "var(--lemon)" }}>Citrons</p>
           <div className="group">
             {lemonRanked.map((p) => {
-              const isBeer = tiebreakers.lemon_id === p.id;
+              const isBeer  = tiebreakers.lemon_id === p.id;
+              const isAbsent = !presentIds.has(p.id);
               return (
                 <div key={p.id}>
                   <div className="row">
                     <div className="row-icon lemon">{isBeer ? "🍺" : "🍋"}</div>
-                    <div className="row-body"><div className="row-title">{p.name}</div></div>
+                    <div className="row-body">
+                      <div className="row-title">{p.name}</div>
+                      {isAbsent && <div className="row-sub" style={{ color: "var(--label4)", fontSize: 11 }}>absent</div>}
+                    </div>
                     <div className="score-bar-wrap">
                       <div className="score-bar" style={{ width: `${(p.pts / maxLemon) * 100}%`, background: "var(--lemon)" }} />
                     </div>

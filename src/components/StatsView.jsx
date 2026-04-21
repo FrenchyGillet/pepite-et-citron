@@ -61,13 +61,21 @@ export function StatsView({ players, activeMatch, isAdmin }) {
   filteredMatches.forEach(match => {
     const mv = allVotes.filter(v => v.match_id === match.id);
     const pp = players.filter(p => (match.present_ids || []).includes(p.id));
-    const { best, lemon } = computeScores(mv, pp);
+    // Pépites = présents seulement, Citrons = toute l'équipe
+    const { best, lemon } = computeScores(mv, pp, players);
     let maxB = 0, maxL = 0, bW = null, lW = null;
+    // Pépite stats : uniquement les présents
     pp.forEach(p => {
       if (!stats[p.id]) return;
-      const bp = best[p.id]?.pts || 0, lp = lemon[p.id]?.pts || 0;
-      stats[p.id].bestPts += bp; stats[p.id].lemonPts += lp;
+      const bp = best[p.id]?.pts || 0;
+      stats[p.id].bestPts += bp;
       if (bp > maxB) { maxB = bp; bW = p.id; }
+    });
+    // Citron stats : toute l'équipe (présents + absents)
+    players.forEach(p => {
+      if (!stats[p.id]) return;
+      const lp = lemon[p.id]?.pts || 0;
+      stats[p.id].lemonPts += lp;
       if (lp > maxL) { maxL = lp; lW = p.id; }
     });
     if (bW && stats[bW]) stats[bW].wins++;
@@ -223,7 +231,7 @@ export function StatsView({ players, activeMatch, isAdmin }) {
                     <div style={{ borderTop: "1px solid var(--separator)", padding: "12px 16px" }}>
                       {matchVotes.length === 0
                         ? <p style={{ fontSize: 14, color: "var(--label3)", marginBottom: 12 }}>Aucun vote.</p>
-                        : <Scoreboard votes={matchVotes} present={matchPresent} />
+                        : <Scoreboard votes={matchVotes} present={matchPresent} allPlayers={players} />
                       }
 
                       {isAdmin && (isEditing ? (

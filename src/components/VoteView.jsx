@@ -14,7 +14,9 @@ export function VoteView({ players, match, onVoted, guestName = null, onGuestVot
   const [alreadyVoted, setAlreadyVoted] = useState(false);
   const [checking,     setChecking]     = useState(false);
 
-  const present = players.filter(p => (match.present_ids || []).includes(p.id));
+  const presentIds = match.present_ids || [];
+  const present = players.filter(p =>  presentIds.includes(p.id));
+  const absent  = players.filter(p => !presentIds.includes(p.id));
 
   const checkAndNext = async () => {
     if (!voterName) return;
@@ -151,12 +153,31 @@ export function VoteView({ players, match, onVoted, guestName = null, onGuestVot
                 </div>
                 <div style={{ background: "var(--lemon-dim)", color: "var(--lemon)", borderRadius: 20, padding: "4px 11px", fontSize: 13, fontWeight: 800, flexShrink: 0 }}>1 pt</div>
               </div>
+              {/* Présents */}
               <div className="player-grid">
                 {present.map(p => (
                   <button key={p.id} className={`player-chip ${lemon?.id === p.id ? "sel-lemon" : ""}`}
                     onClick={() => setLemon(p)}>{p.name}</button>
                 ))}
               </div>
+              {/* Absents */}
+              {absent.length > 0 && (
+                <>
+                  <p style={{ fontSize: 12, color: "var(--label4)", marginTop: 14, marginBottom: 8, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.06em" }}>
+                    Absents
+                  </p>
+                  <div className="player-grid">
+                    {absent.map(p => (
+                      <button key={p.id}
+                        className={`player-chip ${lemon?.id === p.id ? "sel-lemon" : ""}`}
+                        onClick={() => setLemon(p)}
+                        style={{ opacity: lemon?.id === p.id ? 1 : 0.5, borderStyle: "dashed" }}>
+                        {p.name}
+                      </button>
+                    ))}
+                  </div>
+                </>
+              )}
               {lemon && (
                 <>
                   <p className="section-label mt-12 mb-4">Commentaire (optionnel)</p>
