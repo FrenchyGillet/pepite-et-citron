@@ -3,6 +3,17 @@ import { supabase, authClient } from './supabaseClient.js';
 
 export const DEMO_MODE = SUPABASE_URL.includes("VOTRE_PROJET");
 
+// ─── Timeout helper pour les RPCs Supabase SDK ────────────────────────────────
+// authClient.rpc() n'a pas de timeout natif → on le wrape avec Promise.race.
+function rpcWithTimeout(fn, ms = 10000) {
+  return Promise.race([
+    fn(),
+    new Promise((_, reject) =>
+      setTimeout(() => reject(new Error("Délai dépassé — vérifie ta connexion et réessaie.")), ms)
+    ),
+  ]);
+}
+
 // ─── Retry helper ─────────────────────────────────────────────────────────────
 // Réessaie automatiquement les erreurs réseau transitoires (pas les 4xx auth).
 async function withRetry(fn, retries = 2) {
@@ -124,10 +135,9 @@ export const realAPI = {
 
     let finalSlug = null;
     for (const s of candidates) {
-      const { error } = await authClient.rpc("create_organization", {
-        org_name: name,
-        org_slug: s,
-      });
+      const { error } = await rpcWithTimeout(() =>
+        authClient.rpc("create_organization", { org_name: name, org_slug: s })
+      );
       if (!error) { finalSlug = s; break; }
       const isDuplicate = error.message?.includes("unique") || error.message?.includes("duplicate") || error.code === "23505";
       if (!isDuplicate) throw new Error(error.message);
@@ -141,15 +151,25 @@ export const realAPI = {
     return org;
   },
   getMyOrgs: async () => {
-    const mdb = await supabase.from("org_members");
-    const members = await mdb.select("org_id, role", {});
+    // Tente d'abord avec la colonne role (migration v2).
+    // Si elle n'existe pas encore, fallback sur org_id seulement (migration v1).
+    let members;
+    try {
+      const mdb = await supabase.from("org_members");
+      members = await mdb.select("org_id, role", {});
+    } catch {
+      // Colonne role absente → fallback v1
+      const mdb = await supabase.from("org_members");
+      const rows = await mdb.select("org_id", {});
+      members = (rows || []).map(r => ({ org_id: r.org_id, role: "admin" }));
+    }
     if (!members?.length) return [];
     const orgIds = members.map(m => m.org_id).join(",");
     const odb = await supabase.from("organizations");
     const orgs = await odb.select("*", { filter: `id=in.(${orgIds})` });
     return members.map(m => {
       const org = orgs.find(o => o.id === m.org_id);
-      return org ? { ...org, role: m.role } : null;
+      return org ? { ...org, role: m.role || "admin" } : null;
     }).filter(Boolean);
   },
   getMyOrg: async () => {
@@ -158,16 +178,20 @@ export const realAPI = {
     return orgs.find(o => o.role === "admin") || orgs[0] || null;
   },
   getOrgMembers: async (orgId) => {
-    const { data, error } = await authClient.rpc("get_org_members", { target_org_id: orgId });
+    const { data, error } = await rpcWithTimeout(() =>
+      authClient.rpc("get_org_members", { target_org_id: orgId })
+    );
     if (error) throw new Error(error.message);
     return data || [];
   },
   addMember: async (email, orgId, role = "voter") => {
-    const { error } = await authClient.rpc("add_org_member", {
-      member_email: email,
-      target_org_id: orgId,
-      member_role: role,
-    });
+    const { error } = await rpcWithTimeout(() =>
+      authClient.rpc("add_org_member", {
+        member_email: email,
+        target_org_id: orgId,
+        member_role: role,
+      })
+    );
     if (error) throw new Error(error.message);
   },
   removeMember: async (userId, orgId) => {
