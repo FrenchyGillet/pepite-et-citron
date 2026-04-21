@@ -27,22 +27,29 @@ export const supabase = {
         if (opts.filter) url += `&${opts.filter}`;
         if (opts.order) url += `&order=${opts.order}`;
         const r = await fetch(url, { headers });
-        return r.json();
+        const json = await r.json();
+        if (!r.ok) throw new Error(json?.message || `Erreur ${r.status}`);
+        return json;
       },
       async insert(data) {
         const headers = await buildHeaders();
         const r = await fetch(base, { method: "POST", headers, body: JSON.stringify(data) });
-        return r.json();
+        const json = await r.json();
+        if (!r.ok) throw new Error(json?.message || `Erreur ${r.status}`);
+        return json;
       },
       async update(data, filter) {
         const headers = await buildHeaders();
         const r = await fetch(`${base}?${filter}`, { method: "PATCH", headers, body: JSON.stringify(data) });
-        return r.json();
+        const json = await r.json();
+        if (!r.ok) throw new Error(json?.message || `Erreur ${r.status}`);
+        return json;
       },
       async delete(filter) {
         const headers = await buildHeaders();
         const r = await fetch(`${base}?${filter}`, { method: "DELETE", headers });
-        return r.ok;
+        if (!r.ok) { const json = await r.json().catch(() => ({})); throw new Error(json?.message || `Erreur ${r.status}`); }
+        return true;
       },
     };
   },

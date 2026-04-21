@@ -61,9 +61,15 @@ export function AdminView({ players, onPlayersChange, activeMatch, onMatchChange
 
   const addPlayer = async () => {
     if (!newPlayer.trim()) return;
-    await api.addPlayer(newPlayer.trim());
-    setToast(`${newPlayer.trim()} ajouté`);
-    setNewPlayer(""); onPlayersChange();
+    try {
+      await api.addPlayer(newPlayer.trim());
+      setToast(`${newPlayer.trim()} ajouté`);
+      setNewPlayer("");
+      onPlayersChange();
+    } catch (err) {
+      setToast(`Erreur : ${err.message}`);
+      console.error("addPlayer:", err);
+    }
   };
 
   const removePlayer = async (id, name) => {

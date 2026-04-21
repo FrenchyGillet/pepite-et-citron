@@ -94,24 +94,27 @@ export const realAPI = {
 
   // ── Organisations ─────────────────────────────────────────────────────────
   createOrg: async (name, slug) => {
-    const { data: { session } } = await authClient.auth.getSession();
-    const userId = session?.user?.id;
-    if (!userId) throw new Error("Non authentifié");
+    // Essaie le slug demandé, puis ajoute un suffixe aléatoire si déjà pris
+    // (deux équipes différentes peuvent avoir le même nom)
+    const suffix = () => Math.random().toString(36).slice(2, 6);
+    const candidates = [slug, `${slug}-${suffix()}`, `${slug}-${suffix()}`];
 
-    // 1. Insérer l'org (on ne lit pas la réponse — RLS bloquerait le retour
-    //    car on n'est pas encore membre)
+    let finalSlug = null;
+    for (const s of candidates) {
+      const { error } = await authClient.rpc("create_organization", {
+        org_name: name,
+        org_slug: s,
+      });
+      if (!error) { finalSlug = s; break; }
+      const isDuplicate = error.message?.includes("unique") || error.message?.includes("duplicate") || error.code === "23505";
+      if (!isDuplicate) throw new Error(error.message);
+    }
+    if (!finalSlug) throw new Error("Impossible de créer l'équipe, réessayez.");
+
     const db = await supabase.from("organizations");
-    await db.insert({ name, slug, owner_id: userId });
-
-    // 2. Récupérer l'org par slug (nécessite org_select = public)
-    const orgs = await db.select("*", { filter: `slug=eq.${encodeURIComponent(slug)}` });
+    const orgs = await db.select("*", { filter: `slug=eq.${encodeURIComponent(finalSlug)}` });
     const org = orgs[0];
     if (!org?.id) throw new Error("Erreur création organisation");
-
-    // 3. Ajouter le user comme owner
-    const mdb = await supabase.from("org_members");
-    await mdb.insert({ org_id: org.id, user_id: userId, role: "owner" });
-
     return org;
   },
   getMyOrg: async () => {

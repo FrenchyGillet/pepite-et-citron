@@ -38,12 +38,17 @@ export default function App() {
     if (DEMO_MODE) return;
 
     const bootstrap = async () => {
-      const session = await api.getSession();
-      if (session) {
-        setSession(session);
-        await loadOrg();
+      try {
+        const session = await api.getSession();
+        if (session) {
+          setSession(session);
+          await loadOrg();
+        }
+      } catch (err) {
+        console.error("bootstrap:", err);
+      } finally {
+        setAuthLoading(false);
       }
-      setAuthLoading(false);
     };
     bootstrap();
 
@@ -51,7 +56,7 @@ export default function App() {
     const sub = api.onAuthChange(async (event, session) => {
       setSession(session);
       if (session) {
-        await loadOrg();
+        await loadOrg().catch(err => console.error("onAuthChange loadOrg:", err));
       } else {
         setCurrentOrg(null);
         setCurrentOrgId(null);
@@ -62,12 +67,17 @@ export default function App() {
 
   // ── Chargement de l'org ───────────────────────────────────────────────────
   const loadOrg = async () => {
-    const org = await api.getMyOrg();
-    if (org) {
-      setCurrentOrg(org);
-      setCurrentOrgId(org.id);
+    try {
+      const org = await api.getMyOrg();
+      if (org) {
+        setCurrentOrg(org);
+        setCurrentOrgId(org.id);
+      }
+      return org;
+    } catch (err) {
+      console.error("loadOrg:", err);
+      return null;
     }
-    return org;
   };
 
   // ── Résolution de l'org pour les visitors (sans session) ─────────────────
