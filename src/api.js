@@ -98,13 +98,17 @@ export const realAPI = {
     const userId = session?.user?.id;
     if (!userId) throw new Error("Non authentifié");
 
-    // 1. Créer l'org
+    // 1. Insérer l'org (on ne lit pas la réponse — RLS bloquerait le retour
+    //    car on n'est pas encore membre)
     const db = await supabase.from("organizations");
-    const orgs = await db.insert({ name, slug, owner_id: userId });
-    const org = Array.isArray(orgs) ? orgs[0] : orgs;
+    await db.insert({ name, slug, owner_id: userId });
+
+    // 2. Récupérer l'org par slug (nécessite org_select = public)
+    const orgs = await db.select("*", { filter: `slug=eq.${encodeURIComponent(slug)}` });
+    const org = orgs[0];
     if (!org?.id) throw new Error("Erreur création organisation");
 
-    // 2. Ajouter l'utilisateur comme owner
+    // 3. Ajouter le user comme owner
     const mdb = await supabase.from("org_members");
     await mdb.insert({ org_id: org.id, user_id: userId, role: "owner" });
 

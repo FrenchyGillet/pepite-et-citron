@@ -38,7 +38,6 @@ export function AuthView({ onAuth }) {
     }}>
       {/* Logo */}
       <div style={{ textAlign: "center", marginBottom: 32 }}>
-        <div style={{ fontSize: 40, marginBottom: 8 }}>🏒</div>
         <div className="header-logo" style={{ fontSize: 28 }}>
           <span className="header-pepite">Pépite</span>
           <span className="header-amp"> & </span>

@@ -54,7 +54,6 @@ export function OrgSetupView({ onOrgCreated, userEmail }) {
     }}>
       {/* Logo */}
       <div style={{ textAlign: "center", marginBottom: 32 }}>
-        <div style={{ fontSize: 40, marginBottom: 8 }}>🏒</div>
         <div className="header-logo" style={{ fontSize: 28 }}>
           <span className="header-pepite">Pépite</span>
           <span className="header-amp"> & </span>
@@ -93,18 +92,12 @@ export function OrgSetupView({ onOrgCreated, userEmail }) {
             <label style={{ fontSize: 12, fontWeight: 600, color: "var(--label3)", display: "block", marginBottom: 6 }}>
               Identifiant unique <span style={{ fontWeight: 400, color: "var(--label4)" }}>(dans l'URL de vote)</span>
             </label>
-            <div style={{ display: "flex", alignItems: "center", background: "var(--bg3)", borderRadius: "var(--radius-sm)", overflow: "hidden" }}>
-              <span style={{ padding: "12px 10px 12px 14px", fontSize: 13, color: "var(--label4)", whiteSpace: "nowrap", flexShrink: 0 }}>
-                ?org=
-              </span>
-              <input
-                value={slug} onChange={e => handleSlugChange(e.target.value)}
-                placeholder="hc-montreal"
-                required maxLength={40}
-                style={{ flex: 1, background: "transparent", borderRadius: 0, border: "none",
-                  borderLeft: "1px solid var(--separator)", paddingLeft: 10 }}
-              />
-            </div>
+            <input
+              value={slug} onChange={e => handleSlugChange(e.target.value)}
+              placeholder="hc-montreal"
+              required maxLength={40}
+              style={{ width: "100%", boxSizing: "border-box" }}
+            />
             {slug && (
               <p style={{ fontSize: 11, color: "var(--label4)", marginTop: 6 }}>
                 Lien de vote : <span style={{ color: "var(--label3)" }}>{window.location.origin}/?org={slug}</span>
