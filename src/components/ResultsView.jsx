@@ -228,12 +228,44 @@ export function ResultsView({ players, match, refreshKey, onMatchUpdate, isAdmin
     </div>
   );
 
+  // Fantômes = présents qui n'ont reçu aucun vote (ni Pépite ni Citron)
+  const ghosts = present.filter(p =>
+    (bestScores[p.id]?.pts  || 0) === 0 &&
+    (lemonScores[p.id]?.pts || 0) === 0
+  );
+
   return (
     <div className="content">
       <MatchHeader badge={<span className="badge badge-closed">Clôturé</span>} />
       {isAdmin && bestTied  && !tiebreakers.best_id  && <TiebreakerCard title="Pépite" color="gold"  field="best_id"  players={bestTiedPlayers}  />}
       {isAdmin && lemonTied && !tiebreakers.lemon_id && <TiebreakerCard title="Citron" color="lemon" field="lemon_id" players={lemonTiedPlayers} />}
       <PodiumView votes={votes} present={present} tiebreakers={tiebreakers} />
+
+      {ghosts.length > 0 && (
+        <div style={{ marginTop: 8, marginBottom: 16 }}>
+          <p style={{
+            fontSize: 11, fontWeight: 700, color: "var(--label4)",
+            textTransform: "uppercase", letterSpacing: "0.08em",
+            marginBottom: 10,
+          }}>
+            👻 Fantômes · {ghosts.length}
+          </p>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+            {ghosts.map(p => (
+              <div key={p.id} style={{
+                padding: "7px 14px",
+                background: "var(--bg2)",
+                borderRadius: 20,
+                fontSize: 13,
+                color: "var(--label4)",
+                fontWeight: 500,
+              }}>
+                {p.name}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
