@@ -252,8 +252,15 @@ export default function App() {
   // - "voter" explicite → pas admin ✓
   const isAdmin = DEMO_MODE || (!!session && !!currentOrg && currentOrg.role !== "voter");
 
+  // ── Détecte les liens de vote anonyme ────────────────────────────────────
+  // ?org=slug ou ?guest=TOKEN → pas besoin de compte, on bypass le login
+  const urlParams    = new URLSearchParams(window.location.search);
+  const isVoterLink  = !DEMO_MODE && (urlParams.get("org") || urlParams.get("guest"));
+
   // ── États de chargement ────────────────────────────────────────────────────
-  if (authLoading) {
+  if (authLoading && !isVoterLink) {
+    // Pour les liens de vote, on n'attend pas la résolution de session —
+    // on affiche l'app tout de suite (le match se charge via currentOrg)
     return (
       <>
         <GlobalStyle />
@@ -264,7 +271,8 @@ export default function App() {
     );
   }
 
-  if (!DEMO_MODE && !session) {
+  // Login requis UNIQUEMENT pour les admins (pas de lien de vote dans l'URL)
+  if (!DEMO_MODE && !session && !isVoterLink) {
     return (
       <>
         <GlobalStyle />
@@ -273,6 +281,7 @@ export default function App() {
     );
   }
 
+  // OrgSetup : seulement pour les comptes connectés sans équipe
   if (!DEMO_MODE && session && !currentOrg) {
     return (
       <>
