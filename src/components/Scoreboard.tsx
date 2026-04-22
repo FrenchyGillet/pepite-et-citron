@@ -1,21 +1,46 @@
-import { computeScores } from '../utils.js';
+import { computeScores } from '../utils';
+import type { Vote, Player, EntityId } from '../types';
 
-export function Scoreboard({ votes, present, allPlayers, tiebreakers = {}, showLemons = true }) {
+interface Tiebreakers {
+  best_id?: EntityId;
+  lemon_id?: EntityId;
+}
+
+interface ScoreboardProps {
+  votes: Vote[];
+  present: Player[];
+  allPlayers?: Player[];
+  tiebreakers?: Tiebreakers;
+  showLemons?: boolean;
+}
+
+interface RankedPlayer extends Player {
+  pts: number;
+  comments: string[];
+  rank: number;
+}
+
+export function Scoreboard({ votes, present, allPlayers, tiebreakers = {}, showLemons = true }: ScoreboardProps) {
   const { best, lemon } = computeScores(votes, present, allPlayers);
   const everyone = allPlayers || present;
 
-  const withRanks = (arr) => {
+  const withRanks = (arr: Omit<RankedPlayer, 'rank'>[]): RankedPlayer[] => {
     let rank = 1;
-    return arr.map((p, i) => { if (i > 0 && p.pts < arr[i - 1].pts) rank = i + 1; return { ...p, rank }; });
+    return arr.map((p, i) => {
+      if (i > 0 && p.pts < arr[i - 1].pts) rank = i + 1;
+      return { ...p, rank };
+    });
   };
 
   const bestRanked = withRanks(
-    present.map(p => ({ ...p, pts: best[p.id]?.pts || 0, comments: best[p.id]?.comments || [] }))
+    present
+      .map(p => ({ ...p, pts: best[p.id]?.pts || 0, comments: best[p.id]?.comments || [] }))
       .filter(p => p.pts > 0)
       .sort((a, b) => b.pts !== a.pts ? b.pts - a.pts : tiebreakers.best_id === a.id ? -1 : tiebreakers.best_id === b.id ? 1 : 0)
   );
   const lemonRanked = withRanks(
-    everyone.map(p => ({ ...p, pts: lemon[p.id]?.pts || 0, comments: lemon[p.id]?.comments || [] }))
+    everyone
+      .map(p => ({ ...p, pts: lemon[p.id]?.pts || 0, comments: lemon[p.id]?.comments || [] }))
       .filter(p => p.pts > 0)
       .sort((a, b) => b.pts !== a.pts ? b.pts - a.pts : tiebreakers.lemon_id === a.id ? -1 : tiebreakers.lemon_id === b.id ? 1 : 0)
   );
@@ -30,10 +55,10 @@ export function Scoreboard({ votes, present, allPlayers, tiebreakers = {}, showL
         {bestRanked.length === 0
           ? <div className="row"><span style={{ color: "var(--label3)", fontSize: 14 }}>Aucun vote révélé…</span></div>
           : bestRanked.map((p) => {
-            const isBeer = tiebreakers.best_id === p.id;
+            const isBeer  = tiebreakers.best_id === p.id;
             const isFirst = p.rank === 1;
             return (
-              <div key={p.id}>
+              <div key={String(p.id)}>
                 <div className="row">
                   <div style={{ width: 24, fontWeight: 700, fontSize: isBeer ? 16 : 13, flexShrink: 0, color: isFirst ? "var(--gold)" : "var(--label3)" }}>
                     {isBeer ? "🍺" : p.rank}
@@ -55,10 +80,10 @@ export function Scoreboard({ votes, present, allPlayers, tiebreakers = {}, showL
           <p className="section-label mb-4" style={{ color: "var(--lemon)" }}>Citrons</p>
           <div className="group">
             {lemonRanked.map((p) => {
-              const isBeer  = tiebreakers.lemon_id === p.id;
+              const isBeer   = tiebreakers.lemon_id === p.id;
               const isAbsent = !presentIds.has(p.id);
               return (
-                <div key={p.id}>
+                <div key={String(p.id)}>
                   <div className="row">
                     <div className="row-icon lemon">{isBeer ? "🍺" : "🍋"}</div>
                     <div className="row-body">

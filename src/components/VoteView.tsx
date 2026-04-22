@@ -1,17 +1,26 @@
 import { useState } from 'react';
-import { api } from '../api.js';
+import { api } from '../api';
+import type { Player, Match } from '../types';
 
-export function VoteView({ players, match, onVoted, guestName = null, onGuestVoted = null }) {
-  const [voterName,    setVoterName]    = useState(guestName || "");
+interface VoteViewProps {
+  players: Player[];
+  match: Match;
+  onVoted: () => void;
+  guestName?: string | null;
+  onGuestVoted?: (() => Promise<void>) | null;
+}
+
+export function VoteView({ players, match, onVoted, guestName = null, onGuestVoted = null }: VoteViewProps) {
+  const [voterName,    setVoterName]    = useState(guestName || '');
   const [step,         setStep]         = useState(guestName ? 1 : 0);
-  const [best1,        setBest1]        = useState(null);
-  const [best1Comment, setBest1Comment] = useState("");
-  const [best2,        setBest2]        = useState(null);
-  const [best2Comment, setBest2Comment] = useState("");
-  const [lemon,        setLemon]        = useState(null);
-  const [lemonComment, setLemonComment] = useState("");
+  const [best1,        setBest1]        = useState<Player | null>(null);
+  const [best1Comment, setBest1Comment] = useState('');
+  const [best2,        setBest2]        = useState<Player | null>(null);
+  const [best2Comment, setBest2Comment] = useState('');
+  const [lemon,        setLemon]        = useState<Player | null>(null);
+  const [lemonComment, setLemonComment] = useState('');
   const [submitting,   setSubmitting]   = useState(false);
-  const [submitError,  setSubmitError]  = useState(null);
+  const [submitError,  setSubmitError]  = useState<string | null>(null);
   const [alreadyVoted, setAlreadyVoted] = useState(false);
   const [checking,     setChecking]     = useState(false);
 
@@ -39,32 +48,35 @@ export function VoteView({ players, match, onVoted, guestName = null, onGuestVot
         lemon_id: lemon?.id, lemon_comment: lemonComment,
       });
       if (onGuestVoted) await onGuestVoted();
-      const voted = JSON.parse(localStorage.getItem("pepite_voted") || "[]");
-      if (!voted.includes(match.id)) localStorage.setItem("pepite_voted", JSON.stringify([...voted, match.id]));
+      const voted = JSON.parse(localStorage.getItem('pepite_voted') || '[]') as unknown[];
+      if (!voted.includes(match.id)) {
+        localStorage.setItem('pepite_voted', JSON.stringify([...voted, match.id]));
+      }
       onVoted();
     } catch (err) {
-      console.error("submitVote:", err);
-      setSubmitError(err.message?.includes("network") || err.name === "AbortError"
-        ? "Erreur réseau — vérifie ta connexion et réessaie."
-        : (err.message || "Erreur lors de l'envoi, réessaie."));
+      const e = err instanceof Error ? err : null;
+      setSubmitError(
+        e?.message?.includes('network') || (err as { name?: string })?.name === 'AbortError'
+          ? 'Erreur réseau — vérifie ta connexion et réessaie.'
+          : (e?.message || "Erreur lors de l'envoi, réessaie.")
+      );
     } finally {
       setSubmitting(false);
     }
   };
 
-  // Bloque le vote si le match est fermé ou si le dépouillement est lancé
-  if (!match.is_open || (match.phase && match.phase !== "voting")) return (
+  if (!match.is_open || (match.phase && match.phase !== 'voting')) return (
     <div className="content"><div className="empty">🔒 Vote clôturé.<br />Consulte les résultats.</div></div>
   );
 
   return (
     <div className="content">
       {guestName && (
-        <div style={{ background: "var(--gold-subtle)", border: "1px solid var(--gold-dim)", borderRadius: "var(--radius-lg)", padding: "12px 16px", marginBottom: 16, display: "flex", alignItems: "center", gap: 12 }}>
+        <div style={{ background: 'var(--gold-subtle)', border: '1px solid var(--gold-dim)', borderRadius: 'var(--radius-lg)', padding: '12px 16px', marginBottom: 16, display: 'flex', alignItems: 'center', gap: 12 }}>
           <span style={{ fontSize: 22 }}>👋</span>
           <div>
-            <div style={{ fontSize: 15, fontWeight: 700, color: "var(--gold)" }}>Bienvenu(e), {guestName} !</div>
-            <div style={{ fontSize: 12, color: "var(--label3)", marginTop: 2 }}>Tu votes en tant que supporter.</div>
+            <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--gold)' }}>Bienvenu(e), {guestName} !</div>
+            <div style={{ fontSize: 12, color: 'var(--label3)', marginTop: 2 }}>Tu votes en tant que supporter.</div>
           </div>
         </div>
       )}
@@ -73,18 +85,18 @@ export function VoteView({ players, match, onVoted, guestName = null, onGuestVot
           <p className="section-label mt-8 mb-4">Qui es-tu ?</p>
           <div className="player-grid">
             {present.map(p => (
-              <button key={p.id} className={`player-chip ${voterName === p.name ? "sel-1st" : ""}`}
+              <button key={String(p.id)} className={`player-chip ${voterName === p.name ? 'sel-1st' : ''}`}
                 onClick={() => setVoterName(p.name)}>{p.name}</button>
             ))}
           </div>
           {alreadyVoted && (
-            <div style={{ color: "var(--red)", fontSize: 13, marginTop: 8 }}>
+            <div style={{ color: 'var(--red)', fontSize: 13, marginTop: 8 }}>
               Tu as déjà voté pour ce match.
             </div>
           )}
           <button className="btn btn-primary btn-full mt-12"
             disabled={!voterName || checking} onClick={checkAndNext}>
-            {checking ? "Vérification…" : "Continuer"}
+            {checking ? 'Vérification…' : 'Continuer'}
           </button>
         </>
       )}
@@ -92,22 +104,22 @@ export function VoteView({ players, match, onVoted, guestName = null, onGuestVot
       {step >= 1 && step <= 3 && (
         <>
           <div className="step-bar mt-8">
-            {[1,2,3].map(i => <div key={i} className={`step-seg ${step > i ? "done" : step === i ? "active" : ""}`} />)}
+            {[1, 2, 3].map(i => <div key={i} className={`step-seg ${step > i ? 'done' : step === i ? 'active' : ''}`} />)}
           </div>
 
           {step === 1 && (
             <>
-              <div style={{ background: "var(--gold-subtle)", border: "1px solid var(--gold-dim)", borderRadius: "var(--radius-lg)", padding: "14px 16px", marginBottom: 14, display: "flex", alignItems: "center", gap: 14 }}>
+              <div style={{ background: 'var(--gold-subtle)', border: '1px solid var(--gold-dim)', borderRadius: 'var(--radius-lg)', padding: '14px 16px', marginBottom: 14, display: 'flex', alignItems: 'center', gap: 14 }}>
                 <div style={{ fontSize: 34, lineHeight: 1, flexShrink: 0 }}>⭐</div>
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontSize: 20, fontWeight: 800, color: "var(--gold)", letterSpacing: "-0.3px", lineHeight: 1.1 }}>La Pépite</div>
-                  <div style={{ fontSize: 12, color: "var(--label3)", marginTop: 3 }}>Qui a été le meilleur joueur ?</div>
+                  <div style={{ fontSize: 20, fontWeight: 800, color: 'var(--gold)', letterSpacing: '-0.3px', lineHeight: 1.1 }}>La Pépite</div>
+                  <div style={{ fontSize: 12, color: 'var(--label3)', marginTop: 3 }}>Qui a été le meilleur joueur ?</div>
                 </div>
-                <div style={{ background: "var(--gold)", color: "#000", borderRadius: 20, padding: "4px 11px", fontSize: 13, fontWeight: 800, flexShrink: 0 }}>2 pts</div>
+                <div style={{ background: 'var(--gold)', color: '#000', borderRadius: 20, padding: '4px 11px', fontSize: 13, fontWeight: 800, flexShrink: 0 }}>2 pts</div>
               </div>
               <div className="player-grid">
                 {present.filter(p => p.name !== voterName).map(p => (
-                  <button key={p.id} className={`player-chip ${best1?.id === p.id ? "sel-1st" : ""}`}
+                  <button key={String(p.id)} className={`player-chip ${best1?.id === p.id ? 'sel-1st' : ''}`}
                     onClick={() => setBest1(p)}>{p.name}</button>
                 ))}
               </div>
@@ -126,17 +138,17 @@ export function VoteView({ players, match, onVoted, guestName = null, onGuestVot
 
           {step === 2 && (
             <>
-              <div style={{ background: "rgba(255,214,10,0.04)", border: "1px solid rgba(255,214,10,0.12)", borderRadius: "var(--radius-lg)", padding: "14px 16px", marginBottom: 14, display: "flex", alignItems: "center", gap: 14 }}>
+              <div style={{ background: 'rgba(255,214,10,0.04)', border: '1px solid rgba(255,214,10,0.12)', borderRadius: 'var(--radius-lg)', padding: '14px 16px', marginBottom: 14, display: 'flex', alignItems: 'center', gap: 14 }}>
                 <div style={{ fontSize: 28, lineHeight: 1, flexShrink: 0, opacity: 0.6 }}>⭐</div>
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontSize: 20, fontWeight: 800, color: "rgba(255,214,10,0.7)", letterSpacing: "-0.3px", lineHeight: 1.1 }}>2ème meilleur</div>
-                  <div style={{ fontSize: 12, color: "var(--label3)", marginTop: 3 }}>Le deuxième joueur le plus performant</div>
+                  <div style={{ fontSize: 20, fontWeight: 800, color: 'rgba(255,214,10,0.7)', letterSpacing: '-0.3px', lineHeight: 1.1 }}>2ème meilleur</div>
+                  <div style={{ fontSize: 12, color: 'var(--label3)', marginTop: 3 }}>Le deuxième joueur le plus performant</div>
                 </div>
-                <div style={{ background: "rgba(255,214,10,0.15)", color: "var(--gold)", borderRadius: 20, padding: "4px 11px", fontSize: 13, fontWeight: 800, flexShrink: 0 }}>1 pt</div>
+                <div style={{ background: 'rgba(255,214,10,0.15)', color: 'var(--gold)', borderRadius: 20, padding: '4px 11px', fontSize: 13, fontWeight: 800, flexShrink: 0 }}>1 pt</div>
               </div>
               <div className="player-grid">
                 {present.filter(p => p.name !== voterName && p.id !== best1?.id).map(p => (
-                  <button key={p.id} className={`player-chip ${best2?.id === p.id ? "sel-2nd" : ""}`}
+                  <button key={String(p.id)} className={`player-chip ${best2?.id === p.id ? 'sel-2nd' : ''}`}
                     onClick={() => setBest2(p)}>{p.name}</button>
                 ))}
               </div>
@@ -156,33 +168,31 @@ export function VoteView({ players, match, onVoted, guestName = null, onGuestVot
 
           {step === 3 && (
             <>
-              <div style={{ background: "var(--lemon-subtle)", border: "1px solid var(--lemon-dim)", borderRadius: "var(--radius-lg)", padding: "14px 16px", marginBottom: 14, display: "flex", alignItems: "center", gap: 14 }}>
+              <div style={{ background: 'var(--lemon-subtle)', border: '1px solid var(--lemon-dim)', borderRadius: 'var(--radius-lg)', padding: '14px 16px', marginBottom: 14, display: 'flex', alignItems: 'center', gap: 14 }}>
                 <div style={{ fontSize: 34, lineHeight: 1, flexShrink: 0 }}>🍋</div>
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontSize: 20, fontWeight: 800, color: "var(--lemon)", letterSpacing: "-0.3px", lineHeight: 1.1 }}>Le Citron</div>
-                  <div style={{ fontSize: 12, color: "var(--label3)", marginTop: 3 }}>Qui a le moins performé ce soir ?</div>
+                  <div style={{ fontSize: 20, fontWeight: 800, color: 'var(--lemon)', letterSpacing: '-0.3px', lineHeight: 1.1 }}>Le Citron</div>
+                  <div style={{ fontSize: 12, color: 'var(--label3)', marginTop: 3 }}>Qui a le moins performé ce soir ?</div>
                 </div>
-                <div style={{ background: "var(--lemon-dim)", color: "var(--lemon)", borderRadius: 20, padding: "4px 11px", fontSize: 13, fontWeight: 800, flexShrink: 0 }}>1 pt</div>
+                <div style={{ background: 'var(--lemon-dim)', color: 'var(--lemon)', borderRadius: 20, padding: '4px 11px', fontSize: 13, fontWeight: 800, flexShrink: 0 }}>1 pt</div>
               </div>
-              {/* Présents */}
               <div className="player-grid">
                 {present.map(p => (
-                  <button key={p.id} className={`player-chip ${lemon?.id === p.id ? "sel-lemon" : ""}`}
+                  <button key={String(p.id)} className={`player-chip ${lemon?.id === p.id ? 'sel-lemon' : ''}`}
                     onClick={() => setLemon(p)}>{p.name}</button>
                 ))}
               </div>
-              {/* Absents */}
               {absent.length > 0 && (
                 <>
-                  <p style={{ fontSize: 12, color: "var(--label4)", marginTop: 14, marginBottom: 8, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.06em" }}>
+                  <p style={{ fontSize: 12, color: 'var(--label4)', marginTop: 14, marginBottom: 8, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
                     Absents
                   </p>
                   <div className="player-grid">
                     {absent.map(p => (
-                      <button key={p.id}
-                        className={`player-chip ${lemon?.id === p.id ? "sel-lemon" : ""}`}
+                      <button key={String(p.id)}
+                        className={`player-chip ${lemon?.id === p.id ? 'sel-lemon' : ''}`}
                         onClick={() => setLemon(p)}
-                        style={{ opacity: lemon?.id === p.id ? 1 : 0.5, borderStyle: "dashed" }}>
+                        style={{ opacity: lemon?.id === p.id ? 1 : 0.5, borderStyle: 'dashed' }}>
                         {p.name}
                       </button>
                     ))}
@@ -218,7 +228,7 @@ export function VoteView({ players, match, onVoted, guestName = null, onGuestVot
               <span className="tag tag-gold">2 pts</span>
             </div>
             <div className="row">
-              <div className="row-icon" style={{ background: "var(--gold-subtle)", opacity: 0.7 }}>⭐</div>
+              <div className="row-icon" style={{ background: 'var(--gold-subtle)', opacity: 0.7 }}>⭐</div>
               <div className="row-body">
                 <div className="row-title">{best2?.name}</div>
                 {best2Comment && <div className="row-sub">{best2Comment}</div>}
@@ -234,14 +244,14 @@ export function VoteView({ players, match, onVoted, guestName = null, onGuestVot
               <span className="tag tag-lemon">Citron</span>
             </div>
           </div>
-          <p style={{ fontSize: 12, color: "var(--label3)", textAlign: "center", marginBottom: 12 }}>
+          <p style={{ fontSize: 12, color: 'var(--label3)', textAlign: 'center', marginBottom: 12 }}>
             Ton vote est anonyme.
           </p>
           {submitError && (
             <div style={{
-              background: "rgba(255,59,48,0.1)", border: "1px solid rgba(255,59,48,0.25)",
-              borderRadius: 10, padding: "10px 14px", marginBottom: 12,
-              fontSize: 13, color: "var(--red, #ff3b30)", textAlign: "center",
+              background: 'rgba(255,59,48,0.1)', border: '1px solid rgba(255,59,48,0.25)',
+              borderRadius: 10, padding: '10px 14px', marginBottom: 12,
+              fontSize: 13, color: 'var(--red, #ff3b30)', textAlign: 'center',
             }}>
               ⚠️ {submitError}
             </div>
@@ -249,7 +259,7 @@ export function VoteView({ players, match, onVoted, guestName = null, onGuestVot
           <div className="flex gap-8">
             <button className="btn btn-secondary" onClick={() => setStep(3)}>Modifier</button>
             <button className="btn btn-primary" style={{ flex: 1 }} disabled={submitting} onClick={submit}>
-              {submitting ? "Envoi…" : submitError ? "Réessayer" : "Valider"}
+              {submitting ? 'Envoi…' : submitError ? 'Réessayer' : 'Valider'}
             </button>
           </div>
         </>

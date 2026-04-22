@@ -1,24 +1,33 @@
-import { Component } from 'react';
+import { Component, type ReactNode, type ErrorInfo } from 'react';
+
+interface ErrorBoundaryProps {
+  label?: string;
+  children: ReactNode;
+}
+
+interface ErrorBoundaryState {
+  error: Error | null;
+}
 
 /**
  * Attrape les erreurs React dans n'importe quel enfant et affiche
  * un écran de récupération propre au lieu d'une page blanche.
  * Usage : <ErrorBoundary label="Résultats"><ResultsView /></ErrorBoundary>
  */
-export class ErrorBoundary extends Component {
-  state = { error: null };
+export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
+  state: ErrorBoundaryState = { error: null };
 
-  static getDerivedStateFromError(error) {
+  static getDerivedStateFromError(error: Error): ErrorBoundaryState {
     return { error };
   }
 
-  componentDidCatch(error, info) {
+  componentDidCatch(error: Error, info: ErrorInfo): void {
     console.error(`[ErrorBoundary:${this.props.label}]`, error, info.componentStack);
   }
 
-  reset = () => this.setState({ error: null });
+  reset = (): void => this.setState({ error: null });
 
-  render() {
+  render(): ReactNode {
     if (this.state.error) {
       return (
         <div style={{

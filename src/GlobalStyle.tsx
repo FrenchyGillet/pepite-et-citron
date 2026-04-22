@@ -1,8 +1,6 @@
 export function GlobalStyle() {
   return (
   <style>{`
-    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
-
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
     :root {
@@ -35,7 +33,7 @@ export function GlobalStyle() {
     body {
       background: var(--bg);
       color: var(--label);
-      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', system-ui, sans-serif;
       min-height: 100vh;
       font-size: 15px;
       -webkit-font-smoothing: antialiased;
@@ -130,7 +128,7 @@ export function GlobalStyle() {
       opacity: 0.75;
     }
 
-    /* NAV (legacy — kept for compat) */
+    /* NAV (legacy) */
     .nav {
       display: flex;
       background: rgba(0,0,0,0.85);

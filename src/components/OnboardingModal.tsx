@@ -1,6 +1,14 @@
-import { useState } from 'react';
+import { useState, type ReactNode } from 'react';
 
-const STEPS = [
+interface Step {
+  color: string;
+  bg: string;
+  icon: ReactNode;
+  title: string;
+  desc: string;
+}
+
+const STEPS: Step[] = [
   {
     color: 'var(--gold)',
     bg: 'rgba(255,214,10,0.10)',
@@ -49,7 +57,11 @@ const STEPS = [
   },
 ];
 
-export function OnboardingModal({ onClose }) {
+interface OnboardingModalProps {
+  onClose: () => void;
+}
+
+export function OnboardingModal({ onClose }: OnboardingModalProps) {
   const [step, setStep] = useState(0);
   const isLast = step === STEPS.length - 1;
   const s = STEPS[step];
@@ -57,26 +69,17 @@ export function OnboardingModal({ onClose }) {
   return (
     <div style={{
       position: 'fixed', inset: 0, zIndex: 1000,
-      background: 'rgba(0,0,0,0.6)',
-      backdropFilter: 'blur(4px)',
+      background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)',
       display: 'flex', alignItems: 'flex-end', justifyContent: 'center',
       padding: '0 0 env(safe-area-inset-bottom, 0)',
     }}>
       <div style={{
-        background: 'var(--bg2)',
-        borderRadius: '24px 24px 0 0',
-        width: '100%', maxWidth: 480,
-        padding: '8px 24px 32px',
+        background: 'var(--bg2)', borderRadius: '24px 24px 0 0',
+        width: '100%', maxWidth: 480, padding: '8px 24px 32px',
         animation: 'slideUp 0.3s ease',
       }}>
-        {/* Handle */}
-        <div style={{
-          width: 36, height: 4, borderRadius: 2,
-          background: 'var(--separator)',
-          margin: '12px auto 28px',
-        }}/>
+        <div style={{ width: 36, height: 4, borderRadius: 2, background: 'var(--separator)', margin: '12px auto 28px' }}/>
 
-        {/* Step dots */}
         <div style={{ display: 'flex', gap: 6, justifyContent: 'center', marginBottom: 28 }}>
           {STEPS.map((_, i) => (
             <div key={i} style={{
@@ -88,12 +91,9 @@ export function OnboardingModal({ onClose }) {
           ))}
         </div>
 
-        {/* Icon */}
         <div style={{
-          width: 72, height: 72, borderRadius: 20,
-          background: s.bg,
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          margin: '0 auto 20px',
+          width: 72, height: 72, borderRadius: 20, background: s.bg,
+          display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 20px',
         }}>
           <svg width="32" height="32" viewBox="0 0 24 24" fill="none"
             stroke={s.color} strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
@@ -101,7 +101,6 @@ export function OnboardingModal({ onClose }) {
           </svg>
         </div>
 
-        {/* Content */}
         <div style={{ textAlign: 'center', marginBottom: 32 }}>
           <div style={{ fontSize: 22, fontWeight: 800, color: 'var(--label1)', letterSpacing: '-0.02em', marginBottom: 10 }}>
             {s.title}
@@ -111,21 +110,18 @@ export function OnboardingModal({ onClose }) {
           </div>
         </div>
 
-        {/* Actions */}
         <div style={{ display: 'flex', gap: 10 }}>
           {step === 0 ? (
             <button onClick={onClose} style={{
               flex: 1, padding: '13px', background: 'var(--bg3)', border: 'none',
-              borderRadius: 14, fontSize: 15, fontWeight: 600,
-              color: 'var(--label3)', cursor: 'pointer',
+              borderRadius: 14, fontSize: 15, fontWeight: 600, color: 'var(--label3)', cursor: 'pointer',
             }}>
               Passer
             </button>
           ) : (
             <button onClick={() => setStep(s => s - 1)} style={{
               flex: 1, padding: '13px', background: 'var(--bg3)', border: 'none',
-              borderRadius: 14, fontSize: 15, fontWeight: 600,
-              color: 'var(--label3)', cursor: 'pointer',
+              borderRadius: 14, fontSize: 15, fontWeight: 600, color: 'var(--label3)', cursor: 'pointer',
             }}>
               ← Retour
             </button>

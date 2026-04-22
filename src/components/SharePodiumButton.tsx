@@ -1,13 +1,25 @@
 import { useState } from 'react';
-import { generatePodiumImage } from '../utils/generatePodiumImage.js';
+import { generatePodiumImage } from '../utils/generatePodiumImage';
+import type { Match } from '../types';
 
-/**
- * Bouton "Partager le podium".
- * Génère une image PNG via Canvas et la partage via Web Share API
- * (iOS/Android) ou l'ouvre dans un nouvel onglet en fallback.
- */
-export function SharePodiumButton({ match, pepiteRanked, lemonRanked, isDark }) {
-  const [state, setState] = useState('idle'); // 'idle' | 'generating' | 'done' | 'error'
+interface RankedEntry {
+  id: string | number;
+  name: string;
+  pts: number;
+  absent?: boolean;
+}
+
+interface SharePodiumButtonProps {
+  match: Match;
+  pepiteRanked: RankedEntry[];
+  lemonRanked: RankedEntry[];
+  isDark: boolean;
+}
+
+type ShareState = 'idle' | 'generating' | 'done' | 'error';
+
+export function SharePodiumButton({ match, pepiteRanked, lemonRanked, isDark }: SharePodiumButtonProps) {
+  const [state, setState] = useState<ShareState>('idle');
 
   const handleShare = async () => {
     if (state === 'generating') return;
@@ -18,28 +30,16 @@ export function SharePodiumButton({ match, pepiteRanked, lemonRanked, isDark }) 
         day: 'numeric', month: 'short', year: 'numeric',
       });
 
-      const blob = await generatePodiumImage({
-        matchLabel:   match.label,
-        matchDate,
-        pepiteRanked,
-        lemonRanked,
-        isDark,
-      });
-
+      const blob = await generatePodiumImage({ matchLabel: match.label, matchDate, pepiteRanked, lemonRanked, isDark });
       const file = new File([blob], `podium-${match.label}.png`, { type: 'image/png' });
 
-      // Web Share API (iOS Safari, Android Chrome)
       if (navigator.canShare?.({ files: [file] })) {
-        await navigator.share({
-          files:  [file],
-          title:  `Podium — ${match.label}`,
-        });
+        await navigator.share({ files: [file], title: `Podium — ${match.label}` });
         setState('done');
         setTimeout(() => setState('idle'), 2500);
         return;
       }
 
-      // Fallback : ouvrir l'image dans un nouvel onglet pour sauvegarde manuelle
       const url = URL.createObjectURL(blob);
       const a   = document.createElement('a');
       a.href     = url;
@@ -49,8 +49,7 @@ export function SharePodiumButton({ match, pepiteRanked, lemonRanked, isDark }) 
       setState('done');
       setTimeout(() => setState('idle'), 2500);
     } catch (err) {
-      if (err.name === 'AbortError') {
-        // L'utilisateur a annulé le partage — pas une erreur
+      if (err instanceof Error && err.name === 'AbortError') {
         setState('idle');
         return;
       }
@@ -60,31 +59,24 @@ export function SharePodiumButton({ match, pepiteRanked, lemonRanked, isDark }) 
     }
   };
 
-  const label = {
+  const label: Record<ShareState, string> = {
     idle:       'Partager le podium',
     generating: 'Génération…',
     done:       '✓ Image prête',
     error:      'Erreur, réessaie',
-  }[state];
+  };
 
   return (
     <button
       onClick={handleShare}
       disabled={state === 'generating'}
       style={{
-        width: '100%',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        gap: 10,
-        padding: '13px 20px',
+        width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center',
+        gap: 10, padding: '13px 20px',
         background: state === 'done'  ? 'rgba(52,199,89,0.15)'
                   : state === 'error' ? 'rgba(255,59,48,0.12)'
                   : 'var(--bg3)',
-        border: 'none',
-        borderRadius: 14,
-        fontSize: 15,
-        fontWeight: 600,
+        border: 'none', borderRadius: 14, fontSize: 15, fontWeight: 600,
         color: state === 'done'  ? '#34C759'
              : state === 'error' ? 'var(--red, #ff3b30)'
              : 'var(--label2)',
@@ -102,7 +94,7 @@ export function SharePodiumButton({ match, pepiteRanked, lemonRanked, isDark }) 
           <line x1="12" y1="2" x2="12" y2="15"/>
         </svg>
       )}
-      {label}
+      {label[state]}
     </button>
   );
 }
