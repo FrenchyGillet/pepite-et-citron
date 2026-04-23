@@ -1,109 +1,88 @@
-import { useState, useEffect, useCallback } from 'react';
-import { api, DEMO_MODE } from '../api';
+import { useState } from 'react';
+import { DEMO_MODE } from '../api';
 import { Toast } from './Toast';
-import type { Player, Match, Team, GuestToken, OrgMember, Org, EntityId } from '../types';
+import { useTeams, useGuestTokens, useOrgMembers, useVotes, useCurrentSeason, useSeasonNames } from '../hooks/queries';
+import {
+  useAddPlayer, useRemovePlayer,
+  useCreateMatch, useCloseMatch, useStartCounting,
+  useCreateTeam, useDeleteTeam,
+  useCreateGuestToken, useDeleteGuestToken,
+  useAddMember, useRemoveMember,
+  useAdvanceSeason, useSetSeasonName,
+} from '../hooks/mutations';
+import type { Player, Match, Org, EntityId } from '../types';
 
 interface AdminViewProps {
   players: Player[];
-  onPlayersChange: () => void;
   activeMatch: Match | null;
-  onMatchChange: () => Promise<void>;
   currentOrg: Org | null;
   onSignOut: () => Promise<void>;
   onShowGuide: () => void;
   onGoToResults?: () => void;
 }
 
-export function AdminView({ players, onPlayersChange, activeMatch, onMatchChange, currentOrg, onSignOut, onShowGuide, onGoToResults }: AdminViewProps) {
-  const [newPlayer,    setNewPlayer]    = useState('');
-  const [matchLabel,   setMatchLabel]   = useState('');
-  const [presentIds,   setPresentIds]   = useState<EntityId[]>([]);
-  const [creating,     setCreating]     = useState(false);
-  const [toast,        setToast]        = useState<string | null>(null);
-  const [teams,          setTeams]          = useState<Team[]>([]);
-  const [teamName,       setTeamName]       = useState('');
-  const [teamIds,        setTeamIds]        = useState<EntityId[]>([]);
-  const [showNewTeam,    setShowNewTeam]    = useState(false);
-  const [savingTeam,     setSavingTeam]     = useState(false);
-  const [selectedTeamId, setSelectedTeamId] = useState<EntityId | null>(null);
-  const [currentSeason,  setCurrentSeason]  = useState(1);
-  const [seasonName,     setSeasonName]     = useState('');
-  const [seasonNameDraft,setSeasonNameDraft]= useState('');
-  const [editingSeason,  setEditingSeason]  = useState(false);
-  const [guestInput,     setGuestInput]     = useState('');
-  const [guestTokens,    setGuestTokens]    = useState<GuestToken[]>([]);
-  const [copiedToken,    setCopiedToken]    = useState<string | null>(null);
-  const [voteCount,      setVoteCount]      = useState(0);
-  const [startingCount,  setStartingCount]  = useState(false);
-  const [showAccount,    setShowAccount]    = useState(false);
-  const [members,       setMembers]       = useState<OrgMember[]>([]);
-  const [memberEmail,   setMemberEmail]   = useState('');
-  const [addingMember,  setAddingMember]  = useState(false);
+export function AdminView({ players, activeMatch, currentOrg, onSignOut, onShowGuide, onGoToResults }: AdminViewProps) {
+  const [newPlayer,       setNewPlayer]       = useState('');
+  const [matchLabel,      setMatchLabel]      = useState('');
+  const [presentIds,      setPresentIds]      = useState<EntityId[]>([]);
+  const [toast,           setToast]           = useState<string | null>(null);
+  const [teamName,        setTeamName]        = useState('');
+  const [teamIds,         setTeamIds]         = useState<EntityId[]>([]);
+  const [showNewTeam,     setShowNewTeam]     = useState(false);
+  const [selectedTeamId,  setSelectedTeamId]  = useState<EntityId | null>(null);
+  const [seasonNameDraft, setSeasonNameDraft] = useState('');
+  const [editingSeason,   setEditingSeason]   = useState(false);
+  const [guestInput,      setGuestInput]      = useState('');
+  const [copiedToken,     setCopiedToken]     = useState<string | null>(null);
+  const [showAccount,     setShowAccount]     = useState(false);
+  const [memberEmail,     setMemberEmail]     = useState('');
 
-  const loadTeams  = useCallback(async () => { setTeams(await api.getTeams()); }, []);
-  const loadGuests = useCallback(async () => {
-    if (!activeMatch) return;
-    setGuestTokens(await api.getGuestTokens(activeMatch.id));
-  }, [activeMatch?.id]); // eslint-disable-line react-hooks/exhaustive-deps
+  const { data: teams         = [] } = useTeams(currentOrg?.id);
+  const { data: guestTokens   = [] } = useGuestTokens(activeMatch?.id);
+  const { data: members       = [] } = useOrgMembers(currentOrg?.id);
+  const { data: matchVotes    = [] } = useVotes(activeMatch?.id);
+  const { data: currentSeason = 1  } = useCurrentSeason(currentOrg?.id);
+  const seasonNamesMap               = useSeasonNames([currentSeason]);
+  const seasonName                   = seasonNamesMap[currentSeason] ?? '';
+  const voteCount                    = matchVotes.length;
 
-  const loadMembers = useCallback(async () => {
-    if (!currentOrg?.id) return;
-    try {
-      const m = await api.getOrgMembers(currentOrg.id);
-      setMembers(m);
-    } catch { /* RPC pas encore créée → silencieux */ }
-  }, [currentOrg?.id]);
+  const addPlayerMutation        = useAddPlayer(currentOrg?.id);
+  const removePlayerMutation     = useRemovePlayer(currentOrg?.id);
+  const createMatchMutation      = useCreateMatch(currentOrg?.id);
+  const closeMatchMutation       = useCloseMatch(currentOrg?.id);
+  const startCountingMutation    = useStartCounting(currentOrg?.id);
+  const createTeamMutation       = useCreateTeam(currentOrg?.id);
+  const deleteTeamMutation       = useDeleteTeam(currentOrg?.id);
+  const createGuestTokenMutation = useCreateGuestToken(activeMatch?.id);
+  const deleteGuestTokenMutation = useDeleteGuestToken(activeMatch?.id);
+  const addMemberMutation        = useAddMember(currentOrg?.id);
+  const removeMemberMutation     = useRemoveMember(currentOrg?.id);
+  const advanceSeasonMutation    = useAdvanceSeason(currentOrg?.id);
+  const setSeasonNameMutation    = useSetSeasonName();
 
-  useEffect(() => { void loadMembers(); }, [currentOrg?.id]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  useEffect(() => {
-    void Promise.all([api.getTeams(), api.getCurrentSeason()]).then(async ([t, cs]) => {
-      setTeams(t); setCurrentSeason(cs);
-      const name = await api.getSeasonName(cs);
-      setSeasonName(name || ''); setSeasonNameDraft(name || '');
-    });
-  }, []);
-
-  useEffect(() => { void loadGuests(); }, [activeMatch?.id]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  useEffect(() => {
-    if (!activeMatch || (activeMatch.phase || 'voting') !== 'voting') { setVoteCount(0); return; }
-    void api.getVotes(activeMatch.id).then(v => setVoteCount(v.length));
-    const t = setInterval(() => void api.getVotes(activeMatch.id).then(v => setVoteCount(v.length)), 5000);
-    return () => clearInterval(t);
-  }, [activeMatch?.id, activeMatch?.phase]);
-
-  const handleAddMember = async () => {
+  const handleAddMember = () => {
     if (!memberEmail.trim() || !currentOrg?.id) return;
-    setAddingMember(true);
-    try {
-      await api.addMember(memberEmail.trim(), currentOrg.id, 'voter');
-      setMemberEmail('');
-      await loadMembers();
-      setToast(`${memberEmail.trim()} ajouté comme votant`);
-    } catch (err) {
-      setToast(`Erreur : ${err instanceof Error ? err.message : String(err)}`);
-    } finally {
-      setAddingMember(false);
-    }
+    const email = memberEmail.trim();
+    addMemberMutation.mutate({ email, role: 'voter' }, {
+      onSuccess: () => { setMemberEmail(''); setToast(`${email} ajouté comme votant`); },
+      onError: (err) => setToast(`Erreur : ${err instanceof Error ? err.message : String(err)}`),
+    });
   };
 
-  const handleRemoveMember = async (userId: string, email: string) => {
+  const handleRemoveMember = (userId: string, email: string) => {
     if (!currentOrg?.id || !confirm(`Retirer ${email} ?`)) return;
-    try {
-      await api.removeMember(userId, currentOrg.id);
-      await loadMembers();
-      setToast(`${email} retiré`);
-    } catch (err) {
-      setToast(`Erreur : ${err instanceof Error ? err.message : String(err)}`);
-    }
+    removeMemberMutation.mutate(userId, {
+      onSuccess: () => setToast(`${email} retiré`),
+      onError: (err) => setToast(`Erreur : ${err instanceof Error ? err.message : String(err)}`),
+    });
   };
 
-  const createGuestLink = async () => {
+  const createGuestLink = () => {
     if (!guestInput.trim() || !activeMatch) return;
-    await api.createGuestToken(guestInput.trim(), activeMatch.id);
-    setGuestInput(''); void loadGuests();
-    setToast(`Lien créé pour ${guestInput.trim()}`);
+    const name = guestInput.trim();
+    createGuestTokenMutation.mutate({ name, id: activeMatch.id }, {
+      onSuccess: () => { setGuestInput(''); setToast(`Lien créé pour ${name}`); },
+    });
   };
 
   const copyGuestLink = (token: string) => {
@@ -113,89 +92,90 @@ export function AdminView({ players, onPlayersChange, activeMatch, onMatchChange
     setTimeout(() => setCopiedToken(null), 2000);
   };
 
-  const revokeGuest = async (id: EntityId) => { await api.deleteGuestToken(id); void loadGuests(); };
+  const revokeGuest = (id: EntityId) => deleteGuestTokenMutation.mutate(id);
 
-  const addPlayer = async () => {
+  const addPlayer = () => {
     if (!newPlayer.trim()) return;
-    try {
-      await api.addPlayer(newPlayer.trim());
-      setToast(`${newPlayer.trim()} ajouté`);
-      setNewPlayer('');
-      onPlayersChange();
-    } catch (err) {
-      setToast(`Erreur : ${err instanceof Error ? err.message : String(err)}`);
-      console.error('addPlayer:', err);
-    }
+    const name = newPlayer.trim();
+    addPlayerMutation.mutate(name, {
+      onSuccess: () => { setToast(`${name} ajouté`); setNewPlayer(''); },
+      onError: (err) => { setToast(`Erreur : ${err instanceof Error ? err.message : String(err)}`); console.error('addPlayer:', err); },
+    });
   };
 
-  const removePlayer = async (id: EntityId, name: string) => {
+  const removePlayer = (id: EntityId, name: string) => {
     if (!confirm(`Supprimer ${name} ?`)) return;
-    await api.removePlayer(id); onPlayersChange();
+    removePlayerMutation.mutate(id);
   };
 
   const togglePresent = (id: EntityId) => setPresentIds(p => p.includes(id) ? p.filter(x => x !== id) : [...p, id]);
   const toggleTeamId  = (id: EntityId) => setTeamIds(p  => p.includes(id) ? p.filter(x => x !== id) : [...p, id]);
 
-  const loadTeamIntoMatch = (team: Team) => { setPresentIds([...team.player_ids]); setSelectedTeamId(team.id); };
-
-  const saveSeasonName = async () => {
-    try {
-      await api.setSeasonName(currentSeason, seasonNameDraft.trim());
-      setSeasonName(seasonNameDraft.trim());
-      setEditingSeason(false);
-      setToast('Nom de saison sauvegardé !');
-    } catch (err) {
-      setToast(`Erreur : ${err instanceof Error ? err.message : String(err)}`);
-    }
+  const loadTeamIntoMatch = (team: { id: EntityId; player_ids: EntityId[] }) => {
+    setPresentIds([...team.player_ids]);
+    setSelectedTeamId(team.id);
   };
 
-  const advanceSeason = async () => {
+  const saveSeasonName = () => {
+    setSeasonNameMutation.mutate({ season: currentSeason, name: seasonNameDraft.trim() }, {
+      onSuccess: () => { setEditingSeason(false); setToast('Nom de saison sauvegardé !'); },
+      onError: (err) => setToast(`Erreur : ${err instanceof Error ? err.message : String(err)}`),
+    });
+  };
+
+  const advanceSeason = () => {
     const label = seasonName ? `"${seasonName}"` : `Saison ${currentSeason}`;
     if (!confirm(`Démarrer la saison ${currentSeason + 1} ? L'historique de ${label} est conservé.`)) return;
-    const next = await api.advanceSeason();
-    setCurrentSeason(next);
-    const nextName = await api.getSeasonName(next);
-    setSeasonName(nextName || ''); setSeasonNameDraft(nextName || '');
-    setToast(`Saison ${next} démarrée !`);
+    advanceSeasonMutation.mutate(undefined, {
+      onSuccess: (next) => { setSeasonNameDraft(''); setToast(`Saison ${next} démarrée !`); },
+      onError: (err) => setToast(`Erreur : ${err instanceof Error ? err.message : String(err)}`),
+    });
   };
 
-  const createMatch = async () => {
+  const createMatch = () => {
     if (!matchLabel.trim() || presentIds.length < 2) return;
-    setCreating(true);
-    await api.createMatch(matchLabel.trim(), presentIds, selectedTeamId, currentSeason);
-    setMatchLabel(''); setPresentIds([]); setSelectedTeamId(null);
-    setCreating(false); await onMatchChange();
-    setToast('Match ouvert !');
+    createMatchMutation.mutate(
+      { label: matchLabel.trim(), presentIds, teamId: selectedTeamId, season: currentSeason },
+      {
+        onSuccess: () => {
+          setMatchLabel(''); setPresentIds([]); setSelectedTeamId(null);
+          setToast('Match ouvert !');
+        },
+      }
+    );
   };
 
-  const closeMatch = async () => {
+  const closeMatch = () => {
     if (!activeMatch || !confirm('Fermer définitivement le vote sans dépouillement ?')) return;
-    await api.closeMatch(activeMatch.id); await onMatchChange();
-    setToast('Vote clôturé');
+    closeMatchMutation.mutate(activeMatch.id, {
+      onSuccess: () => setToast('Vote clôturé'),
+    });
   };
 
-  const startCounting = async () => {
+  const startCounting = () => {
     if (!activeMatch) return;
-    setStartingCount(true);
-    const votes = await api.getVotes(activeMatch.id);
-    const shuffled = [...votes].sort(() => Math.random() - 0.5).map(v => v.id).filter((id): id is EntityId => id != null);
-    await api.startCounting(activeMatch.id, shuffled);
-    setStartingCount(false);
-    await onMatchChange();
-    onGoToResults?.();
+    const shuffled = [...matchVotes]
+      .sort(() => Math.random() - 0.5)
+      .map(v => v.id)
+      .filter((id): id is EntityId => id != null);
+    startCountingMutation.mutate({ id: activeMatch.id, order: shuffled }, {
+      onSuccess: () => onGoToResults?.(),
+    });
   };
 
-  const saveTeam = async () => {
+  const saveTeam = () => {
     if (!teamName.trim() || teamIds.length < 2) return;
-    setSavingTeam(true);
-    await api.createTeam(teamName.trim(), teamIds);
-    setTeamName(''); setTeamIds([]); setSavingTeam(false);
-    void loadTeams(); setToast('Équipe sauvegardée !');
+    createTeamMutation.mutate(
+      { name: teamName.trim(), playerIds: teamIds },
+      {
+        onSuccess: () => { setTeamName(''); setTeamIds([]); setToast('Équipe sauvegardée !'); },
+      }
+    );
   };
 
-  const deleteTeam = async (id: EntityId, name: string) => {
+  const deleteTeam = (id: EntityId, name: string) => {
     if (!confirm(`Supprimer l'équipe "${name}" ?`)) return;
-    await api.deleteTeam(id); void loadTeams();
+    deleteTeamMutation.mutate(id);
   };
 
   const SectionHeader = ({ title, subtitle }: { title: string; subtitle?: string }) => (
@@ -321,8 +301,8 @@ export function AdminView({ players, onPlayersChange, activeMatch, onMatchChange
                     </button>
                   </div>
                 )}
-                <button className="btn btn-primary btn-full" onClick={startCounting} disabled={startingCount || voteCount === 0}>
-                  {startingCount ? 'Préparation…' : `Lancer le dépouillement · ${voteCount} vote${voteCount !== 1 ? 's' : ''}`}
+                <button className="btn btn-primary btn-full" onClick={startCounting} disabled={startCountingMutation.isPending || voteCount === 0}>
+                  {startCountingMutation.isPending ? 'Préparation…' : `Lancer le dépouillement · ${voteCount} vote${voteCount !== 1 ? 's' : ''}`}
                 </button>
                 <button className="btn btn-danger btn-full" style={{ fontSize: 13 }} onClick={closeMatch}>
                   Clore sans dépouiller
@@ -397,9 +377,9 @@ export function AdminView({ players, onPlayersChange, activeMatch, onMatchChange
             </p>
           )}
           <button className="btn btn-primary btn-full"
-            disabled={!matchLabel.trim() || presentIds.length < 2 || creating}
+            disabled={!matchLabel.trim() || presentIds.length < 2 || createMatchMutation.isPending}
             onClick={createMatch}>
-            {creating ? 'Lancement…' : `Lancer le vote · ${presentIds.length} joueurs`}
+            {createMatchMutation.isPending ? 'Lancement…' : `Lancer le vote · ${presentIds.length} joueurs`}
           </button>
         </div>
       )}
@@ -499,9 +479,9 @@ export function AdminView({ players, onPlayersChange, activeMatch, onMatchChange
             ))}
           </div>
           <button className="btn btn-primary btn-full"
-            disabled={!teamName.trim() || teamIds.length < 2 || savingTeam}
+            disabled={!teamName.trim() || teamIds.length < 2 || createTeamMutation.isPending}
             onClick={saveTeam}>
-            {savingTeam ? 'Sauvegarde…' : `Sauvegarder · ${teamIds.length} joueur${teamIds.length !== 1 ? 's' : ''}`}
+            {createTeamMutation.isPending ? 'Sauvegarde…' : `Sauvegarder · ${teamIds.length} joueur${teamIds.length !== 1 ? 's' : ''}`}
           </button>
         </div>
       )}
@@ -603,9 +583,9 @@ export function AdminView({ players, onPlayersChange, activeMatch, onMatchChange
               onKeyDown={e => e.key === 'Enter' && handleAddMember()}
             />
             <button className="btn btn-primary" style={{ whiteSpace: 'nowrap', padding: '12px 16px' }}
-              disabled={!memberEmail.trim() || addingMember}
+              disabled={!memberEmail.trim() || addMemberMutation.isPending}
               onClick={handleAddMember}>
-              {addingMember ? '…' : 'Inviter'}
+              {addMemberMutation.isPending ? '…' : 'Inviter'}
             </button>
           </div>
         </>

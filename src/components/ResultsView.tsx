@@ -1,19 +1,19 @@
 import { useState, useEffect, type ReactNode } from 'react';
-import { api } from '../api';
 import { computeScores, formatDate } from '../utils';
 import { Scoreboard } from './Scoreboard';
 import { PodiumView } from './PodiumView';
 import { EmptyState } from './EmptyState';
 import { SharePodiumButton } from './SharePodiumButton';
-import type { Vote, Player, Match, EntityId } from '../types';
+import { useVotes } from '../hooks/queries';
+import { useRevealNext, useCloseMatch, useUpdateMatch } from '../hooks/mutations';
+import type { Player, Match, EntityId } from '../types';
 
 interface ResultsViewProps {
   players: Player[];
   match: Match | null;
-  refreshKey: number;
-  onMatchUpdate: () => Promise<void>;
   isAdmin: boolean;
   isDark: boolean;
+  orgId?: string | null;
 }
 
 interface TiebreakerCardProps {
@@ -23,27 +23,15 @@ interface TiebreakerCardProps {
   tiedPlayers: Player[];
 }
 
-export function ResultsView({ players, match, refreshKey, onMatchUpdate, isAdmin, isDark }: ResultsViewProps) {
-  const [votes,              setVotes]              = useState<Vote[]>([]);
-  const [loading,            setLoading]            = useState(true);
+export function ResultsView({ players, match, isAdmin, isDark, orgId }: ResultsViewProps) {
   const [localRevealedCount, setLocalRevealedCount] = useState<number | null>(null);
 
   useEffect(() => { setLocalRevealedCount(null); }, [match?.id]);
 
-  useEffect(() => {
-    if (!match) { setLoading(false); return; }
-    setLoading(true);
-    api.getVotes(match.id)
-      .then(v => { setVotes(v); })
-      .catch(err => console.error('ResultsView getVotes:', err))
-      .finally(() => setLoading(false));
-  }, [match?.id, refreshKey]);
-
-  useEffect(() => {
-    if (!match?.is_open) return;
-    const t = setInterval(() => api.getVotes(match.id).then(setVotes), 5000);
-    return () => clearInterval(t);
-  }, [match?.id, match?.is_open]);
+  const { data: votes = [], isLoading } = useVotes(match?.id);
+  const revealNextMutation  = useRevealNext(orgId);
+  const closeMatchMutation  = useCloseMatch(orgId);
+  const updateMatchMutation = useUpdateMatch(orgId);
 
   if (!match) return (
     <div className="content">
@@ -54,7 +42,7 @@ export function ResultsView({ players, match, refreshKey, onMatchUpdate, isAdmin
       />
     </div>
   );
-  if (loading) return <div className="content"><div className="empty">Chargement…</div></div>;
+  if (isLoading) return <div className="content"><div className="empty">Chargement…</div></div>;
 
   const present = players.filter(p => (match.present_ids || []).includes(p.id));
   const phase = match.phase || 'voting';
@@ -89,27 +77,24 @@ export function ResultsView({ players, match, refreshKey, onMatchUpdate, isAdmin
   }
 
   if (phase === 'counting') {
-    const revealOrder   = match.reveal_order || [];
-    const revealedCount = localRevealedCount ?? (match.revealed_count || 0);
-    const isDone        = revealedCount >= revealOrder.length;
+    const revealOrder    = match.reveal_order || [];
+    const revealedCount  = localRevealedCount ?? (match.revealed_count || 0);
+    const isDone         = revealedCount >= revealOrder.length;
 
-    const currentVoteId  = !isDone ? revealOrder[revealedCount] : null;
-    const currentVote    = currentVoteId != null ? votes.find(v => v.id === currentVoteId) : null;
+    const currentVoteId   = !isDone ? revealOrder[revealedCount] : null;
+    const currentVote     = currentVoteId != null ? votes.find(v => v.id === currentVoteId) : null;
     const revealedVoteIds = revealOrder.slice(0, revealedCount);
-    const revealedVotes  = votes.filter(v => v.id != null && revealedVoteIds.includes(v.id as EntityId));
+    const revealedVotes   = votes.filter(v => v.id != null && revealedVoteIds.includes(v.id as EntityId));
 
     const playerName = (id: EntityId | undefined) => players.find(p => p.id === id)?.name || '?';
 
     const handleNext = () => {
       const next = revealedCount + 1;
       setLocalRevealedCount(next);
-      void api.revealNext(match.id, next);
+      revealNextMutation.mutate({ id: match.id, count: next });
     };
 
-    const handleFinish = async () => {
-      await api.closeMatch(match.id);
-      await onMatchUpdate();
-    };
+    const handleFinish = () => closeMatchMutation.mutate(match.id);
 
     return (
       <div className="content">
@@ -217,9 +202,8 @@ export function ResultsView({ players, match, refreshKey, onMatchUpdate, isAdmin
   const bestTiedPlayers  = present.filter(p  => (bestScores[p.id]?.pts  || 0) === topBestPts);
   const lemonTiedPlayers = everyone.filter(p => (lemonScores[p.id]?.pts || 0) === topLemonPts);
 
-  const setTiebreaker = async (field: string, playerId: EntityId) => {
-    await api.updateMatch(match.id, { tiebreakers: { ...tiebreakers, [field]: playerId } });
-    await onMatchUpdate();
+  const setTiebreaker = (field: string, playerId: EntityId) => {
+    updateMatchMutation.mutate({ id: match.id, data: { tiebreakers: { ...tiebreakers, [field]: playerId } } });
   };
 
   const TiebreakerCard = ({ title, color, field, tiedPlayers }: TiebreakerCardProps) => (

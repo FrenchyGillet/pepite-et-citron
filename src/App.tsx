@@ -1,5 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { DEMO_MODE, api, setCurrentOrgId } from './api';
+import { useActiveMatch, usePlayers, useMatchById } from './hooks/queries';
 import { GlobalStyle }       from './GlobalStyle';
 import { AuthView }          from './components/AuthView';
 import { OrgSetupView }      from './components/OrgSetupView';
@@ -10,15 +12,19 @@ import { AdminView }         from './components/AdminView';
 import { EmptyState }        from './components/EmptyState';
 import { ErrorBoundary }     from './components/ErrorBoundary';
 import { OnboardingModal }   from './components/OnboardingModal';
-import type { UserSession, Org, Player, Match, EntityId } from './types';
+import type { UserSession, Org, EntityId } from './types';
 
 type GuestStatus = 'checking' | 'valid' | 'invalid' | null;
 
 export default function App() {
+  const queryClient = useQueryClient();
+
+  // ── Auth & org ─────────────────────────────────────────────────────────────
   const [session,     setSession]     = useState<UserSession | null>(null);
   const [currentOrg,  setCurrentOrg]  = useState<Org | null>(null);
   const [authLoading, setAuthLoading] = useState(!DEMO_MODE);
 
+  // ── Tabs ───────────────────────────────────────────────────────────────────
   const VALID_TABS = ['vote', 'results', 'stats', 'admin'];
   const [tab, setTabRaw] = useState(() => {
     const hash = window.location.hash.slice(1);
@@ -27,9 +33,7 @@ export default function App() {
 
   const setTab = useCallback((t: string) => {
     setTabRaw(t);
-    if (window.location.hash.slice(1) !== t) {
-      history.pushState(null, '', `#${t}`);
-    }
+    if (window.location.hash.slice(1) !== t) history.pushState(null, '', `#${t}`);
   }, []);
 
   useEffect(() => {
@@ -42,11 +46,21 @@ export default function App() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const [players,           setPlayers]           = useState<Player[]>([]);
-  const [activeMatch,       setActiveMatch]       = useState<Match | null>(null);
-  const [lastMatch,         setLastMatch]         = useState<Match | null>(null);
-  const lastMatchIdRef                             = useRef<EntityId | null>(null);
-  const [refreshKey,        setRefreshKey]        = useState(0);
+  // ── Server state via TanStack Query ───────────────────────────────────────
+  const { data: activeMatch } = useActiveMatch(currentOrg?.id);
+  const { data: players = [] } = usePlayers(currentOrg?.id);
+
+  // lastMatchId tracks the last known active match ID so ResultsView
+  // can still display a just-closed match after getActiveMatch() returns null.
+  const [lastMatchId, setLastMatchId] = useState<EntityId | null>(null);
+  useEffect(() => {
+    if (activeMatch?.id != null) setLastMatchId(activeMatch.id);
+  }, [activeMatch?.id]);
+
+  const { data: lastMatchById } = useMatchById(!activeMatch ? lastMatchId : null);
+  const lastMatch = activeMatch ?? lastMatchById ?? null;
+
+  // ── UI state ───────────────────────────────────────────────────────────────
   const [votedThisSession,  setVotedThisSession]  = useState(false);
   const [theme,             setTheme]             = useState(() => localStorage.getItem('pepite_theme') || 'dark');
   const [guestToken,        setGuestToken]        = useState<string | null>(null);
@@ -77,6 +91,7 @@ export default function App() {
     localStorage.setItem('pepite_theme', theme);
   }, [theme]);
 
+  // ── Org loading ────────────────────────────────────────────────────────────
   const loadOrgs = useCallback(async (): Promise<Org | null> => {
     setOrgsLoadError(false);
     try {
@@ -104,13 +119,13 @@ export default function App() {
     setCurrentOrg(org);
     setCurrentOrgId(org.id);
     setOrgPickerOpen(false);
-    setActiveMatch(null);
-    setLastMatch(null);
-    setPlayers([]);
+    setLastMatchId(null);
     setVotedThisSession(false);
-    lastMatchIdRef.current = null;
-  }, []);
+    // Clear all cached queries — data is org-scoped
+    queryClient.clear();
+  }, [queryClient]);
 
+  // ── Bootstrap auth ─────────────────────────────────────────────────────────
   useEffect(() => {
     if (DEMO_MODE) return;
 
@@ -127,10 +142,7 @@ export default function App() {
     const bootstrap = async () => {
       try {
         const s = await api.getSession();
-        if (s) {
-          setSession(s);
-          await loadOrgs();
-        }
+        if (s) { setSession(s); await loadOrgs(); }
       } catch (err) {
         console.error('bootstrap:', err);
       } finally {
@@ -147,12 +159,14 @@ export default function App() {
       } else {
         setCurrentOrg(null);
         setCurrentOrgId(null);
+        queryClient.clear();
       }
     });
     return () => sub?.unsubscribe?.();
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // ── Guest / org-by-slug resolution ─────────────────────────────────────────
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const guestParam = params.get('guest');
@@ -187,47 +201,13 @@ export default function App() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const loadPlayers = useCallback(async () => {
-    if (!DEMO_MODE && !currentOrgIdRef.current) return;
-    setPlayers(await api.getPlayers());
-  }, []);
-
-  const loadMatch = useCallback(async () => {
-    if (!DEMO_MODE && !currentOrgIdRef.current) return;
-    const m = await api.getActiveMatch();
-    setActiveMatch(m);
-    if (m) {
-      setLastMatch(m);
-      lastMatchIdRef.current = m.id;
-    } else if (lastMatchIdRef.current) {
-      const closed = await api.getMatchById(lastMatchIdRef.current);
-      if (closed) setLastMatch(closed);
-    }
-    setRefreshKey(k => k + 1);
-  }, []);
-
-  useEffect(() => {
-    if (DEMO_MODE || currentOrg) {
-      void loadPlayers();
-      void loadMatch();
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentOrg?.id]);
-
-  const matchIsActive = activeMatch?.is_open || activeMatch?.phase === 'counting';
-  useEffect(() => {
-    if (!matchIsActive) return;
-    const t = setInterval(() => void loadMatch(), 5000);
-    return () => clearInterval(t);
-  }, [matchIsActive, loadMatch]);
-
+  // ── Helpers ────────────────────────────────────────────────────────────────
   const hasVotedLocally = (matchId: EntityId | null | undefined): boolean =>
     !!matchId && (JSON.parse(localStorage.getItem('pepite_voted') || '[]') as unknown[]).includes(matchId);
 
   const handleVoted = () => {
     setVotedThisSession(true);
     setTab('results');
-    setRefreshKey(k => k + 1);
   };
 
   const handleGuestVoted = async () => {
@@ -240,6 +220,7 @@ export default function App() {
     setSession(null);
     setCurrentOrg(null);
     setCurrentOrgId(null);
+    queryClient.clear();
     setTab('vote');
   };
 
@@ -248,6 +229,7 @@ export default function App() {
   const urlParams   = new URLSearchParams(window.location.search);
   const isVoterLink = !DEMO_MODE && (urlParams.get('org') || urlParams.get('guest'));
 
+  // ── Loading / auth gates ───────────────────────────────────────────────────
   if (authLoading && !isVoterLink) {
     return (
       <>
@@ -260,12 +242,7 @@ export default function App() {
   }
 
   if (!DEMO_MODE && !session && !isVoterLink) {
-    return (
-      <>
-        <GlobalStyle />
-        <AuthView onAuth={(s) => setSession(s)} />
-      </>
-    );
+    return (<><GlobalStyle /><AuthView onAuth={(s) => setSession(s)} /></>);
   }
 
   if (!DEMO_MODE && session && !orgsResolved && !isVoterLink) {
@@ -308,15 +285,14 @@ export default function App() {
         <GlobalStyle />
         <OrgSetupView
           userEmail={session.user?.email}
-          onOrgCreated={async (org) => {
+          onOrgCreated={(org) => {
             const orgWithRole: Org = { ...org, role: 'admin' };
             setCurrentOrg(orgWithRole);
             setCurrentOrgId(org.id);
             setMyOrgs([orgWithRole]);
             setOrgsResolved(true);
             setOrgsLoadError(false);
-            void loadPlayers();
-            void loadMatch();
+            // Queries fire automatically once currentOrg is set
             if (!localStorage.getItem(`pepite_onboarded_${org.id}`)) {
               setShowOnboarding(true);
             }
@@ -326,6 +302,7 @@ export default function App() {
     );
   }
 
+  // ── Main app ───────────────────────────────────────────────────────────────
   return (
     <>
       <GlobalStyle />
@@ -341,32 +318,21 @@ export default function App() {
               {currentOrg?.name && !DEMO_MODE && (
                 <div style={{ position: 'relative' }} data-org-picker="">
                   {myOrgs.length > 1 ? (
-                    <button
-                      onClick={() => setOrgPickerOpen(v => !v)}
-                      style={{
-                        background: 'none', border: 'none', padding: 0,
-                        cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 5,
-                      }}
-                    >
-                      <span className="header-sub" style={{ color: 'var(--gold)', fontWeight: 600 }}>
-                        {currentOrg.name}
-                      </span>
+                    <button onClick={() => setOrgPickerOpen(v => !v)} style={{
+                      background: 'none', border: 'none', padding: 0,
+                      cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 5,
+                    }}>
+                      <span className="header-sub" style={{ color: 'var(--gold)', fontWeight: 600 }}>{currentOrg.name}</span>
                       <span style={{ fontSize: 9, color: 'var(--gold)', opacity: 0.7, marginTop: 1 }}>▼</span>
                       {currentOrg.role === 'voter' && (
-                        <span style={{
-                          fontSize: 10, fontWeight: 700, background: 'rgba(170,221,0,0.15)',
-                          color: 'var(--lemon)', borderRadius: 4, padding: '1px 5px',
-                        }}>votant</span>
+                        <span style={{ fontSize: 10, fontWeight: 700, background: 'rgba(170,221,0,0.15)', color: 'var(--lemon)', borderRadius: 4, padding: '1px 5px' }}>votant</span>
                       )}
                     </button>
                   ) : (
                     <div className="header-sub" style={{ color: 'var(--gold)', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 5 }}>
                       {currentOrg.name}
                       {currentOrg.role === 'voter' && (
-                        <span style={{
-                          fontSize: 10, fontWeight: 700, background: 'rgba(170,221,0,0.15)',
-                          color: 'var(--lemon)', borderRadius: 4, padding: '1px 5px',
-                        }}>votant</span>
+                        <span style={{ fontSize: 10, fontWeight: 700, background: 'rgba(170,221,0,0.15)', color: 'var(--lemon)', borderRadius: 4, padding: '1px 5px' }}>votant</span>
                       )}
                     </div>
                   )}
@@ -378,16 +344,11 @@ export default function App() {
                       boxShadow: '0 8px 24px rgba(0,0,0,0.3)', minWidth: 180,
                     }}>
                       {myOrgs.map(org => (
-                        <button
-                          key={org.id}
-                          onClick={() => switchOrg(org)}
-                          style={{
-                            width: '100%', background: org.id === currentOrg.id ? 'var(--bg3)' : 'none',
-                            border: 'none', padding: '12px 14px', cursor: 'pointer',
-                            display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                            textAlign: 'left',
-                          }}
-                        >
+                        <button key={org.id} onClick={() => switchOrg(org)} style={{
+                          width: '100%', background: org.id === currentOrg.id ? 'var(--bg3)' : 'none',
+                          border: 'none', padding: '12px 14px', cursor: 'pointer',
+                          display: 'flex', justifyContent: 'space-between', alignItems: 'center', textAlign: 'left',
+                        }}>
                           <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--label)' }}>{org.name}</span>
                           <span style={{
                             fontSize: 11, fontWeight: 700,
@@ -409,9 +370,8 @@ export default function App() {
             </div>
             <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
               <button onClick={() => setTheme(t => t === 'dark' ? 'light' : 'dark')} style={{
-                background: 'var(--bg3)', border: 'none', borderRadius: '10px',
-                padding: '8px', cursor: 'pointer',
-                color: 'var(--label2)', display: 'flex', alignItems: 'center',
+                background: 'var(--bg3)', border: 'none', borderRadius: '10px', padding: '8px',
+                cursor: 'pointer', color: 'var(--label2)', display: 'flex', alignItems: 'center',
                 width: 36, height: 36, justifyContent: 'center',
               }}>
                 {theme === 'dark' ? (
@@ -432,68 +392,62 @@ export default function App() {
         {DEMO_MODE && <div className="demo-banner">Mode démo · Configure Supabase pour le multi-device</div>}
 
         {tab === 'vote' && guestStatus === 'checking' && (
-          <EmptyState
-            icon={<><circle cx="12" cy="12" r="9"/><path d="M12 8v4l2.5 2.5" strokeLinecap="round"/></>}
-            title="Vérification…"
-            subtitle="Validation de ton lien d'invitation"
-          />
+          <EmptyState icon={<><circle cx="12" cy="12" r="9"/><path d="M12 8v4l2.5 2.5" strokeLinecap="round"/></>}
+            title="Vérification…" subtitle="Validation de ton lien d'invitation" />
         )}
         {tab === 'vote' && guestStatus === 'invalid' && (
-          <EmptyState
-            icon={<><circle cx="12" cy="12" r="9"/><path d="M15 9l-6 6M9 9l6 6"/></>}
-            title="Lien invalide"
-            subtitle="Ce lien a déjà été utilisé ou n'existe pas."
-          />
+          <EmptyState icon={<><circle cx="12" cy="12" r="9"/><path d="M15 9l-6 6M9 9l6 6"/></>}
+            title="Lien invalide" subtitle="Ce lien a déjà été utilisé ou n'existe pas." />
         )}
 
-        {tab === 'vote' && guestStatus !== 'checking' && guestStatus !== 'invalid' && !votedThisSession && !hasVotedLocally(activeMatch?.id) && activeMatch && (activeMatch.phase || 'voting') === 'voting' && (
-          <VoteView players={players} match={activeMatch} onVoted={handleVoted} guestName={guestName} onGuestVoted={handleGuestVoted} />
+        {tab === 'vote' && guestStatus !== 'checking' && guestStatus !== 'invalid'
+          && !votedThisSession && !hasVotedLocally(activeMatch?.id)
+          && activeMatch && (activeMatch.phase || 'voting') === 'voting' && (
+          <VoteView players={players} match={activeMatch} onVoted={handleVoted}
+            guestName={guestName} onGuestVoted={handleGuestVoted} />
         )}
-        {tab === 'vote' && guestStatus !== 'checking' && guestStatus !== 'invalid' && (votedThisSession || hasVotedLocally(activeMatch?.id)) && (activeMatch?.phase || 'voting') === 'voting' && (
+        {tab === 'vote' && guestStatus !== 'checking' && guestStatus !== 'invalid'
+          && (votedThisSession || hasVotedLocally(activeMatch?.id))
+          && (activeMatch?.phase || 'voting') === 'voting' && (
           <EmptyState
             icon={<><path d="M22 11.08V12a10 10 0 11-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></>}
-            title="Vote enregistré"
-            subtitle="Les résultats se mettent à jour en temps réel."
-            action={{ label: 'Voir les résultats', onClick: () => setTab('results') }}
-          />
+            title="Vote enregistré" subtitle="Les résultats se mettent à jour en temps réel."
+            action={{ label: 'Voir les résultats', onClick: () => setTab('results') }} />
         )}
-        {tab === 'vote' && guestStatus !== 'checking' && guestStatus !== 'invalid' && !guestName && !activeMatch && !lastMatch && (
+        {tab === 'vote' && guestStatus !== 'checking' && guestStatus !== 'invalid'
+          && !guestName && !activeMatch && !lastMatch && (
           <EmptyState
             icon={<><rect x="3" y="3" width="18" height="18" rx="3"/><path d="M8 12h8M12 8v8"/></>}
             title="Pas de match ce soir"
             subtitle={isAdmin ? "Ouvre un match depuis l'onglet Admin pour lancer le vote." : "Ton capitaine n'a pas encore ouvert le vote."}
-            action={isAdmin ? { label: 'Ouvrir un match', onClick: () => setTab('admin') } : null}
-          />
+            action={isAdmin ? { label: 'Ouvrir un match', onClick: () => setTab('admin') } : null} />
         )}
         {tab === 'vote' && guestStatus !== 'checking' && guestStatus !== 'invalid' && !guestName && (
-          (!activeMatch && lastMatch) ||
-          (activeMatch && (activeMatch.phase || 'voting') !== 'voting')
+          (!activeMatch && lastMatch) || (activeMatch && (activeMatch.phase || 'voting') !== 'voting')
         ) && (
           <EmptyState
             icon={<><rect x="3" y="11" width="18" height="10" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></>}
-            title="Vote terminé"
-            subtitle="La période de vote est clôturée."
-            action={{ label: 'Voir les résultats', onClick: () => setTab('results') }}
-          />
+            title="Vote terminé" subtitle="La période de vote est clôturée."
+            action={{ label: 'Voir les résultats', onClick: () => setTab('results') }} />
         )}
 
         {tab === 'results' && (
           <ErrorBoundary label="Résultats">
-            <ResultsView players={players} match={lastMatch} refreshKey={refreshKey} onMatchUpdate={loadMatch} isAdmin={isAdmin} isDark={theme === 'dark'} />
+            <ResultsView players={players} match={lastMatch} isAdmin={isAdmin} isDark={theme === 'dark'}
+              orgId={currentOrg?.id} />
           </ErrorBoundary>
         )}
         {tab === 'stats' && (
           <ErrorBoundary label="Saison">
-            <StatsView players={players} activeMatch={activeMatch} isAdmin={isAdmin} />
+            <StatsView players={players} activeMatch={activeMatch ?? null} isAdmin={isAdmin}
+              orgId={currentOrg?.id} />
           </ErrorBoundary>
         )}
         {tab === 'admin' && isAdmin && (
           <ErrorBoundary label="Admin">
             <AdminView
               players={players}
-              onPlayersChange={loadPlayers}
-              activeMatch={activeMatch}
-              onMatchChange={loadMatch}
+              activeMatch={activeMatch ?? null}
               currentOrg={currentOrg}
               onSignOut={handleSignOut}
               onShowGuide={() => setShowOnboarding(true)}
@@ -511,26 +465,10 @@ export default function App() {
       </div>
       <nav className="tab-bar">
         {[
-          {
-            id: 'vote',
-            label: 'Vote',
-            icon: <><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></>,
-          },
-          {
-            id: 'results',
-            label: 'Résultats',
-            icon: <path d="M18 20V10M12 20V4M6 20v-6"/>,
-          },
-          {
-            id: 'stats',
-            label: 'Saison',
-            icon: <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>,
-          },
-          ...(isAdmin ? [{
-            id: 'admin',
-            label: 'Admin',
-            icon: <><circle cx="12" cy="8" r="4"/><path d="M20 21a8 8 0 10-16 0"/></>,
-          }] : []),
+          { id: 'vote',    label: 'Vote',      icon: <><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></> },
+          { id: 'results', label: 'Résultats', icon: <path d="M18 20V10M12 20V4M6 20v-6"/> },
+          { id: 'stats',   label: 'Saison',    icon: <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/> },
+          ...(isAdmin ? [{ id: 'admin', label: 'Admin', icon: <><circle cx="12" cy="8" r="4"/><path d="M20 21a8 8 0 10-16 0"/></> }] : []),
         ].map(t => (
           <button key={t.id} className={`tab-bar-item ${tab === t.id ? 'active' : ''}`} onClick={() => setTab(t.id)}>
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" stroke="currentColor">

@@ -1,7 +1,8 @@
-import { render, screen } from "@testing-library/react";
+import { screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it } from "vitest";
-import App, { __resetDemoState, __demoAPI } from "../App.jsx";
+import { __resetDemoState, __demoAPI } from "../App.jsx";
+import { renderApp } from "./renderApp";
 
 beforeEach(() => {
   __resetDemoState();
@@ -17,7 +18,7 @@ describe("Guest token flow", () => {
       value: { ...window.location, search: "?guest=" + token },
     });
 
-    render(<App />);
+    renderApp();
 
     expect(await screen.findByText(/Bienvenu\(e\), Tonton !/i)).toBeInTheDocument();
     expect(screen.queryByText("Qui es-tu ?")).toBeNull();
@@ -31,7 +32,7 @@ describe("Guest token flow", () => {
       value: { ...window.location, search: "?guest=invalidtoken999" },
     });
 
-    render(<App />);
+    renderApp();
 
     expect(
       await screen.findByText(/Ce lien a déjà été utilisé ou n'existe pas\./i)
@@ -48,7 +49,7 @@ describe("Guest token flow", () => {
       value: { ...window.location, search: "?guest=" + token },
     });
 
-    render(<App />);
+    renderApp();
 
     expect(
       await screen.findByText(/Ce lien a déjà été utilisé ou n'existe pas\./i)
@@ -64,7 +65,7 @@ describe("Guest token flow", () => {
       value: { ...window.location, search: "?guest=" + token },
     });
 
-    render(<App />);
+    renderApp();
     const user = userEvent.setup();
 
     // Step 1: La Pépite

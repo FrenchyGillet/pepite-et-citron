@@ -1,14 +1,16 @@
-import { useState, useCallback, useEffect } from 'react';
-import { api } from '../api';
+import { useState } from 'react';
 import { computeScores, formatDate } from '../utils';
 import { Scoreboard } from './Scoreboard';
 import { EmptyState } from './EmptyState';
-import type { Player, Match, Team, Vote, EntityId } from '../types';
+import { useAllVotes, useMatches, useTeams, useCurrentSeason, useSeasonNames } from '../hooks/queries';
+import { useDeleteMatch, useUpdateMatch } from '../hooks/mutations';
+import type { Player, Match, EntityId } from '../types';
 
 interface StatsViewProps {
   players: Player[];
   activeMatch: Match | null;
   isAdmin: boolean;
+  orgId?: string | null;
 }
 
 interface PlayerStat {
@@ -25,40 +27,24 @@ interface EditingMatch {
   team_id: EntityId | null;
 }
 
-export function StatsView({ players, activeMatch, isAdmin }: StatsViewProps) {
-  const [allVotes,       setAllVotes]       = useState<Vote[]>([]);
-  const [allMatches,     setAllMatches]     = useState<Match[]>([]);
-  const [allTeams,       setAllTeams]       = useState<Team[]>([]);
-  const [currentSeason,  setCurrentSeason]  = useState(1);
+export function StatsView({ players, activeMatch, isAdmin, orgId }: StatsViewProps) {
   const [selectedSeason, setSelectedSeason] = useState<number | null>(null);
   const [selectedTeamId, setSelectedTeamId] = useState<EntityId | null>(null);
   const [expandedId,     setExpandedId]     = useState<EntityId | null>(null);
   const [editingMatch,   setEditingMatch]   = useState<EditingMatch | null>(null);
-  const [seasonNames,    setSeasonNames]    = useState<Record<number, string>>({});
-  const [loading,        setLoading]        = useState(true);
 
-  const reload = useCallback(async () => {
-    try {
-      const [v, m, t, cs] = await Promise.all([api.getAllVotes(), api.getMatches(), api.getTeams(), api.getCurrentSeason()]);
-      setAllVotes(v); setAllMatches(m); setAllTeams(t); setCurrentSeason(cs);
-      setSelectedSeason(prev => prev ?? cs);
-      const uniqueSeasons = [...new Set(m.map(match => match.season || 1))];
-      const names: Record<number, string> = {};
-      await Promise.all(uniqueSeasons.map(async s => {
-        const name = await api.getSeasonName(s);
-        if (name) names[s] = name;
-      }));
-      setSeasonNames(names);
-    } catch (err) {
-      console.error('StatsView reload failed:', err instanceof Error ? err.message : err);
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+  const { data: allVotes   = [] }              = useAllVotes(orgId);
+  const { data: allMatches = [], isLoading }   = useMatches(orgId);
+  const { data: allTeams   = [] }              = useTeams(orgId);
+  const { data: currentSeason = 1 }            = useCurrentSeason(orgId);
 
-  useEffect(() => { void reload(); }, [reload]);
+  const seasons     = [...new Set(allMatches.map(m => m.season || 1))].sort((a, b) => a - b);
+  const seasonNames = useSeasonNames(seasons);
 
-  if (loading) return <div className="content"><div className="empty">Chargement…</div></div>;
+  const deleteMatchMutation = useDeleteMatch(orgId);
+  const updateMatchMutation = useUpdateMatch(orgId);
+
+  if (isLoading) return <div className="content"><div className="empty">Chargement…</div></div>;
 
   const votingInProgress = activeMatch?.is_open && (activeMatch.phase || 'voting') === 'voting';
   if (votingInProgress) return (
@@ -71,7 +57,6 @@ export function StatsView({ players, activeMatch, isAdmin }: StatsViewProps) {
     </div>
   );
 
-  const seasons = [...new Set(allMatches.map(m => m.season || 1))].sort((a, b) => a - b);
   const activeSeason = selectedSeason ?? currentSeason;
 
   const filteredMatches = allMatches.filter(m =>
@@ -106,24 +91,25 @@ export function StatsView({ players, activeMatch, isAdmin }: StatsViewProps) {
     if (bW != null && stats[String(bW)]) stats[String(bW)].wins++;
     if (lW != null && stats[String(lW)]) stats[String(lW)].lemons++;
   });
-  const allStats = Object.values(stats).filter(s => s.bestPts > 0 || s.lemonPts > 0);
+  const allStats    = Object.values(stats).filter(s => s.bestPts > 0 || s.lemonPts > 0);
   const rankedBest  = [...allStats].filter(s => s.bestPts  > 0).sort((a, b) => b.bestPts  - a.bestPts);
   const rankedLemon = [...allStats].filter(s => s.lemonPts > 0).sort((a, b) => b.lemonPts - a.lemonPts);
   const maxPts      = rankedBest[0]?.bestPts   || 1;
   const maxLemonPts = rankedLemon[0]?.lemonPts || 1;
 
-  const handleDelete = async (match: Match) => {
+  const handleDelete = (match: Match) => {
     if (!confirm(`Supprimer "${match.label}" et tous ses votes ?`)) return;
-    await api.deleteMatch(match.id);
-    if (expandedId === match.id) setExpandedId(null);
-    void reload();
+    deleteMatchMutation.mutate(match.id, {
+      onSuccess: () => { if (expandedId === match.id) setExpandedId(null); },
+    });
   };
 
-  const handleSaveEdit = async () => {
+  const handleSaveEdit = () => {
     if (!editingMatch) return;
-    await api.updateMatch(editingMatch.id, { label: editingMatch.label, team_id: editingMatch.team_id || null });
-    setEditingMatch(null);
-    void reload();
+    updateMatchMutation.mutate(
+      { id: editingMatch.id, data: { label: editingMatch.label, team_id: editingMatch.team_id || null } },
+      { onSuccess: () => setEditingMatch(null) }
+    );
   };
 
   const TabBar = ({ items, active, onChange }: { items: { id: number; label: string }[]; active: number; onChange: (id: number) => void }) => (

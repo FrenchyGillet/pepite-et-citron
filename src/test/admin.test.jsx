@@ -1,7 +1,8 @@
-import { render, screen } from "@testing-library/react";
+import { screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it } from "vitest";
-import App, { __resetDemoState, __demoAPI } from "../App.jsx";
+import { __resetDemoState, __demoAPI } from "../App.jsx";
+import { renderApp } from "./renderApp";
 
 beforeEach(() => {
   __resetDemoState();
@@ -10,7 +11,7 @@ beforeEach(() => {
 describe("Admin flow", () => {
   // En DEMO_MODE, l'admin est toujours connecté — pas de formulaire de mot de passe
   it("shows admin tab and UI directly in demo mode", async () => {
-    render(<App />);
+    renderApp();
     const user = userEvent.setup();
     const adminBtn = await screen.findByRole("button", { name: /admin/i });
     await user.click(adminBtn);
@@ -18,7 +19,7 @@ describe("Admin flow", () => {
   });
 
   it("shows admin UI when navigating to admin tab", async () => {
-    render(<App />);
+    renderApp();
     const user = userEvent.setup();
     const adminBtn = await screen.findByRole("button", { name: /admin/i });
     await user.click(adminBtn);
@@ -27,7 +28,7 @@ describe("Admin flow", () => {
   });
 
   it("can create a match", async () => {
-    render(<App />);
+    renderApp();
     const user = userEvent.setup();
 
     // Go to admin tab
@@ -63,7 +64,7 @@ describe("Admin flow", () => {
     // Create a match via API directly
     await __demoAPI.createMatch("Match actif", [1, 2, 3, 4, 5], null, 1);
 
-    render(<App />);
+    renderApp();
     const user = userEvent.setup();
 
     const adminBtn = await screen.findByRole("button", { name: /admin/i });
@@ -75,7 +76,7 @@ describe("Admin flow", () => {
   it("can create a guest token", async () => {
     await __demoAPI.createMatch("Match actif", [1, 2, 3, 4, 5], null, 1);
 
-    render(<App />);
+    renderApp();
     const user = userEvent.setup();
 
     const adminBtn = await screen.findByRole("button", { name: /admin/i });

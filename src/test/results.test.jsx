@@ -1,7 +1,8 @@
-import { render, screen } from "@testing-library/react";
+import { screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it } from "vitest";
-import App, { __resetDemoState, __demoAPI } from "../App.jsx";
+import { __resetDemoState, __demoAPI } from "../App.jsx";
+import { renderApp } from "./renderApp";
 
 beforeEach(() => {
   __resetDemoState();
@@ -11,7 +12,7 @@ describe("Results view phases", () => {
   it("voting phase shows masked results", async () => {
     await __demoAPI.createMatch("Match test", [1, 2, 3, 4, 5], null, 1);
 
-    render(<App />);
+    renderApp();
     const user = userEvent.setup();
 
     const resultsBtn = await screen.findByRole("button", { name: /résultats/i });
@@ -36,7 +37,7 @@ describe("Results view phases", () => {
     const votes = await __demoAPI.getVotes(match.id);
     await __demoAPI.startCounting(match.id, votes.map((v) => v.id));
 
-    render(<App />);
+    renderApp();
     const user = userEvent.setup();
 
     const resultsBtn = await screen.findByRole("button", { name: /résultats/i });
@@ -61,7 +62,7 @@ describe("Results view phases", () => {
     const votes = await __demoAPI.getVotes(match.id);
     await __demoAPI.startCounting(match.id, votes.map((v) => v.id));
 
-    render(<App />);
+    renderApp();
     const user = userEvent.setup();
 
     const resultsBtn = await screen.findByRole("button", { name: /résultats/i });

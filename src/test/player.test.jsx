@@ -1,7 +1,8 @@
-import { render, screen } from "@testing-library/react";
+import { screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it } from "vitest";
-import App, { __resetDemoState, __demoAPI } from "../App.jsx";
+import { __resetDemoState, __demoAPI } from "../App.jsx";
+import { renderApp } from "./renderApp";
 
 let matchId;
 
@@ -13,12 +14,12 @@ beforeEach(async () => {
 
 describe("Player voting flow", () => {
   it("shows voter name selection when match is active", async () => {
-    render(<App />);
+    renderApp();
     expect(await screen.findByText("Qui es-tu ?")).toBeInTheDocument();
   });
 
   it("completes full 4-step vote flow", async () => {
-    render(<App />);
+    renderApp();
     const user = userEvent.setup();
 
     // Step 0: select voter
@@ -71,7 +72,7 @@ describe("Player voting flow", () => {
       lemon_id: 4,
     });
 
-    render(<App />);
+    renderApp();
     const user = userEvent.setup();
 
     // Step 0: select Antoine
@@ -87,7 +88,7 @@ describe("Player voting flow", () => {
     const votes = await __demoAPI.getVotes(matchId);
     await __demoAPI.startCounting(matchId, votes.map((v) => v.id));
 
-    render(<App />);
+    renderApp();
 
     expect(await screen.findByText(/Vote terminé/i)).toBeInTheDocument();
   });
