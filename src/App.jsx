@@ -10,6 +10,7 @@ import { AdminView }         from './components/AdminView.jsx';
 import { EmptyState }        from './components/EmptyState.jsx';
 import { ErrorBoundary }     from './components/ErrorBoundary.jsx';
 import { OnboardingModal }   from './components/OnboardingModal.jsx';
+import { LoadingBar }        from './components/LoadingBar.jsx';
 
 export default function App() {
   // ── Auth & org ─────────────────────────────────────────────────────────────
@@ -280,9 +281,8 @@ export default function App() {
     return (
       <>
         <GlobalStyle />
-        <div style={{ minHeight: "100dvh", display: "flex", alignItems: "center", justifyContent: "center", background: "var(--bg)" }}>
-          <div style={{ fontSize: 14, color: "var(--label3)" }}>Chargement…</div>
-        </div>
+        <LoadingBar />
+        <LoadingScreen />
       </>
     );
   }
@@ -302,9 +302,8 @@ export default function App() {
     return (
       <>
         <GlobalStyle />
-        <div style={{ minHeight: "100dvh", display: "flex", alignItems: "center", justifyContent: "center", background: "var(--bg)" }}>
-          <div style={{ fontSize: 14, color: "var(--label3)" }}>Chargement…</div>
-        </div>
+        <LoadingBar />
+        <LoadingScreen />
       </>
     );
   }
@@ -578,6 +577,36 @@ export default function App() {
         ))}
       </nav>
     </>
+  );
+}
+
+function LoadingScreen() {
+  return (
+    <div style={{
+      minHeight: "100dvh", display: "flex", flexDirection: "column",
+      alignItems: "center", justifyContent: "center", background: "var(--bg)", gap: 20,
+    }}>
+      <div style={{ fontSize: 26, fontWeight: 800, letterSpacing: "-0.5px" }}>
+        <span style={{ color: "#ffd60a" }}>Pépite</span>
+        <span style={{ color: "rgba(235,235,245,0.3)" }}> & </span>
+        <span style={{ color: "#aadd00" }}>Citron</span>
+      </div>
+      <div style={{
+        width: 160, height: 3, background: "var(--bg3)", borderRadius: 2, overflow: "hidden",
+      }}>
+        <div style={{
+          height: "100%", background: "var(--gold)", borderRadius: 2,
+          animation: "loadingShimmer 1.4s ease-in-out infinite",
+        }} />
+      </div>
+      <style>{`
+        @keyframes loadingShimmer {
+          0%   { width: 0%;   margin-left: 0%; }
+          50%  { width: 60%;  margin-left: 20%; }
+          100% { width: 0%;   margin-left: 100%; }
+        }
+      `}</style>
+    </div>
   );
 }
 
