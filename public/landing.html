@@ -1,0 +1,775 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Pépite & Citron — Le tribunal du vestiaire</title>
+  <meta name="description" content="L'app qui met tout le monde d'accord après le match. Vote pour la pépite et le citron de chaque soirée." />
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&display=swap');
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:     #000;
+      --bg2:    #1c1c1e;
+      --bg3:    #2c2c2e;
+      --gold:   #ffd60a;
+      --lemon:  #aadd00;
+      --label:  #fff;
+      --label2: rgba(235,235,245,0.6);
+      --label3: rgba(235,235,245,0.3);
+    }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      background: var(--bg);
+      color: var(--label);
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      -webkit-font-smoothing: antialiased;
+      overflow-x: hidden;
+    }
+
+    a { color: inherit; text-decoration: none; }
+
+    /* ── HERO ─────────────────────────────────────────────────────────────── */
+    .hero {
+      min-height: 100svh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      padding: 60px 24px 80px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .hero::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background:
+        radial-gradient(ellipse 60% 40% at 30% 20%, rgba(255,214,10,0.12) 0%, transparent 70%),
+        radial-gradient(ellipse 50% 35% at 75% 75%, rgba(170,221,0,0.09) 0%, transparent 70%);
+      pointer-events: none;
+    }
+
+    .hero-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: rgba(255,214,10,0.1);
+      border: 1px solid rgba(255,214,10,0.25);
+      border-radius: 100px;
+      padding: 6px 14px;
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--gold);
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      margin-bottom: 28px;
+    }
+
+    .hero-title {
+      font-size: clamp(38px, 8vw, 72px);
+      font-weight: 900;
+      letter-spacing: -0.04em;
+      line-height: 1.05;
+      margin-bottom: 20px;
+    }
+    .hero-title .gold  { color: var(--gold); }
+    .hero-title .lemon { color: var(--lemon); }
+    .hero-title .amp   { color: var(--label3); }
+
+    .hero-sub {
+      font-size: clamp(16px, 3vw, 22px);
+      color: var(--label2);
+      max-width: 560px;
+      line-height: 1.55;
+      margin-bottom: 40px;
+    }
+
+    .hero-sub strong { color: var(--label); font-weight: 700; }
+
+    .btn-cta {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      background: var(--gold);
+      color: #000;
+      font-size: 16px;
+      font-weight: 800;
+      padding: 16px 32px;
+      border-radius: 100px;
+      border: none;
+      cursor: pointer;
+      text-decoration: none;
+      transition: transform 0.15s, box-shadow 0.15s;
+      box-shadow: 0 0 32px rgba(255,214,10,0.35);
+    }
+    .btn-cta:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 40px rgba(255,214,10,0.5);
+    }
+
+    .hero-scroll {
+      position: absolute;
+      bottom: 28px;
+      left: 50%;
+      transform: translateX(-50%);
+      color: var(--label3);
+      font-size: 12px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 6px;
+      animation: bounce 2s ease-in-out infinite;
+    }
+    @keyframes bounce {
+      0%, 100% { transform: translateX(-50%) translateY(0); }
+      50%       { transform: translateX(-50%) translateY(5px); }
+    }
+
+    /* ── SECTIONS ─────────────────────────────────────────────────────────── */
+    section {
+      max-width: 900px;
+      margin: 0 auto;
+      padding: 80px 24px;
+    }
+
+    .section-label {
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--gold);
+      margin-bottom: 12px;
+    }
+
+    .section-title {
+      font-size: clamp(26px, 4vw, 42px);
+      font-weight: 800;
+      letter-spacing: -0.03em;
+      line-height: 1.15;
+      margin-bottom: 16px;
+    }
+
+    .section-sub {
+      font-size: 17px;
+      color: var(--label2);
+      max-width: 560px;
+      line-height: 1.6;
+      margin-bottom: 48px;
+    }
+
+    /* ── HOW IT WORKS ─────────────────────────────────────────────────────── */
+    .steps {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 16px;
+    }
+
+    .step {
+      background: var(--bg2);
+      border-radius: 20px;
+      padding: 28px 24px;
+      border: 1px solid rgba(255,255,255,0.06);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .step::before {
+      content: attr(data-num);
+      position: absolute;
+      top: -10px;
+      right: 12px;
+      font-size: 80px;
+      font-weight: 900;
+      color: rgba(255,255,255,0.03);
+      line-height: 1;
+      pointer-events: none;
+    }
+
+    .step-icon { font-size: 36px; margin-bottom: 14px; line-height: 1; }
+
+    .step-title {
+      font-size: 17px;
+      font-weight: 700;
+      margin-bottom: 8px;
+    }
+
+    .step-desc {
+      font-size: 14px;
+      color: var(--label2);
+      line-height: 1.6;
+    }
+
+    .tag {
+      display: inline-block;
+      padding: 3px 9px;
+      border-radius: 100px;
+      font-size: 12px;
+      font-weight: 800;
+      margin-left: 6px;
+    }
+    .tag-gold  { background: rgba(255,214,10,0.15);  color: var(--gold); }
+    .tag-lemon { background: rgba(170,221,0,0.15);   color: var(--lemon); }
+
+    /* ── USE CASES ────────────────────────────────────────────────────────── */
+    .cases {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      gap: 16px;
+    }
+
+    .case {
+      background: var(--bg2);
+      border-radius: 20px;
+      padding: 28px 24px;
+      border: 1px solid rgba(255,255,255,0.06);
+      transition: border-color 0.2s, transform 0.2s;
+      cursor: default;
+    }
+    .case:hover {
+      border-color: rgba(255,255,255,0.12);
+      transform: translateY(-2px);
+    }
+
+    .case-emoji { font-size: 38px; margin-bottom: 14px; line-height: 1; }
+
+    .case-title {
+      font-size: 18px;
+      font-weight: 700;
+      margin-bottom: 8px;
+    }
+
+    .case-desc {
+      font-size: 14px;
+      color: var(--label2);
+      line-height: 1.65;
+    }
+
+    /* ── MOCKUP ───────────────────────────────────────────────────────────── */
+    .phone-wrap {
+      display: flex;
+      justify-content: center;
+      gap: 24px;
+      flex-wrap: wrap;
+      margin-top: 48px;
+    }
+
+    .phone {
+      width: 200px;
+      background: var(--bg2);
+      border-radius: 32px;
+      padding: 16px 12px;
+      border: 1px solid rgba(255,255,255,0.1);
+      box-shadow: 0 24px 60px rgba(0,0,0,0.6);
+      flex-shrink: 0;
+    }
+
+    .phone-screen {
+      background: #000;
+      border-radius: 22px;
+      overflow: hidden;
+      padding: 14px 12px;
+    }
+
+    .phone-header {
+      font-size: 11px;
+      font-weight: 800;
+      letter-spacing: -0.02em;
+      margin-bottom: 10px;
+    }
+    .phone-header .g { color: var(--gold); }
+    .phone-header .l { color: var(--lemon); }
+    .phone-header .a { color: rgba(235,235,245,0.2); }
+
+    .phone-match {
+      background: var(--bg2);
+      border-radius: 10px;
+      padding: 8px 10px;
+      margin-bottom: 8px;
+      font-size: 11px;
+    }
+
+    .phone-match-title { font-weight: 700; margin-bottom: 2px; }
+    .phone-match-sub   { color: rgba(235,235,245,0.4); font-size: 10px; }
+
+    .phone-vote-card {
+      border-radius: 10px;
+      padding: 10px;
+      margin-bottom: 7px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .phone-vote-card.gold  { background: rgba(255,214,10,0.08); border: 1px solid rgba(255,214,10,0.2); }
+    .phone-vote-card.lemon { background: rgba(170,221,0,0.08);  border: 1px solid rgba(170,221,0,0.2); }
+
+    .phone-vote-icon  { font-size: 18px; line-height: 1; }
+    .phone-vote-label { font-size: 11px; font-weight: 700; }
+    .phone-vote-sub   { font-size: 9px; color: var(--label3); }
+
+    .phone-pts {
+      margin-left: auto;
+      font-size: 10px;
+      font-weight: 800;
+      padding: 2px 7px;
+      border-radius: 100px;
+    }
+    .pts-gold  { background: var(--gold); color: #000; }
+    .pts-lemon { background: var(--lemon); color: #000; }
+
+    .phone-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 5px;
+      margin-top: 8px;
+    }
+    .phone-chip {
+      background: rgba(255,255,255,0.06);
+      border-radius: 6px;
+      padding: 6px 4px;
+      font-size: 9px;
+      font-weight: 600;
+      text-align: center;
+      color: rgba(235,235,245,0.5);
+    }
+    .phone-chip.selected-gold  { background: rgba(255,214,10,0.2); color: var(--gold); }
+    .phone-chip.selected-lemon { background: rgba(170,221,0,0.2);  color: var(--lemon); }
+
+    /* ── INSTALL ──────────────────────────────────────────────────────────── */
+    .install-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 20px;
+    }
+
+    .install-card {
+      background: var(--bg2);
+      border-radius: 20px;
+      padding: 28px 24px;
+      border: 1px solid rgba(255,255,255,0.06);
+    }
+
+    .install-card-header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 24px;
+    }
+
+    .install-os-icon {
+      width: 44px;
+      height: 44px;
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 22px;
+      flex-shrink: 0;
+    }
+    .ios-icon     { background: rgba(255,255,255,0.08); }
+    .android-icon { background: rgba(170,221,0,0.12); }
+
+    .install-os-name   { font-size: 17px; font-weight: 700; }
+    .install-os-sub    { font-size: 12px; color: var(--label3); margin-top: 2px; }
+
+    .install-steps { list-style: none; display: flex; flex-direction: column; gap: 14px; }
+
+    .install-step {
+      display: flex;
+      gap: 12px;
+      align-items: flex-start;
+    }
+
+    .install-step-num {
+      width: 24px;
+      height: 24px;
+      border-radius: 50%;
+      background: rgba(255,255,255,0.07);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 11px;
+      font-weight: 800;
+      flex-shrink: 0;
+      color: var(--label2);
+      margin-top: 1px;
+    }
+
+    .install-step-text {
+      font-size: 14px;
+      color: var(--label2);
+      line-height: 1.55;
+    }
+
+    .install-step-text strong { color: var(--label); font-weight: 700; }
+
+    .install-note {
+      margin-top: 18px;
+      padding: 12px 14px;
+      background: rgba(255,255,255,0.04);
+      border-radius: 10px;
+      font-size: 12px;
+      color: var(--label3);
+      line-height: 1.5;
+    }
+
+    /* ── DIVIDER ──────────────────────────────────────────────────────────── */
+    .divider {
+      height: 1px;
+      background: rgba(255,255,255,0.07);
+      max-width: 900px;
+      margin: 0 auto;
+    }
+
+    /* ── FOOTER ───────────────────────────────────────────────────────────── */
+    footer {
+      text-align: center;
+      padding: 48px 24px 60px;
+      color: var(--label3);
+      font-size: 13px;
+      line-height: 1.8;
+    }
+    footer .logo {
+      font-size: 22px;
+      font-weight: 900;
+      letter-spacing: -0.03em;
+      margin-bottom: 10px;
+    }
+    footer .logo .g { color: var(--gold); }
+    footer .logo .l { color: var(--lemon); }
+    footer .logo .a { color: var(--label3); }
+  </style>
+</head>
+<body>
+
+  <!-- ── HERO ────────────────────────────────────────────────────────────── -->
+  <section class="hero">
+    <div class="hero-badge">⭐ L'app du vestiaire</div>
+
+    <h1 class="hero-title">
+      <span class="gold">Pépite</span>
+      <span class="amp"> &amp; </span>
+      <span class="lemon">Citron</span>
+    </h1>
+
+    <p class="hero-sub">
+      Parce qu'après chaque soirée, <strong>quelqu'un était clairement au-dessus</strong>
+      et quelqu'un était <strong>franchement en dessous</strong>.<br />
+      Fini les débats interminables. Place au vote.
+    </p>
+
+    <a href="/" class="btn-cta">
+      <span>⚡</span> Ouvrir l'app
+    </a>
+
+    <div class="hero-scroll">
+      <span>Découvrir</span>
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M6 9l6 6 6-6"/></svg>
+    </div>
+  </section>
+
+  <div class="divider"></div>
+
+  <!-- ── HOW IT WORKS ─────────────────────────────────────────────────────── -->
+  <section id="how">
+    <p class="section-label">Comment ça marche</p>
+    <h2 class="section-title">Trois votes.<br />Toute la vérité.</h2>
+    <p class="section-sub">
+      Pas de speechs interminables, pas de faux modestes.
+      Chacun vote en silence, les résultats tombent.
+    </p>
+
+    <div class="steps">
+      <div class="step" data-num="1">
+        <div class="step-icon">⭐</div>
+        <div class="step-title">La Pépite <span class="tag tag-gold">3 pts</span></div>
+        <div class="step-desc">Le héros de la soirée. Celui qui a tout donné, ou en tout cas bien plus que les autres.</div>
+      </div>
+      <div class="step" data-num="2">
+        <div class="step-icon">✨</div>
+        <div class="step-title">2ème meilleur <span class="tag tag-gold">2 pts</span></div>
+        <div class="step-desc">Le dauphin. Pas loin du podium. Lui aussi mérite une mention honorable.</div>
+      </div>
+      <div class="step" data-num="3">
+        <div class="step-icon">🍋</div>
+        <div class="step-title">Le Citron <span class="tag tag-lemon">spécial</span></div>
+        <div class="step-desc">Celui qui aurait mieux fait de rester au chaud. Le vote est anonyme. Assumez.</div>
+      </div>
+    </div>
+
+    <!-- Phone mockup -->
+    <div class="phone-wrap">
+      <div class="phone">
+        <div class="phone-screen">
+          <div class="phone-header"><span class="g">Pépite</span><span class="a"> & </span><span class="l">Citron</span></div>
+          <div class="phone-match">
+            <div class="phone-match-title">vs Les Invincibles</div>
+            <div class="phone-match-sub">12 joueurs · vote ouvert</div>
+          </div>
+          <div class="phone-vote-card gold">
+            <div class="phone-vote-icon">⭐</div>
+            <div>
+              <div class="phone-vote-label">La Pépite</div>
+              <div class="phone-vote-sub">Qui était le meilleur ?</div>
+            </div>
+            <div class="phone-pts pts-gold">3 pts</div>
+          </div>
+          <div class="phone-grid">
+            <div class="phone-chip selected-gold">Kevin</div>
+            <div class="phone-chip">Thomas</div>
+            <div class="phone-chip">Julien</div>
+            <div class="phone-chip">Marc</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="phone">
+        <div class="phone-screen">
+          <div class="phone-header"><span class="g">Pépite</span><span class="a"> & </span><span class="l">Citron</span></div>
+          <div style="font-size:11px; font-weight:700; color:rgba(235,235,245,0.4); margin-bottom:8px;">Résultats — vs Les Invincibles</div>
+          <div style="background:rgba(255,214,10,0.06); border:1px solid rgba(255,214,10,0.2); border-radius:10px; padding:10px; margin-bottom:7px;">
+            <div style="font-size:9px; font-weight:800; color:var(--gold); text-transform:uppercase; letter-spacing:0.08em; margin-bottom:4px;">🏆 Pépite du match</div>
+            <div style="font-size:18px; font-weight:800; color:var(--gold);">Kevin</div>
+            <div style="font-size:9px; color:rgba(235,235,245,0.4); margin-top:2px;">14 points · 4 votes</div>
+          </div>
+          <div style="background:rgba(170,221,0,0.06); border:1px solid rgba(170,221,0,0.2); border-radius:10px; padding:10px;">
+            <div style="font-size:9px; font-weight:800; color:var(--lemon); text-transform:uppercase; letter-spacing:0.08em; margin-bottom:4px;">🍋 Citron du match</div>
+            <div style="font-size:16px; font-weight:800; color:var(--lemon);">Thomas</div>
+            <div style="font-size:9px; color:rgba(235,235,245,0.4); margin-top:2px;">5 citrons · 3 votes</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <div class="divider"></div>
+
+  <!-- ── USE CASES ─────────────────────────────────────────────────────────── -->
+  <section id="uses">
+    <p class="section-label">Occasions</p>
+    <h2 class="section-title">Pour tous ceux qui<br />méritent d'être jugés.</h2>
+    <p class="section-sub">
+      Le sport c'est bien, mais il y a plein d'autres moments dans la vie
+      où quelqu'un s'est clairement distingué — en bien ou en mal.
+    </p>
+
+    <div class="cases">
+      <div class="case">
+        <div class="case-emoji">⚽</div>
+        <div class="case-title">Équipe de sport</div>
+        <div class="case-desc">
+          Foot, basket, volley, pétanque du jeudi soir…
+          Si votre sport implique des gens capables d'être
+          catastrophiques, c'est fait pour vous. Et pour les derby
+          de bureau aussi.
+        </div>
+      </div>
+
+      <div class="case">
+        <div class="case-emoji">💍</div>
+        <div class="case-title">Enterrement de vie de garçon / fille</div>
+        <div class="case-desc">
+          Qui a survécu à tous les défis ? Qui s'est le plus ridiculisé ?
+          Élisez la pépite et le citron de la soirée. Le citron offre la tournée suivante.
+        </div>
+      </div>
+
+      <div class="case">
+        <div class="case-emoji">🏢</div>
+        <div class="case-title">Équipe de boulot</div>
+        <div class="case-desc">
+          Réunion d'équipe, hackathon, sprint de fin de trimestre…
+          Qui a sauvé le projet ? Qui a proposé la diapo avec la police
+          Comic Sans ? Le jury populaire tranche.
+        </div>
+      </div>
+
+      <div class="case">
+        <div class="case-emoji">🎮</div>
+        <div class="case-title">Soirée gaming / quiz</div>
+        <div class="case-desc">
+          Trivia, Mario Kart, Escape Game…
+          Après chaque partie, un MVP et un bouc émissaire.
+          C'est la démocratie directe. Personne n'y échappe.
+        </div>
+      </div>
+
+      <div class="case">
+        <div class="case-emoji">🏕️</div>
+        <div class="case-title">Week-end entre amis</div>
+        <div class="case-desc">
+          Qui a géré le barbecue comme un chef ? Qui a oublié le tire-bouchon ?
+          Récompensez les héros du week-end, immortalisez les gaffes.
+        </div>
+      </div>
+
+      <div class="case">
+        <div class="case-emoji">🎓</div>
+        <div class="case-title">Promo / association</div>
+        <div class="case-desc">
+          Soirée intégration, tournoi inter-écoles, gala de fin d'année…
+          La pépite et le citron de la promo, élus démocratiquement.
+          Bien plus sain qu'un sondage Instagram.
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <div class="divider"></div>
+
+  <!-- ── INSTALL ────────────────────────────────────────────────────────────── -->
+  <section id="install">
+    <p class="section-label">Installation</p>
+    <h2 class="section-title">Sur ton téléphone<br />en 10 secondes.</h2>
+    <p class="section-sub">
+      Pas besoin d'App Store, pas de compte Google Play.
+      Pépite &amp; Citron s'installe directement depuis ton navigateur.
+      Gratos. Vite fait.
+    </p>
+
+    <div class="install-grid">
+
+      <!-- iOS -->
+      <div class="install-card">
+        <div class="install-card-header">
+          <div class="install-os-icon ios-icon">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M12 2a4 4 0 014 4c0 1.5-.5 3-2 4h-4c-1.5-1-2-2.5-2-4a4 4 0 014-4z"/>
+              <path d="M8 10c-3 1-5 4-5 7a5 5 0 0010 0v-1H11v1a3 3 0 01-6 0c0-2.5 1.5-4.5 3-5.5"/>
+              <path d="M16 10c3 1 5 4 5 7a5 5 0 01-10 0v-1h2v1a3 3 0 006 0c0-2.5-1.5-4.5-3-5.5"/>
+            </svg>
+          </div>
+          <div>
+            <div class="install-os-name">iPhone / iPad</div>
+            <div class="install-os-sub">Safari uniquement</div>
+          </div>
+        </div>
+
+        <ol class="install-steps">
+          <li class="install-step">
+            <div class="install-step-num">1</div>
+            <div class="install-step-text">
+              Ouvre le lien de l'app dans <strong>Safari</strong>
+              (pas Chrome, pas Firefox — Apple fait ses caprices).
+            </div>
+          </li>
+          <li class="install-step">
+            <div class="install-step-num">2</div>
+            <div class="install-step-text">
+              Appuie sur le bouton <strong>Partager</strong>
+              — la petite boîte avec une flèche vers le haut, en bas de l'écran.
+            </div>
+          </li>
+          <li class="install-step">
+            <div class="install-step-num">3</div>
+            <div class="install-step-text">
+              Fais défiler et appuie sur
+              <strong>« Sur l'écran d'accueil »</strong>.
+            </div>
+          </li>
+          <li class="install-step">
+            <div class="install-step-num">4</div>
+            <div class="install-step-text">
+              Confirme avec <strong>Ajouter</strong>. L'icône apparaît sur ton bureau.
+            </div>
+          </li>
+        </ol>
+
+        <div class="install-note">
+          💡 Une fois installée, l'app s'ouvre en plein écran comme une vraie appli.
+          Tes teammates ne sauront même pas que c'est un site web.
+        </div>
+      </div>
+
+      <!-- Android -->
+      <div class="install-card">
+        <div class="install-card-header">
+          <div class="install-os-icon android-icon">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M4 16c0 1.1.9 2 2 2h1v3a1 1 0 002 0v-3h2v3a1 1 0 002 0v-3h1a2 2 0 002-2V9H4v7z"/>
+              <path d="M2 9a1 1 0 011-1h18a1 1 0 011 1v1H2V9z"/>
+              <path d="M7 8V5a5 5 0 0110 0v3"/>
+              <path d="M1 12a1 1 0 011-1v4a1 1 0 01-1-1v-2zM23 12a1 1 0 00-1-1v4a1 1 0 001-1v-2z"/>
+            </svg>
+          </div>
+          <div>
+            <div class="install-os-name">Android</div>
+            <div class="install-os-sub">Chrome recommandé</div>
+          </div>
+        </div>
+
+        <ol class="install-steps">
+          <li class="install-step">
+            <div class="install-step-num">1</div>
+            <div class="install-step-text">
+              Ouvre le lien dans <strong>Chrome</strong>
+              (ou Edge, ça marche aussi, et oui c'est surprenant).
+            </div>
+          </li>
+          <li class="install-step">
+            <div class="install-step-num">2</div>
+            <div class="install-step-text">
+              Appuie sur les <strong>3 points</strong> en haut à droite.
+            </div>
+          </li>
+          <li class="install-step">
+            <div class="install-step-num">3</div>
+            <div class="install-step-text">
+              Appuie sur <strong>« Installer l'application »</strong>
+              ou <strong>« Ajouter à l'écran d'accueil »</strong>.
+            </div>
+          </li>
+          <li class="install-step">
+            <div class="install-step-num">4</div>
+            <div class="install-step-text">
+              Confirme. L'icône apparaît comme n'importe quelle autre appli.
+            </div>
+          </li>
+        </ol>
+
+        <div class="install-note">
+          💡 Parfois Chrome affiche directement une bannière en bas d'écran
+          pour installer l'app. Si c'est le cas, appuie dessus — c'est encore plus rapide.
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+  <div class="divider"></div>
+
+  <!-- ── FINAL CTA ──────────────────────────────────────────────────────────── -->
+  <section style="text-align:center; padding: 80px 24px;">
+    <p class="section-label" style="justify-content:center; display:flex;">Prêt à juger</p>
+    <h2 class="section-title" style="margin-bottom:16px;">Qui mérite la pépite<br />ce soir ?</h2>
+    <p style="font-size:17px; color:var(--label2); margin-bottom:36px; line-height:1.6;">
+      Crée ton équipe, partage le lien,<br />et que le meilleur gagne.
+    </p>
+    <a href="/" class="btn-cta">
+      <span>🏆</span> Lancer l'app
+    </a>
+  </section>
+
+  <!-- ── FOOTER ─────────────────────────────────────────────────────────────── -->
+  <footer>
+    <div class="logo">
+      <span class="g">Pépite</span>
+      <span class="a"> &amp; </span>
+      <span class="l">Citron</span>
+    </div>
+    <div>Le tribunal démocratique du vestiaire.</div>
+    <div style="margin-top:6px; font-size:11px;">
+      Aucun joueur n'a été blessé lors de la création de cette app.
+      (Sauf leur ego.)
+    </div>
+  </footer>
+
+</body>
+</html>
