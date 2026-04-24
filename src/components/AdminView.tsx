@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { DEMO_MODE } from '../api';
+import { shuffleRevealOrder } from '../utils/vote';
 import { Toast } from './Toast';
 import { useTeams, useGuestTokens, useOrgMembers, useVotes, useCurrentSeason, useSeasonNames } from '../hooks/queries';
 import {
@@ -154,11 +155,7 @@ export function AdminView({ players, activeMatch, currentOrg, onSignOut, onShowG
 
   const startCounting = () => {
     if (!activeMatch) return;
-    const shuffled = [...matchVotes]
-      .sort(() => Math.random() - 0.5)
-      .map(v => v.id)
-      .filter((id): id is EntityId => id != null);
-    startCountingMutation.mutate({ id: activeMatch.id, order: shuffled }, {
+    startCountingMutation.mutate({ id: activeMatch.id, order: shuffleRevealOrder(matchVotes) }, {
       onSuccess: () => onGoToResults?.(),
     });
   };

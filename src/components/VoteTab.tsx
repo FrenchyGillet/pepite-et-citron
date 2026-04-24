@@ -1,8 +1,9 @@
 import { api } from '../api';
 import { useAppStore } from '../store/appStore';
+import { hasVotedLocally } from '../utils/vote';
 import { VoteView } from './VoteView';
 import { EmptyState } from './EmptyState';
-import type { Player, Match, EntityId } from '../types';
+import type { Player, Match } from '../types';
 
 interface VoteTabProps {
   isAdmin:    boolean;
@@ -19,9 +20,6 @@ export function VoteTab({ isAdmin, activeMatch, lastMatch, players }: VoteTabPro
   const setVotedThisSession = useAppStore(s => s.setVotedThisSession);
   const setGuestToken      = useAppStore(s => s.setGuestToken);
   const setTab             = useAppStore(s => s.setTab);
-
-  const hasVotedLocally = (matchId: EntityId | null | undefined): boolean =>
-    !!matchId && (JSON.parse(localStorage.getItem('pepite_voted') || '[]') as unknown[]).includes(matchId);
 
   const handleVoted = () => { setVotedThisSession(true); setTab('results'); };
 

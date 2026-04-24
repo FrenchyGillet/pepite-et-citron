@@ -1,5 +1,6 @@
 import { useState, useEffect, type ReactNode } from 'react';
-import { computeScores, formatDate } from '../utils';
+import { formatDate } from '../utils';
+import { computeResultsSummary } from '../utils/scoring';
 import { Scoreboard } from './Scoreboard';
 import { PodiumView } from './PodiumView';
 import { EmptyState } from './EmptyState';
@@ -192,15 +193,10 @@ export function ResultsView({ players, match, isAdmin, isDark, orgId }: ResultsV
   // ── CLOSED ──
   const tiebreakers = match.tiebreakers || {};
 
-  const { best: bestScores, lemon: lemonScores } = computeScores(votes, present, players);
-  const everyone    = players.length ? players : present;
-  const presentIds  = new Set(present.map(p => p.id));
-  const topBestPts  = present.length  ? Math.max(...present.map(p  => bestScores[p.id]?.pts  || 0)) : 0;
-  const topLemonPts = everyone.length ? Math.max(...everyone.map(p => lemonScores[p.id]?.pts || 0)) : 0;
-  const bestTied  = topBestPts  > 0 && present.filter(p  => (bestScores[p.id]?.pts  || 0) === topBestPts).length  > 1;
-  const lemonTied = topLemonPts > 0 && everyone.filter(p => (lemonScores[p.id]?.pts || 0) === topLemonPts).length > 1;
-  const bestTiedPlayers  = present.filter(p  => (bestScores[p.id]?.pts  || 0) === topBestPts);
-  const lemonTiedPlayers = everyone.filter(p => (lemonScores[p.id]?.pts || 0) === topLemonPts);
+  const {
+    pepiteRanked, lemonRanked, ghosts,
+    bestTied, lemonTied, bestTiedPlayers, lemonTiedPlayers,
+  } = computeResultsSummary(votes, present, players);
 
   const setTiebreaker = (field: string, playerId: EntityId) => {
     updateMatchMutation.mutate({ id: match.id, data: { tiebreakers: { ...tiebreakers, [field]: playerId } } });
@@ -225,21 +221,6 @@ export function ResultsView({ players, match, isAdmin, isDark, orgId }: ResultsV
       </div>
     </div>
   );
-
-  const ghosts = present.filter(p =>
-    (bestScores[p.id]?.pts  || 0) === 0 &&
-    (lemonScores[p.id]?.pts || 0) === 0
-  );
-
-  const pepiteRanked = present
-    .map(p => ({ id: p.id, name: p.name, pts: bestScores[p.id]?.pts || 0 }))
-    .filter(p => p.pts > 0)
-    .sort((a, b) => b.pts - a.pts);
-
-  const lemonRanked = everyone
-    .map(p => ({ id: p.id, name: p.name, pts: lemonScores[p.id]?.pts || 0, absent: !presentIds.has(p.id) }))
-    .filter(p => p.pts > 0)
-    .sort((a, b) => b.pts - a.pts);
 
   return (
     <div className="content">

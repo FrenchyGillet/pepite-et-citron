@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { api } from '../api';
+import { markVotedLocally, classifyVoteError } from '../utils/vote';
 import type { Player, Match } from '../types';
 
 interface VoteViewProps {
@@ -48,18 +49,10 @@ export function VoteView({ players, match, onVoted, guestName = null, onGuestVot
         lemon_id: lemon?.id, lemon_comment: lemonComment,
       });
       if (onGuestVoted) await onGuestVoted();
-      const voted = JSON.parse(localStorage.getItem('pepite_voted') || '[]') as unknown[];
-      if (!voted.includes(match.id)) {
-        localStorage.setItem('pepite_voted', JSON.stringify([...voted, match.id]));
-      }
+      markVotedLocally(match.id);
       onVoted();
     } catch (err) {
-      const e = err instanceof Error ? err : null;
-      setSubmitError(
-        e?.message?.includes('network') || (err as { name?: string })?.name === 'AbortError'
-          ? 'Erreur réseau — vérifie ta connexion et réessaie.'
-          : (e?.message || "Erreur lors de l'envoi, réessaie.")
-      );
+      setSubmitError(classifyVoteError(err));
     } finally {
       setSubmitting(false);
     }
