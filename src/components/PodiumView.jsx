@@ -1,9 +1,9 @@
 import { useState } from 'react';
 import { computeScores } from '../utils.js';
 
-export function PodiumView({ votes, present, allPlayers, tiebreakers = {} }) {
+export function PodiumView({ votes, present, allPlayers, tiebreakers = {}, pepitesCount = 2 }) {
   const [podiumTab, setPodiumTab] = useState("pepite");
-  const { best, lemon } = computeScores(votes, present, allPlayers);
+  const { best, lemon } = computeScores(votes, present, allPlayers, pepitesCount);
   const everyone    = allPlayers || present;
   const presentIds  = new Set(present.map(p => p.id));
 

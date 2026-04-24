@@ -6,6 +6,7 @@ export function AdminView({ players, onPlayersChange, activeMatch, onMatchChange
   const [newPlayer,    setNewPlayer]    = useState("");
   const [matchLabel,   setMatchLabel]   = useState("");
   const [presentIds,   setPresentIds]   = useState([]);
+  const [pepitesCount, setPepitesCount] = useState(2);
   const [creating,     setCreating]     = useState(false);
   const [toast,        setToast]        = useState(null);
   const [teams,          setTeams]          = useState([]);
@@ -150,8 +151,8 @@ export function AdminView({ players, onPlayersChange, activeMatch, onMatchChange
   const createMatch = async () => {
     if (!matchLabel.trim() || presentIds.length < 2) return;
     setCreating(true);
-    await api.createMatch(matchLabel.trim(), presentIds, selectedTeamId, currentSeason);
-    setMatchLabel(""); setPresentIds([]); setSelectedTeamId(null);
+    await api.createMatch(matchLabel.trim(), presentIds, selectedTeamId, currentSeason, pepitesCount);
+    setMatchLabel(""); setPresentIds([]); setSelectedTeamId(null); setPepitesCount(2);
     setCreating(false); onMatchChange();
     setToast("Match ouvert !");
   };
@@ -386,6 +387,22 @@ export function AdminView({ players, onPlayersChange, activeMatch, onMatchChange
               Sélectionne au moins 2 joueurs.
             </p>
           )}
+
+          <p style={{ fontSize: 13, color: "var(--label3)", marginBottom: 8 }}>Nombre de Pépites à voter</p>
+          <div style={{ display: "flex", gap: 8, marginBottom: 16 }}>
+            {[2, 3].map(n => (
+              <button key={n} onClick={() => setPepitesCount(n)} style={{
+                flex: 1, padding: "10px", borderRadius: "var(--radius-sm)", fontSize: 14, fontWeight: 600,
+                background: pepitesCount === n ? "var(--gold-dim)" : "var(--bg3)",
+                color: pepitesCount === n ? "var(--gold)" : "var(--label2)",
+                border: pepitesCount === n ? "1px solid var(--gold)" : "1px solid transparent",
+                cursor: "pointer",
+              }}>
+                ⭐ {n} Pépite{n > 1 ? "s" : ""}
+              </button>
+            ))}
+          </div>
+
           <button className="btn btn-primary btn-full"
             disabled={!matchLabel.trim() || presentIds.length < 2 || creating}
             onClick={createMatch}>

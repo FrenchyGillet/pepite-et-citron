@@ -1,7 +1,7 @@
 import { computeScores } from '../utils.js';
 
-export function Scoreboard({ votes, present, allPlayers, tiebreakers = {}, showLemons = true }) {
-  const { best, lemon } = computeScores(votes, present, allPlayers);
+export function Scoreboard({ votes, present, allPlayers, tiebreakers = {}, showLemons = true, pepitesCount = 2 }) {
+  const { best, lemon } = computeScores(votes, present, allPlayers, pepitesCount);
   const everyone = allPlayers || present;
 
   const withRanks = (arr) => {

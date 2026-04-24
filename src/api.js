@@ -69,8 +69,8 @@ export const demoAPI = {
   removePlayer:   (id)   => { demoState.players = demoState.players.filter(p => p.id !== id); return Promise.resolve(true); },
   getActiveMatch: ()     => Promise.resolve(demoState.matches.find(m => m.is_open || m.phase === "counting") || null),
   getMatches:     ()     => Promise.resolve([...demoState.matches].reverse()),
-  createMatch: (label, presentIds, teamId, season) => {
-    const m = { id: demoState.nextId++, label, present_ids: presentIds, is_open: true, phase: "voting", reveal_order: [], revealed_count: 0, season: season || demoState.currentSeason, team_id: teamId || null, created_at: new Date().toISOString() };
+  createMatch: (label, presentIds, teamId, season, pepitesCount = 2) => {
+    const m = { id: demoState.nextId++, label, present_ids: presentIds, is_open: true, phase: "voting", reveal_order: [], revealed_count: 0, season: season || demoState.currentSeason, team_id: teamId || null, pepites_count: pepitesCount, created_at: new Date().toISOString() };
     demoState.matches.push(m); return Promise.resolve(m);
   },
   closeMatch:       (id)        => { const m = demoState.matches.find(m => m.id === id); if (m) { m.is_open = false; m.phase = "closed"; } return Promise.resolve(true); },
@@ -247,10 +247,10 @@ export const realAPI = {
       const db = await supabase.from("matches");
       return db.select("*", { filter: `org_id=eq.${_orgId}`, order: "created_at.desc" });
     }),
-  createMatch: async (label, presentIds, teamId, season) =>
+  createMatch: async (label, presentIds, teamId, season, pepitesCount = 2) =>
     withRetry(async () => {
       const db = await supabase.from("matches");
-      const r = await db.insert({ label, present_ids: presentIds, is_open: true, phase: "voting", team_id: teamId || null, season: season || 1, org_id: _orgId });
+      const r = await db.insert({ label, present_ids: presentIds, is_open: true, phase: "voting", team_id: teamId || null, season: season || 1, org_id: _orgId, pepites_count: pepitesCount });
       return Array.isArray(r) ? r[0] : r;
     }),
   closeMatch:    async (id) => { const db = await supabase.from("matches"); return db.update({ is_open: false, phase: "closed" }, `id=eq.${id}`); },

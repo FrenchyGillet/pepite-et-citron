@@ -42,7 +42,8 @@ export function ResultsView({ players, match, refreshKey, onMatchUpdate, isAdmin
   if (loading) return <div className="content"><div className="empty">Chargement…</div></div>;
 
   const present = players.filter(p => (match.present_ids || []).includes(p.id));
-  const phase = match.phase || "voting";
+  const phase        = match.phase || "voting";
+  const pepitesCount = match.pepites_count || 2;
 
   const MatchHeader = ({ badge }) => (
     <div className="flex-between mt-4 mb-12">
@@ -131,7 +132,7 @@ export function ResultsView({ players, match, refreshKey, onMatchUpdate, isAdmin
               <div style={{ display: "flex", alignItems: "flex-start", gap: 14, padding: "16px 16px 14px", borderBottom: "1px solid var(--separator)", borderLeft: "4px solid var(--gold)" }}>
                 <div style={{ fontSize: 26, lineHeight: 1 }}>⭐</div>
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontSize: 10, fontWeight: 700, color: "var(--gold)", textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: 4 }}>La Pépite · 2 pts</div>
+                  <div style={{ fontSize: 10, fontWeight: 700, color: "var(--gold)", textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: 4 }}>La Pépite · {pepitesCount === 3 ? 3 : 2} pts</div>
                   <div style={{ fontSize: 22, fontWeight: 800, color: "var(--gold)", letterSpacing: "-0.3px", lineHeight: 1.1 }}>{playerName(currentVote.best1_id)}</div>
                   {currentVote.best1_comment && <div style={{ fontSize: 12, color: "var(--label3)", fontStyle: "italic", marginTop: 5 }}>"{currentVote.best1_comment}"</div>}
                 </div>
@@ -140,11 +141,22 @@ export function ResultsView({ players, match, refreshKey, onMatchUpdate, isAdmin
               <div style={{ display: "flex", alignItems: "flex-start", gap: 14, padding: "14px 16px", borderBottom: "1px solid var(--separator)", borderLeft: "4px solid rgba(255,214,10,0.35)" }}>
                 <div style={{ fontSize: 22, lineHeight: 1, opacity: 0.5 }}>⭐</div>
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontSize: 10, fontWeight: 700, color: "rgba(255,214,10,0.5)", textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: 4 }}>2ème · 1 pt</div>
+                  <div style={{ fontSize: 10, fontWeight: 700, color: "rgba(255,214,10,0.5)", textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: 4 }}>2ème · {pepitesCount === 3 ? 2 : 1} pt{pepitesCount === 3 ? "s" : ""}</div>
                   <div style={{ fontSize: 19, fontWeight: 700, color: "var(--label)", letterSpacing: "-0.2px" }}>{playerName(currentVote.best2_id)}</div>
                   {currentVote.best2_comment && <div style={{ fontSize: 12, color: "var(--label3)", fontStyle: "italic", marginTop: 5 }}>"{currentVote.best2_comment}"</div>}
                 </div>
               </div>
+              {/* Pépite 3 */}
+              {pepitesCount === 3 && (
+                <div style={{ display: "flex", alignItems: "flex-start", gap: 14, padding: "14px 16px", borderBottom: "1px solid var(--separator)", borderLeft: "4px solid rgba(255,214,10,0.15)" }}>
+                  <div style={{ fontSize: 18, lineHeight: 1, opacity: 0.3 }}>⭐</div>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: 10, fontWeight: 700, color: "rgba(255,214,10,0.3)", textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: 4 }}>3ème · 1 pt</div>
+                    <div style={{ fontSize: 17, fontWeight: 700, color: "var(--label2)", letterSpacing: "-0.2px" }}>{playerName(currentVote.best3_id)}</div>
+                    {currentVote.best3_comment && <div style={{ fontSize: 12, color: "var(--label3)", fontStyle: "italic", marginTop: 5 }}>"{currentVote.best3_comment}"</div>}
+                  </div>
+                </div>
+              )}
               {/* Citron */}
               <div style={{ display: "flex", alignItems: "flex-start", gap: 14, padding: "14px 16px 16px", borderLeft: "4px solid var(--lemon)" }}>
                 <div style={{ fontSize: 24, lineHeight: 1 }}>🍋</div>
@@ -189,7 +201,7 @@ export function ResultsView({ players, match, refreshKey, onMatchUpdate, isAdmin
                 Classement provisoire · {revealedCount}/{revealOrder.length} vote{revealedCount > 1 ? "s" : ""} révélé{revealedCount > 1 ? "s" : ""}
               </span>
             </div>
-            <Scoreboard votes={revealedVotes} present={present} allPlayers={players} />
+            <Scoreboard votes={revealedVotes} present={present} allPlayers={players} pepitesCount={pepitesCount} />
           </div>
         )}
       </div>
@@ -199,7 +211,7 @@ export function ResultsView({ players, match, refreshKey, onMatchUpdate, isAdmin
   // ── CLOSED : full results ──
   const tiebreakers = match.tiebreakers || {};
 
-  const { best: bestScores, lemon: lemonScores } = computeScores(votes, present, players);
+  const { best: bestScores, lemon: lemonScores } = computeScores(votes, present, players, pepitesCount);
   const everyone    = players.length ? players : present;
   const presentIds  = new Set(present.map(p => p.id));
   const topBestPts  = present.length  ? Math.max(...present.map(p  => bestScores[p.id]?.pts  || 0)) : 0;
@@ -256,7 +268,7 @@ export function ResultsView({ players, match, refreshKey, onMatchUpdate, isAdmin
       <MatchHeader badge={<span className="badge badge-closed">Clôturé</span>} />
       {isAdmin && bestTied  && !tiebreakers.best_id  && <TiebreakerCard title="Pépite" color="gold"  field="best_id"  players={bestTiedPlayers}  />}
       {isAdmin && lemonTied && !tiebreakers.lemon_id && <TiebreakerCard title="Citron" color="lemon" field="lemon_id" players={lemonTiedPlayers} />}
-      <PodiumView votes={votes} present={present} allPlayers={players} tiebreakers={tiebreakers} />
+      <PodiumView votes={votes} present={present} allPlayers={players} tiebreakers={tiebreakers} pepitesCount={pepitesCount} />
 
       {ghosts.length > 0 && (
         <div style={{ marginTop: 8, marginBottom: 16 }}>
