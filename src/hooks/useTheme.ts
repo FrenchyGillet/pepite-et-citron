@@ -1,5 +1,5 @@
 import { useEffect, useCallback } from 'react';
-import { useAppStore } from '../store/appStore';
+import { useAppStore } from '@/store/appStore';
 
 export function useTheme() {
   const theme    = useAppStore(s => s.theme);

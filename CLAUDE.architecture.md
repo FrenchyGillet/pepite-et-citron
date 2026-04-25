@@ -1,31 +1,52 @@
-# Pépite & Citron — Best Practices & Architecture
+# Pépite & Citron — Architecture & Bonnes Pratiques
 
-> Lire d'abord le CLAUDE.md racine du monorepo.
+> Lire d'abord `CLAUDE.md` pour la vue d'ensemble du projet.
 
 ## Principes directeurs
 
 1. **Clarté > Cleverness** : du code lisible qu'un autre développeur comprend sans commentaires
-2. **Colocate** : mettre les tests, les styles et le composant dans le même dossier
-3. **Single Responsibility** : un fichier = une responsabilité
-4. **Fail fast** : valider les données à l'entrée (Zod), jamais en profondeur dans la logique
+2. **Single Responsibility** : un fichier = une responsabilité
+3. **Fail fast** : valider les données à l'entrée, jamais en profondeur dans la logique métier
+4. **Pas d'abstractions prématurées** : trois lignes similaires valent mieux qu'un helper inventé trop tôt
 
 ---
 
-## Architecture — Flux de données
+## Flux de données
 
 ```
 Supabase (source de vérité)
     ↓
-packages/supabase/queries/ (fetching pur)
+src/api.ts  (realAPI — client REST custom + authClient SDK)
     ↓
-packages/supabase/hooks/ (TanStack Query — cache + realtime)
+src/hooks/queries.ts|mutations.ts  (TanStack Query — cache + mutations)
     ↓
-apps/web|mobile / composants de page (orchestration)
-    ↓
-packages/ui / composants atomiques (présentation pure)
+src/components/*  (vues — orchestration + rendu)
+    ↑
+src/utils/*  (logique métier pure — sans effets de bord)
 ```
 
-**Règle** : les données ne remontent jamais dans ce flux. Un composant UI ne connaît pas Supabase.
+**Règle** : les données ne remontent jamais dans ce flux. Un composant ne connaît pas Supabase directement.
+
+---
+
+## Couche API — `src/api.ts`
+
+Le fichier exporte deux objets conformes à l'interface `API` :
+
+| Export | Usage |
+|---|---|
+| `demoAPI` | Données en-mémoire (`demoState`), aucun réseau — actif quand `DEMO_MODE = true` |
+| `realAPI` | Appels REST vers Supabase via `supabaseClient.ts` — production |
+
+`DEMO_MODE` est automatiquement `true` quand `VITE_SUPABASE_URL` contient `"VOTRE_PROJET"`.
+
+### `src/supabaseClient.ts`
+- `authClient` : instance Supabase JS SDK (`createClient`) — gère auth + token refresh
+- `supabase` : client REST custom avec timeout, retry, et `buildHeaders()` synchrone (token JWT en cache)
+
+### Retry et timeout
+- `withRetry` : 3 tentatives max, réessaie uniquement les erreurs réseau (`TypeError`, `AbortError`)
+- `rpcWithTimeout` : wrape les appels `authClient.rpc()` avec `Promise.race` (timeout 10 s par défaut)
 
 ---
 
@@ -35,61 +56,52 @@ packages/ui / composants atomiques (présentation pure)
 
 | Type d'état | Outil | Exemple |
 |---|---|---|
-| Données serveur | TanStack Query | liste des joueurs, match actif |
-| État UI local | `useState` | modal ouvert/fermé, step d'un wizard |
-| État global client | Zustand | session joueur, préférences |
-| Formulaires | React Hook Form | formulaire d'ajout de joueur |
+| Données serveur | TanStack Query (`hooks/queries.ts`) | liste des joueurs, match actif |
+| Mutations serveur | TanStack Query (`hooks/mutations.ts`) | soumettre un vote, créer un match |
+| État UI local | `useState` | modal ouvert/fermé, étape d'un wizard |
+| État global client | Zustand (`store/appStore.ts`) | session, org courante, onglet actif, thème |
 
-**Ne jamais** dupliquer des données serveur dans Zustand — TanStack Query est la source de vérité.
+**Ne jamais** dupliquer des données serveur dans Zustand — TanStack Query est la source de vérité pour les données distantes.
 
-### Store Zustand
+### Store Zustand (`src/store/appStore.ts`)
+Le store gère uniquement l'état client qui n'appartient pas au serveur :
 ```ts
-// Garder les stores Zustand petits et focalisés
-interface SessionStore {
-  currentPlayerId: string | null;
-  hasVotedInMatch: (matchId: string) => boolean;
-  setCurrentPlayer: (id: string) => void;
-  markVoted: (matchId: string) => void;
+interface AppStore {
+  session: UserSession | null;
+  currentOrg: Org | null;
+  tab: string;
+  theme: 'dark' | 'light';
+  showOnboarding: boolean;
+  // ... setters correspondants
 }
 ```
 
 ---
 
-## Composants React — Rules
+## Composants React — Règles
 
 ### Structure d'un composant
 ```tsx
-// 1. Imports (dans l'ordre : React, libs externes, packages internes, locaux)
+// 1. Imports (externes → locaux)
 import { useState, useCallback } from 'react';
-import { motion } from 'framer-motion';
-import type { Player } from '@shared/types';
-import { colors } from '@ui/tokens';
-import styles from './PlayerCard.module.css';
+import type { Player } from '../types';
+import { useSubmitVote } from '../hooks/mutations';
 
 // 2. Types locaux
-interface PlayerCardProps {
+interface Props {
   player: Player;
-  onSelect: (id: string) => void;
+  onSelect: (id: EntityId) => void;
   isSelected?: boolean;
 }
 
-// 3. Composant (function declaration, pas arrow function pour les composants)
-export function PlayerCard({ player, onSelect, isSelected = false }: PlayerCardProps) {
+// 3. Composant (function declaration)
+export function PlayerCard({ player, onSelect, isSelected = false }: Props) {
   // 4. Hooks en haut (jamais conditionnels)
-  const [isPressed, setIsPressed] = useState(false);
-  
-  // 5. Handlers (useCallback pour ceux passés en props)
-  const handlePress = useCallback(() => {
-    onSelect(player.id);
-  }, [player.id, onSelect]);
-  
-  // 6. Rendu
+  const handlePress = useCallback(() => onSelect(player.id), [player.id, onSelect]);
+
+  // 5. Rendu
   return (
-    <button
-      className={`${styles.card} ${isSelected ? styles.selected : ''}`}
-      onClick={handlePress}
-      aria-pressed={isSelected}
-    >
+    <button onClick={handlePress} aria-pressed={isSelected}>
       {player.name}
     </button>
   );
@@ -99,140 +111,79 @@ export function PlayerCard({ player, onSelect, isSelected = false }: PlayerCardP
 ### Ce qu'on évite
 ```tsx
 // ❌ useEffect pour dériver de l'état
-const [fullName, setFullName] = useState('');
-useEffect(() => { setFullName(`${firstName} ${lastName}`); }, [firstName, lastName]);
+useEffect(() => { setScore(computeScore(votes)); }, [votes]);
 
 // ✅ Calcul direct
-const fullName = `${firstName} ${lastName}`;
+const score = computeScore(votes);
 
-// ❌ Props drilling profond (> 2 niveaux)
-<Page match={match} players={players} votes={votes} onVote={onVote} ... />
+// ❌ fetch direct dans un composant
+useEffect(() => { fetch('/api/players').then(...) }, []);
 
-// ✅ Utiliser les hooks directement dans les composants enfants
-
-// ❌ Composant qui fait tout (God Component)
-export function VoteScreen() { /* 400 lignes */ }
-
-// ✅ Décomposer en composants focalisés
-export function VoteScreen() {
-  return (
-    <ScreenLayout>
-      <MatchBanner />
-      <PlayerGrid onSelect={handleSelect} />
-      <VoteConfirmButton />
-    </ScreenLayout>
-  );
-}
+// ✅ Hook TanStack Query
+const { data: players } = usePlayers(org?.id);
 ```
+
+---
+
+## Navigation
+
+L'app utilise **React Router v7** (`BrowserRouter` dans `main.tsx`, `<Routes>/<Route>` dans `App.tsx`).
+
+- `navigate('/results')` au lieu de `setTab('results')` — dans `VoteTab`, `useAuth`, `useGuest`
+- `useLocation().pathname` détermine l'onglet actif dans la tab bar
+- `useSearchParams()` lit `?guest=` et `?org=` (remplace `window.location.search`)
+- Le store Zustand ne gère plus de `tab` — c'est React Router qui est la source de vérité
+- En tests : `renderApp({ initialPath: '/vote?guest=xxx' })` → `MemoryRouter` avec cette URL initiale
 
 ---
 
 ## Accessibilité (a11y)
 
-- Tout élément interactif a un `role` sémantique ou un élément HTML approprié (`button`, `a`, etc.)
+- Tout élément interactif utilise un élément HTML sémantique (`button`, `a`, etc.)
 - Les boutons de vote ont `aria-pressed` et `aria-label` explicite
-- Contraste minimum : 4.5:1 pour le texte normal, 3:1 pour les grands textes (vérifié avec nos tokens dark mode)
-- `testID` sur les éléments critiques pour les tests E2E
+- Contraste minimum : 4.5:1 pour le texte normal (vérifié avec nos tokens dark mode)
 
 ---
 
 ## Sécurité
 
-### Règles Supabase RLS (obligatoires)
-```sql
--- Un joueur ne peut voir que ses propres votes
-create policy "voters see own votes" on votes
-  for select using (voter_id = auth.uid());
-
--- Un joueur ne peut voter qu'une seule fois par match (constraint + RLS)
-create policy "one vote per match" on votes
-  for insert with check (
-    not exists (
-      select 1 from votes 
-      where match_id = new.match_id and voter_id = auth.uid()
-    )
-  );
-```
+### Règles Supabase RLS (obligatoires en production)
+- RLS activé sur toutes les tables
+- Un joueur ne peut voter qu'une fois par match (contrainte unique + RLS)
+- Ne jamais exposer la `service_role` key côté client
 
 ### Ne jamais
-- Mettre la `service_role` key côté client
 - Désactiver RLS en production
-- Faire confiance aux données venant du client sans validation Zod
-- Stocker des données sensibles en clair dans AsyncStorage / localStorage
+- Faire confiance aux données venant du client sans validation
+- Stocker des données sensibles en localStorage (tokens JWT, mots de passe)
 
 ---
 
 ## Git — Workflow
 
-### Branches
-```
-main          ← production stable
-develop       ← intégration
-feature/xxx   ← nouvelles fonctionnalités
-fix/xxx       ← corrections de bugs
-release/x.x   ← préparation de release
-```
-
 ### Commits (Conventional Commits)
 ```
 feat(vote): ajouter la confirmation avant soumission
 fix(results): corriger l'ordre du classement à égalité
-chore(deps): mettre à jour expo-notifications
-docs(supabase): documenter les politiques RLS
-test(ranking): ajouter les cas limites du calcul
+chore(deps): mettre à jour @tanstack/react-query
+test(scoring): ajouter les cas limites du calcul de pépites
 ```
 
 ### PR Rules
 - Une PR = une fonctionnalité ou un fix
-- Toujours rebaser sur `develop` avant d'ouvrir la PR
-- Minimum 1 reviewer
 - Tests verts obligatoires avant merge
 - Pas de `console.log` en merge vers `main`
 
 ---
 
-## Linting & Formatting
-
-### ESLint config (`.eslintrc.ts`)
-Règles clés activées :
-- `@typescript-eslint/no-explicit-any` — error
-- `@typescript-eslint/no-unused-vars` — error
-- `react-hooks/rules-of-hooks` — error
-- `react-hooks/exhaustive-deps` — warn
-- `no-console` — warn (error sur `main`)
-
-### Prettier
-- Semi-colons : oui
-- Single quotes : oui
-- Tab width : 2
-- Trailing commas : `all`
-- Print width : 100
+## Linting & Typage
 
 ```bash
 # Vérifier avant commit
-pnpm lint && pnpm typecheck && pnpm test
+npm test && npx tsc --noEmit
 ```
 
-Configurer un **pre-commit hook** avec Husky + lint-staged pour automatiser ça.
-
----
-
-## Versioning
-
-Suivre le **Semantic Versioning** (`MAJOR.MINOR.PATCH`) :
-- `PATCH` : bug fix sans impact API
-- `MINOR` : nouvelle fonctionnalité, rétrocompatible
-- `MAJOR` : changement cassant (rare)
-
-Pour les stores mobiles, le `buildNumber` (iOS) et `versionCode` (Android) **doivent être incrémentés** à chaque soumission, même pour un hotfix.
-
-```json
-// app.json
-{
-  "expo": {
-    "version": "1.2.0",
-    "ios": { "buildNumber": "42" },
-    "android": { "versionCode": 42 }
-  }
-}
-```
+Règles TypeScript clés :
+- `strict: true` — pas de `any` implicite, null-checks obligatoires
+- Toujours typer les retours de fonctions exportées
+- Utiliser `import type` pour les imports purement typés

@@ -1,6 +1,6 @@
 import { useState } from 'react';
-import { computeScores } from '../utils';
-import type { Vote, Player, EntityId } from '../types';
+import { computeScores } from '@/utils';
+import type { Vote, Player, EntityId } from '@/types';
 
 interface Tiebreakers {
   best_id?: EntityId;
@@ -12,6 +12,7 @@ interface PodiumViewProps {
   present: Player[];
   allPlayers?: Player[];
   tiebreakers?: Tiebreakers;
+  pepiteCount?: 2 | 3;
 }
 
 interface RankedPlayer extends Player {
@@ -20,9 +21,9 @@ interface RankedPlayer extends Player {
   absent: boolean;
 }
 
-export function PodiumView({ votes, present, allPlayers, tiebreakers = {} }: PodiumViewProps) {
+export function PodiumView({ votes, present, allPlayers, tiebreakers = {}, pepiteCount = 2 }: PodiumViewProps) {
   const [podiumTab, setPodiumTab] = useState<'pepite' | 'citron'>('pepite');
-  const { best, lemon } = computeScores(votes, present, allPlayers);
+  const { best, lemon } = computeScores(votes, present, allPlayers, pepiteCount);
   const everyone   = allPlayers || present;
   const presentIds = new Set(present.map(p => p.id));
 

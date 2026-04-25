@@ -1,13 +1,12 @@
-import { SUPABASE_URL } from './config';
-import { supabase, authClient } from './supabaseClient';
+import { SUPABASE_URL } from '@/config';
+import { supabase } from '@/lib/supabase';
 import type {
-  API, Player, Match, Vote, GuestToken, Org, OrgMember, Team, EntityId, UserSession,
-} from './types';
+  API, Player, Match, Vote, GuestToken, Org, OrgMember, Team, UserSession,
+} from '@/types';
 
 export const DEMO_MODE = SUPABASE_URL.includes("VOTRE_PROJET");
 
-// ─── Timeout helper pour les RPCs Supabase SDK ────────────────────────────────
-// authClient.rpc() n'a pas de timeout natif → on le wrape avec Promise.race.
+// ─── RPC with timeout ─────────────────────────────────────────────────────────
 function rpcWithTimeout<T>(fn: () => PromiseLike<T>, ms = 10000): Promise<T> {
   return Promise.race([
     Promise.resolve(fn()),
@@ -17,8 +16,7 @@ function rpcWithTimeout<T>(fn: () => PromiseLike<T>, ms = 10000): Promise<T> {
   ]);
 }
 
-// ─── Retry helper ─────────────────────────────────────────────────────────────
-// Réessaie automatiquement les erreurs réseau transitoires (pas les 4xx auth).
+// ─── Retry on transient network errors ───────────────────────────────────────
 async function withRetry<T>(fn: () => Promise<T>, retries = 2): Promise<T> {
   for (let attempt = 0; attempt <= retries; attempt++) {
     try {
@@ -34,6 +32,15 @@ async function withRetry<T>(fn: () => Promise<T>, retries = 2): Promise<T> {
     }
   }
   throw new Error('withRetry exhausted');
+}
+
+// ─── Unwrap SDK { data, error } response ─────────────────────────────────────
+async function run<T>(
+  builder: PromiseLike<{ data: T | null; error: { message: string } | null }>
+): Promise<T> {
+  const { data, error } = await builder;
+  if (error) throw new Error(error.message);
+  return data as T;
 }
 
 // Org courante (défini au login ou via ?org=slug)
@@ -89,12 +96,13 @@ export const demoAPI: API = {
     demoState.matches.find(m => m.is_open || m.phase === "counting") ?? null
   ),
   getMatches:     () => Promise.resolve([...demoState.matches].reverse()),
-  createMatch: (label, presentIds, teamId, season) => {
+  createMatch: (label, presentIds, teamId, season, pepiteCount) => {
     const m: Match = {
       id: demoState.nextId++, label, present_ids: presentIds,
       is_open: true, phase: "voting", reveal_order: [], revealed_count: 0,
       season: season || demoState.currentSeason, team_id: teamId ?? null,
       created_at: new Date().toISOString(),
+      pepite_count: pepiteCount ?? 2,
     };
     demoState.matches.push(m);
     return Promise.resolve(m);
@@ -167,24 +175,24 @@ export const demoAPI: API = {
 export const realAPI: API = {
   // ── Auth ──────────────────────────────────────────────────────────────────
   signUp: async (email, password) => {
-    const { data, error } = await authClient.auth.signUp({ email, password });
+    const { data, error } = await supabase.auth.signUp({ email, password });
     if (error) throw error;
     return data;
   },
   signIn: async (email, password) => {
-    const { data, error } = await authClient.auth.signInWithPassword({ email, password });
+    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
     if (error) throw error;
     return data;
   },
   signOut: async () => {
-    await authClient.auth.signOut();
+    await supabase.auth.signOut();
   },
   getSession: async (): Promise<UserSession | null> => {
-    const { data: { session } } = await authClient.auth.getSession();
+    const { data: { session } } = await supabase.auth.getSession();
     return session as UserSession | null;
   },
   onAuthChange: (callback) => {
-    const { data: { subscription } } = authClient.auth.onAuthStateChange(
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event, session) => callback(event, session as UserSession | null)
     );
     return subscription;
@@ -198,38 +206,42 @@ export const realAPI: API = {
     let finalSlug: string | null = null;
     for (const s of candidates) {
       const { error } = await rpcWithTimeout(() =>
-        authClient.rpc("create_organization", { org_name: name, org_slug: s })
+        supabase.rpc("create_organization", { org_name: name, org_slug: s })
       );
       if (!error) { finalSlug = s; break; }
-      const isDuplicate = error.message?.includes("unique") || error.message?.includes("duplicate") || error.code === "23505";
+      const isDuplicate = error.message?.includes("unique") || error.message?.includes("duplicate") || (error as { code?: string }).code === "23505";
       if (!isDuplicate) throw new Error(error.message);
     }
     if (!finalSlug) throw new Error("Impossible de créer l'équipe, réessayez.");
 
-    const rows = await supabase.from("organizations").select("*", { filter: `slug=eq.${encodeURIComponent(finalSlug)}` });
-    const org = rows[0] as Org | undefined;
+    const { data: rows, error: fetchErr } = await supabase.from("organizations").select("*").eq("slug", finalSlug);
+    if (fetchErr) throw new Error(fetchErr.message);
+    const org = rows?.[0] as Org | undefined;
     if (!org?.id) throw new Error("Erreur création organisation");
     return org;
   },
   getMyOrgs: async (): Promise<Org[]> => {
     try {
-      const { data, error } = await rpcWithTimeout(() => authClient.rpc("get_my_orgs"), 4000);
+      const { data, error } = await rpcWithTimeout(() => supabase.rpc("get_my_orgs"), 4000);
       if (error) throw new Error(error.message);
       return (data as Org[]) || [];
     } catch (rpcErr) {
       console.warn("get_my_orgs RPC indisponible, fallback REST:", (rpcErr as Error).message);
       let members: Array<{ org_id: string; role?: string }>;
       try {
-        members = await supabase.from("org_members").select("org_id,role") as typeof members;
+        const { data, error } = await supabase.from("org_members").select("org_id,role");
+        if (error) throw new Error(error.message);
+        members = (data || []) as typeof members;
       } catch {
-        const rows = await supabase.from("org_members").select("org_id") as Array<{ org_id: string }>;
-        members = (rows || []).map(r => ({ org_id: r.org_id, role: "admin" }));
+        const { data, error } = await supabase.from("org_members").select("org_id");
+        if (error) throw new Error(error.message);
+        members = (data || []).map((r: { org_id: string }) => ({ org_id: r.org_id, role: "admin" }));
       }
       if (!members?.length) return [];
-      const orgIds = members.map(m => m.org_id).join(",");
-      const orgs = await supabase.from("organizations").select("*", { filter: `id=in.(${orgIds})` }) as Org[];
+      const { data: orgs, error: orgsErr } = await supabase.from("organizations").select("*").in("id", members.map(m => m.org_id));
+      if (orgsErr) throw new Error(orgsErr.message);
       return members.map(m => {
-        const org = orgs.find(o => o.id === m.org_id);
+        const org = (orgs || []).find((o: Org) => o.id === m.org_id);
         return org ? { ...org, role: (m.role || "admin") as 'admin' | 'voter' } as Org : null;
       }).filter((o): o is Org => o != null);
     }
@@ -240,169 +252,225 @@ export const realAPI: API = {
   },
   getOrgMembers: async (orgId) => {
     const { data, error } = await rpcWithTimeout(() =>
-      authClient.rpc("get_org_members", { target_org_id: orgId })
+      supabase.rpc("get_org_members", { target_org_id: orgId })
     );
     if (error) throw new Error(error.message);
     return (data as OrgMember[]) || [];
   },
   addMember: async (email, orgId, role = "voter") => {
     const { error } = await rpcWithTimeout(() =>
-      authClient.rpc("add_org_member", { member_email: email, target_org_id: orgId, member_role: role })
+      supabase.rpc("add_org_member", { member_email: email, target_org_id: orgId, member_role: role })
     );
     if (error) throw new Error(error.message);
   },
   removeMember: async (userId, orgId) => {
-    return supabase.from("org_members").delete(`user_id=eq.${userId}&org_id=eq.${orgId}`);
+    const { error } = await supabase.from("org_members").delete().eq("user_id", userId).eq("org_id", orgId);
+    if (error) throw new Error(error.message);
   },
   getOrgBySlug: async (slug) => {
-    const rows = await supabase.from("organizations").select("*", { filter: `slug=eq.${slug}` }) as Org[];
-    return rows[0] ?? null;
+    const { data, error } = await supabase.from("organizations").select("*").eq("slug", slug);
+    if (error) throw new Error(error.message);
+    return (data?.[0] as Org) ?? null;
   },
 
   // ── Joueurs ───────────────────────────────────────────────────────────────
   getPlayers: () =>
     withRetry(async () => {
-      const rows = await supabase.from("players").select("*", { filter: `org_id=eq.${_orgId}`, order: "name.asc" });
-      return rows as Player[];
+      return await run<Player[]>(supabase.from("players").select("*").eq("org_id", _orgId).order("name"));
     }),
   addPlayer: (name) =>
     withRetry(async () => {
-      const rows = await supabase.from("players").insert({ name, org_id: _orgId });
-      const r = Array.isArray(rows) ? rows : [rows];
-      return r[0] as Player;
+      const rows = await run<Player[]>(supabase.from("players").insert({ name, org_id: _orgId }).select());
+      return rows[0];
     }),
-  removePlayer: (id) => supabase.from("players").delete(`id=eq.${id}`),
+  removePlayer: async (id) => {
+    const { error } = await supabase.from("players").delete().eq("id", id);
+    if (error) throw new Error(error.message);
+    return true;
+  },
 
   // ── Matchs ────────────────────────────────────────────────────────────────
   getActiveMatch: () =>
     withRetry(async () => {
-      const rows = await supabase.from("matches").select("*", {
-        filter: `or=(is_open.eq.true,phase.eq.counting)&org_id=eq.${_orgId}`,
-        order:  "created_at.desc",
-      });
-      return (Array.isArray(rows) ? (rows[0] as Match | undefined) : null) ?? null;
+      const { data, error } = await supabase.from("matches").select("*")
+        .or("is_open.eq.true,phase.eq.counting")
+        .eq("org_id", _orgId)
+        .order("created_at", { ascending: false });
+      if (error) throw new Error(error.message);
+      return (data?.[0] as Match) ?? null;
     }),
   getMatches: () =>
     withRetry(async () => {
-      const rows = await supabase.from("matches").select("*", { filter: `org_id=eq.${_orgId}`, order: "created_at.desc" });
-      return rows as Match[];
+      return await run<Match[]>(
+        supabase.from("matches").select("*").eq("org_id", _orgId).order("created_at", { ascending: false })
+      );
     }),
-  createMatch: (label, presentIds, teamId, season) =>
+  createMatch: (label, presentIds, teamId, season, pepiteCount) =>
     withRetry(async () => {
-      const rows = await supabase.from("matches").insert({
-        label, present_ids: presentIds, is_open: true, phase: "voting",
-        team_id: teamId ?? null, season: season || 1, org_id: _orgId,
-      });
-      const r = Array.isArray(rows) ? rows : [rows];
-      return r[0] as Match;
+      const rows = await run<Match[]>(
+        supabase.from("matches").insert({
+          label, present_ids: presentIds, is_open: true, phase: "voting",
+          team_id: teamId ?? null, season: season || 1, org_id: _orgId,
+          ...(pepiteCount === 3 ? { pepite_count: 3 } : {}),
+        }).select()
+      );
+      return rows[0];
     }),
-  closeMatch:    (id) => supabase.from("matches").update({ is_open: false, phase: "closed" }, `id=eq.${id}`),
-  startCounting: (id, order) => supabase.from("matches").update({ is_open: false, phase: "counting", reveal_order: order, revealed_count: 0 }, `id=eq.${id}`),
-  revealNext:    (id, count) => supabase.from("matches").update({ revealed_count: count }, `id=eq.${id}`),
-  updateMatch:   (id, data)  => supabase.from("matches").update(data, `id=eq.${id}`),
-  deleteMatch:   async (id)  => {
-    await supabase.from("votes").delete(`match_id=eq.${id}`);
-    return supabase.from("matches").delete(`id=eq.${id}`);
+  closeMatch: async (id) => {
+    const { error } = await supabase.from("matches").update({ is_open: false, phase: "closed" }).eq("id", id);
+    if (error) throw new Error(error.message);
+    return true;
+  },
+  startCounting: async (id, order) => {
+    const { error } = await supabase.from("matches")
+      .update({ is_open: false, phase: "counting", reveal_order: order, revealed_count: 0 })
+      .eq("id", id);
+    if (error) throw new Error(error.message);
+    return true;
+  },
+  revealNext: async (id, count) => {
+    const { error } = await supabase.from("matches").update({ revealed_count: count }).eq("id", id);
+    if (error) throw new Error(error.message);
+    return true;
+  },
+  updateMatch: async (id, data) => {
+    const { error } = await supabase.from("matches").update(data).eq("id", id);
+    if (error) throw new Error(error.message);
+    return true;
+  },
+  deleteMatch: async (id) => {
+    const { error: e1 } = await supabase.from("votes").delete().eq("match_id", id);
+    if (e1) throw new Error(e1.message);
+    const { error: e2 } = await supabase.from("matches").delete().eq("id", id);
+    if (e2) throw new Error(e2.message);
+    return true;
   },
   getMatchById: async (id) => {
-    const rows = await supabase.from("matches").select("*", { filter: `id=eq.${id}` }) as Match[];
-    return rows[0] ?? null;
+    const { data, error } = await supabase.from("matches").select("*").eq("id", id);
+    if (error) throw new Error(error.message);
+    return (data?.[0] as Match) ?? null;
   },
 
   // ── Saison ────────────────────────────────────────────────────────────────
   getCurrentSeason: async () => {
     try {
-      const rows = await supabase.from("settings").select("value", { filter: `key=eq.current_season&org_id=eq.${_orgId}` }) as Array<{ value: string }>;
-      return parseInt(rows[0]?.value || "1");
+      const { data, error } = await supabase.from("settings").select("value")
+        .eq("key", "current_season").eq("org_id", _orgId);
+      if (error) throw new Error(error.message);
+      return parseInt((data?.[0] as { value: string } | undefined)?.value || "1");
     } catch { return 1; }
   },
   advanceSeason: async () => {
     const cur  = await realAPI.getCurrentSeason();
     const next = cur + 1;
-    const db   = supabase.from("settings");
-    const updated = await db.update({ value: String(next) }, `key=eq.current_season&org_id=eq.${_orgId}`);
-    if (!Array.isArray(updated) || updated.length === 0) {
-      await db.insert({ key: "current_season", value: String(next), org_id: _orgId });
+    const { data: updated, error: updateErr } = await supabase.from("settings")
+      .update({ value: String(next) })
+      .eq("key", "current_season")
+      .eq("org_id", _orgId)
+      .select();
+    if (updateErr) throw new Error(updateErr.message);
+    if (!updated || updated.length === 0) {
+      await run(supabase.from("settings").insert({ key: "current_season", value: String(next), org_id: _orgId }));
     }
     return next;
   },
   getSeasonName: async (season) => {
     try {
-      const rows = await supabase.from("settings").select("value", { filter: `key=eq.season_name_${season}&org_id=eq.${_orgId}` }) as Array<{ value: string }>;
-      return rows[0]?.value ?? null;
+      const { data, error } = await supabase.from("settings").select("value")
+        .eq("key", `season_name_${season}`).eq("org_id", _orgId);
+      if (error) throw new Error(error.message);
+      return (data?.[0] as { value: string } | undefined)?.value ?? null;
     } catch { return null; }
   },
   setSeasonName: async (season, name) => {
-    const db = supabase.from("settings");
-    const existing = await db.select("value", { filter: `key=eq.season_name_${season}&org_id=eq.${_orgId}` }) as unknown[];
-    if (Array.isArray(existing) && existing.length > 0) {
-      await db.update({ value: name }, `key=eq.season_name_${season}&org_id=eq.${_orgId}`);
+    const { data: existing } = await supabase.from("settings").select("value")
+      .eq("key", `season_name_${season}`).eq("org_id", _orgId);
+    if (existing && existing.length > 0) {
+      await run(supabase.from("settings").update({ value: name })
+        .eq("key", `season_name_${season}`).eq("org_id", _orgId));
     } else {
       try {
-        await db.insert({ key: `season_name_${season}`, value: name, org_id: _orgId });
+        await run(supabase.from("settings").insert({ key: `season_name_${season}`, value: name, org_id: _orgId }));
       } catch {
-        await db.update({ value: name }, `key=eq.season_name_${season}&org_id=eq.${_orgId}`);
+        await run(supabase.from("settings").update({ value: name })
+          .eq("key", `season_name_${season}`).eq("org_id", _orgId));
       }
     }
   },
 
   // ── Votes ─────────────────────────────────────────────────────────────────
   hasVoted: async (matchId, voterName) => {
-    const rows = await supabase.from("votes").select("id", { filter: `match_id=eq.${matchId}&voter_name=eq.${encodeURIComponent(voterName)}` });
-    return Array.isArray(rows) && rows.length > 0;
+    const { data, error } = await supabase.from("votes").select("id")
+      .eq("match_id", matchId).eq("voter_name", voterName);
+    if (error) throw new Error(error.message);
+    return Array.isArray(data) && data.length > 0;
   },
   submitVote: async (vote) => {
-    try {
-      await supabase.from("votes").insert(vote);
-    } catch (err) {
-      const error = err instanceof Error ? err : new Error(String(err));
-      if (error.message?.includes("409") || error.message?.includes("duplicate") || error.message?.includes("unique")) {
-        return;
-      }
-      throw error;
+    const { error } = await supabase.from("votes").insert(vote);
+    if (!error) return;
+    if ((error as { code?: string }).code === '23505'
+      || error.message?.includes('409')
+      || error.message?.includes('duplicate')
+      || error.message?.includes('unique')) {
+      return;
     }
+    throw new Error(error.message);
   },
   getVotes: async (matchId) => {
-    const rows = await supabase.from("votes").select("*", { filter: `match_id=eq.${matchId}` });
-    return rows as Vote[];
+    return await run<Vote[]>(supabase.from("votes").select("*").eq("match_id", matchId));
   },
   getAllVotes: async () => {
     const matches = await realAPI.getMatches();
     if (!matches?.length) return [];
-    const ids = matches.map(m => m.id).join(",");
-    const rows = await supabase.from("votes").select("*", { filter: `match_id=in.(${ids})` });
-    return rows as Vote[];
+    const ids = matches.map(m => m.id);
+    return await run<Vote[]>(supabase.from("votes").select("*").in("match_id", ids));
   },
 
   // ── Équipes ───────────────────────────────────────────────────────────────
   getTeams: async () => {
-    const rows = await supabase.from("teams").select("*", { filter: `org_id=eq.${_orgId}`, order: "name.asc" });
-    return rows as Team[];
+    return await run<Team[]>(
+      supabase.from("teams").select("*").eq("org_id", _orgId).order("name")
+    );
   },
   createTeam: async (name, playerIds) => {
-    const rows = await supabase.from("teams").insert({ name, player_ids: playerIds, org_id: _orgId });
-    const r = Array.isArray(rows) ? rows : [rows];
-    return r[0] as Team;
+    const rows = await run<Team[]>(
+      supabase.from("teams").insert({ name, player_ids: playerIds, org_id: _orgId }).select()
+    );
+    return rows[0];
   },
-  deleteTeam: (id) => supabase.from("teams").delete(`id=eq.${id}`),
+  deleteTeam: async (id) => {
+    const { error } = await supabase.from("teams").delete().eq("id", id);
+    if (error) throw new Error(error.message);
+    return true;
+  },
 
   // ── Guest tokens ──────────────────────────────────────────────────────────
   createGuestToken: async (name, matchId) => {
     const bytes = crypto.getRandomValues(new Uint8Array(12));
     const token = Array.from(bytes).map(b => b.toString(16).padStart(2, "0")).join("");
-    await supabase.from("guest_tokens").insert({ token, name, match_id: matchId, org_id: _orgId });
+    await run(supabase.from("guest_tokens").insert({ token, name, match_id: matchId, org_id: _orgId }));
     return token;
   },
   getGuestTokens: async (matchId) => {
-    const rows = await supabase.from("guest_tokens").select("*", { filter: `match_id=eq.${matchId}`, order: "created_at.asc" });
-    return rows as GuestToken[];
+    return await run<GuestToken[]>(
+      supabase.from("guest_tokens").select("*").eq("match_id", matchId).order("created_at")
+    );
   },
   validateGuestToken: async (token) => {
-    const rows = await supabase.from("guest_tokens").select("*", { filter: `token=eq.${token}` }) as GuestToken[];
-    return rows[0] ?? null;
+    const { data, error } = await supabase.from("guest_tokens").select("*").eq("token", token);
+    if (error) throw new Error(error.message);
+    return (data?.[0] as GuestToken) ?? null;
   },
-  useGuestToken: (token) => supabase.from("guest_tokens").update({ used: true }, `token=eq.${token}`),
-  deleteGuestToken: (id) => supabase.from("guest_tokens").delete(`id=eq.${id as EntityId}`),
+  useGuestToken: async (token) => {
+    const { error } = await supabase.from("guest_tokens").update({ used: true }).eq("token", token);
+    if (error) throw new Error(error.message);
+    return true;
+  },
+  deleteGuestToken: async (id) => {
+    const { error } = await supabase.from("guest_tokens").delete().eq("id", id);
+    if (error) throw new Error(error.message);
+    return true;
+  },
 };
 
 export const api: API = DEMO_MODE ? demoAPI : realAPI;

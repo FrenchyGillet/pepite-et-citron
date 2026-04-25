@@ -1,21 +1,23 @@
 import "@testing-library/jest-dom";
-import { afterEach, beforeAll, vi } from "vitest";
+import { afterAll, afterEach, beforeAll, vi } from "vitest";
 import { cleanup } from "@testing-library/react";
-import { resetAppStore } from "../store/appStore";
+import { resetAppStore } from "@/store/appStore";
+import { server } from "./server";
 
 beforeAll(() => {
   Object.assign(navigator, {
     clipboard: { writeText: vi.fn().mockResolvedValue(undefined) },
   });
+  server.listen({ onUnhandledRequest: "warn" });
 });
 
 afterEach(() => {
   cleanup();
   localStorage.clear();
   resetAppStore();
-  // Reset location search (used by guest tests)
-  Object.defineProperty(window, "location", {
-    writable: true,
-    value: { ...window.location, search: "" },
-  });
+  server.resetHandlers();
+});
+
+afterAll(() => {
+  server.close();
 });

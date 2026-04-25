@@ -1,6 +1,6 @@
 import { useState } from 'react';
-import { api } from '../api';
-import type { Org } from '../types';
+import { api } from '@/api';
+import type { Org } from '@/types';
 
 interface OrgSetupViewProps {
   onOrgCreated: (org: Org) => void;

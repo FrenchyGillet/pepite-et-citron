@@ -1,9 +1,10 @@
-import { api } from '../api';
-import { useAppStore } from '../store/appStore';
-import { hasVotedLocally } from '../utils/vote';
+import { useNavigate } from 'react-router-dom';
+import { api } from '@/api';
+import { useAppStore } from '@/store/appStore';
+import { hasVotedLocally } from '@/utils/vote';
 import { VoteView } from './VoteView';
 import { EmptyState } from './EmptyState';
-import type { Player, Match } from '../types';
+import type { Player, Match } from '@/types';
 
 interface VoteTabProps {
   isAdmin:    boolean;
@@ -19,9 +20,9 @@ export function VoteTab({ isAdmin, activeMatch, lastMatch, players }: VoteTabPro
   const votedThisSession   = useAppStore(s => s.votedThisSession);
   const setVotedThisSession = useAppStore(s => s.setVotedThisSession);
   const setGuestToken      = useAppStore(s => s.setGuestToken);
-  const setTab             = useAppStore(s => s.setTab);
+  const navigate           = useNavigate();
 
-  const handleVoted = () => { setVotedThisSession(true); setTab('results'); };
+  const handleVoted = () => { setVotedThisSession(true); navigate('/results'); };
 
   const handleGuestVoted = async () => {
     if (guestToken) await api.useGuestToken(guestToken);
@@ -64,7 +65,7 @@ export function VoteTab({ isAdmin, activeMatch, lastMatch, players }: VoteTabPro
         icon={<><path d="M22 11.08V12a10 10 0 11-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></>}
         title="Vote enregistré"
         subtitle="Les résultats se mettent à jour en temps réel."
-        action={{ label: 'Voir les résultats', onClick: () => setTab('results') }}
+        action={{ label: 'Voir les résultats', onClick: () => navigate('/results') }}
       />
     );
   }
@@ -75,7 +76,7 @@ export function VoteTab({ isAdmin, activeMatch, lastMatch, players }: VoteTabPro
         icon={<><rect x="3" y="3" width="18" height="18" rx="3"/><path d="M8 12h8M12 8v8"/></>}
         title="Pas de match ce soir"
         subtitle={isAdmin ? "Ouvre un match depuis l'onglet Admin pour lancer le vote." : "Ton capitaine n'a pas encore ouvert le vote."}
-        action={isAdmin ? { label: 'Ouvrir un match', onClick: () => setTab('admin') } : null}
+        action={isAdmin ? { label: 'Ouvrir un match', onClick: () => navigate('/admin') } : null}
       />
     );
   }
@@ -86,7 +87,7 @@ export function VoteTab({ isAdmin, activeMatch, lastMatch, players }: VoteTabPro
         icon={<><rect x="3" y="11" width="18" height="10" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></>}
         title="Vote terminé"
         subtitle="La période de vote est clôturée."
-        action={{ label: 'Voir les résultats', onClick: () => setTab('results') }}
+        action={{ label: 'Voir les résultats', onClick: () => navigate('/results') }}
       />
     );
   }

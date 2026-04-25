@@ -1,10 +1,12 @@
 import { useEffect, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
-import { api, setCurrentOrgId, DEMO_MODE } from '../api';
-import { useAppStore } from '../store/appStore';
+import { api, setCurrentOrgId, DEMO_MODE } from '@/api';
+import { useAppStore } from '@/store/appStore';
 
 export function useAuth() {
-  const queryClient = useQueryClient();
+  const navigate     = useNavigate();
+  const queryClient  = useQueryClient();
 
   const setSession       = useAppStore(s => s.setSession);
   const setAuthLoading   = useAppStore(s => s.setAuthLoading);
@@ -17,8 +19,8 @@ export function useAuth() {
     setCurrentOrg(null);
     setCurrentOrgId(null);
     queryClient.clear();
-    useAppStore.getState().setTab('vote');
-  }, [queryClient, setSession, setCurrentOrg]);
+    navigate('/vote');
+  }, [navigate, queryClient, setSession, setCurrentOrg]);
 
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {

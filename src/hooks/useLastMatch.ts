@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
 import { useActiveMatch, useMatchById } from './queries';
-import { useAppStore } from '../store/appStore';
+import { useAppStore } from '@/store/appStore';
 
 export function useLastMatch(orgId?: string | null) {
   const lastMatchId    = useAppStore(s => s.lastMatchId);

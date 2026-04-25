@@ -1,5 +1,5 @@
-import { computeScores } from '../utils';
-import type { Vote, Player, EntityId } from '../types';
+import { computeScores } from '@/utils';
+import type { Vote, Player, EntityId } from '@/types';
 
 interface Tiebreakers {
   best_id?: EntityId;
@@ -12,6 +12,7 @@ interface ScoreboardProps {
   allPlayers?: Player[];
   tiebreakers?: Tiebreakers;
   showLemons?: boolean;
+  pepiteCount?: 2 | 3;
 }
 
 interface RankedPlayer extends Player {
@@ -20,8 +21,8 @@ interface RankedPlayer extends Player {
   rank: number;
 }
 
-export function Scoreboard({ votes, present, allPlayers, tiebreakers = {}, showLemons = true }: ScoreboardProps) {
-  const { best, lemon } = computeScores(votes, present, allPlayers);
+export function Scoreboard({ votes, present, allPlayers, tiebreakers = {}, showLemons = true, pepiteCount = 2 }: ScoreboardProps) {
+  const { best, lemon } = computeScores(votes, present, allPlayers, pepiteCount);
   const everyone = allPlayers || present;
 
   const withRanks = (arr: Omit<RankedPlayer, 'rank'>[]): RankedPlayer[] => {

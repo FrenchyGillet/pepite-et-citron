@@ -1,19 +1,21 @@
 import { useEffect } from 'react';
-import { api, setCurrentOrgId, DEMO_MODE } from '../api';
-import { useAppStore } from '../store/appStore';
+import { useNavigate, useSearchParams } from 'react-router-dom';
+import { api, setCurrentOrgId, DEMO_MODE } from '@/api';
+import { useAppStore } from '@/store/appStore';
 
 export function useGuest() {
+  const navigate       = useNavigate();
+  const [searchParams] = useSearchParams();
+
   const setGuestToken  = useAppStore(s => s.setGuestToken);
   const setGuestName   = useAppStore(s => s.setGuestName);
   const setGuestStatus = useAppStore(s => s.setGuestStatus);
   const setCurrentOrg  = useAppStore(s => s.setCurrentOrg);
-  const setTab         = useAppStore(s => s.setTab);
 
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
-    const params     = new URLSearchParams(window.location.search);
-    const guestParam = params.get('guest');
-    const orgSlug    = params.get('org');
+    const guestParam = searchParams.get('guest');
+    const orgSlug    = searchParams.get('org');
 
     if (guestParam) {
       setGuestStatus('checking');
@@ -30,7 +32,7 @@ export function useGuest() {
           setGuestToken(guestParam);
           setGuestName(result.name);
           setGuestStatus('valid');
-          setTab('vote');
+          navigate('/vote', { replace: true });
         } else {
           setGuestStatus('invalid');
         }

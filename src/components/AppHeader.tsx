@@ -1,10 +1,10 @@
 import { useState, useEffect } from 'react';
-import { DEMO_MODE } from '../api';
-import { useAppStore } from '../store/appStore';
-import { useOrg } from '../hooks/useOrg';
-import { useTheme } from '../hooks/useTheme';
-import { useActiveMatch } from '../hooks/queries';
-import type { Org } from '../types';
+import { DEMO_MODE } from '@/api';
+import { useAppStore } from '@/store/appStore';
+import { useOrg } from '@/hooks/useOrg';
+import { useTheme } from '@/hooks/useTheme';
+import { useActiveMatch } from '@/hooks/queries';
+import type { Org } from '@/types';
 
 export function AppHeader() {
   const currentOrg = useAppStore(s => s.currentOrg);

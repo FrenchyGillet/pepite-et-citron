@@ -1,6 +1,6 @@
 import { useState } from 'react';
-import { api } from '../api';
-import type { UserSession } from '../types';
+import { api } from '@/api';
+import type { UserSession } from '@/types';
 
 interface AuthViewProps {
   onAuth: (session: UserSession) => void;

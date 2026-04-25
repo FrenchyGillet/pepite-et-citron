@@ -1,5 +1,5 @@
-import type { Player, Vote, EntityId } from '../types';
-import { computeScores } from '../utils';
+import type { Player, Vote, EntityId } from '@/types';
+import { computeScores } from '@/utils';
 
 export interface RankedPlayer {
   id: EntityId;
@@ -25,8 +25,9 @@ export function computeResultsSummary(
   votes: Vote[],
   present: Player[],
   allPlayers: Player[],
+  pepiteCount: 2 | 3 = 2,
 ): ResultsSummary {
-  const { best: bestScores, lemon: lemonScores } = computeScores(votes, present, allPlayers);
+  const { best: bestScores, lemon: lemonScores } = computeScores(votes, present, allPlayers, pepiteCount);
   const everyone   = allPlayers.length ? allPlayers : present;
   const presentIds = new Set(present.map(p => p.id));
 

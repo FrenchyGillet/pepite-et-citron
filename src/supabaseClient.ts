@@ -1,5 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
-import { SUPABASE_URL, SUPABASE_ANON_KEY } from './config';
+import { SUPABASE_URL, SUPABASE_ANON_KEY } from '@/config';
 
 // Auth client (Supabase JS SDK — gère le refresh de token automatiquement)
 export const authClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);

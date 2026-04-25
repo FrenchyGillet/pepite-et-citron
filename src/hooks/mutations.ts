@@ -1,7 +1,7 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { api } from '../api';
+import { api } from '@/api';
 import { queryKeys } from './queries';
-import type { EntityId, Vote, Match } from '../types';
+import type { EntityId, Vote, Match } from '@/types';
 
 export function useSubmitVote(matchId: EntityId | null | undefined) {
   const qc = useQueryClient();
@@ -30,9 +30,9 @@ export function useRemovePlayer(orgId?: string | null) {
 export function useCreateMatch(orgId?: string | null) {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: ({ label, presentIds, teamId, season }: {
-      label: string; presentIds: EntityId[]; teamId: EntityId | null; season: number;
-    }) => api.createMatch(label, presentIds, teamId, season),
+    mutationFn: ({ label, presentIds, teamId, season, pepiteCount }: {
+      label: string; presentIds: EntityId[]; teamId: EntityId | null; season: number; pepiteCount?: 2 | 3;
+    }) => api.createMatch(label, presentIds, teamId, season, pepiteCount),
     onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.activeMatch(orgId) }),
   });
 }

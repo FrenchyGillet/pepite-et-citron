@@ -1,6 +1,6 @@
 import { useState } from 'react';
-import { generatePodiumImage } from '../utils/generatePodiumImage';
-import type { Match } from '../types';
+import { generatePodiumImage } from '@/utils/generatePodiumImage';
+import type { Match } from '@/types';
 
 interface RankedEntry {
   id: string | number;

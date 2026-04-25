@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { computeResultsSummary } from './scoring';
-import type { Player, Vote } from '../types';
+import type { Player, Vote } from '@/types';
 
 // ── Fixtures ──────────────────────────────────────────────────────────────────
 

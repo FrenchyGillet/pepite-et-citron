@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { hasVotedLocally, markVotedLocally, classifyVoteError, shuffleRevealOrder } from './vote';
-import type { Vote } from '../types';
+import type { Vote } from '@/types';
 
 // localStorage is cleared in afterEach via setup.js
 

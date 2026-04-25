@@ -1,10 +1,8 @@
 import { create } from 'zustand';
-import { api, setCurrentOrgId, DEMO_MODE } from '../api';
-import type { UserSession, Org, EntityId } from '../types';
+import { api, setCurrentOrgId, DEMO_MODE } from '@/api';
+import type { UserSession, Org, EntityId } from '@/types';
 
 export type GuestStatus = 'checking' | 'valid' | 'invalid' | null;
-
-const VALID_TABS = ['vote', 'results', 'stats', 'admin'];
 
 interface AppStore {
   // ── Auth ──────────────────────────────────────────────────────────────────
@@ -24,7 +22,6 @@ interface AppStore {
 
   // ── UI ────────────────────────────────────────────────────────────────────
   theme:             string;
-  tab:               string;
   votedThisSession:  boolean;
   showOnboarding:    boolean;
   lastMatchId:       EntityId | null;
@@ -40,7 +37,6 @@ interface AppStore {
   setGuestName:         (v: string | null) => void;
   setGuestStatus:       (v: GuestStatus) => void;
   setTheme:             (t: string) => void;
-  setTab:               (t: string) => void;
   setVotedThisSession:  (v: boolean) => void;
   setShowOnboarding:    (v: boolean) => void;
   setLastMatchId:       (id: EntityId | null) => void;
@@ -62,7 +58,6 @@ export function resetAppStore() {
     guestName: null,
     guestStatus: null,
     theme: localStorage.getItem('pepite_theme') || 'dark',
-    tab: 'vote',
     votedThisSession: false,
     showOnboarding: false,
     lastMatchId: null,
@@ -81,10 +76,6 @@ export const useAppStore = create<AppStore>((set, get) => ({
   guestName:        null,
   guestStatus:      null,
   theme:            localStorage.getItem('pepite_theme') || 'dark',
-  tab: (() => {
-    const hash = window.location.hash.slice(1);
-    return VALID_TABS.includes(hash) ? hash : 'vote';
-  })(),
   votedThisSession: false,
   showOnboarding:   false,
   lastMatchId:      null,
@@ -100,10 +91,6 @@ export const useAppStore = create<AppStore>((set, get) => ({
   setGuestName:        (v)   => set({ guestName: v }),
   setGuestStatus:      (v)   => set({ guestStatus: v }),
   setTheme:            (t)   => set({ theme: t }),
-  setTab: (t) => {
-    set({ tab: t });
-    if (window.location.hash.slice(1) !== t) history.pushState(null, '', `#${t}`);
-  },
   setVotedThisSession: (v)   => set({ votedThisSession: v }),
   setShowOnboarding:   (v)   => set({ showOnboarding: v }),
   setLastMatchId:      (id)  => set({ lastMatchId: id }),
@@ -133,7 +120,7 @@ export const useAppStore = create<AppStore>((set, get) => ({
 
   signOut: async () => {
     await api.signOut();
-    set({ session: null, currentOrg: null, tab: 'vote' });
+    set({ session: null, currentOrg: null });
     setCurrentOrgId(null);
   },
 }));

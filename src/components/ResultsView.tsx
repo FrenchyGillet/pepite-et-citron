@@ -1,13 +1,13 @@
 import { useState, useEffect, type ReactNode } from 'react';
-import { formatDate } from '../utils';
-import { computeResultsSummary } from '../utils/scoring';
+import { formatDate } from '@/utils';
+import { computeResultsSummary } from '@/utils/scoring';
 import { Scoreboard } from './Scoreboard';
 import { PodiumView } from './PodiumView';
 import { EmptyState } from './EmptyState';
 import { SharePodiumButton } from './SharePodiumButton';
-import { useVotes } from '../hooks/queries';
-import { useRevealNext, useCloseMatch, useUpdateMatch } from '../hooks/mutations';
-import type { Player, Match, EntityId } from '../types';
+import { useVotes } from '@/hooks/queries';
+import { useRevealNext, useCloseMatch, useUpdateMatch } from '@/hooks/mutations';
+import type { Player, Match, EntityId } from '@/types';
 
 interface ResultsViewProps {
   players: Player[];
@@ -183,7 +183,7 @@ export function ResultsView({ players, match, isAdmin, isDark, orgId }: ResultsV
                 Classement provisoire · {revealedCount}/{revealOrder.length} vote{revealedCount > 1 ? 's' : ''} révélé{revealedCount > 1 ? 's' : ''}
               </span>
             </div>
-            <Scoreboard votes={revealedVotes} present={present} allPlayers={players} />
+            <Scoreboard votes={revealedVotes} present={present} allPlayers={players} pepiteCount={match.pepite_count ?? 2} />
           </div>
         )}
       </div>
@@ -196,7 +196,7 @@ export function ResultsView({ players, match, isAdmin, isDark, orgId }: ResultsV
   const {
     pepiteRanked, lemonRanked, ghosts,
     bestTied, lemonTied, bestTiedPlayers, lemonTiedPlayers,
-  } = computeResultsSummary(votes, present, players);
+  } = computeResultsSummary(votes, present, players, match.pepite_count ?? 2);
 
   const setTiebreaker = (field: string, playerId: EntityId) => {
     updateMatchMutation.mutate({ id: match.id, data: { tiebreakers: { ...tiebreakers, [field]: playerId } } });
@@ -227,7 +227,7 @@ export function ResultsView({ players, match, isAdmin, isDark, orgId }: ResultsV
       <MatchHeader badge={<span className="badge badge-closed">Clôturé</span>} />
       {isAdmin && bestTied  && !tiebreakers.best_id  && <TiebreakerCard title="Pépite" color="gold"  field="best_id"  tiedPlayers={bestTiedPlayers}  />}
       {isAdmin && lemonTied && !tiebreakers.lemon_id && <TiebreakerCard title="Citron" color="lemon" field="lemon_id" tiedPlayers={lemonTiedPlayers} />}
-      <PodiumView votes={votes} present={present} allPlayers={players} tiebreakers={tiebreakers} />
+      <PodiumView votes={votes} present={present} allPlayers={players} tiebreakers={tiebreakers} pepiteCount={match.pepite_count ?? 2} />
 
       {ghosts.length > 0 && (
         <div style={{ marginTop: 8, marginBottom: 16 }}>

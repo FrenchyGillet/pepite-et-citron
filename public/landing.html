@@ -1,0 +1,681 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Pépite & Citron — Votez le meilleur et le moins bon joueur</title>
+  <meta name="description" content="Après chaque match, désignez la pépite et le citron de l'équipe. Vote anonyme, résultats en temps réel, stats de saison." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg-primary:   #000000;
+      --bg-secondary: #1C1C1E;
+      --bg-tertiary:  #2C2C2E;
+      --label-primary:   #FFFFFF;
+      --label-secondary: rgba(235,235,245,0.6);
+      --label-tertiary:  rgba(235,235,245,0.3);
+      --separator: rgba(84,84,88,0.65);
+      --pepite: #FFD700;
+      --citron: #32D74B;
+      --blue:   #0A84FF;
+      --red:    #FF453A;
+    }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      font-family: 'Inter', system-ui, sans-serif;
+      background: var(--bg-primary);
+      color: var(--label-primary);
+      line-height: 1.6;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* ─── NAV ─── */
+    nav {
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      background: rgba(0,0,0,0.85);
+      backdrop-filter: saturate(180%) blur(20px);
+      -webkit-backdrop-filter: saturate(180%) blur(20px);
+      border-bottom: 1px solid var(--separator);
+      padding: 0 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      height: 56px;
+    }
+    .nav-logo {
+      font-size: 17px;
+      font-weight: 700;
+      letter-spacing: -0.3px;
+    }
+    .nav-logo .star { color: var(--pepite); }
+    .nav-logo .lemon { color: var(--citron); }
+    .nav-cta {
+      background: var(--pepite);
+      color: #000;
+      border: none;
+      border-radius: 20px;
+      padding: 8px 18px;
+      font-size: 14px;
+      font-weight: 700;
+      cursor: pointer;
+      text-decoration: none;
+      transition: opacity .15s;
+    }
+    .nav-cta:hover { opacity: .85; }
+
+    /* ─── HERO ─── */
+    .hero {
+      text-align: center;
+      padding: 96px 24px 80px;
+      max-width: 720px;
+      margin: 0 auto;
+    }
+    .hero-badge {
+      display: inline-block;
+      background: var(--bg-tertiary);
+      color: var(--label-secondary);
+      font-size: 13px;
+      font-weight: 600;
+      letter-spacing: .4px;
+      text-transform: uppercase;
+      padding: 6px 14px;
+      border-radius: 20px;
+      margin-bottom: 28px;
+      border: 1px solid var(--separator);
+    }
+    .hero h1 {
+      font-size: clamp(32px, 6vw, 58px);
+      font-weight: 900;
+      line-height: 1.1;
+      letter-spacing: -1.5px;
+      margin-bottom: 24px;
+    }
+    .hero h1 .highlight-pepite { color: var(--pepite); }
+    .hero h1 .highlight-citron { color: var(--citron); }
+    .hero-sub {
+      font-size: clamp(16px, 2.5vw, 20px);
+      color: var(--label-secondary);
+      max-width: 520px;
+      margin: 0 auto 40px;
+      line-height: 1.55;
+    }
+    .hero-cta-group {
+      display: flex;
+      gap: 12px;
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+    .btn-primary {
+      background: var(--pepite);
+      color: #000;
+      border: none;
+      border-radius: 14px;
+      padding: 16px 32px;
+      font-size: 16px;
+      font-weight: 700;
+      cursor: pointer;
+      text-decoration: none;
+      transition: opacity .15s, transform .1s;
+    }
+    .btn-primary:hover { opacity: .88; transform: translateY(-1px); }
+    .btn-secondary {
+      background: var(--bg-secondary);
+      color: var(--label-primary);
+      border: 1px solid var(--separator);
+      border-radius: 14px;
+      padding: 16px 32px;
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+      text-decoration: none;
+      transition: background .15s, transform .1s;
+    }
+    .btn-secondary:hover { background: var(--bg-tertiary); transform: translateY(-1px); }
+
+    /* ─── TAGLINE STRIP ─── */
+    .tagline-strip {
+      text-align: center;
+      padding: 16px 24px 60px;
+      color: var(--label-tertiary);
+      font-size: 15px;
+      font-style: italic;
+    }
+
+    /* ─── SECTION COMMONS ─── */
+    section { padding: 72px 24px; }
+    .section-inner { max-width: 900px; margin: 0 auto; }
+    .section-tag {
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 1.2px;
+      text-transform: uppercase;
+      color: var(--pepite);
+      margin-bottom: 12px;
+    }
+    .section-title {
+      font-size: clamp(26px, 4vw, 40px);
+      font-weight: 800;
+      letter-spacing: -0.8px;
+      margin-bottom: 16px;
+      line-height: 1.15;
+    }
+    .section-desc {
+      font-size: 17px;
+      color: var(--label-secondary);
+      max-width: 560px;
+      line-height: 1.6;
+      margin-bottom: 56px;
+    }
+
+    /* ─── HOW IT WORKS ─── */
+    .how-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+      gap: 20px;
+    }
+    .how-card {
+      background: var(--bg-secondary);
+      border: 1px solid var(--separator);
+      border-radius: 20px;
+      padding: 32px 28px;
+      position: relative;
+      overflow: hidden;
+    }
+    .how-card::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 3px;
+    }
+    .how-card.pepite::before { background: var(--pepite); }
+    .how-card.citron::before { background: var(--citron); }
+    .how-card.results::before { background: var(--blue); }
+
+    .how-phone {
+      width: 100%;
+      max-width: 160px;
+      margin: 0 auto 24px;
+      display: block;
+      background: #111;
+      border: 2px solid rgba(255,255,255,0.08);
+      border-radius: 28px;
+      padding: 20px 16px;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.6);
+    }
+    .phone-status {
+      display: flex;
+      justify-content: space-between;
+      font-size: 9px;
+      color: rgba(255,255,255,0.3);
+      margin-bottom: 14px;
+      font-weight: 600;
+    }
+    .phone-title {
+      font-size: 13px;
+      font-weight: 700;
+      text-align: center;
+      margin-bottom: 14px;
+      color: #fff;
+    }
+    .phone-player-list { display: flex; flex-direction: column; gap: 6px; }
+    .phone-player {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      background: rgba(255,255,255,0.05);
+      border-radius: 10px;
+      padding: 7px 10px;
+      font-size: 11px;
+      font-weight: 500;
+      color: rgba(255,255,255,0.75);
+    }
+    .phone-player .dot {
+      width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0;
+    }
+    .phone-player.selected {
+      background: rgba(255,215,0,0.12);
+      border: 1px solid rgba(255,215,0,0.35);
+      color: var(--pepite);
+    }
+    .phone-player.selected-citron {
+      background: rgba(50,215,75,0.1);
+      border: 1px solid rgba(50,215,75,0.3);
+      color: var(--citron);
+    }
+    .phone-confirm {
+      margin-top: 12px;
+      background: var(--pepite);
+      color: #000;
+      border-radius: 10px;
+      padding: 8px;
+      text-align: center;
+      font-size: 11px;
+      font-weight: 700;
+    }
+    .phone-confirm.green { background: var(--citron); }
+
+    .phone-result-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 8px;
+    }
+    .phone-rank {
+      font-size: 12px;
+      font-weight: 800;
+      width: 18px;
+      text-align: center;
+    }
+    .phone-bar-wrap { flex: 1; }
+    .phone-bar-label {
+      font-size: 10px;
+      font-weight: 600;
+      color: rgba(255,255,255,0.6);
+      margin-bottom: 3px;
+    }
+    .phone-bar {
+      height: 6px;
+      border-radius: 3px;
+      background: rgba(255,255,255,0.08);
+      overflow: hidden;
+    }
+    .phone-bar-fill {
+      height: 100%;
+      border-radius: 3px;
+    }
+
+    .how-step-num {
+      font-size: 40px;
+      font-weight: 900;
+      opacity: .06;
+      position: absolute;
+      top: 20px; right: 24px;
+    }
+    .how-title {
+      font-size: 17px;
+      font-weight: 700;
+      margin-bottom: 8px;
+    }
+    .how-desc {
+      font-size: 14px;
+      color: var(--label-secondary);
+      line-height: 1.55;
+    }
+
+    /* ─── OCCASIONS ─── */
+    #occasions { background: var(--bg-secondary); }
+    .occ-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 16px;
+    }
+    .occ-card {
+      background: var(--bg-tertiary);
+      border: 1px solid var(--separator);
+      border-radius: 16px;
+      padding: 24px 20px;
+      transition: border-color .2s, transform .15s;
+    }
+    .occ-card:hover { border-color: rgba(255,215,0,0.4); transform: translateY(-2px); }
+    .occ-emoji { font-size: 32px; margin-bottom: 12px; }
+    .occ-title {
+      font-size: 15px;
+      font-weight: 700;
+      margin-bottom: 6px;
+    }
+    .occ-desc {
+      font-size: 13px;
+      color: var(--label-secondary);
+      line-height: 1.5;
+    }
+
+    /* ─── PWA INSTALL ─── */
+    .pwa-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 24px;
+    }
+    .pwa-card {
+      background: var(--bg-secondary);
+      border: 1px solid var(--separator);
+      border-radius: 20px;
+      padding: 32px 28px;
+    }
+    .pwa-os {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 24px;
+    }
+    .pwa-os-icon {
+      width: 36px; height: 36px;
+      border-radius: 8px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 20px;
+      background: var(--bg-tertiary);
+    }
+    .pwa-os-name {
+      font-size: 17px;
+      font-weight: 700;
+    }
+    .pwa-os-sub {
+      font-size: 13px;
+      color: var(--label-secondary);
+    }
+    .pwa-steps { display: flex; flex-direction: column; gap: 14px; }
+    .pwa-step {
+      display: flex;
+      gap: 14px;
+      align-items: flex-start;
+    }
+    .pwa-step-num {
+      width: 28px; height: 28px;
+      border-radius: 50%;
+      background: var(--bg-tertiary);
+      border: 1px solid var(--separator);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 12px;
+      font-weight: 700;
+      flex-shrink: 0;
+      color: var(--pepite);
+    }
+    .pwa-step-text {
+      font-size: 14px;
+      color: var(--label-secondary);
+      line-height: 1.5;
+      padding-top: 3px;
+    }
+    .pwa-step-text strong { color: var(--label-primary); }
+
+    /* ─── FOOTER ─── */
+    footer {
+      border-top: 1px solid var(--separator);
+      padding: 40px 24px;
+      text-align: center;
+    }
+    .footer-logo {
+      font-size: 20px;
+      font-weight: 800;
+      margin-bottom: 12px;
+    }
+    .footer-tagline {
+      font-size: 14px;
+      color: var(--label-secondary);
+      font-style: italic;
+      margin-bottom: 24px;
+    }
+    .footer-links {
+      display: flex;
+      gap: 20px;
+      justify-content: center;
+      flex-wrap: wrap;
+      margin-bottom: 28px;
+    }
+    .footer-links a {
+      font-size: 13px;
+      color: var(--label-tertiary);
+      text-decoration: none;
+      transition: color .15s;
+    }
+    .footer-links a:hover { color: var(--label-primary); }
+    .footer-copy {
+      font-size: 12px;
+      color: var(--label-tertiary);
+    }
+
+    /* ─── RESPONSIVE ─── */
+    @media (max-width: 600px) {
+      .hero { padding: 72px 20px 60px; }
+      section { padding: 56px 20px; }
+      .how-phone { max-width: 130px; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav>
+  <div class="nav-logo">
+    <span class="star">⭐</span> Pépite <span style="color:var(--label-tertiary);">&</span> <span class="lemon">🍋</span> Citron
+  </div>
+  <a href="/" class="nav-cta">Lancer l'app →</a>
+</nav>
+
+<!-- HERO -->
+<section class="hero">
+  <div class="hero-badge">Vote · Résultats en temps réel · Stats de saison</div>
+  <h1>
+    La <span class="highlight-pepite">⭐ pépite</span><br>
+    et le <span class="highlight-citron">🍋 citron</span><br>
+    de chaque match.
+  </h1>
+  <p class="hero-sub">
+    Parce qu'après chaque soirée, quelqu'un était clairement au-dessus, et quelqu'un franchement en dessous.
+  </p>
+  <div class="hero-cta-group">
+    <a href="/" class="btn-primary">Commencer à voter</a>
+    <a href="#comment-ca-marche" class="btn-secondary">Comment ça marche</a>
+  </div>
+</section>
+<div class="tagline-strip">"Aucun joueur n'a été blessé lors de la création de cette app. (Sauf leur ego.)"</div>
+
+<!-- HOW IT WORKS -->
+<section id="comment-ca-marche">
+  <div class="section-inner">
+    <div class="section-tag">Comment ça marche</div>
+    <h2 class="section-title">Votez pour vos pépites et votre citron.</h2>
+    <p class="section-desc">Tout le monde vote, les résultats tombent en direct. Pas de compte obligatoire, pas d'inscription.</p>
+
+    <div class="how-grid">
+
+      <!-- Card 1 — vote pépite -->
+      <div class="how-card pepite">
+        <div class="how-step-num">1</div>
+        <div class="how-phone">
+          <div class="phone-status"><span>9:41</span><span>●●●</span></div>
+          <div class="phone-title">⭐ Vote Pépite</div>
+          <div class="phone-player-list">
+            <div class="phone-player"><span class="dot" style="background:#555"></span>Alexandre</div>
+            <div class="phone-player selected"><span class="dot" style="background:var(--pepite)"></span>Théo ✓</div>
+            <div class="phone-player"><span class="dot" style="background:#555"></span>Maxime</div>
+            <div class="phone-player"><span class="dot" style="background:#555"></span>Jordan</div>
+          </div>
+          <div class="phone-confirm">Valider →</div>
+        </div>
+        <div class="how-title">Choisissez vos ⭐ Pépites</div>
+        <div class="how-desc">Désignez jusqu'à 3 joueurs qui ont brillé pendant le match. Vote anonyme, un classement par les pairs.</div>
+      </div>
+
+      <!-- Card 2 — vote citron -->
+      <div class="how-card citron">
+        <div class="how-step-num">2</div>
+        <div class="how-phone">
+          <div class="phone-status"><span>9:42</span><span>●●●</span></div>
+          <div class="phone-title">🍋 Vote Citron</div>
+          <div class="phone-player-list">
+            <div class="phone-player"><span class="dot" style="background:#555"></span>Thomas</div>
+            <div class="phone-player"><span class="dot" style="background:#555"></span>Lucas</div>
+            <div class="phone-player selected-citron"><span class="dot" style="background:var(--citron)"></span>Kevin ✓</div>
+            <div class="phone-player"><span class="dot" style="background:#555"></span>Romain</div>
+          </div>
+          <div class="phone-confirm green">Valider →</div>
+        </div>
+        <div class="how-title">Choisissez le 🍋 Citron</div>
+        <div class="how-desc">Votez pour le joueur qui a eu un match plus difficile. Bienveillant mais honnête.</div>
+      </div>
+
+      <!-- Card 3 — résultats -->
+      <div class="how-card results">
+        <div class="how-step-num">3</div>
+        <div class="how-phone">
+          <div class="phone-status"><span>9:45</span><span>●●●</span></div>
+          <div class="phone-title">📊 Résultats</div>
+          <div style="margin-top: 8px;">
+            <div class="phone-result-row">
+              <div class="phone-rank" style="color:var(--pepite)">⭐</div>
+              <div class="phone-bar-wrap">
+                <div class="phone-bar-label">Théo — 7 votes</div>
+                <div class="phone-bar"><div class="phone-bar-fill" style="width:87%;background:var(--pepite)"></div></div>
+              </div>
+            </div>
+            <div class="phone-result-row">
+              <div class="phone-rank" style="color:#ccc">2</div>
+              <div class="phone-bar-wrap">
+                <div class="phone-bar-label">Maxime — 3 votes</div>
+                <div class="phone-bar"><div class="phone-bar-fill" style="width:37%;background:rgba(255,255,255,0.3)"></div></div>
+              </div>
+            </div>
+            <div class="phone-result-row" style="margin-top:12px">
+              <div class="phone-rank" style="color:var(--citron)">🍋</div>
+              <div class="phone-bar-wrap">
+                <div class="phone-bar-label">Kevin — 6 votes</div>
+                <div class="phone-bar"><div class="phone-bar-fill" style="width:75%;background:var(--citron)"></div></div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="how-title">Résultats en temps réel</div>
+        <div class="how-desc">Les votes s'accumulent en direct. Les stats de saison se mettent à jour automatiquement.</div>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<!-- OCCASIONS -->
+<section id="occasions">
+  <div class="section-inner">
+    <div class="section-tag">Pour quelles occasions</div>
+    <h2 class="section-title">Partout où il y a un gagnant et un perdant.</h2>
+    <p class="section-desc">Pépite & Citron s'adapte à toutes les situations où un groupe veut désigner les extrêmes.</p>
+    <div class="occ-grid">
+      <div class="occ-card">
+        <div class="occ-emoji">⚽</div>
+        <div class="occ-title">Sport collectif</div>
+        <div class="occ-desc">Foot, basket, volley, rugby… Le vestiaire a enfin une voix officielle après chaque match.</div>
+      </div>
+      <div class="occ-card">
+        <div class="occ-emoji">🎊</div>
+        <div class="occ-title">EVG / EVJF</div>
+        <div class="occ-desc">Qui a le plus assuré ? Qui a le plus raté ? Le groupe décide, l'histoire est écrite.</div>
+      </div>
+      <div class="occ-card">
+        <div class="occ-emoji">💼</div>
+        <div class="occ-title">Équipe boulot</div>
+        <div class="occ-desc">Hackathon, sprint, présentation… Célébrez les performances de façon fun et décalée.</div>
+      </div>
+      <div class="occ-card">
+        <div class="occ-emoji">🎮</div>
+        <div class="occ-title">Soirée gaming</div>
+        <div class="occ-desc">Tournoi, LAN, escape game… Qui carry ? Qui feed ? Le verdict tombe en quelques secondes.</div>
+      </div>
+      <div class="occ-card">
+        <div class="occ-emoji">🏕️</div>
+        <div class="occ-title">Week-end entre amis</div>
+        <div class="occ-desc">Rando, ski, surf… Désignez la légende et le catastrophe du week-end avec le sourire.</div>
+      </div>
+      <div class="occ-card">
+        <div class="occ-emoji">🎓</div>
+        <div class="occ-title">Promo / asso</div>
+        <div class="occ-desc">WEI, gala, soirée d'intégration… Un vote léger pour garder une trace de chaque événement.</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- PWA INSTALL -->
+<section id="installer">
+  <div class="section-inner">
+    <div class="section-tag">Installer l'app</div>
+    <h2 class="section-title">Sur votre écran d'accueil en 30 secondes.</h2>
+    <p class="section-desc">Pépite &amp; Citron est une PWA : pas besoin de l'App Store. Installez-la directement depuis votre navigateur.</p>
+
+    <div class="pwa-grid">
+      <!-- iOS -->
+      <div class="pwa-card">
+        <div class="pwa-os">
+          <div class="pwa-os-icon">🍎</div>
+          <div>
+            <div class="pwa-os-name">iPhone / iPad</div>
+            <div class="pwa-os-sub">Safari requis</div>
+          </div>
+        </div>
+        <div class="pwa-steps">
+          <div class="pwa-step">
+            <div class="pwa-step-num">1</div>
+            <div class="pwa-step-text">Ouvrez l'app dans <strong>Safari</strong> (pas Chrome ni Firefox)</div>
+          </div>
+          <div class="pwa-step">
+            <div class="pwa-step-num">2</div>
+            <div class="pwa-step-text">Appuyez sur le bouton <strong>Partager</strong> <span style="font-size:16px">⬆️</span> en bas de l'écran</div>
+          </div>
+          <div class="pwa-step">
+            <div class="pwa-step-num">3</div>
+            <div class="pwa-step-text">Faites défiler et tapez <strong>« Sur l'écran d'accueil »</strong></div>
+          </div>
+          <div class="pwa-step">
+            <div class="pwa-step-num">4</div>
+            <div class="pwa-step-text">Confirmez avec <strong>Ajouter</strong> : l'icône apparaît sur votre home</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Android -->
+      <div class="pwa-card">
+        <div class="pwa-os">
+          <div class="pwa-os-icon">🤖</div>
+          <div>
+            <div class="pwa-os-name">Android</div>
+            <div class="pwa-os-sub">Chrome recommandé</div>
+          </div>
+        </div>
+        <div class="pwa-steps">
+          <div class="pwa-step">
+            <div class="pwa-step-num">1</div>
+            <div class="pwa-step-text">Ouvrez l'app dans <strong>Chrome</strong></div>
+          </div>
+          <div class="pwa-step">
+            <div class="pwa-step-num">2</div>
+            <div class="pwa-step-text">Appuyez sur les <strong>3 points ⋮</strong> en haut à droite</div>
+          </div>
+          <div class="pwa-step">
+            <div class="pwa-step-num">3</div>
+            <div class="pwa-step-text">Sélectionnez <strong>« Installer l'application »</strong> ou <strong>« Ajouter à l'écran d'accueil »</strong></div>
+          </div>
+          <div class="pwa-step">
+            <div class="pwa-step-num">4</div>
+            <div class="pwa-step-text">Confirmez : l'app se lance désormais en plein écran comme une app native</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- FOOTER -->
+<footer>
+  <div class="footer-logo">
+    <span style="color:var(--pepite)">⭐</span> Pépite <span style="color:var(--label-tertiary)">&</span> <span style="color:var(--citron)">🍋</span> Citron
+  </div>
+  <div class="footer-tagline">
+    "Aucun joueur n'a été blessé lors de la création de cette app. (Sauf leur ego.)"
+  </div>
+  <div class="footer-links">
+    <a href="/">Ouvrir l'app</a>
+    <a href="#comment-ca-marche">Comment ça marche</a>
+    <a href="#occasions">Occasions</a>
+    <a href="#installer">Installer</a>
+  </div>
+  <div class="footer-copy">© 2025 Pépite &amp; Citron · Fait avec ⭐ et 🍋</div>
+</footer>
+
+</body>
+</html>

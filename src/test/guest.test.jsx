@@ -1,7 +1,7 @@
 import { screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it } from "vitest";
-import { __resetDemoState, __demoAPI } from "../App.jsx";
+import { __resetDemoState, __demoAPI } from "@/App.jsx";
 import { renderApp } from "./renderApp";
 
 beforeEach(() => {
@@ -13,12 +13,7 @@ describe("Guest token flow", () => {
     const match = await __demoAPI.createMatch("Match test", [1, 2, 3, 4, 5], null, 1);
     const token = await __demoAPI.createGuestToken("Tonton", match.id);
 
-    Object.defineProperty(window, "location", {
-      writable: true,
-      value: { ...window.location, search: "?guest=" + token },
-    });
-
-    renderApp();
+    renderApp({ initialPath: `/vote?guest=${token}` });
 
     expect(await screen.findByText(/Bienvenu\(e\), Tonton !/i)).toBeInTheDocument();
     expect(screen.queryByText("Qui es-tu ?")).toBeNull();
@@ -27,12 +22,7 @@ describe("Guest token flow", () => {
   });
 
   it("invalid token shows error", async () => {
-    Object.defineProperty(window, "location", {
-      writable: true,
-      value: { ...window.location, search: "?guest=invalidtoken999" },
-    });
-
-    renderApp();
+    renderApp({ initialPath: "/vote?guest=invalidtoken999" });
 
     expect(
       await screen.findByText(/Ce lien a déjà été utilisé ou n'existe pas\./i)
@@ -44,12 +34,7 @@ describe("Guest token flow", () => {
     const token = await __demoAPI.createGuestToken("Tonton", match.id);
     await __demoAPI.useGuestToken(token);
 
-    Object.defineProperty(window, "location", {
-      writable: true,
-      value: { ...window.location, search: "?guest=" + token },
-    });
-
-    renderApp();
+    renderApp({ initialPath: `/vote?guest=${token}` });
 
     expect(
       await screen.findByText(/Ce lien a déjà été utilisé ou n'existe pas\./i)
@@ -60,12 +45,7 @@ describe("Guest token flow", () => {
     const match = await __demoAPI.createMatch("Match test", [1, 2, 3, 4, 5], null, 1);
     const token = await __demoAPI.createGuestToken("Tonton", match.id);
 
-    Object.defineProperty(window, "location", {
-      writable: true,
-      value: { ...window.location, search: "?guest=" + token },
-    });
-
-    renderApp();
+    renderApp({ initialPath: `/vote?guest=${token}` });
     const user = userEvent.setup();
 
     // Step 1: La Pépite
@@ -89,7 +69,7 @@ describe("Guest token flow", () => {
     await screen.findByText("Récapitulatif");
     await user.click(screen.getByRole("button", { name: "Valider" }));
 
-    // After voting, handleVoted() switches tab to "results" and handleGuestVoted marks the token
+    // After voting, handleVoted() navigates to /results and handleGuestVoted marks the token
     // Wait for the results tab to appear (confirms vote flow completed)
     expect(await screen.findByText("Résultats masqués")).toBeInTheDocument();
 

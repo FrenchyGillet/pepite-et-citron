@@ -1,5 +1,5 @@
-import type { Player, Match, Vote, EntityId } from '../types';
-import { computeScores } from '../utils';
+import type { Player, Match, Vote, EntityId } from '@/types';
+import { computeScores } from '@/utils';
 
 export interface PlayerStat {
   name: string;
@@ -27,7 +27,7 @@ export function computeSeasonStats(
   matches.forEach(match => {
     const mv = allVotes.filter(v => v.match_id === match.id);
     const pp = players.filter(p => (match.present_ids || []).includes(p.id));
-    const { best, lemon } = computeScores(mv, pp, players);
+    const { best, lemon } = computeScores(mv, pp, players, match.pepite_count ?? 2);
     let maxB = 0, maxL = 0;
     let bW: EntityId | null = null, lW: EntityId | null = null;
 

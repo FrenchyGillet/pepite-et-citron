@@ -1,8 +1,8 @@
 import { useState } from 'react';
-import { DEMO_MODE } from '../api';
-import { shuffleRevealOrder } from '../utils/vote';
+import { DEMO_MODE } from '@/api';
+import { shuffleRevealOrder } from '@/utils/vote';
 import { Toast } from './Toast';
-import { useTeams, useGuestTokens, useOrgMembers, useVotes, useCurrentSeason, useSeasonNames } from '../hooks/queries';
+import { useTeams, useGuestTokens, useOrgMembers, useVotes, useCurrentSeason, useSeasonNames } from '@/hooks/queries';
 import {
   useAddPlayer, useRemovePlayer,
   useCreateMatch, useCloseMatch, useStartCounting,
@@ -10,8 +10,8 @@ import {
   useCreateGuestToken, useDeleteGuestToken,
   useAddMember, useRemoveMember,
   useAdvanceSeason, useSetSeasonName,
-} from '../hooks/mutations';
-import type { Player, Match, Org, EntityId } from '../types';
+} from '@/hooks/mutations';
+import type { Player, Match, Org, EntityId } from '@/types';
 
 interface AdminViewProps {
   players: Player[];
@@ -37,6 +37,7 @@ export function AdminView({ players, activeMatch, currentOrg, onSignOut, onShowG
   const [copiedToken,     setCopiedToken]     = useState<string | null>(null);
   const [showAccount,     setShowAccount]     = useState(false);
   const [memberEmail,     setMemberEmail]     = useState('');
+  const [pepiteCount,     setPepiteCount]     = useState<2 | 3>(2);
 
   const { data: teams         = [] } = useTeams(currentOrg?.id);
   const { data: guestTokens   = [] } = useGuestTokens(activeMatch?.id);
@@ -136,7 +137,7 @@ export function AdminView({ players, activeMatch, currentOrg, onSignOut, onShowG
   const createMatch = () => {
     if (!matchLabel.trim() || presentIds.length < 2) return;
     createMatchMutation.mutate(
-      { label: matchLabel.trim(), presentIds, teamId: selectedTeamId, season: currentSeason },
+      { label: matchLabel.trim(), presentIds, teamId: selectedTeamId, season: currentSeason, pepiteCount },
       {
         onSuccess: () => {
           setMatchLabel(''); setPresentIds([]); setSelectedTeamId(null);
@@ -371,6 +372,24 @@ export function AdminView({ players, activeMatch, currentOrg, onSignOut, onShowG
           {presentIds.length < 2 && (
             <p style={{ fontSize: 12, color: 'var(--label3)', marginBottom: 10 }}>
               Sélectionne au moins 2 joueurs.
+            </p>
+          )}
+          <p style={{ fontSize: 13, color: 'var(--label3)', marginBottom: 8 }}>Mode pépite</p>
+          <div style={{ display: 'flex', gap: 8, marginBottom: pepiteCount === 3 ? 6 : 16 }}>
+            {([2, 3] as const).map(n => (
+              <button key={n} onClick={() => setPepiteCount(n)} style={{
+                flex: 1, padding: '10px', borderRadius: 'var(--radius-sm)',
+                fontSize: 13, fontWeight: 600, border: 'none', cursor: 'pointer',
+                background: pepiteCount === n ? 'var(--gold)' : 'var(--bg3)',
+                color: pepiteCount === n ? '#000' : 'var(--label2)',
+              }}>
+                {n === 2 ? '⭐ ⭐  2 pépites' : '⭐ ⭐ ⭐  3 pépites'}
+              </button>
+            ))}
+          </div>
+          {pepiteCount === 3 && (
+            <p style={{ fontSize: 11, color: 'var(--label3)', marginBottom: 16 }}>
+              Classement 3-2-1 pts · Recommandé pour les grandes équipes
             </p>
           )}
           <button className="btn btn-primary btn-full"

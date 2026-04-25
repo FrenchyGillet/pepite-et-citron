@@ -23,6 +23,7 @@ export interface Match {
   created_at: string;
   org_id?: string;
   tiebreakers?: Record<string, EntityId>;
+  pepite_count?: 2 | 3;
 }
 
 export interface Vote {
@@ -31,9 +32,11 @@ export interface Vote {
   voter_name: string;
   best1_id?: EntityId;
   best2_id?: EntityId;
+  best3_id?: EntityId;
   lemon_id?: EntityId;
   best1_comment?: string;
   best2_comment?: string;
+  best3_comment?: string;
   lemon_comment?: string;
 }
 
@@ -126,7 +129,7 @@ export interface API {
   getActiveMatch(): Promise<Match | null>;
   getMatches(): Promise<Match[]>;
   getMatchById(id: EntityId): Promise<Match | null>;
-  createMatch(label: string, presentIds: EntityId[], teamId: EntityId | null, season: number): Promise<Match>;
+  createMatch(label: string, presentIds: EntityId[], teamId: EntityId | null, season: number, pepiteCount?: 2 | 3): Promise<Match>;
   closeMatch(id: EntityId): Promise<unknown>;
   startCounting(id: EntityId, order: EntityId[]): Promise<unknown>;
   revealNext(id: EntityId, count: number): Promise<unknown>;

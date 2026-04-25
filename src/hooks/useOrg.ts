@@ -1,8 +1,8 @@
 import { useCallback } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
-import { setCurrentOrgId } from '../api';
-import { useAppStore } from '../store/appStore';
-import type { Org } from '../types';
+import { setCurrentOrgId } from '@/api';
+import { useAppStore } from '@/store/appStore';
+import type { Org } from '@/types';
 
 export function useOrg() {
   const queryClient        = useQueryClient();

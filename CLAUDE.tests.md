@@ -1,103 +1,154 @@
 # Pépite & Citron — Stratégie de tests
 
-> Lire d'abord le CLAUDE.md racine du monorepo.
+> Lire d'abord `CLAUDE.md` pour la vue d'ensemble du projet.
 
 ## Philosophie
 
 > "Write tests. Not too many. Mostly integration." — Kent C. Dodds
 
-On applique la pyramide de tests adaptée à notre contexte :
-- **Unitaires** : logique métier pure dans `packages/shared`
-- **Intégration** : composants React + hooks avec mocking Supabase
-- **E2E** : parcours critiques (voter, voir les résultats, ouvrir/fermer un match)
+Pyramide adaptée à ce projet :
+- **Unitaires** : logique métier pure dans `src/utils/`
+- **Intégration API** : `src/api.ts` via MSW (Mock Service Worker)
+- **Composants** : vues React avec `@testing-library/react`
 
 ---
 
-## Outils par couche
+## Outils
 
-| Couche | Outil | Où |
-|---|---|---|
-| Unitaires | Vitest | `packages/shared` |
-| Composants (web) | Vitest + React Testing Library | `apps/web` |
-| Composants (mobile) | Jest + React Native Testing Library | `apps/mobile` |
-| E2E web | Playwright | `apps/web/e2e/` |
-| E2E mobile | Maestro | `apps/mobile/e2e/` |
-| Mocking API | MSW (Mock Service Worker) | partagé |
+| Couche | Outil |
+|---|---|
+| Runner | Vitest 4 |
+| Assertions DOM | `@testing-library/jest-dom` |
+| Rendu composants | `@testing-library/react` |
+| Mocking réseau | MSW 2 (`msw/node`) |
+| Couverture | `@vitest/coverage-v8` |
 
 ---
 
-## Tests unitaires — `packages/shared`
+## Structure des tests
 
-### Règle
-Toute fonction dans `packages/shared` **doit** avoir des tests unitaires.  
-La logique métier est la partie la plus critique et la plus facile à tester.
+```
+src/
+├── utils/
+│   ├── scoring.test.ts       ← computeResultsSummary (10 cas)
+│   ├── season.test.ts        ← computeSeasonStats (11 cas)
+│   ├── vote.test.ts          ← hasVotedLocally, markVotedLocally, classifyVoteError (19 cas)
+│   └── utils.test.ts         ← computeScores, formatDate (18 cas)
+└── test/
+    ├── setup.js              ← jest-dom + MSW lifecycle + localStorage + appStore reset
+    ├── server.ts             ← setupServer() MSW (handlers ajoutés par test via server.use())
+    ├── renderApp.jsx         ← helper : wrape avec QueryClientProvider + appStore frais
+    ├── api.test.ts           ← demoAPI (30 cas) + realAPI via MSW (67 cas)
+    ├── admin.test.jsx        ← AdminView : gestion match, joueurs, tokens invités
+    ├── guest.test.jsx        ← flux invité : ?guest=token, vote anonyme
+    ├── player.test.jsx       ← ajout / suppression de joueurs
+    └── results.test.jsx      ← vue résultats : phases voting / counting / closed
+```
 
-### Exemple : tester le calcul du classement
+---
+
+## Tests unitaires — `src/utils/`
+
+Toute fonction dans `src/utils/` **doit** avoir des tests unitaires. Ces fonctions sont pures (pas d'effets de bord) et faciles à tester.
+
 ```ts
-// packages/shared/src/utils/ranking.test.ts
+// src/utils/scoring.test.ts
 import { describe, it, expect } from 'vitest';
-import { computeRanking } from './ranking';
+import { computeResultsSummary } from './scoring';
 
-describe('computeRanking', () => {
-  it('retourne un tableau vide si aucun vote', () => {
-    expect(computeRanking([])).toEqual([]);
-  });
-
-  it('trie par nombre de pépites décroissant', () => {
-    const votes = [
-      { pepiteId: 'player-1', citronId: 'player-2' },
-      { pepiteId: 'player-1', citronId: 'player-3' },
-      { pepiteId: 'player-2', citronId: 'player-1' },
-    ];
-    const ranking = computeRanking(votes, players);
-    expect(ranking[0].playerId).toBe('player-1');
-    expect(ranking[0].pepiteCount).toBe(2);
-  });
-
-  it("ne compte pas les votes d'un joueur absent", () => {
-    // ...
+describe('computeResultsSummary', () => {
+  it('retourne des listes vides et pas d'égalité quand il n'y a pas de votes', () => {
+    const result = computeResultsSummary([], allPlayers, allPlayers);
+    expect(result.pepiteRanked).toEqual([]);
+    expect(result.bestTied).toBe(false);
   });
 });
 ```
 
-### Couverture cible
-- `packages/shared` : **90%+**
-- `packages/supabase/queries` : **80%+** (avec mocking Supabase)
+### Couvertures cibles
+- `src/utils/` : **90%+**
+- `src/api.ts` : **80%+** (statements et branches)
 
 ---
 
-## Tests de composants (React Testing Library)
+## Tests d'intégration API — `src/test/api.test.ts`
 
-### Règle
-Tester le **comportement**, pas l'implémentation.  
-Ne jamais tester les détails internes (state, méthodes privées).
+MSW intercepte les appels `fetch` au niveau Node pour simuler les réponses Supabase sans réseau réel.
+
+### demoAPI
+Testé directement en mémoire — pas de MSW nécessaire, juste des mutations de `demoState`.
+
+```ts
+import { demoAPI, __resetDemoState as resetDemo } from '../api';
+
+describe('demoAPI', () => {
+  beforeEach(() => resetDemo());
+
+  it('addPlayer ajoute un joueur et le retourne', async () => {
+    const p = await demoAPI.addPlayer('Zara');
+    expect(p.name).toBe('Zara');
+    expect(await demoAPI.getPlayers()).toHaveLength(11);
+  });
+});
+```
+
+### realAPI via MSW
+```ts
+import { http, HttpResponse } from 'msw';
+import { server } from './server';
+import { realAPI, setCurrentOrgId } from '../api';
+
+const BASE = 'https://VOTRE_PROJET.supabase.co/rest/v1';
+const AUTH = 'https://VOTRE_PROJET.supabase.co/auth/v1';
+const RPC  = `${BASE}/rpc`;
+
+describe('realAPI', () => {
+  beforeAll(() => setCurrentOrgId('org-123'));
+
+  describe('getPlayers', () => {
+    it('retourne la liste depuis le serveur', async () => {
+      server.use(http.get(`${BASE}/players`, () => HttpResponse.json([{ id: 'p1', name: 'Alice' }])));
+      const players = await realAPI.getPlayers();
+      expect(players[0].name).toBe('Alice');
+    });
+
+    it('lève une erreur sur réponse 500', async () => {
+      server.use(http.get(`${BASE}/players`, () =>
+        HttpResponse.json({ message: 'Erreur 500' }, { status: 500 }),
+      ));
+      await expect(realAPI.getPlayers()).rejects.toThrow('Erreur 500');
+    });
+  });
+});
+```
+
+**Règles MSW** :
+- `server.use(...)` dans chaque test — les handlers sont réinitialisés par `server.resetHandlers()` dans `afterEach`
+- `HttpResponse.error()` pour simuler une panne réseau (pas `HttpResponse.networkError()` — inexistant en MSW v2)
+- Pour les endpoints auth : `http.post(\`${AUTH}/signup\`, ...)`, `http.post(\`${AUTH}/token\`, ...)`
+- Pour les RPC Supabase SDK : `http.post(\`${RPC}/nom_fonction\`, ...)`
+
+---
+
+## Tests de composants — React Testing Library
 
 ```tsx
-// apps/web/src/components/vote/VoteButton.test.tsx
-import { render, screen, fireEvent } from '@testing-library/react';
-import { VoteButton } from './VoteButton';
+// src/test/player.test.jsx
+import { screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
+import { renderApp } from './renderApp';
 
-describe('VoteButton', () => {
-  it('affiche le nom du joueur', () => {
-    render(<VoteButton player={{ id: '1', name: 'Martin' }} onVote={vi.fn()} type="pepite" />);
-    expect(screen.getByText('Martin')).toBeInTheDocument();
-  });
-
-  it('appelle onVote avec le bon id au clic', async () => {
-    const onVote = vi.fn();
-    render(<VoteButton player={{ id: '1', name: 'Martin' }} onVote={onVote} type="pepite" />);
-    fireEvent.click(screen.getByRole('button'));
-    expect(onVote).toHaveBeenCalledWith('1');
-  });
-
-  it('est désactivé quand disabled=true', () => {
-    render(<VoteButton player={{ id: '1', name: 'Martin' }} onVote={vi.fn()} type="pepite" disabled />);
-    expect(screen.getByRole('button')).toBeDisabled();
+describe('Ajout de joueur', () => {
+  it('ajoute un joueur à la liste quand on soumet le formulaire', async () => {
+    renderApp();
+    await userEvent.type(screen.getByPlaceholderText(/nom du joueur/i), 'Zara');
+    await userEvent.click(screen.getByRole('button', { name: /ajouter/i }));
+    expect(await screen.findByText('Zara')).toBeInTheDocument();
   });
 });
 ```
 
-### Queries à prioriser (dans l'ordre)
+### Queries à prioriser (ordre de préférence)
 1. `getByRole` — le plus proche de l'expérience utilisateur
 2. `getByLabelText` — pour les champs de formulaire
 3. `getByText` — pour le contenu textuel
@@ -105,133 +156,47 @@ describe('VoteButton', () => {
 
 ---
 
-## Tests d'intégration — Hooks Supabase
+## Setup des tests (`src/test/setup.js`)
 
-Mocker Supabase avec MSW (pas de vraie base de données en test) :
+```js
+import { server } from './server';
+import { resetAppStore } from '../store/appStore';
 
-```ts
-// packages/supabase/src/hooks/useActiveMatch.test.ts
-import { renderHook, waitFor } from '@testing-library/react';
-import { server } from '../../../test/mocks/server';
-import { http, HttpResponse } from 'msw';
-import { useActiveMatch } from './useActiveMatch';
-
-describe('useActiveMatch', () => {
-  it('retourne le match ouvert', async () => {
-    server.use(
-      http.get('*/rest/v1/matches', () =>
-        HttpResponse.json([{ id: 'match-1', label: 'vs Bruxelles', status: 'open' }])
-      )
-    );
-
-    const { result } = renderHook(() => useActiveMatch(), { wrapper: QueryClientWrapper });
-
-    await waitFor(() => expect(result.current.isSuccess).toBe(true));
-    expect(result.current.data?.label).toBe('vs Bruxelles');
-  });
-
-  it('retourne null si aucun match ouvert', async () => {
-    server.use(
-      http.get('*/rest/v1/matches', () => HttpResponse.json([]))
-    );
-
-    const { result } = renderHook(() => useActiveMatch(), { wrapper: QueryClientWrapper });
-    await waitFor(() => expect(result.current.isSuccess).toBe(true));
-    expect(result.current.data).toBeNull();
-  });
+beforeAll(() => {
+  server.listen({ onUnhandledRequest: 'warn' });
 });
-```
 
----
-
-## Tests E2E — Playwright (web)
-
-Tester uniquement les **parcours critiques** :
-
-```
-apps/web/e2e/
-├── vote.spec.ts        ← voter pour la pépite et le citron
-├── results.spec.ts     ← voir les résultats en temps réel
-└── admin.spec.ts       ← ouvrir/fermer un match, gérer les joueurs
-```
-
-### Exemple
-```ts
-// e2e/vote.spec.ts
-import { test, expect } from '@playwright/test';
-
-test('un joueur peut voter une seule fois', async ({ page }) => {
-  await page.goto('/');
-  
-  // Sélectionner la pépite
-  await page.getByTestId('player-card-martin').click();
-  await page.getByRole('button', { name: 'Voter Pépite' }).click();
-  
-  // Sélectionner le citron
-  await page.getByTestId('player-card-dupont').click();
-  await page.getByRole('button', { name: 'Voter Citron' }).click();
-  
-  // Confirmer
-  await page.getByRole('button', { name: 'Confirmer mon vote' }).click();
-  
-  // Vérifier la redirection vers les résultats
-  await expect(page).toHaveURL('/results');
-  await expect(page.getByText('Martin')).toBeVisible();
+afterEach(() => {
+  cleanup();
+  localStorage.clear();
+  resetAppStore();
+  server.resetHandlers();
 });
+
+afterAll(() => server.close());
 ```
 
+`onUnhandledRequest: 'warn'` : les appels non mockés (ex. init SDK Supabase) déclenchent un warning mais ne font pas échouer les tests.
+
 ---
 
-## Tests E2E — Maestro (mobile)
+## Lancer les tests
 
-```yaml
-# apps/mobile/e2e/vote.yaml
-appId: com.pepitecitron.app
----
-- launchApp
-- assertVisible: "Pépite & Citron"
-- tapOn: "Martin"
-- tapOn: "Voter Pépite ⭐"
-- tapOn: "Dupont"
-- tapOn: "Voter Citron 🍋"
-- tapOn: "Confirmer"
-- assertVisible: "Ton vote a été enregistré"
+```bash
+npm test                                              # tous les tests
+npm test -- src/test/api.test.ts                      # un fichier spécifique
+npm run test:watch                                    # mode watch
+npm test -- --coverage --coverage.include='src/api.ts' --coverage.reporter=text
 ```
 
 ---
 
 ## Règles générales
 
-1. **Nommage des tests** : `describe` = le sujet, `it` = une phrase en français décrivant le comportement attendu
+1. **Nommage** : `describe` = le sujet, `it` = comportement attendu en phrase complète
 2. **Arrange / Act / Assert** : toujours structurer les tests en 3 phases
 3. **Un seul `expect` principal** par test (les assertions secondaires sont ok)
-4. **Pas de `sleep()` dans les tests** — utiliser `waitFor`, `findBy*`, ou les fixtures Playwright
-5. **Les tests doivent être déterministes** : pas de dépendance à l'heure, à des données aléatoires non seedées
+4. **Pas de `sleep()`** — utiliser `waitFor`, `findBy*`
+5. **Tests déterministes** : pas de dépendance à l'heure ou à des données aléatoires non seedées
 6. **Chaque bug corrigé = un test de non-régression ajouté**
-
----
-
-## Coverage
-
-```bash
-# Lancer avec coverage
-pnpm test --coverage
-
-# Seuils configurés dans vitest.config.ts
-coverage: {
-  thresholds: {
-    lines: 80,
-    functions: 80,
-    branches: 75,
-  }
-}
-```
-
----
-
-## CI/CD
-
-Les tests sont lancés automatiquement :
-- **Sur chaque PR** : unitaires + composants (rapide, < 2 min)
-- **Sur merge vers `main`** : unitaires + composants + E2E web (Playwright)
-- **Avant release mobile** : E2E Maestro sur device physique (iOS + Android)
+7. **Ne pas mocker ce qu'on teste** : tester `realAPI` avec MSW, pas avec `vi.mock('../api')`

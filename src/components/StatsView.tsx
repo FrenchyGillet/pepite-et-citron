@@ -1,11 +1,11 @@
 import { useState } from 'react';
-import { formatDate } from '../utils';
-import { computeSeasonStats } from '../utils/season';
+import { formatDate } from '@/utils';
+import { computeSeasonStats } from '@/utils/season';
 import { Scoreboard } from './Scoreboard';
 import { EmptyState } from './EmptyState';
-import { useAllVotes, useMatches, useTeams, useCurrentSeason, useSeasonNames } from '../hooks/queries';
-import { useDeleteMatch, useUpdateMatch } from '../hooks/mutations';
-import type { Player, Match, EntityId } from '../types';
+import { useAllVotes, useMatches, useTeams, useCurrentSeason, useSeasonNames } from '@/hooks/queries';
+import { useDeleteMatch, useUpdateMatch } from '@/hooks/mutations';
+import type { Player, Match, EntityId } from '@/types';
 
 interface StatsViewProps {
   players: Player[];

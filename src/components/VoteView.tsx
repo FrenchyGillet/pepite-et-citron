@@ -1,7 +1,7 @@
 import { useState } from 'react';
-import { api } from '../api';
-import { markVotedLocally, classifyVoteError } from '../utils/vote';
-import type { Player, Match } from '../types';
+import { api } from '@/api';
+import { markVotedLocally, classifyVoteError } from '@/utils/vote';
+import type { Player, Match } from '@/types';
 
 interface VoteViewProps {
   players: Player[];
@@ -18,12 +18,19 @@ export function VoteView({ players, match, onVoted, guestName = null, onGuestVot
   const [best1Comment, setBest1Comment] = useState('');
   const [best2,        setBest2]        = useState<Player | null>(null);
   const [best2Comment, setBest2Comment] = useState('');
+  const [best3,        setBest3]        = useState<Player | null>(null);
+  const [best3Comment, setBest3Comment] = useState('');
   const [lemon,        setLemon]        = useState<Player | null>(null);
   const [lemonComment, setLemonComment] = useState('');
   const [submitting,   setSubmitting]   = useState(false);
   const [submitError,  setSubmitError]  = useState<string | null>(null);
   const [alreadyVoted, setAlreadyVoted] = useState(false);
   const [checking,     setChecking]     = useState(false);
+
+  const pepiteCount  = match.pepite_count ?? 2;
+  const lemonStep    = pepiteCount === 3 ? 4 : 3;
+  const summaryStep  = pepiteCount === 3 ? 5 : 4;
+  const stepBarCount = pepiteCount === 3 ? 4 : 3;
 
   const presentIds = match.present_ids || [];
   const present = players.filter(p =>  presentIds.includes(p.id));
@@ -46,6 +53,7 @@ export function VoteView({ players, match, onVoted, guestName = null, onGuestVot
         match_id: match.id, voter_name: voterName,
         best1_id: best1?.id, best1_comment: best1Comment,
         best2_id: best2?.id, best2_comment: best2Comment,
+        ...(pepiteCount === 3 ? { best3_id: best3?.id, best3_comment: best3Comment } : {}),
         lemon_id: lemon?.id, lemon_comment: lemonComment,
       });
       if (onGuestVoted) await onGuestVoted();
@@ -73,6 +81,7 @@ export function VoteView({ players, match, onVoted, guestName = null, onGuestVot
           </div>
         </div>
       )}
+
       {step === 0 && !guestName && (
         <>
           <p className="section-label mt-8 mb-4">Qui es-tu ?</p>
@@ -94,10 +103,12 @@ export function VoteView({ players, match, onVoted, guestName = null, onGuestVot
         </>
       )}
 
-      {step >= 1 && step <= 3 && (
+      {step >= 1 && step <= summaryStep - 1 && (
         <>
           <div className="step-bar mt-8">
-            {[1, 2, 3].map(i => <div key={i} className={`step-seg ${step > i ? 'done' : step === i ? 'active' : ''}`} />)}
+            {Array.from({ length: stepBarCount }, (_, i) => i + 1).map(i => (
+              <div key={i} className={`step-seg ${step > i ? 'done' : step === i ? 'active' : ''}`} />
+            ))}
           </div>
 
           {step === 1 && (
@@ -108,7 +119,9 @@ export function VoteView({ players, match, onVoted, guestName = null, onGuestVot
                   <div style={{ fontSize: 20, fontWeight: 800, color: 'var(--gold)', letterSpacing: '-0.3px', lineHeight: 1.1 }}>La Pépite</div>
                   <div style={{ fontSize: 12, color: 'var(--label3)', marginTop: 3 }}>Qui a été le meilleur joueur ?</div>
                 </div>
-                <div style={{ background: 'var(--gold)', color: '#000', borderRadius: 20, padding: '4px 11px', fontSize: 13, fontWeight: 800, flexShrink: 0 }}>2 pts</div>
+                <div style={{ background: 'var(--gold)', color: '#000', borderRadius: 20, padding: '4px 11px', fontSize: 13, fontWeight: 800, flexShrink: 0 }}>
+                  {pepiteCount === 3 ? '3 pts' : '2 pts'}
+                </div>
               </div>
               <div className="player-grid">
                 {present.filter(p => p.name !== voterName).map(p => (
@@ -137,7 +150,9 @@ export function VoteView({ players, match, onVoted, guestName = null, onGuestVot
                   <div style={{ fontSize: 20, fontWeight: 800, color: 'rgba(255,214,10,0.7)', letterSpacing: '-0.3px', lineHeight: 1.1 }}>2ème meilleur</div>
                   <div style={{ fontSize: 12, color: 'var(--label3)', marginTop: 3 }}>Le deuxième joueur le plus performant</div>
                 </div>
-                <div style={{ background: 'rgba(255,214,10,0.15)', color: 'var(--gold)', borderRadius: 20, padding: '4px 11px', fontSize: 13, fontWeight: 800, flexShrink: 0 }}>1 pt</div>
+                <div style={{ background: 'rgba(255,214,10,0.15)', color: 'var(--gold)', borderRadius: 20, padding: '4px 11px', fontSize: 13, fontWeight: 800, flexShrink: 0 }}>
+                  {pepiteCount === 3 ? '2 pts' : '1 pt'}
+                </div>
               </div>
               <div className="player-grid">
                 {present.filter(p => p.name !== voterName && p.id !== best1?.id).map(p => (
@@ -159,7 +174,39 @@ export function VoteView({ players, match, onVoted, guestName = null, onGuestVot
             </>
           )}
 
-          {step === 3 && (
+          {pepiteCount === 3 && step === 3 && (
+            <>
+              <div style={{ background: 'rgba(255,214,10,0.02)', border: '1px solid rgba(255,214,10,0.08)', borderRadius: 'var(--radius-lg)', padding: '14px 16px', marginBottom: 14, display: 'flex', alignItems: 'center', gap: 14 }}>
+                <div style={{ fontSize: 22, lineHeight: 1, flexShrink: 0, opacity: 0.4 }}>⭐</div>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: 20, fontWeight: 800, color: 'rgba(255,214,10,0.5)', letterSpacing: '-0.3px', lineHeight: 1.1 }}>3ème meilleur</div>
+                  <div style={{ fontSize: 12, color: 'var(--label3)', marginTop: 3 }}>Le troisième joueur le plus performant</div>
+                </div>
+                <div style={{ background: 'rgba(255,214,10,0.08)', color: 'rgba(255,214,10,0.5)', borderRadius: 20, padding: '4px 11px', fontSize: 13, fontWeight: 800, flexShrink: 0 }}>
+                  1 pt
+                </div>
+              </div>
+              <div className="player-grid">
+                {present.filter(p => p.name !== voterName && p.id !== best1?.id && p.id !== best2?.id).map(p => (
+                  <button key={String(p.id)} className={`player-chip ${best3?.id === p.id ? 'sel-2nd' : ''}`}
+                    onClick={() => setBest3(p)}>{p.name}</button>
+                ))}
+              </div>
+              {best3 && (
+                <>
+                  <p className="section-label mt-12 mb-4">Commentaire (optionnel)</p>
+                  <input placeholder={`Pourquoi ${best3.name} ?`} value={best3Comment}
+                    onChange={e => setBest3Comment(e.target.value)} />
+                </>
+              )}
+              <div className="flex gap-8 mt-12">
+                <button className="btn btn-secondary" onClick={() => setStep(2)}>Retour</button>
+                <button className="btn btn-primary" style={{ flex: 1 }} disabled={!best3} onClick={() => setStep(4)}>Suivant</button>
+              </div>
+            </>
+          )}
+
+          {step === lemonStep && (
             <>
               <div style={{ background: 'var(--lemon-subtle)', border: '1px solid var(--lemon-dim)', borderRadius: 'var(--radius-lg)', padding: '14px 16px', marginBottom: 14, display: 'flex', alignItems: 'center', gap: 14 }}>
                 <div style={{ fontSize: 34, lineHeight: 1, flexShrink: 0 }}>🍋</div>
@@ -200,15 +247,15 @@ export function VoteView({ players, match, onVoted, guestName = null, onGuestVot
                 </>
               )}
               <div className="flex gap-8 mt-12">
-                <button className="btn btn-secondary" onClick={() => setStep(2)}>Retour</button>
-                <button className="btn btn-primary" style={{ flex: 1 }} disabled={!lemon} onClick={() => setStep(4)}>Suivant</button>
+                <button className="btn btn-secondary" onClick={() => setStep(lemonStep - 1)}>Retour</button>
+                <button className="btn btn-primary" style={{ flex: 1 }} disabled={!lemon} onClick={() => setStep(summaryStep)}>Suivant</button>
               </div>
             </>
           )}
         </>
       )}
 
-      {step === 4 && (
+      {step === summaryStep && (
         <>
           <p className="section-label mt-8 mb-4">Récapitulatif</p>
           <div className="group">
@@ -218,7 +265,7 @@ export function VoteView({ players, match, onVoted, guestName = null, onGuestVot
                 <div className="row-title">{best1?.name}</div>
                 {best1Comment && <div className="row-sub">{best1Comment}</div>}
               </div>
-              <span className="tag tag-gold">2 pts</span>
+              <span className="tag tag-gold">{pepiteCount === 3 ? '3 pts' : '2 pts'}</span>
             </div>
             <div className="row">
               <div className="row-icon" style={{ background: 'var(--gold-subtle)', opacity: 0.7 }}>⭐</div>
@@ -226,8 +273,18 @@ export function VoteView({ players, match, onVoted, guestName = null, onGuestVot
                 <div className="row-title">{best2?.name}</div>
                 {best2Comment && <div className="row-sub">{best2Comment}</div>}
               </div>
-              <span className="tag tag-dim">1 pt</span>
+              <span className="tag tag-dim">{pepiteCount === 3 ? '2 pts' : '1 pt'}</span>
             </div>
+            {pepiteCount === 3 && (
+              <div className="row">
+                <div className="row-icon" style={{ background: 'var(--gold-subtle)', opacity: 0.4 }}>⭐</div>
+                <div className="row-body">
+                  <div className="row-title">{best3?.name}</div>
+                  {best3Comment && <div className="row-sub">{best3Comment}</div>}
+                </div>
+                <span className="tag tag-dim">1 pt</span>
+              </div>
+            )}
             <div className="row">
               <div className="row-icon lemon">🍋</div>
               <div className="row-body">
@@ -250,7 +307,7 @@ export function VoteView({ players, match, onVoted, guestName = null, onGuestVot
             </div>
           )}
           <div className="flex gap-8">
-            <button className="btn btn-secondary" onClick={() => setStep(3)}>Modifier</button>
+            <button className="btn btn-secondary" onClick={() => setStep(lemonStep)}>Modifier</button>
             <button className="btn btn-primary" style={{ flex: 1 }} disabled={submitting} onClick={submit}>
               {submitting ? 'Envoi…' : submitError ? 'Réessayer' : 'Valider'}
             </button>

@@ -1,26 +1,61 @@
-import { useEffect } from 'react';
-import { DEMO_MODE, setCurrentOrgId } from './api';
-import { GlobalStyle }       from './GlobalStyle';
-import { AuthView }          from './components/AuthView';
-import { OrgSetupView }      from './components/OrgSetupView';
-import { AppHeader }         from './components/AppHeader';
-import { VoteTab }           from './components/VoteTab';
-import { ResultsView }       from './components/ResultsView';
-import { StatsView }         from './components/StatsView';
-import { AdminView }         from './components/AdminView';
-import { ErrorBoundary }     from './components/ErrorBoundary';
-import { OnboardingModal }   from './components/OnboardingModal';
-import { useAuth }           from './hooks/useAuth';
-import { useGuest }          from './hooks/useGuest';
-import { useTheme }          from './hooks/useTheme';
-import { useLastMatch }      from './hooks/useLastMatch';
-import { usePlayers }        from './hooks/queries';
-import { useAppStore }       from './store/appStore';
-import type { Org } from './types';
+import { useState, useEffect } from 'react';
+import { Routes, Route, Navigate, useNavigate, useLocation } from 'react-router-dom';
+import { DEMO_MODE, setCurrentOrgId } from '@/api';
+import { GlobalStyle }       from '@/GlobalStyle';
+import { AuthView }          from '@/components/AuthView';
+import { OrgSetupView }      from '@/components/OrgSetupView';
+import { AppHeader }         from '@/components/AppHeader';
+import { VoteTab }           from '@/components/VoteTab';
+import { ResultsView }       from '@/components/ResultsView';
+import { StatsView }         from '@/components/StatsView';
+import { AdminView }         from '@/components/AdminView';
+import { ErrorBoundary }     from '@/components/ErrorBoundary';
+import { OnboardingModal }   from '@/components/OnboardingModal';
+import { useAuth }           from '@/hooks/useAuth';
+import { useGuest }          from '@/hooks/useGuest';
+import { useTheme }          from '@/hooks/useTheme';
+import { useLastMatch }      from '@/hooks/useLastMatch';
+import { usePlayers }        from '@/hooks/queries';
+import { useAppStore }       from '@/store/appStore';
+import { useSearchParams }   from 'react-router-dom';
+import type { Org } from '@/types';
 
-const VALID_TABS = ['vote', 'results', 'stats', 'admin'];
+function FakeProgressBar({ loading }: { loading: boolean }) {
+  const [progress, setProgress] = useState(0);
+  const [visible,  setVisible]  = useState(true);
+
+  useEffect(() => {
+    if (loading) {
+      setProgress(0);
+      setVisible(true);
+      const steps: [number, number][] = [[150, 25], [700, 50], [1800, 70], [4000, 82], [8000, 89]];
+      const timers = steps.map(([delay, target]) => setTimeout(() => setProgress(target), delay));
+      return () => timers.forEach(clearTimeout);
+    } else {
+      setProgress(100);
+      const t = setTimeout(() => setVisible(false), 450);
+      return () => clearTimeout(t);
+    }
+  }, [loading]);
+
+  if (!visible) return null;
+  return (
+    <div style={{ position: 'fixed', top: 0, left: 0, right: 0, zIndex: 9999, height: 3, background: 'rgba(255,215,0,0.12)' }}>
+      <div style={{
+        height: '100%', background: '#FFD700',
+        width: `${progress}%`,
+        transition: loading ? 'width 0.9s cubic-bezier(0.1,0.4,0.2,1)' : 'width 0.25s ease',
+        borderRadius: '0 2px 2px 0',
+      }} />
+    </div>
+  );
+}
 
 export default function App() {
+  const navigate       = useNavigate();
+  const location       = useLocation();
+  const [searchParams] = useSearchParams();
+
   // ── Bootstrap side-effects ──────────────────────────────────────────────
   const { handleSignOut }  = useAuth();
   useGuest();
@@ -32,7 +67,6 @@ export default function App() {
   const currentOrg       = useAppStore(s => s.currentOrg);
   const orgsResolved     = useAppStore(s => s.orgsResolved);
   const orgsLoadError    = useAppStore(s => s.orgsLoadError);
-  const tab              = useAppStore(s => s.tab);
   const showOnboarding   = useAppStore(s => s.showOnboarding);
   const theme            = useAppStore(s => s.theme);
   const setSession       = useAppStore(s => s.setSession);
@@ -41,18 +75,7 @@ export default function App() {
   const setOrgsResolved  = useAppStore(s => s.setOrgsResolved);
   const setOrgsLoadError = useAppStore(s => s.setOrgsLoadError);
   const setShowOnboarding = useAppStore(s => s.setShowOnboarding);
-  const setTab           = useAppStore(s => s.setTab);
   const loadOrgs         = useAppStore(s => s.loadOrgs);
-
-  // Sync browser back/forward with tab state
-  useEffect(() => {
-    const onPop = () => {
-      const hash = window.location.hash.slice(1);
-      useAppStore.setState({ tab: VALID_TABS.includes(hash) ? hash : 'vote' });
-    };
-    window.addEventListener('popstate', onPop);
-    return () => window.removeEventListener('popstate', onPop);
-  }, []);
 
   // ── Server state ────────────────────────────────────────────────────────
   const { data: players = [] }       = usePlayers(currentOrg?.id);
@@ -60,14 +83,14 @@ export default function App() {
 
   // ── Derived ─────────────────────────────────────────────────────────────
   const isAdmin     = DEMO_MODE || (!!session && !!currentOrg && currentOrg.role !== 'voter');
-  const urlParams   = new URLSearchParams(window.location.search);
-  const isVoterLink = !DEMO_MODE && (urlParams.get('org') || urlParams.get('guest'));
+  const isVoterLink = !DEMO_MODE && (searchParams.get('org') || searchParams.get('guest'));
 
   // ── Auth gates ──────────────────────────────────────────────────────────
   if (authLoading && !isVoterLink) {
     return (
       <>
         <GlobalStyle />
+        <FakeProgressBar loading={true} />
         <div style={{ minHeight: '100dvh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--bg)' }}>
           <div style={{ fontSize: 14, color: 'var(--label3)' }}>Chargement…</div>
         </div>
@@ -83,6 +106,7 @@ export default function App() {
     return (
       <>
         <GlobalStyle />
+        <FakeProgressBar loading={true} />
         <div style={{ minHeight: '100dvh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--bg)' }}>
           <div style={{ fontSize: 14, color: 'var(--label3)' }}>Chargement…</div>
         </div>
@@ -136,6 +160,13 @@ export default function App() {
   }
 
   // ── Main app ────────────────────────────────────────────────────────────
+  const tabs = [
+    { id: 'vote',    label: 'Vote',      icon: <><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></> },
+    { id: 'results', label: 'Résultats', icon: <path d="M18 20V10M12 20V4M6 20v-6"/> },
+    { id: 'stats',   label: 'Saison',    icon: <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/> },
+    ...(isAdmin ? [{ id: 'admin', label: 'Admin', icon: <><circle cx="12" cy="8" r="4"/><path d="M20 21a8 8 0 10-16 0"/></> }] : []),
+  ];
+
   return (
     <>
       <GlobalStyle />
@@ -143,33 +174,41 @@ export default function App() {
         <AppHeader />
         {DEMO_MODE && <div className="demo-banner">Mode démo · Configure Supabase pour le multi-device</div>}
 
-        {tab === 'vote' && (
-          <VoteTab isAdmin={isAdmin} activeMatch={activeMatch} lastMatch={lastMatch} players={players} />
-        )}
-        {tab === 'results' && (
-          <ErrorBoundary label="Résultats">
-            <ResultsView players={players} match={lastMatch} isAdmin={isAdmin} isDark={theme === 'dark'}
-              orgId={currentOrg?.id} />
-          </ErrorBoundary>
-        )}
-        {tab === 'stats' && (
-          <ErrorBoundary label="Saison">
-            <StatsView players={players} activeMatch={activeMatch} isAdmin={isAdmin}
-              orgId={currentOrg?.id} />
-          </ErrorBoundary>
-        )}
-        {tab === 'admin' && isAdmin && (
-          <ErrorBoundary label="Admin">
-            <AdminView
-              players={players}
-              activeMatch={activeMatch}
-              currentOrg={currentOrg}
-              onSignOut={handleSignOut}
-              onShowGuide={() => setShowOnboarding(true)}
-              onGoToResults={() => setTab('results')}
-            />
-          </ErrorBoundary>
-        )}
+        <Routes>
+          <Route index element={<Navigate to="/vote" replace />} />
+          <Route path="/vote" element={
+            <ErrorBoundary label="Vote">
+              <VoteTab isAdmin={isAdmin} activeMatch={activeMatch} lastMatch={lastMatch} players={players} />
+            </ErrorBoundary>
+          } />
+          <Route path="/results" element={
+            <ErrorBoundary label="Résultats">
+              <ResultsView players={players} match={lastMatch} isAdmin={isAdmin} isDark={theme === 'dark'}
+                orgId={currentOrg?.id} />
+            </ErrorBoundary>
+          } />
+          <Route path="/stats" element={
+            <ErrorBoundary label="Saison">
+              <StatsView players={players} activeMatch={activeMatch} isAdmin={isAdmin}
+                orgId={currentOrg?.id} />
+            </ErrorBoundary>
+          } />
+          <Route path="/admin" element={
+            isAdmin
+              ? <ErrorBoundary label="Admin">
+                  <AdminView
+                    players={players}
+                    activeMatch={activeMatch}
+                    currentOrg={currentOrg}
+                    onSignOut={handleSignOut}
+                    onShowGuide={() => setShowOnboarding(true)}
+                    onGoToResults={() => navigate('/results')}
+                  />
+                </ErrorBoundary>
+              : <Navigate to="/vote" replace />
+          } />
+          <Route path="*" element={<Navigate to="/vote" replace />} />
+        </Routes>
 
         {showOnboarding && (
           <OnboardingModal onClose={() => {
@@ -180,13 +219,12 @@ export default function App() {
       </div>
 
       <nav className="tab-bar">
-        {[
-          { id: 'vote',    label: 'Vote',      icon: <><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></> },
-          { id: 'results', label: 'Résultats', icon: <path d="M18 20V10M12 20V4M6 20v-6"/> },
-          { id: 'stats',   label: 'Saison',    icon: <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/> },
-          ...(isAdmin ? [{ id: 'admin', label: 'Admin', icon: <><circle cx="12" cy="8" r="4"/><path d="M20 21a8 8 0 10-16 0"/></> }] : []),
-        ].map(t => (
-          <button key={t.id} className={`tab-bar-item ${tab === t.id ? 'active' : ''}`} onClick={() => setTab(t.id)}>
+        {tabs.map(t => (
+          <button
+            key={t.id}
+            className={`tab-bar-item ${location.pathname === `/${t.id}` ? 'active' : ''}`}
+            onClick={() => navigate(`/${t.id}`)}
+          >
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" stroke="currentColor">
               {t.icon}
             </svg>
@@ -198,4 +236,4 @@ export default function App() {
   );
 }
 
-export { __resetDemoState, __demoAPI } from './api';
+export { __resetDemoState, __demoAPI } from '@/api';

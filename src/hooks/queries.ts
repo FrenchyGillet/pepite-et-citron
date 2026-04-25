@@ -1,6 +1,6 @@
 import { useQuery, useQueries } from '@tanstack/react-query';
-import { api, DEMO_MODE } from '../api';
-import type { EntityId } from '../types';
+import { api, DEMO_MODE } from '@/api';
+import type { EntityId } from '@/types';
 
 export const queryKeys = {
   players:       (orgId?: string | null)               => ['players',       orgId]    as const,

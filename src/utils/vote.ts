@@ -1,4 +1,4 @@
-import type { EntityId, Vote } from '../types';
+import type { EntityId, Vote } from '@/types';
 
 export function hasVotedLocally(matchId: EntityId | null | undefined): boolean {
   if (matchId == null) return false;
