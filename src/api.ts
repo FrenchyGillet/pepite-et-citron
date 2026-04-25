@@ -399,8 +399,9 @@ export const realAPI: API = {
     } catch { return null; }
   },
   setSeasonName: async (season, name) => {
-    const { data: existing } = await supabase.from("settings").select("value")
+    const { data: existing, error: selectErr } = await supabase.from("settings").select("value")
       .eq("key", `season_name_${season}`).eq("org_id", _orgId);
+    if (selectErr) throw new Error(selectErr.message);
     if (existing && existing.length > 0) {
       await run(supabase.from("settings").update({ value: name })
         .eq("key", `season_name_${season}`).eq("org_id", _orgId));
