@@ -26,14 +26,24 @@ export function useAuth() {
   useEffect(() => {
     if (DEMO_MODE) return;
 
+    // Safety timer — two stages:
+    //  • 12 s : unlock the auth spinner (authLoading → false) so the org-loading
+    //           spinner can take over without the app appearing completely frozen.
+    //  • 30 s : last resort — if orgs still haven't resolved (e.g. every retry
+    //           exhausted), surface the error screen. 30 s covers the full
+    //           "RPC 8 s + REST ×2 attempts 10 s + waits" budget for a cold-start
+    //           wake-up on a paused free-tier project.
     const safetyTimer = setTimeout(() => {
-      console.warn('bootstrap safety timeout — forcing loading states off');
+      console.warn('bootstrap safety timeout — forcing authLoading off');
       setAuthLoading(false);
+    }, 12000);
+    const hardTimeout = setTimeout(() => {
       const { orgsResolved } = useAppStore.getState();
       if (!orgsResolved) {
+        console.warn('bootstrap hard timeout — giving up on org load');
         useAppStore.setState({ orgsResolved: true, orgsLoadError: true });
       }
-    }, 12000);
+    }, 30000);
 
     const bootstrap = async () => {
       try {
@@ -43,20 +53,25 @@ export function useAuth() {
         console.error('bootstrap:', err);
       } finally {
         clearTimeout(safetyTimer);
+        clearTimeout(hardTimeout);
         setAuthLoading(false);
       }
     };
     void bootstrap();
 
-    const sub = api.onAuthChange(async (_event, s) => {
+    const sub = api.onAuthChange(async (event, s) => {
       setSession(s);
-      if (s) {
-        await loadOrgs().catch(err => console.error('onAuthChange loadOrgs:', err));
-      } else {
+      if (!s) {
+        // Signed out (explicit or session expired) — clear everything.
         setCurrentOrg(null);
         setCurrentOrgId(null);
         queryClient.clear();
+      } else if (event === 'SIGNED_IN') {
+        // Explicit sign-in: reload orgs (bootstrap handles the initial load).
+        await loadOrgs().catch(err => console.error('onAuthChange loadOrgs:', err));
       }
+      // TOKEN_REFRESHED / USER_UPDATED / INITIAL_SESSION → session is still
+      // valid, orgs haven't changed; no need to hit the server again.
     });
     return () => sub?.unsubscribe?.();
   }, []); // intentional: stable Zustand actions + queryClient

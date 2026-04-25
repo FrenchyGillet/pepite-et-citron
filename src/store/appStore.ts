@@ -10,10 +10,11 @@ interface AppStore {
   authLoading: boolean;
 
   // ── Org ───────────────────────────────────────────────────────────────────
-  currentOrg:    Org | null;
-  myOrgs:        Org[];
-  orgsResolved:  boolean;
-  orgsLoadError: boolean;
+  currentOrg:          Org | null;
+  myOrgs:              Org[];
+  orgsResolved:        boolean;
+  orgsLoadError:       boolean;
+  orgsLoadErrorDetail: string | null;
 
   // ── Guest ─────────────────────────────────────────────────────────────────
   guestToken:  string | null;
@@ -33,6 +34,7 @@ interface AppStore {
   setMyOrgs:            (orgs: Org[]) => void;
   setOrgsResolved:      (v: boolean) => void;
   setOrgsLoadError:     (v: boolean) => void;
+  setOrgsLoadErrorDetail: (v: string | null) => void;
   setGuestToken:        (v: string | null) => void;
   setGuestName:         (v: string | null) => void;
   setGuestStatus:       (v: GuestStatus) => void;
@@ -54,6 +56,7 @@ export function resetAppStore() {
     myOrgs: [],
     orgsResolved: DEMO_MODE,
     orgsLoadError: false,
+    orgsLoadErrorDetail: null,
     guestToken: null,
     guestName: null,
     guestStatus: null,
@@ -66,12 +69,13 @@ export function resetAppStore() {
 
 export const useAppStore = create<AppStore>((set, get) => ({
   // Initial state
-  session:          null,
-  authLoading:      !DEMO_MODE,
-  currentOrg:       null,
-  myOrgs:           [],
-  orgsResolved:     DEMO_MODE,
-  orgsLoadError:    false,
+  session:             null,
+  authLoading:         !DEMO_MODE,
+  currentOrg:          null,
+  myOrgs:              [],
+  orgsResolved:        DEMO_MODE,
+  orgsLoadError:       false,
+  orgsLoadErrorDetail: null,
   guestToken:       null,
   guestName:        null,
   guestStatus:      null,
@@ -86,7 +90,8 @@ export const useAppStore = create<AppStore>((set, get) => ({
   setCurrentOrg:       (org) => set({ currentOrg: org }),
   setMyOrgs:           (orgs) => set({ myOrgs: orgs }),
   setOrgsResolved:     (v)   => set({ orgsResolved: v }),
-  setOrgsLoadError:    (v)   => set({ orgsLoadError: v }),
+  setOrgsLoadError:       (v)   => set({ orgsLoadError: v }),
+  setOrgsLoadErrorDetail: (v)   => set({ orgsLoadErrorDetail: v }),
   setGuestToken:       (v)   => set({ guestToken: v }),
   setGuestName:        (v)   => set({ guestName: v }),
   setGuestStatus:      (v)   => set({ guestStatus: v }),
@@ -97,10 +102,12 @@ export const useAppStore = create<AppStore>((set, get) => ({
 
   // ── Async actions ──────────────────────────────────────────────────────────
   loadOrgs: async () => {
-    set({ orgsLoadError: false });
+    set({ orgsLoadError: false, orgsLoadErrorDetail: null });
     try {
       const orgs = await api.getMyOrgs();
-      set({ myOrgs: orgs });
+      // Success — always clear any error flag (the hard-timeout may have set it
+      // while we were still awaiting a slow cold-start wake-up).
+      set({ myOrgs: orgs, orgsLoadError: false, orgsLoadErrorDetail: null });
       if (orgs.length) {
         const currentOrgId = get().currentOrg?.id ?? null;
         const current = orgs.find(o => o.id === currentOrgId) || orgs[0];
@@ -111,8 +118,15 @@ export const useAppStore = create<AppStore>((set, get) => ({
       return null;
     } catch (err) {
       console.error('loadOrgs:', err);
-      set({ orgsLoadError: true });
-      return null;
+      // Only block the UI with an error screen on the very first load.
+      // If we already have orgs from a previous successful fetch (e.g. a
+      // transient failure during a background TOKEN_REFRESHED event), keep
+      // showing the app normally rather than replacing it with an error screen.
+      const alreadyLoaded = get().myOrgs.length > 0;
+      if (!alreadyLoaded) {
+        set({ orgsLoadError: true, orgsLoadErrorDetail: (err as Error).message ?? null });
+      }
+      return get().currentOrg;
     } finally {
       set({ orgsResolved: true });
     }

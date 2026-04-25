@@ -25,7 +25,8 @@ async function withRetry<T>(fn: () => Promise<T>, retries = 2): Promise<T> {
       const error = err instanceof Error ? err : new Error(String(err));
       const isLast       = attempt === retries;
       const isNetworkErr = error.name === 'AbortError' || error.name === 'TypeError'
-        || error.message?.includes('fetch') || error.message?.includes('network');
+        || error.message?.includes('fetch') || error.message?.includes('network')
+        || error.message?.toLowerCase().includes('abort');
       const isClientErr  = /Erreur 4\d\d/.test(error.message);
       if (isLast || isClientErr || !isNetworkErr) throw error;
       await new Promise(r => setTimeout(r, 400 * (attempt + 1)));
@@ -221,30 +222,44 @@ export const realAPI: API = {
     return org;
   },
   getMyOrgs: async (): Promise<Org[]> => {
+    // 1. Try the RPC (fastest path — single round-trip, includes role)
     try {
-      const { data, error } = await rpcWithTimeout(() => supabase.rpc("get_my_orgs"), 4000);
-      if (error) throw new Error(error.message);
-      return (data as Org[]) || [];
+      const { data, error } = await rpcWithTimeout(() => supabase.rpc("get_my_orgs"), 8000);
+      if (!error) return (data as Org[]) || [];
+      // RPC exists but returned a PostgREST error → fall through to REST
+      console.warn("get_my_orgs RPC error, fallback REST:", error.message);
     } catch (rpcErr) {
+      // Timeout / network error / function not found → fall through to REST
       console.warn("get_my_orgs RPC indisponible, fallback REST:", (rpcErr as Error).message);
+    }
+
+    // 2. REST fallback — 1 retry (2 attempts × 10 s = 20 s max), designed to
+    //    fit inside the 30 s hard-timeout in useAuth so a cold-start wake-up has
+    //    a real chance to succeed on the second attempt.
+    return withRetry(async () => {
+      // 2a. Fetch memberships (try with role column, fall back to without)
       let members: Array<{ org_id: string; role?: string }>;
-      try {
-        const { data, error } = await supabase.from("org_members").select("org_id,role");
-        if (error) throw new Error(error.message);
-        members = (data || []) as typeof members;
-      } catch {
-        const { data, error } = await supabase.from("org_members").select("org_id");
-        if (error) throw new Error(error.message);
-        members = (data || []).map((r: { org_id: string }) => ({ org_id: r.org_id, role: "admin" }));
+      const { data: m1, error: e1 } = await supabase.from("org_members").select("org_id,role");
+      if (!e1 && m1) {
+        members = m1 as typeof members;
+      } else {
+        const { data: m2, error: e2 } = await supabase.from("org_members").select("org_id");
+        if (e2) throw new Error(e2.message);
+        members = (m2 || []).map((r: { org_id: string }) => ({ org_id: r.org_id, role: "admin" }));
       }
-      if (!members?.length) return [];
-      const { data: orgs, error: orgsErr } = await supabase.from("organizations").select("*").in("id", members.map(m => m.org_id));
+
+      if (!members.length) return [];
+
+      // 2b. Fetch org details
+      const { data: orgs, error: orgsErr } = await supabase
+        .from("organizations").select("*").in("id", members.map(m => m.org_id));
       if (orgsErr) throw new Error(orgsErr.message);
+
       return members.map(m => {
         const org = (orgs || []).find((o: Org) => o.id === m.org_id);
         return org ? { ...org, role: (m.role || "admin") as 'admin' | 'voter' } as Org : null;
       }).filter((o): o is Org => o != null);
-    }
+    }, 1);   // 1 retry = 2 attempts max
   },
   getMyOrg: async () => {
     const orgs = await realAPI.getMyOrgs();
@@ -266,6 +281,7 @@ export const realAPI: API = {
   removeMember: async (userId, orgId) => {
     const { error } = await supabase.from("org_members").delete().eq("user_id", userId).eq("org_id", orgId);
     if (error) throw new Error(error.message);
+    return true;
   },
   getOrgBySlug: async (slug) => {
     const { data, error } = await supabase.from("organizations").select("*").eq("slug", slug);
