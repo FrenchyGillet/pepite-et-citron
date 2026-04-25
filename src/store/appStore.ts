@@ -2,6 +2,27 @@ import { create } from 'zustand';
 import { api, setCurrentOrgId, DEMO_MODE } from '@/api';
 import type { UserSession, Org, EntityId } from '@/types';
 
+// ── Org cache (localStorage) ──────────────────────────────────────────────────
+// Avoids blocking the UI on slow Supabase cold-starts: on next load the app
+// renders immediately from cache, then silently refreshes in the background.
+const ORGS_CACHE_KEY = 'pepite_orgs_v1';
+interface OrgsCache { orgs: Org[]; currentOrgId: string | null }
+
+function readOrgsCache(): OrgsCache | null {
+  try {
+    const raw = localStorage.getItem(ORGS_CACHE_KEY);
+    if (!raw) return null;
+    return JSON.parse(raw) as OrgsCache;
+  } catch { return null; }
+}
+function writeOrgsCache(orgs: Org[], currentOrgId: string | null) {
+  try { localStorage.setItem(ORGS_CACHE_KEY, JSON.stringify({ orgs, currentOrgId })); }
+  catch { /* quota exceeded or private mode — ignore */ }
+}
+function clearOrgsCache() {
+  try { localStorage.removeItem(ORGS_CACHE_KEY); } catch { /* ignore */ }
+}
+
 export type GuestStatus = 'checking' | 'valid' | 'invalid' | null;
 
 interface AppStore {
@@ -49,6 +70,7 @@ interface AppStore {
 }
 
 export function resetAppStore() {
+  clearOrgsCache();
   useAppStore.setState({
     session: null,
     authLoading: !DEMO_MODE,
@@ -103,6 +125,22 @@ export const useAppStore = create<AppStore>((set, get) => ({
   // ── Async actions ──────────────────────────────────────────────────────────
   loadOrgs: async () => {
     set({ orgsLoadError: false, orgsLoadErrorDetail: null });
+
+    // ── 1. Restore from cache immediately (instant UI, even on cold start) ──
+    const cached = readOrgsCache();
+    let restoredFromCache = false;
+    if (cached?.orgs.length) {
+      const cachedCurrent = cached.orgs.find(o => o.id === cached.currentOrgId) || cached.orgs[0];
+      set({
+        myOrgs: cached.orgs,
+        currentOrg: cachedCurrent,
+        orgsResolved: true,       // unblock the UI right now
+      });
+      setCurrentOrgId(cachedCurrent.id);
+      restoredFromCache = true;
+    }
+
+    // ── 2. Fetch from server (blocking if no cache, background if cache hit) ─
     try {
       const orgs = await api.getMyOrgs();
       // Success — always clear any error flag (the hard-timeout may have set it
@@ -113,20 +151,22 @@ export const useAppStore = create<AppStore>((set, get) => ({
         const current = orgs.find(o => o.id === currentOrgId) || orgs[0];
         set({ currentOrg: current });
         setCurrentOrgId(current.id);
+        writeOrgsCache(orgs, current.id);   // persist for next load
         return current;
       }
+      writeOrgsCache([], null);
       return null;
     } catch (err) {
       console.error('loadOrgs:', err);
-      // Only block the UI with an error screen on the very first load.
-      // If we already have orgs from a previous successful fetch (e.g. a
-      // transient failure during a background TOKEN_REFRESHED event), keep
-      // showing the app normally rather than replacing it with an error screen.
-      const alreadyLoaded = get().myOrgs.length > 0;
-      if (!alreadyLoaded) {
-        set({ orgsLoadError: true, orgsLoadErrorDetail: (err as Error).message ?? null });
+      if (restoredFromCache) {
+        // Already showing the app from cache — swallow the error silently so
+        // the user isn't interrupted by a network hiccup or slow cold-start.
+        console.warn('loadOrgs: server refresh failed, keeping cached data');
+        return get().currentOrg;
       }
-      return get().currentOrg;
+      // No cache and no server — only show the error screen as last resort.
+      set({ orgsLoadError: true, orgsLoadErrorDetail: (err as Error).message ?? null });
+      return null;
     } finally {
       set({ orgsResolved: true });
     }
@@ -134,7 +174,8 @@ export const useAppStore = create<AppStore>((set, get) => ({
 
   signOut: async () => {
     await api.signOut();
-    set({ session: null, currentOrg: null });
+    clearOrgsCache();
+    set({ session: null, currentOrg: null, myOrgs: [] });
     setCurrentOrgId(null);
   },
 }));
