@@ -32,10 +32,9 @@ export function useActiveMatch(orgId?: string | null) {
     queryKey: queryKeys.activeMatch(orgId),
     queryFn: () => api.getActiveMatch(),
     enabled: orgEnabled(orgId),
-    refetchInterval: (query) => {
-      const match = query.state.data;
-      return (match?.is_open || match?.phase === 'counting') ? 5_000 : false;
-    },
+    // No refetchInterval — Realtime (useRealtime hook) invalidates this query
+    // whenever a match row changes.  staleTime: 0 (default) ensures a full
+    // refetch on window-focus as a lightweight safety net.
   });
 }
 
@@ -53,7 +52,8 @@ export function useVotes(matchId: EntityId | null | undefined) {
     queryKey: queryKeys.votes(matchId),
     queryFn: () => api.getVotes(matchId!),
     enabled: matchId != null,
-    refetchInterval: 5_000,
+    // No refetchInterval — Realtime (useRealtime hook) invalidates this query
+    // on every new INSERT into the votes table for the current match.
   });
 }
 

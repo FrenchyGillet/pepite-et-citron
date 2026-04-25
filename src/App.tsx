@@ -15,6 +15,7 @@ import { useAuth }           from '@/hooks/useAuth';
 import { useGuest }          from '@/hooks/useGuest';
 import { useTheme }          from '@/hooks/useTheme';
 import { useLastMatch }      from '@/hooks/useLastMatch';
+import { useRealtime }       from '@/hooks/useRealtime';
 import { usePlayers }        from '@/hooks/queries';
 import { useAppStore }       from '@/store/appStore';
 import { useSearchParams }   from 'react-router-dom';
@@ -81,6 +82,9 @@ export default function App() {
   // ── Server state ────────────────────────────────────────────────────────
   const { data: players = [] }       = usePlayers(currentOrg?.id);
   const { activeMatch, lastMatch }   = useLastMatch(currentOrg?.id);
+
+  // ── Realtime subscriptions ──────────────────────────────────────────────
+  useRealtime(currentOrg?.id, activeMatch?.id);
 
   // ── Derived ─────────────────────────────────────────────────────────────
   const isAdmin     = DEMO_MODE || (!!session && !!currentOrg && currentOrg.role !== 'voter');
