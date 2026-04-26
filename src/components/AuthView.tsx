@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { api } from '@/api';
+import { OnboardingModal } from '@/components/OnboardingModal';
 import type { UserSession } from '@/types';
 
 interface AuthViewProps {
@@ -9,11 +10,12 @@ interface AuthViewProps {
 type AuthMode = 'login' | 'signup';
 
 export function AuthView({ onAuth }: AuthViewProps) {
-  const [mode,     setMode]     = useState<AuthMode>('login');
-  const [email,    setEmail]    = useState('');
-  const [password, setPassword] = useState('');
-  const [loading,  setLoading]  = useState(false);
-  const [error,    setError]    = useState<string | null>(null);
+  const [mode,      setMode]      = useState<AuthMode>('login');
+  const [email,     setEmail]     = useState('');
+  const [password,  setPassword]  = useState('');
+  const [loading,   setLoading]   = useState(false);
+  const [error,     setError]     = useState<string | null>(null);
+  const [showGuide, setShowGuide] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -108,6 +110,17 @@ export function AuthView({ onAuth }: AuthViewProps) {
       </div>
 
       <div style={{ marginTop: 24, textAlign: 'center', maxWidth: 340 }}>
+        <button
+          onClick={() => setShowGuide(true)}
+          style={{
+            background: 'none', border: 'none', cursor: 'pointer',
+            fontSize: 13, color: 'var(--label3)', marginBottom: 16,
+            textDecoration: 'underline', textDecorationColor: 'var(--label4)',
+            textUnderlineOffset: 3,
+          }}
+        >
+          📖 Comment ça marche ?
+        </button>
         <p style={{ fontSize: 12, color: 'var(--label4)', lineHeight: 1.6 }}>
           Vous souhaitez voter ?{' '}
           <span style={{ color: 'var(--label3)' }}>
@@ -115,6 +128,8 @@ export function AuthView({ onAuth }: AuthViewProps) {
           </span>
         </p>
       </div>
+
+      {showGuide && <OnboardingModal onClose={() => setShowGuide(false)} />}
     </div>
   );
 }
