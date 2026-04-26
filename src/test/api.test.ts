@@ -1,13 +1,12 @@
 import { describe, it, expect, beforeAll, beforeEach } from 'vitest';
 import { http, HttpResponse } from 'msw';
 import { server } from './server';
+import { BASE, AUTH, RPC } from './handlers';
 import {
   realAPI, demoAPI, demoState,
   setCurrentOrgId, __resetDemoState as resetDemo,
 } from '@/api';
 import type { Match } from '@/types';
-
-const BASE = 'https://VOTRE_PROJET.supabase.co/rest/v1';
 
 // ── demoAPI ──────────────────────────────────────────────────────────────────
 // In-memory: no network, no MSW — just state mutation + assertion.
@@ -670,9 +669,6 @@ describe('realAPI', () => {
   });
 
   // ── Auth ──
-
-  const AUTH = 'https://VOTRE_PROJET.supabase.co/auth/v1';
-  const RPC  = `${BASE}/rpc`;
 
   const mockSession = {
     access_token: 'mock', token_type: 'bearer', expires_in: 3600, refresh_token: 'r',
