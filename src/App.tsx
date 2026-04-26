@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Routes, Route, Navigate, useNavigate, useLocation } from 'react-router-dom';
 import { DEMO_MODE, setCurrentOrgId } from '@/api';
 import { GlobalStyle }       from '@/GlobalStyle';
@@ -11,6 +11,9 @@ import { StatsView }         from '@/components/StatsView';
 import { AdminView }         from '@/components/AdminView';
 import { ErrorBoundary }     from '@/components/ErrorBoundary';
 import { OnboardingModal }   from '@/components/OnboardingModal';
+import { AdBanner }          from '@/components/AdBanner';
+import { UpgradeModal }      from '@/components/UpgradeModal';
+import { StatsLockedView }   from '@/components/StatsLockedView';
 import { useAuth }           from '@/hooks/useAuth';
 import { useGuest }          from '@/hooks/useGuest';
 import { useTheme }          from '@/hooks/useTheme';
@@ -57,6 +60,8 @@ export default function App() {
   const location       = useLocation();
   const [searchParams] = useSearchParams();
 
+  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
+
   // ── Bootstrap side-effects ──────────────────────────────────────────────
   const { handleSignOut }  = useAuth();
   useGuest();
@@ -89,6 +94,10 @@ export default function App() {
   // ── Derived ─────────────────────────────────────────────────────────────
   const isAdmin     = DEMO_MODE || (!!session && !!currentOrg && currentOrg.role !== 'voter');
   const isVoterLink = !DEMO_MODE && (searchParams.get('org') || searchParams.get('guest'));
+  const isPro       = DEMO_MODE || currentOrg?.plan === 'pro';
+
+  // Show a one-time success toast after Stripe redirect
+  const upgradeSuccess = searchParams.get('upgrade') === 'success';
 
   // ── Auth gates ──────────────────────────────────────────────────────────
   if (authLoading && !isVoterLink) {
@@ -172,11 +181,11 @@ export default function App() {
   }
 
   // ── Main app ────────────────────────────────────────────────────────────
-  const tabs = [
-    { id: 'vote',    label: 'Vote',      icon: <><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></> },
-    { id: 'results', label: 'Résultats', icon: <path d="M18 20V10M12 20V4M6 20v-6"/> },
-    { id: 'stats',   label: 'Saison',    icon: <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/> },
-    ...(isAdmin ? [{ id: 'admin', label: 'Admin', icon: <><circle cx="12" cy="8" r="4"/><path d="M20 21a8 8 0 10-16 0"/></> }] : []),
+  const tabs: Array<{ id: string; label: string; icon: React.ReactNode; locked: boolean }> = [
+    { id: 'vote',    label: 'Vote',      locked: false, icon: <><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></> },
+    { id: 'results', label: 'Résultats', locked: false, icon: <path d="M18 20V10M12 20V4M6 20v-6"/> },
+    { id: 'stats',   label: 'Saison',    locked: !isPro, icon: <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/> },
+    ...(isAdmin ? [{ id: 'admin', label: 'Admin', locked: false, icon: <><circle cx="12" cy="8" r="4"/><path d="M20 21a8 8 0 10-16 0"></path></> }] : []),
   ];
 
   return (
@@ -185,6 +194,13 @@ export default function App() {
       <div className="app-wrapper">
         <AppHeader />
         {DEMO_MODE && <div className="demo-banner">Mode démo · Configure Supabase pour le multi-device</div>}
+
+        {/* Post-upgrade success banner */}
+        {upgradeSuccess && (
+          <div style={{ background: '#32D74B', color: '#000', textAlign: 'center', padding: '10px 16px', fontSize: 14, fontWeight: 700 }}>
+            🎉 Bienvenue dans Pro ! Toutes les fonctionnalités sont débloquées.
+          </div>
+        )}
 
         <Routes>
           <Route index element={<Navigate to="/vote" replace />} />
@@ -200,10 +216,12 @@ export default function App() {
             </ErrorBoundary>
           } />
           <Route path="/stats" element={
-            <ErrorBoundary label="Saison">
-              <StatsView players={players} activeMatch={activeMatch} isAdmin={isAdmin}
-                orgId={currentOrg?.id} />
-            </ErrorBoundary>
+            isPro
+              ? <ErrorBoundary label="Saison">
+                  <StatsView players={players} activeMatch={activeMatch} isAdmin={isAdmin}
+                    orgId={currentOrg?.id} />
+                </ErrorBoundary>
+              : <StatsLockedView onUpgrade={() => setShowUpgradeModal(true)} />
           } />
           <Route path="/admin" element={
             isAdmin
@@ -228,14 +246,23 @@ export default function App() {
             if (currentOrg?.id) localStorage.setItem(`pepite_onboarded_${currentOrg.id}`, '1');
           }} />
         )}
+        {showUpgradeModal && currentOrg && (
+          <UpgradeModal orgId={currentOrg.id} onClose={() => setShowUpgradeModal(false)} />
+        )}
       </div>
+
+      {/* Ad banner — free orgs only, between content and tab bar */}
+      {!isPro && !isVoterLink && currentOrg && (
+        <AdBanner onUpgradeClick={() => setShowUpgradeModal(true)} />
+      )}
 
       <nav className="tab-bar">
         {tabs.map(t => (
           <button
             key={t.id}
             className={`tab-bar-item ${location.pathname === `/${t.id}` ? 'active' : ''}`}
-            onClick={() => navigate(`/${t.id}`)}
+            onClick={() => t.locked ? setShowUpgradeModal(true) : navigate(`/${t.id}`)}
+            style={t.locked ? { opacity: 0.5 } : undefined}
           >
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" stroke="currentColor">
               {t.icon}

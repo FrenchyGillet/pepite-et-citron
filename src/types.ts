@@ -55,6 +55,7 @@ export interface Org {
   name: string;
   slug: string;
   role?: 'admin' | 'voter' | null;
+  plan?: 'free' | 'pro';
 }
 
 export interface OrgMember {

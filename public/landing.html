@@ -395,6 +395,135 @@
     }
     .pwa-step-text strong { color: var(--label-primary); }
 
+    /* ─── PRICING ─── */
+    #tarifs { background: var(--bg-secondary); }
+    .pricing-toggle {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
+      margin-bottom: 48px;
+    }
+    .pricing-toggle-label {
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--label-secondary);
+      cursor: pointer;
+    }
+    .pricing-toggle-switch {
+      position: relative;
+      width: 48px; height: 28px;
+      background: var(--pepite);
+      border-radius: 14px;
+      cursor: pointer;
+      border: none;
+      outline: none;
+      transition: background .2s;
+      flex-shrink: 0;
+    }
+    .pricing-toggle-switch::after {
+      content: '';
+      position: absolute;
+      top: 3px; left: 3px;
+      width: 22px; height: 22px;
+      background: #fff;
+      border-radius: 50%;
+      transition: transform .2s;
+    }
+    .pricing-toggle-switch.monthly::after { transform: translateX(0); }
+    .pricing-toggle-switch.annual::after  { transform: translateX(20px); }
+    .pricing-badge {
+      background: rgba(255,215,0,0.15);
+      color: var(--pepite);
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: .5px;
+      padding: 3px 8px;
+      border-radius: 20px;
+      border: 1px solid rgba(255,215,0,0.3);
+    }
+    .pricing-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 20px;
+      max-width: 680px;
+      margin: 0 auto;
+    }
+    .pricing-card {
+      background: var(--bg-tertiary);
+      border: 1px solid var(--separator);
+      border-radius: 24px;
+      padding: 32px 28px;
+      position: relative;
+      overflow: hidden;
+    }
+    .pricing-card.pro {
+      border-color: rgba(255,215,0,0.5);
+      background: linear-gradient(145deg, #1a1a00 0%, var(--bg-tertiary) 60%);
+    }
+    .pricing-card.pro::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 3px;
+      background: var(--pepite);
+    }
+    .pricing-plan-name {
+      font-size: 13px;
+      font-weight: 700;
+      letter-spacing: .8px;
+      text-transform: uppercase;
+      color: var(--label-secondary);
+      margin-bottom: 8px;
+    }
+    .pricing-card.pro .pricing-plan-name { color: var(--pepite); }
+    .pricing-price {
+      font-size: 40px;
+      font-weight: 900;
+      letter-spacing: -1.5px;
+      margin-bottom: 4px;
+      line-height: 1;
+    }
+    .pricing-price-sub {
+      font-size: 13px;
+      color: var(--label-secondary);
+      margin-bottom: 28px;
+      min-height: 18px;
+    }
+    .pricing-divider {
+      height: 1px;
+      background: var(--separator);
+      margin-bottom: 20px;
+    }
+    .pricing-feature {
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      font-size: 14px;
+      padding: 5px 0;
+      line-height: 1.4;
+    }
+    .pricing-feature .check { color: var(--citron); flex-shrink: 0; font-size: 15px; }
+    .pricing-feature .cross { color: var(--label-tertiary); flex-shrink: 0; font-size: 15px; }
+    .pricing-feature .star  { color: var(--pepite); flex-shrink: 0; font-size: 15px; }
+    .pricing-feature-text { color: var(--label-primary); }
+    .pricing-feature-text.muted { color: var(--label-secondary); }
+    .pricing-cta {
+      display: block;
+      margin-top: 28px;
+      padding: 14px;
+      border-radius: 14px;
+      font-size: 15px;
+      font-weight: 700;
+      text-align: center;
+      cursor: pointer;
+      text-decoration: none;
+      transition: opacity .15s, transform .1s;
+    }
+    .pricing-cta:hover { opacity: .88; transform: translateY(-1px); }
+    .pricing-cta.free { background: var(--bg-secondary); color: var(--label-primary); border: 1px solid var(--separator); }
+    .pricing-cta.pro  { background: var(--pepite); color: #000; border: none; }
+
     /* ─── FOOTER ─── */
     footer {
       border-top: 1px solid var(--separator);
@@ -446,12 +575,15 @@
   <div class="nav-logo">
     <span class="star">⭐</span> Pépite <span style="color:var(--label-tertiary);">&</span> <span class="lemon">🍋</span> Citron
   </div>
-  <a href="/" class="nav-cta">Lancer l'app →</a>
+  <div style="display:flex;gap:10px;align-items:center">
+    <a href="#tarifs" style="font-size:14px;font-weight:600;color:var(--label-secondary);text-decoration:none">Tarifs</a>
+    <a href="/" class="nav-cta">Lancer l'app →</a>
+  </div>
 </nav>
 
 <!-- HERO -->
 <section class="hero">
-  <div class="hero-badge">Vote · Résultats en temps réel · Stats de saison</div>
+  <div class="hero-badge">Gratuit · Pro dès 12,99 €/an</div>
   <h1>
     La <span class="highlight-pepite">⭐ pépite</span><br>
     et le <span class="highlight-citron">🍋 citron</span><br>
@@ -462,7 +594,7 @@
   </p>
   <div class="hero-cta-group">
     <a href="/" class="btn-primary">Commencer à voter</a>
-    <a href="#comment-ca-marche" class="btn-secondary">Comment ça marche</a>
+    <a href="#tarifs" class="btn-secondary">Voir les tarifs</a>
   </div>
 </section>
 <div class="tagline-strip">"Aucun joueur n'a été blessé lors de la création de cette app. (Sauf leur ego.)"</div>
@@ -591,6 +723,87 @@
   </div>
 </section>
 
+<!-- PRICING -->
+<section id="tarifs">
+  <div class="section-inner">
+    <div class="section-tag">Tarifs</div>
+    <h2 class="section-title">Simple. Transparent. Sans surprise.</h2>
+    <p class="section-desc">Commencez gratuitement, passez Pro quand votre équipe est accro aux stats.</p>
+
+    <!-- Billing toggle -->
+    <div class="pricing-toggle">
+      <span class="pricing-toggle-label" id="label-monthly">Mensuel</span>
+      <button class="pricing-toggle-switch annual" id="billing-toggle" onclick="toggleBilling()" aria-label="Basculer facturation"></button>
+      <span class="pricing-toggle-label" id="label-annual" style="color:var(--label-primary)">Annuel</span>
+      <span class="pricing-badge">− 63 %</span>
+    </div>
+
+    <div class="pricing-grid">
+
+      <!-- FREE -->
+      <div class="pricing-card">
+        <div class="pricing-plan-name">Gratuit</div>
+        <div class="pricing-price">0 €</div>
+        <div class="pricing-price-sub">Pour toujours</div>
+        <div class="pricing-divider"></div>
+        <div class="pricing-feature"><span class="check">✓</span><span class="pricing-feature-text">Vote illimité après chaque match</span></div>
+        <div class="pricing-feature"><span class="check">✓</span><span class="pricing-feature-text">Résultats en temps réel</span></div>
+        <div class="pricing-feature"><span class="check">✓</span><span class="pricing-feature-text">Liens invité pour les coéquipiers</span></div>
+        <div class="pricing-feature"><span class="check">✓</span><span class="pricing-feature-text">Vote anonyme &amp; sécurisé</span></div>
+        <div class="pricing-divider"></div>
+        <div class="pricing-feature"><span class="cross">✕</span><span class="pricing-feature-text muted">Statistiques de saison</span></div>
+        <div class="pricing-feature"><span class="cross">✕</span><span class="pricing-feature-text muted">Historique complet des matchs</span></div>
+        <div class="pricing-feature"><span class="cross">✕</span><span class="pricing-feature-text muted">Sans publicité</span></div>
+        <a href="/" class="pricing-cta free">Commencer gratuitement</a>
+      </div>
+
+      <!-- PRO -->
+      <div class="pricing-card pro">
+        <div class="pricing-plan-name">Pro ⭐</div>
+        <div class="pricing-price" id="price-display">12,99 €</div>
+        <div class="pricing-price-sub" id="price-sub">par an · soit 1,08 €/mois</div>
+        <div class="pricing-divider"></div>
+        <div class="pricing-feature"><span class="check">✓</span><span class="pricing-feature-text">Tout du plan gratuit</span></div>
+        <div class="pricing-feature"><span class="star">⭐</span><span class="pricing-feature-text"><strong>Statistiques de saison complètes</strong></span></div>
+        <div class="pricing-feature"><span class="star">⭐</span><span class="pricing-feature-text"><strong>Historique de tous vos matchs</strong></span></div>
+        <div class="pricing-feature"><span class="star">⭐</span><span class="pricing-feature-text"><strong>Sans publicité</strong></span></div>
+        <div class="pricing-feature"><span class="star">⭐</span><span class="pricing-feature-text">Support prioritaire</span></div>
+        <a href="/" class="pricing-cta pro" id="pro-cta">Passer Pro — 12,99 €/an →</a>
+        <div style="text-align:center;font-size:11px;color:var(--label-tertiary);margin-top:10px">Résiliation en un clic · Paiement sécurisé Stripe</div>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<script>
+  var isAnnual = true;
+  function toggleBilling() {
+    isAnnual = !isAnnual;
+    var toggle  = document.getElementById('billing-toggle');
+    var price   = document.getElementById('price-display');
+    var sub     = document.getElementById('price-sub');
+    var cta     = document.getElementById('pro-cta');
+    var lAnnual = document.getElementById('label-annual');
+    var lMonthly= document.getElementById('label-monthly');
+    if (isAnnual) {
+      toggle.className  = 'pricing-toggle-switch annual';
+      price.textContent = '12,99 €';
+      sub.textContent   = 'par an · soit 1,08 €/mois';
+      cta.textContent   = 'Passer Pro — 12,99 €/an →';
+      lAnnual.style.color  = 'var(--label-primary)';
+      lMonthly.style.color = 'var(--label-secondary)';
+    } else {
+      toggle.className  = 'pricing-toggle-switch monthly';
+      price.textContent = '2,99 €';
+      sub.textContent   = 'par mois';
+      cta.textContent   = 'Passer Pro — 2,99 €/mois →';
+      lAnnual.style.color  = 'var(--label-secondary)';
+      lMonthly.style.color = 'var(--label-primary)';
+    }
+  }
+</script>
+
 <!-- PWA INSTALL -->
 <section id="installer">
   <div class="section-inner">
@@ -671,6 +884,7 @@
   <div class="footer-links">
     <a href="/">Ouvrir l'app</a>
     <a href="#comment-ca-marche">Comment ça marche</a>
+    <a href="#tarifs">Tarifs</a>
     <a href="#occasions">Occasions</a>
     <a href="#installer">Installer</a>
   </div>
