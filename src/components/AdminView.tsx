@@ -1,5 +1,9 @@
 import { useState } from 'react';
 import { DEMO_MODE } from '@/api';
+import {
+  playerNameSchema, matchLabelSchema, teamNameSchema,
+  guestNameSchema, memberEmailSchema,
+} from '@/schemas';
 import { shuffleRevealOrder } from '@/utils/vote';
 import { Toast } from './Toast';
 import { useTeams, useGuestTokens, useOrgMembers, useVotes, useCurrentSeason, useSeasonNames } from '@/hooks/queries';
@@ -40,6 +44,13 @@ export function AdminView({ players, activeMatch, currentOrg, onSignOut, onShowG
   const [memberEmail,     setMemberEmail]     = useState('');
   const [pepiteCount,     setPepiteCount]     = useState<2 | 3>(2);
 
+  // Validation errors (Zod safeParse)
+  const [playerError,  setPlayerError]  = useState<string | null>(null);
+  const [matchError,   setMatchError]   = useState<string | null>(null);
+  const [teamError,    setTeamError]    = useState<string | null>(null);
+  const [guestError,   setGuestError]   = useState<string | null>(null);
+  const [memberError,  setMemberError]  = useState<string | null>(null);
+
   const { data: teams         = [] } = useTeams(currentOrg?.id);
   const { data: guestTokens   = [] } = useGuestTokens(activeMatch?.id);
   const { data: members       = [] } = useOrgMembers(currentOrg?.id);
@@ -64,8 +75,11 @@ export function AdminView({ players, activeMatch, currentOrg, onSignOut, onShowG
   const setSeasonNameMutation    = useSetSeasonName();
 
   const handleAddMember = () => {
-    if (!memberEmail.trim() || !currentOrg?.id) return;
-    const email = memberEmail.trim();
+    if (!currentOrg?.id) return;
+    const result = memberEmailSchema.safeParse({ email: memberEmail });
+    if (!result.success) { setMemberError(result.error.issues[0].message); return; }
+    setMemberError(null);
+    const { email } = result.data;
     addMemberMutation.mutate({ email, role: 'voter' }, {
       onSuccess: () => { setMemberEmail(''); setToast(`${email} ajouté comme votant`); },
       onError: (err) => setToast(`Erreur : ${err instanceof Error ? err.message : String(err)}`),
@@ -81,8 +95,11 @@ export function AdminView({ players, activeMatch, currentOrg, onSignOut, onShowG
   };
 
   const createGuestLink = () => {
-    if (!guestInput.trim() || !activeMatch) return;
-    const name = guestInput.trim();
+    if (!activeMatch) return;
+    const result = guestNameSchema.safeParse({ name: guestInput });
+    if (!result.success) { setGuestError(result.error.issues[0].message); return; }
+    setGuestError(null);
+    const { name } = result.data;
     createGuestTokenMutation.mutate({ name, id: activeMatch.id }, {
       onSuccess: () => { setGuestInput(''); setToast(`Lien créé pour ${name}`); },
     });
@@ -98,8 +115,10 @@ export function AdminView({ players, activeMatch, currentOrg, onSignOut, onShowG
   const revokeGuest = (id: EntityId) => deleteGuestTokenMutation.mutate(id);
 
   const addPlayer = () => {
-    if (!newPlayer.trim()) return;
-    const name = newPlayer.trim();
+    const result = playerNameSchema.safeParse({ name: newPlayer });
+    if (!result.success) { setPlayerError(result.error.issues[0].message); return; }
+    setPlayerError(null);
+    const { name } = result.data;
     addPlayerMutation.mutate(name, {
       onSuccess: () => { setToast(`${name} ajouté`); setNewPlayer(''); },
       onError: (err) => { setToast(`Erreur : ${err instanceof Error ? err.message : String(err)}`); console.error('addPlayer:', err); },
@@ -136,9 +155,12 @@ export function AdminView({ players, activeMatch, currentOrg, onSignOut, onShowG
   };
 
   const createMatch = () => {
-    if (!matchLabel.trim() || presentIds.length < 2) return;
+    const result = matchLabelSchema.safeParse({ label: matchLabel });
+    if (!result.success) { setMatchError(result.error.issues[0].message); return; }
+    if (presentIds.length < 2) return;
+    setMatchError(null);
     createMatchMutation.mutate(
-      { label: matchLabel.trim(), presentIds, teamId: selectedTeamId, season: currentSeason, pepiteCount },
+      { label: result.data.label, presentIds, teamId: selectedTeamId, season: currentSeason, pepiteCount },
       {
         onSuccess: () => {
           setMatchLabel(''); setPresentIds([]); setSelectedTeamId(null);
@@ -163,9 +185,12 @@ export function AdminView({ players, activeMatch, currentOrg, onSignOut, onShowG
   };
 
   const saveTeam = () => {
-    if (!teamName.trim() || teamIds.length < 2) return;
+    const result = teamNameSchema.safeParse({ name: teamName });
+    if (!result.success) { setTeamError(result.error.issues[0].message); return; }
+    if (teamIds.length < 2) return;
+    setTeamError(null);
     createTeamMutation.mutate(
-      { name: teamName.trim(), playerIds: teamIds },
+      { name: result.data.name, playerIds: teamIds },
       {
         onSuccess: () => { setTeamName(''); setTeamIds([]); setToast('Équipe sauvegardée !'); },
       }
@@ -330,7 +355,9 @@ export function AdminView({ players, activeMatch, currentOrg, onSignOut, onShowG
         <div className="group" style={{ padding: '14px 16px' }}>
           <p style={{ fontSize: 13, color: 'var(--label3)', marginBottom: 8 }}>Nom du match ou de l'adversaire</p>
           <input placeholder="ex : vs Dragons, Entraînement…" value={matchLabel}
-            onChange={e => setMatchLabel(e.target.value)} style={{ marginBottom: 16 }} />
+            onChange={e => { setMatchLabel(e.target.value); setMatchError(null); }}
+            style={{ marginBottom: matchError ? 4 : 16, borderColor: matchError ? '#ff6b6b' : undefined }} />
+          {matchError && <p style={{ fontSize: 12, color: '#ff6b6b', marginBottom: 12 }}>{matchError}</p>}
 
           {teams.length > 0 && (
             <>
@@ -437,13 +464,15 @@ export function AdminView({ players, activeMatch, currentOrg, onSignOut, onShowG
               ))}
             </div>
           )}
-          <div className="flex gap-8" style={{ marginBottom: 4 }}>
+          <div className="flex gap-8" style={{ marginBottom: guestError ? 4 : 4 }}>
             <input placeholder="Prénom du supporter" value={guestInput}
-              onChange={e => setGuestInput(e.target.value)}
-              onKeyDown={e => e.key === 'Enter' && createGuestLink()} />
+              onChange={e => { setGuestInput(e.target.value); setGuestError(null); }}
+              onKeyDown={e => e.key === 'Enter' && createGuestLink()}
+              style={{ borderColor: guestError ? '#ff6b6b' : undefined }} />
             <button className="btn btn-primary" style={{ whiteSpace: 'nowrap', padding: '12px 16px' }}
               onClick={createGuestLink}>Créer</button>
           </div>
+          {guestError && <p style={{ fontSize: 12, color: '#ff6b6b', marginBottom: 4 }}>{guestError}</p>}
         </>
       )}
 
@@ -478,7 +507,9 @@ export function AdminView({ players, activeMatch, currentOrg, onSignOut, onShowG
         <div className="group" style={{ padding: '14px 16px', marginBottom: 4 }}>
           <p style={{ fontSize: 13, color: 'var(--label3)', marginBottom: 8 }}>Nom de l'équipe</p>
           <input placeholder="ex : Équipe A, Jeudi soir…" value={teamName}
-            onChange={e => setTeamName(e.target.value)} style={{ marginBottom: 16 }} />
+            onChange={e => { setTeamName(e.target.value); setTeamError(null); }}
+            style={{ marginBottom: teamError ? 4 : 16, borderColor: teamError ? '#ff6b6b' : undefined }} />
+          {teamError && <p style={{ fontSize: 12, color: '#ff6b6b', marginBottom: 12 }}>{teamError}</p>}
           <div className="flex-between" style={{ marginBottom: 8 }}>
             <p style={{ fontSize: 13, color: 'var(--label3)' }}>
               Joueurs à inclure
@@ -533,13 +564,15 @@ export function AdminView({ players, activeMatch, currentOrg, onSignOut, onShowG
       </button>
       {playersOpen && (
         <>
-          <div className="flex gap-8" style={{ marginBottom: 12 }}>
+          <div className="flex gap-8" style={{ marginBottom: playerError ? 4 : 12 }}>
             <input placeholder="Prénom du joueur" value={newPlayer}
-              onChange={e => setNewPlayer(e.target.value)}
-              onKeyDown={e => e.key === 'Enter' && addPlayer()} />
+              onChange={e => { setNewPlayer(e.target.value); setPlayerError(null); }}
+              onKeyDown={e => e.key === 'Enter' && addPlayer()}
+              style={{ borderColor: playerError ? '#ff6b6b' : undefined }} />
             <button className="btn btn-primary" style={{ whiteSpace: 'nowrap', padding: '12px 16px' }}
               onClick={addPlayer}>Ajouter</button>
           </div>
+          {playerError && <p style={{ fontSize: 12, color: '#ff6b6b', marginBottom: 12 }}>{playerError}</p>}
           <div className="group">
             {players.length === 0
               ? <div className="row"><span style={{ color: 'var(--label3)', fontSize: 14 }}>Aucun joueur. Commence par en ajouter un ci-dessus.</span></div>
@@ -621,20 +654,22 @@ export function AdminView({ players, activeMatch, currentOrg, onSignOut, onShowG
               ))}
             </div>
           )}
-          <div className="flex gap-8" style={{ marginBottom: 24 }}>
+          <div className="flex gap-8" style={{ marginBottom: memberError ? 4 : 24 }}>
             <input
               placeholder="Email du votant"
               value={memberEmail}
               type="email"
-              onChange={e => setMemberEmail(e.target.value)}
+              onChange={e => { setMemberEmail(e.target.value); setMemberError(null); }}
               onKeyDown={e => e.key === 'Enter' && handleAddMember()}
+              style={{ borderColor: memberError ? '#ff6b6b' : undefined }}
             />
             <button className="btn btn-primary" style={{ whiteSpace: 'nowrap', padding: '12px 16px' }}
-              disabled={!memberEmail.trim() || addMemberMutation.isPending}
+              disabled={addMemberMutation.isPending}
               onClick={handleAddMember}>
               {addMemberMutation.isPending ? '…' : 'Inviter'}
             </button>
           </div>
+          {memberError && <p style={{ fontSize: 12, color: '#ff6b6b', marginBottom: 20 }}>{memberError}</p>}
         </>
       )}
     </div>

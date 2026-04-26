@@ -1,5 +1,8 @@
-import { useState } from 'react';
+import { useEffect } from 'react';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
 import { api } from '@/api';
+import { orgSetupSchema, type OrgSetupFormValues } from '@/schemas';
 import type { Org } from '@/types';
 
 interface OrgSetupViewProps {
@@ -10,48 +13,55 @@ interface OrgSetupViewProps {
 function toSlug(str: string): string {
   return str
     .toLowerCase()
-    .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+    .normalize('NFD').replace(/[̀-ͯ]/g, '')
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/^-+|-+$/g, '')
     .slice(0, 40);
 }
 
+const FieldError = ({ msg }: { msg?: string }) =>
+  msg ? <p style={{ fontSize: 12, color: '#ff6b6b', marginTop: 4 }}>{msg}</p> : null;
+
 export function OrgSetupView({ onOrgCreated, userEmail }: OrgSetupViewProps) {
-  const [name,        setName]        = useState('');
-  const [slug,        setSlug]        = useState('');
-  const [loading,     setLoading]     = useState(false);
-  const [error,       setError]       = useState<string | null>(null);
-  const [slugEdited,  setSlugEdited]  = useState(false);
+  const {
+    register,
+    handleSubmit,
+    watch,
+    setValue,
+    setError,
+    formState: { errors, isSubmitting },
+  } = useForm<OrgSetupFormValues>({
+    resolver: zodResolver(orgSetupSchema),
+    defaultValues: { name: '', slug: '' },
+  });
 
-  const handleNameChange = (val: string) => {
-    setName(val);
-    if (!slugEdited) setSlug(toSlug(val));
-  };
+  // Auto-derive slug from name unless the user has manually edited it
+  const name = watch('name');
+  const slug = watch('slug');
 
-  const handleSlugChange = (val: string) => {
-    setSlug(toSlug(val));
-    setSlugEdited(true);
-  };
+  useEffect(() => {
+    // Only auto-fill when the slug still matches what toSlug(name) would produce
+    // (i.e. the user hasn't manually diverged it)
+    const derived = toSlug(name ?? '');
+    if (slug === '' || slug === toSlug(name?.slice(0, -1) ?? '')) {
+      setValue('slug', derived, { shouldValidate: false });
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [name]);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!name.trim() || !slug.trim()) return;
-    setError(null);
-    setLoading(true);
+  const onSubmit = handleSubmit(async (data) => {
     try {
-      const org = await api.createOrg(name.trim(), slug.trim());
+      const org = await api.createOrg(data.name.trim(), data.slug.trim());
       onOrgCreated(org);
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Erreur lors de la création';
       if (msg.includes('unique') || msg.includes('duplicate')) {
-        setError('Ce slug est déjà pris. Choisissez-en un autre.');
+        setError('slug', { message: 'Cet identifiant est déjà pris. Choisissez-en un autre.' });
       } else {
-        setError(msg);
+        setError('root', { message: msg });
       }
-    } finally {
-      setLoading(false);
     }
-  };
+  });
 
   return (
     <div style={{
@@ -77,47 +87,59 @@ export function OrgSetupView({ onOrgCreated, userEmail }: OrgSetupViewProps) {
           </div>
         </div>
 
-        <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+        <form onSubmit={onSubmit} noValidate style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
           <div>
             <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--label3)', display: 'block', marginBottom: 6 }}>
               Nom de l'équipe
             </label>
             <input
-              value={name} onChange={e => handleNameChange(e.target.value)}
               placeholder="ex : HC Montréal Rive-Sud"
-              required maxLength={60}
-              style={{ width: '100%', boxSizing: 'border-box' }}
+              style={{ width: '100%', boxSizing: 'border-box', borderColor: errors.name ? '#ff6b6b' : undefined }}
+              {...register('name')}
             />
+            <FieldError msg={errors.name?.message} />
           </div>
 
           <div>
             <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--label3)', display: 'block', marginBottom: 6 }}>
-              Identifiant unique <span style={{ fontWeight: 400, color: 'var(--label4)' }}>(dans l'URL de vote)</span>
+              Identifiant unique{' '}
+              <span style={{ fontWeight: 400, color: 'var(--label4)' }}>(dans l'URL de vote)</span>
             </label>
             <input
-              value={slug} onChange={e => handleSlugChange(e.target.value)}
-              placeholder="hc-montreal" required maxLength={40}
-              style={{ width: '100%', boxSizing: 'border-box' }}
+              placeholder="hc-montreal"
+              style={{ width: '100%', boxSizing: 'border-box', borderColor: errors.slug ? '#ff6b6b' : undefined }}
+              {...register('slug', {
+                onChange: e => {
+                  // Keep only valid slug chars as the user types
+                  e.target.value = toSlug(e.target.value);
+                },
+              })}
             />
-            {slug && (
+            {slug && !errors.slug && (
               <p style={{ fontSize: 11, color: 'var(--label4)', marginTop: 6 }}>
-                Lien de vote : <span style={{ color: 'var(--label3)' }}>{window.location.origin}/?org={slug}</span>
+                Lien de vote :{' '}
+                <span style={{ color: 'var(--label3)' }}>{window.location.origin}/?org={slug}</span>
               </p>
             )}
+            <FieldError msg={errors.slug?.message} />
           </div>
 
-          {error && (
+          {errors.root && (
             <div style={{
               background: 'rgba(255,80,80,.12)', border: '1px solid rgba(255,80,80,.3)',
               borderRadius: 'var(--radius-sm)', padding: '10px 12px',
               fontSize: 13, color: '#ff6b6b',
             }}>
-              {error}
+              {errors.root.message}
             </div>
           )}
 
-          <button type="submit" className="btn btn-primary" disabled={loading || !name.trim() || !slug.trim()}>
-            {loading ? 'Création…' : "Créer l'équipe →"}
+          <button
+            type="submit"
+            className="btn btn-primary"
+            disabled={isSubmitting}
+          >
+            {isSubmitting ? 'Création…' : "Créer l'équipe →"}
           </button>
         </form>
       </div>

@@ -1,5 +1,7 @@
 import { useState } from 'react';
+import { useForm } from 'react-hook-form';
 import { api } from '@/api';
+import { loginSchema, signupSchema, type AuthFormValues } from '@/schemas';
 import { OnboardingModal } from '@/components/OnboardingModal';
 import type { UserSession } from '@/types';
 
@@ -9,32 +11,54 @@ interface AuthViewProps {
 
 type AuthMode = 'login' | 'signup';
 
+const FieldError = ({ msg }: { msg?: string }) =>
+  msg ? <p style={{ fontSize: 12, color: '#ff6b6b', marginTop: 4 }}>{msg}</p> : null;
+
 export function AuthView({ onAuth }: AuthViewProps) {
   const [mode,      setMode]      = useState<AuthMode>('login');
-  const [email,     setEmail]     = useState('');
-  const [password,  setPassword]  = useState('');
-  const [loading,   setLoading]   = useState(false);
-  const [error,     setError]     = useState<string | null>(null);
+  const [apiError,  setApiError]  = useState<string | null>(null);
   const [showGuide, setShowGuide] = useState(false);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError(null);
-    setLoading(true);
+  const {
+    register,
+    handleSubmit,
+    setError,
+    clearErrors,
+    reset,
+    formState: { errors, isSubmitting },
+  } = useForm<AuthFormValues>();
+
+  const switchMode = (next: AuthMode) => {
+    setMode(next);
+    setApiError(null);
+    reset();
+    clearErrors();
+  };
+
+  const onSubmit = handleSubmit(async (data) => {
+    // Validate with mode-appropriate schema
+    const schema = mode === 'signup' ? signupSchema : loginSchema;
+    const result = schema.safeParse(data);
+    if (!result.success) {
+      result.error.issues.forEach(({ path, message }) => {
+        setError(path[0] as keyof AuthFormValues, { message });
+      });
+      return;
+    }
+
+    setApiError(null);
     try {
       if (mode === 'signup') {
-        await api.signUp(email, password);
+        await api.signUp(data.email, data.password);
       } else {
-        await api.signIn(email, password);
+        await api.signIn(data.email, data.password);
       }
       const session = await api.getSession();
       if (session) onAuth(session);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Une erreur est survenue');
-    } finally {
-      setLoading(false);
+      setApiError(err instanceof Error ? err.message : 'Une erreur est survenue');
     }
-  };
+  });
 
   return (
     <div style={{
@@ -54,9 +78,10 @@ export function AuthView({ onAuth }: AuthViewProps) {
       </div>
 
       <div style={{ width: '100%', maxWidth: 380, background: 'var(--bg2)', borderRadius: 'var(--radius-lg)', padding: 24 }}>
+        {/* Mode toggle */}
         <div style={{ display: 'flex', gap: 4, marginBottom: 24, background: 'var(--bg3)', borderRadius: 'var(--radius-sm)', padding: 4 }}>
           {([{ id: 'login', label: 'Se connecter' }, { id: 'signup', label: 'Créer un compte' }] as const).map(t => (
-            <button key={t.id} onClick={() => { setMode(t.id); setError(null); }} style={{
+            <button key={t.id} onClick={() => switchMode(t.id)} style={{
               flex: 1, padding: '8px 0', borderRadius: 'var(--radius-sm)', border: 'none',
               fontSize: 13, fontWeight: 600, cursor: 'pointer',
               background: mode === t.id ? 'var(--bg)' : 'transparent',
@@ -66,42 +91,47 @@ export function AuthView({ onAuth }: AuthViewProps) {
           ))}
         </div>
 
-        <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+        <form onSubmit={onSubmit} noValidate style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
           <div>
             <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--label3)', display: 'block', marginBottom: 6 }}>
               Adresse email
             </label>
             <input
-              type="email" value={email} onChange={e => setEmail(e.target.value)}
-              placeholder="vous@exemple.com" required autoComplete="email"
-              style={{ width: '100%', boxSizing: 'border-box' }}
+              type="email"
+              autoComplete="email"
+              placeholder="vous@exemple.com"
+              style={{ width: '100%', boxSizing: 'border-box', borderColor: errors.email ? '#ff6b6b' : undefined }}
+              {...register('email')}
             />
+            <FieldError msg={errors.email?.message} />
           </div>
+
           <div>
             <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--label3)', display: 'block', marginBottom: 6 }}>
               Mot de passe
             </label>
             <input
-              type="password" value={password} onChange={e => setPassword(e.target.value)}
+              type="password"
               placeholder={mode === 'signup' ? '8 caractères minimum' : 'Votre mot de passe'}
-              required minLength={mode === 'signup' ? 8 : 1}
               autoComplete={mode === 'signup' ? 'new-password' : 'current-password'}
-              style={{ width: '100%', boxSizing: 'border-box' }}
+              style={{ width: '100%', boxSizing: 'border-box', borderColor: errors.password ? '#ff6b6b' : undefined }}
+              {...register('password')}
             />
+            <FieldError msg={errors.password?.message} />
           </div>
 
-          {error && (
+          {apiError && (
             <div style={{
               background: 'rgba(255,80,80,.12)', border: '1px solid rgba(255,80,80,.3)',
               borderRadius: 'var(--radius-sm)', padding: '10px 12px',
               fontSize: 13, color: '#ff6b6b',
             }}>
-              {error}
+              {apiError}
             </div>
           )}
 
-          <button type="submit" className="btn btn-primary" disabled={loading} style={{ marginTop: 4 }}>
-            {loading
+          <button type="submit" className="btn btn-primary" disabled={isSubmitting} style={{ marginTop: 4 }}>
+            {isSubmitting
               ? (mode === 'signup' ? 'Création…' : 'Connexion…')
               : (mode === 'signup' ? 'Créer mon compte' : 'Se connecter')
             }
