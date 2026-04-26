@@ -423,7 +423,13 @@ export const realAPI: API = {
     return Array.isArray(data) && data.length > 0;
   },
   submitVote: async (vote) => {
-    const { error } = await supabase.from("votes").insert(vote);
+    // Strip undefined fields before insert — optional columns like best3_id /
+    // best3_comment must not appear in the payload when they are absent, or
+    // PostgREST returns "column not found in schema cache".
+    const payload = Object.fromEntries(
+      Object.entries(vote as Record<string, unknown>).filter(([, v]) => v !== undefined),
+    );
+    const { error } = await supabase.from("votes").insert(payload);
     if (!error) return;
     if ((error as { code?: string }).code === '23505'
       || error.message?.includes('409')

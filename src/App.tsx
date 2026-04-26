@@ -76,6 +76,8 @@ export default function App() {
   const orgsLoadErrorDetail = useAppStore(s => s.orgsLoadErrorDetail);
   const showOnboarding   = useAppStore(s => s.showOnboarding);
   const theme            = useAppStore(s => s.theme);
+  const guestStatus      = useAppStore(s => s.guestStatus);
+  const guestToken       = useAppStore(s => s.guestToken);
   const setSession       = useAppStore(s => s.setSession);
   const setCurrentOrg    = useAppStore(s => s.setCurrentOrg);
   const setMyOrgs        = useAppStore(s => s.setMyOrgs);
@@ -92,9 +94,19 @@ export default function App() {
   useRealtime(currentOrg?.id, activeMatch?.id);
 
   // ── Derived ─────────────────────────────────────────────────────────────
-  const isAdmin     = DEMO_MODE || (!!session && !!currentOrg && currentOrg.role !== 'voter');
-  const isVoterLink = !DEMO_MODE && (searchParams.get('org') || searchParams.get('guest'));
-  const isPro       = DEMO_MODE || currentOrg?.plan === 'pro';
+  const isAdmin = DEMO_MODE || (!!session && !!currentOrg && currentOrg.role !== 'voter');
+  const isPro   = DEMO_MODE || currentOrg?.plan === 'pro';
+
+  // isVoterLink must remain true even AFTER useGuest calls navigate('/vote'),
+  // which strips ?guest= from the URL. We therefore also check the store state
+  // (guestToken set → 'valid', guestStatus 'checking' → validation in progress,
+  //  guestStatus 'invalid' → bad token but still shouldn't show the auth screen).
+  const isVoterLink = !DEMO_MODE && (
+    !!searchParams.get('org')   ||
+    !!searchParams.get('guest') ||
+    guestStatus !== null        ||   // covers 'checking' / 'valid' / 'invalid'
+    !!guestToken
+  );
 
   // Show a one-time success toast after Stripe redirect
   const upgradeSuccess = searchParams.get('upgrade') === 'success';
