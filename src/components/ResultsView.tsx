@@ -202,19 +202,47 @@ export function ResultsView({ players, match, isAdmin, isDark, orgId }: ResultsV
     updateMatchMutation.mutate({ id: match.id, data: { tiebreakers: { ...tiebreakers, [field]: playerId } } });
   };
 
-  const TiebreakerCard = ({ title, color, field, tiedPlayers }: TiebreakerCardProps) => (
+  // ── Tiebreaker sequencing ─────────────────────────────────────────────────
+  // Show tiebreakers one at a time (Pépite first, then Citron) so the admin
+  // cannot miss the second one. The podium is hidden until all ties are resolved,
+  // otherwise resolving the first tie makes the podium look "final" and the
+  // second tiebreaker card goes unnoticed.
+  const totalTies    = (bestTied  ? 1 : 0) + (lemonTied  ? 1 : 0);
+  const resolvedTies = (tiebreakers.best_id  ? 1 : 0) + (tiebreakers.lemon_id ? 1 : 0);
+  const pendingBest  = isAdmin && bestTied  && !tiebreakers.best_id;
+  const pendingLemon = isAdmin && lemonTied && !tiebreakers.lemon_id;
+  // Show Pépite first; show Citron only once Pépite is resolved (or not tied)
+  const showBestCard  = pendingBest;
+  const showLemonCard = pendingLemon && !pendingBest;
+  const hasPendingTie = pendingBest || pendingLemon;
+
+  const TiebreakerCard = ({ title, color, field, tiedPlayers, step }: TiebreakerCardProps & { step?: string }) => (
     <div style={{
       background: color === 'gold' ? 'rgba(255,214,10,0.06)' : 'rgba(170,221,0,0.06)',
       border: `1px solid ${color === 'gold' ? 'var(--gold-dim)' : 'var(--lemon-dim)'}`,
       borderRadius: 'var(--radius-lg)', padding: '16px', marginBottom: 12,
     }}>
-      <div style={{ fontSize: 15, fontWeight: 700, marginBottom: 4 }}>🍺 Égalité — {title}</div>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+        <div style={{ fontSize: 15, fontWeight: 700 }}>🍺 Égalité — {title}</div>
+        {step && (
+          <span style={{
+            fontSize: 11, fontWeight: 700, color: 'var(--label3)',
+            background: 'var(--bg3)', borderRadius: 20,
+            padding: '2px 8px', letterSpacing: '0.05em',
+          }}>{step}</span>
+        )}
+      </div>
       <div style={{ fontSize: 13, color: 'var(--label3)', marginBottom: 12 }}>
         {tiedPlayers.map(p => p.name).join(' et ')} sont à égalité.<br />Qui a gagné le concours de bière ?
       </div>
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
         {tiedPlayers.map(p => (
-          <button key={String(p.id)} className="btn btn-secondary" onClick={() => setTiebreaker(field, p.id)}>
+          <button
+            key={String(p.id)}
+            className="btn btn-secondary"
+            disabled={updateMatchMutation.isPending}
+            onClick={() => setTiebreaker(field, p.id)}
+          >
             🍺 {p.name}
           </button>
         ))}
@@ -222,12 +250,28 @@ export function ResultsView({ players, match, isAdmin, isDark, orgId }: ResultsV
     </div>
   );
 
+  const stepLabel = (n: number) => totalTies > 1 ? `${n}/${totalTies}` : undefined;
+
   return (
     <div className="content">
       <MatchHeader badge={<span className="badge badge-closed">Clôturé</span>} />
-      {isAdmin && bestTied  && !tiebreakers.best_id  && <TiebreakerCard title="Pépite" color="gold"  field="best_id"  tiedPlayers={bestTiedPlayers}  />}
-      {isAdmin && lemonTied && !tiebreakers.lemon_id && <TiebreakerCard title="Citron" color="lemon" field="lemon_id" tiedPlayers={lemonTiedPlayers} />}
-      <PodiumView votes={votes} present={present} allPlayers={players} tiebreakers={tiebreakers} pepiteCount={match.pepite_count ?? 2} />
+      {showBestCard  && <TiebreakerCard title="Pépite" color="gold"  field="best_id"  tiedPlayers={bestTiedPlayers}  step={stepLabel(resolvedTies + 1)} />}
+      {showLemonCard && <TiebreakerCard title="Citron" color="lemon" field="lemon_id" tiedPlayers={lemonTiedPlayers} step={stepLabel(resolvedTies + 1)} />}
+      {/* Podium is hidden for admins until all tiebreakers are resolved,
+          so a freshly-resolved tie doesn't make the results look "final"
+          while a second tiebreaker is still pending. */}
+      {!hasPendingTie && <PodiumView votes={votes} present={present} allPlayers={players} tiebreakers={tiebreakers} pepiteCount={match.pepite_count ?? 2} />}
+      {hasPendingTie && (
+        <div style={{
+          background: 'var(--bg2)', borderRadius: 'var(--radius-lg)',
+          padding: '32px 20px', textAlign: 'center',
+        }}>
+          <div style={{ fontSize: 32, marginBottom: 10 }}>🏆</div>
+          <div style={{ fontSize: 15, fontWeight: 600, color: 'var(--label2)' }}>
+            Le classement s'affichera après{totalTies > 1 ? ` les ${totalTies} départages` : ' le départage'}.
+          </div>
+        </div>
+      )}
 
       {ghosts.length > 0 && (
         <div style={{ marginTop: 8, marginBottom: 16 }}>
