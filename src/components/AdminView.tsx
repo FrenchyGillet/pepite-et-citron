@@ -36,6 +36,7 @@ export function AdminView({ players, activeMatch, currentOrg, onSignOut, onShowG
   const [guestInput,      setGuestInput]      = useState('');
   const [copiedToken,     setCopiedToken]     = useState<string | null>(null);
   const [showAccount,     setShowAccount]     = useState(false);
+  const [playersOpen,     setPlayersOpen]     = useState(true);
   const [memberEmail,     setMemberEmail]     = useState('');
   const [pepiteCount,     setPepiteCount]     = useState<2 | 3>(2);
 
@@ -502,27 +503,57 @@ export function AdminView({ players, activeMatch, currentOrg, onSignOut, onShowG
         </div>
       )}
 
-      <SectionHeader title="Mes joueurs"
-        subtitle="La liste complète des joueurs de l'équipe." />
-      <div className="flex gap-8" style={{ marginBottom: 12 }}>
-        <input placeholder="Prénom du joueur" value={newPlayer}
-          onChange={e => setNewPlayer(e.target.value)}
-          onKeyDown={e => e.key === 'Enter' && addPlayer()} />
-        <button className="btn btn-primary" style={{ whiteSpace: 'nowrap', padding: '12px 16px' }}
-          onClick={addPlayer}>Ajouter</button>
-      </div>
-      <div className="group">
-        {players.length === 0
-          ? <div className="row"><span style={{ color: 'var(--label3)', fontSize: 14 }}>Aucun joueur. Commence par en ajouter un ci-dessus.</span></div>
-          : players.map(p => (
-            <div key={String(p.id)} className="row">
-              <div className="row-body"><div className="row-title">{p.name}</div></div>
-              <button className="btn btn-danger" style={{ padding: '5px 12px', fontSize: 13 }}
-                onClick={() => removePlayer(p.id, p.name)}>Retirer</button>
-            </div>
-          ))
-        }
-      </div>
+      <button
+        onClick={() => setPlayersOpen(v => !v)}
+        style={{
+          width: '100%', background: 'none', border: 'none', padding: '28px 0 10px',
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+          cursor: 'pointer', textAlign: 'left',
+        }}
+      >
+        <div>
+          <div style={{ fontSize: 18, fontWeight: 700, color: 'var(--label)', letterSpacing: '-0.02em', marginBottom: 3, display: 'flex', alignItems: 'center', gap: 8 }}>
+            Mes joueurs
+            <span style={{
+              fontSize: 12, fontWeight: 600, color: 'var(--label3)',
+              background: 'var(--bg2)', borderRadius: 20, padding: '2px 8px',
+            }}>
+              {players.length}
+            </span>
+          </div>
+          {playersOpen && <p style={{ fontSize: 13, color: 'var(--label3)', margin: 0 }}>La liste complète des joueurs de l'équipe.</p>}
+        </div>
+        <svg
+          width="16" height="16" viewBox="0 0 16 16" fill="none"
+          stroke="var(--label3)" strokeWidth="2" strokeLinecap="round"
+          style={{ transition: 'transform 0.2s', transform: playersOpen ? 'rotate(90deg)' : 'rotate(0deg)', flexShrink: 0 }}
+        >
+          <polyline points="5 3 11 8 5 13" />
+        </svg>
+      </button>
+      {playersOpen && (
+        <>
+          <div className="flex gap-8" style={{ marginBottom: 12 }}>
+            <input placeholder="Prénom du joueur" value={newPlayer}
+              onChange={e => setNewPlayer(e.target.value)}
+              onKeyDown={e => e.key === 'Enter' && addPlayer()} />
+            <button className="btn btn-primary" style={{ whiteSpace: 'nowrap', padding: '12px 16px' }}
+              onClick={addPlayer}>Ajouter</button>
+          </div>
+          <div className="group">
+            {players.length === 0
+              ? <div className="row"><span style={{ color: 'var(--label3)', fontSize: 14 }}>Aucun joueur. Commence par en ajouter un ci-dessus.</span></div>
+              : players.map(p => (
+                <div key={String(p.id)} className="row">
+                  <div className="row-body"><div className="row-title">{p.name}</div></div>
+                  <button className="btn btn-danger" style={{ padding: '5px 12px', fontSize: 13 }}
+                    onClick={() => removePlayer(p.id, p.name)}>Retirer</button>
+                </div>
+              ))
+            }
+          </div>
+        </>
+      )}
 
       <SectionHeader title="Saison"
         subtitle="Nomme la saison et démarre-en une nouvelle sans perdre l'historique." />
