@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { api } from '@/api';
 import { markVotedLocally, classifyVoteError } from '@/utils/vote';
 import type { Player, Match } from '@/types';
@@ -39,6 +39,11 @@ export function VoteView({ players, match, onVoted, guestName = null, onGuestVot
   const lemonStep    = pepiteCount === 3 ? 4 : 3;
   const summaryStep  = pepiteCount === 3 ? 5 : 4;
   const stepBarCount = pepiteCount === 3 ? 4 : 3;
+
+  // Absent players are collapsed by default on the lemon step.
+  // Reset the collapsed state every time the lemon step is entered.
+  const [absentOpen, setAbsentOpen] = useState(false);
+  useEffect(() => { if (step === lemonStep) setAbsentOpen(false); }, [step, lemonStep]);
 
   const presentIds = match.present_ids || [];
   const present = players.filter(p =>  presentIds.includes(p.id));
@@ -238,19 +243,37 @@ export function VoteView({ players, match, onVoted, guestName = null, onGuestVot
               </div>
               {absent.length > 0 && (
                 <>
-                  <p style={{ fontSize: 12, color: 'var(--label4)', marginTop: 14, marginBottom: 8, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
-                    Absents
-                  </p>
-                  <div className="player-grid">
-                    {absent.map(p => (
-                      <button key={String(p.id)}
-                        className={`player-chip ${lemon?.id === p.id ? 'sel-lemon' : ''}`}
-                        onClick={() => { setLemon(p); scrollToAction(); }}
-                        style={{ opacity: lemon?.id === p.id ? 1 : 0.5, borderStyle: 'dashed' }}>
-                        {p.name}
-                      </button>
-                    ))}
-                  </div>
+                  <button
+                    onClick={() => setAbsentOpen(o => !o)}
+                    style={{
+                      display: 'flex', alignItems: 'center', gap: 6,
+                      background: 'none', border: 'none', padding: '14px 0 8px',
+                      cursor: 'pointer', color: 'var(--label3)',
+                      fontSize: 12, fontWeight: 600,
+                      textTransform: 'uppercase', letterSpacing: '0.06em',
+                    }}
+                  >
+                    <svg
+                      width="12" height="12" viewBox="0 0 12 12" fill="none"
+                      stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+                      style={{ transition: 'transform 0.2s', transform: absentOpen ? 'rotate(90deg)' : 'rotate(0deg)', flexShrink: 0 }}
+                    >
+                      <polyline points="4 2 9 6 4 10" />
+                    </svg>
+                    Absents · {absent.length}
+                  </button>
+                  {absentOpen && (
+                    <div className="player-grid">
+                      {absent.map(p => (
+                        <button key={String(p.id)}
+                          className={`player-chip ${lemon?.id === p.id ? 'sel-lemon' : ''}`}
+                          onClick={() => { setLemon(p); scrollToAction(); }}
+                          style={{ opacity: lemon?.id === p.id ? 1 : 0.5, borderStyle: 'dashed' }}>
+                          {p.name}
+                        </button>
+                      ))}
+                    </div>
+                  )}
                 </>
               )}
               <div ref={actionRef}>
