@@ -1,3 +1,5 @@
+import { track, EVENTS } from '@/utils/analytics';
+
 interface Props {
   onUpgrade: () => void;
 }
@@ -53,7 +55,7 @@ export function StatsLockedView({ onUpgrade }: Props) {
       </div>
 
       <button
-        onClick={onUpgrade}
+        onClick={() => { track(EVENTS.UPGRADE_CLICKED, { source: 'stats' }); onUpgrade(); }}
         style={{
           background: '#FFD700',
           color: '#000',

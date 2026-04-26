@@ -130,7 +130,7 @@ export function VoteView({ players, match, onVoted, guestName = null, onGuestVot
                 <div style={{ fontSize: 34, lineHeight: 1, flexShrink: 0 }}>⭐</div>
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ fontSize: 20, fontWeight: 800, color: 'var(--gold)', letterSpacing: '-0.3px', lineHeight: 1.1 }}>La Pépite</div>
-                  <div style={{ fontSize: 12, color: 'var(--label3)', marginTop: 3 }}>Qui a été le meilleur joueur ?</div>
+                  <div style={{ fontSize: 12, color: 'var(--label3)', marginTop: 3 }}>Qui a tout déchiré aujourd'hui ?</div>
                 </div>
                 <div style={{ background: 'var(--gold)', color: '#000', borderRadius: 20, padding: '4px 11px', fontSize: 13, fontWeight: 800, flexShrink: 0 }}>
                   {pepiteCount === 3 ? '3 pts' : '2 pts'}
@@ -163,7 +163,7 @@ export function VoteView({ players, match, onVoted, guestName = null, onGuestVot
                 <div style={{ fontSize: 28, lineHeight: 1, flexShrink: 0, opacity: 0.6 }}>⭐</div>
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ fontSize: 20, fontWeight: 800, color: 'rgba(255,214,10,0.7)', letterSpacing: '-0.3px', lineHeight: 1.1 }}>2ème meilleur</div>
-                  <div style={{ fontSize: 12, color: 'var(--label3)', marginTop: 3 }}>Le deuxième joueur le plus performant</div>
+                  <div style={{ fontSize: 12, color: 'var(--label3)', marginTop: 3 }}>Et son fidèle dauphin du soir ?</div>
                 </div>
                 <div style={{ background: 'rgba(255,214,10,0.15)', color: 'var(--gold)', borderRadius: 20, padding: '4px 11px', fontSize: 13, fontWeight: 800, flexShrink: 0 }}>
                   {pepiteCount === 3 ? '2 pts' : '1 pt'}
@@ -197,7 +197,7 @@ export function VoteView({ players, match, onVoted, guestName = null, onGuestVot
                 <div style={{ fontSize: 22, lineHeight: 1, flexShrink: 0, opacity: 0.4 }}>⭐</div>
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ fontSize: 20, fontWeight: 800, color: 'rgba(255,214,10,0.5)', letterSpacing: '-0.3px', lineHeight: 1.1 }}>3ème meilleur</div>
-                  <div style={{ fontSize: 12, color: 'var(--label3)', marginTop: 3 }}>Le troisième joueur le plus performant</div>
+                  <div style={{ fontSize: 12, color: 'var(--label3)', marginTop: 3 }}>Et la troisième pépite ?</div>
                 </div>
                 <div style={{ background: 'rgba(255,214,10,0.08)', color: 'rgba(255,214,10,0.5)', borderRadius: 20, padding: '4px 11px', fontSize: 13, fontWeight: 800, flexShrink: 0 }}>
                   1 pt
@@ -231,7 +231,7 @@ export function VoteView({ players, match, onVoted, guestName = null, onGuestVot
                 <div style={{ fontSize: 34, lineHeight: 1, flexShrink: 0 }}>🍋</div>
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ fontSize: 20, fontWeight: 800, color: 'var(--lemon)', letterSpacing: '-0.3px', lineHeight: 1.1 }}>Le Citron</div>
-                  <div style={{ fontSize: 12, color: 'var(--label3)', marginTop: 3 }}>Qui a le moins performé ce soir ?</div>
+                  <div style={{ fontSize: 12, color: 'var(--label3)', marginTop: 3 }}>Qui a souffert ce soir ?</div>
                 </div>
                 <div style={{ background: 'var(--lemon-dim)', color: 'var(--lemon)', borderRadius: 20, padding: '4px 11px', fontSize: 13, fontWeight: 800, flexShrink: 0 }}>1 pt</div>
               </div>
@@ -334,7 +334,7 @@ export function VoteView({ players, match, onVoted, guestName = null, onGuestVot
             </div>
           </div>
           <p style={{ fontSize: 12, color: 'var(--label3)', textAlign: 'center', marginBottom: 12 }}>
-            Ton vote est anonyme.
+            Ton vote est anonyme. Assume tes choix.
           </p>
           {submitError && (
             <div style={{
@@ -348,7 +348,7 @@ export function VoteView({ players, match, onVoted, guestName = null, onGuestVot
           <div className="flex gap-8">
             <button className="btn btn-secondary" onClick={() => setStep(lemonStep)}>Modifier</button>
             <button className="btn btn-primary" style={{ flex: 1 }} disabled={submitting} onClick={submit}>
-              {submitting ? 'Envoi…' : submitError ? 'Réessayer' : 'Valider'}
+              {submitting ? 'Envoi…' : submitError ? 'Réessayer' : 'Rendre mon verdict →'}
             </button>
           </div>
         </>

@@ -26,8 +26,9 @@ interface TiebreakerCardProps {
 
 export function ResultsView({ players, match, isAdmin, isDark, orgId }: ResultsViewProps) {
   const [localRevealedCount, setLocalRevealedCount] = useState<number | null>(null);
+  const [podiumRevealed,     setPodiumRevealed]     = useState(false);
 
-  useEffect(() => { setLocalRevealedCount(null); }, [match?.id]);
+  useEffect(() => { setLocalRevealedCount(null); setPodiumRevealed(false); }, [match?.id]);
 
   const { data: votes = [], isLoading } = useVotes(match?.id);
   const revealNextMutation  = useRevealNext(orgId);
@@ -257,11 +258,8 @@ export function ResultsView({ players, match, isAdmin, isDark, orgId }: ResultsV
       <MatchHeader badge={<span className="badge badge-closed">Clôturé</span>} />
       {showBestCard  && <TiebreakerCard title="Pépite" color="gold"  field="best_id"  tiedPlayers={bestTiedPlayers}  step={stepLabel(resolvedTies + 1)} />}
       {showLemonCard && <TiebreakerCard title="Citron" color="lemon" field="lemon_id" tiedPlayers={lemonTiedPlayers} step={stepLabel(resolvedTies + 1)} />}
-      {/* Podium is hidden for admins until all tiebreakers are resolved,
-          so a freshly-resolved tie doesn't make the results look "final"
-          while a second tiebreaker is still pending. */}
-      {!hasPendingTie && <PodiumView votes={votes} present={present} allPlayers={players} tiebreakers={tiebreakers} pepiteCount={match.pepite_count ?? 2} />}
-      {hasPendingTie && (
+      {/* Podium is hidden until all tiebreakers are resolved AND the reveal button is pressed */}
+      {hasPendingTie ? (
         <div style={{
           background: 'var(--bg2)', borderRadius: 'var(--radius-lg)',
           padding: '32px 20px', textAlign: 'center',
@@ -270,6 +268,28 @@ export function ResultsView({ players, match, isAdmin, isDark, orgId }: ResultsV
           <div style={{ fontSize: 15, fontWeight: 600, color: 'var(--label2)' }}>
             Le classement s'affichera après{totalTies > 1 ? ` les ${totalTies} départages` : ' le départage'}.
           </div>
+        </div>
+      ) : !podiumRevealed ? (
+        <div style={{
+          background: 'var(--bg2)', borderRadius: 'var(--radius-lg)',
+          padding: '40px 24px', textAlign: 'center', marginBottom: 8,
+        }}>
+          <div style={{ fontSize: 48, marginBottom: 12, lineHeight: 1 }}>🏆</div>
+          <div style={{ fontSize: 18, fontWeight: 800, marginBottom: 6, letterSpacing: '-0.3px' }}>Le verdict est tombé</div>
+          <div style={{ fontSize: 13, color: 'var(--label3)', marginBottom: 24, lineHeight: 1.5 }}>
+            Les votes ont parlé.<br />Prêts à découvrir la Pépite et le Citron ?
+          </div>
+          <button
+            className="btn btn-primary btn-full"
+            onClick={() => setPodiumRevealed(true)}
+            style={{ fontSize: 17, fontWeight: 800 }}
+          >
+            🎉 Révéler le classement !
+          </button>
+        </div>
+      ) : (
+        <div style={{ animation: 'podiumReveal 0.5s cubic-bezier(0.22, 1, 0.36, 1)' }}>
+          <PodiumView votes={votes} present={present} allPlayers={players} tiebreakers={tiebreakers} pepiteCount={match.pepite_count ?? 2} />
         </div>
       )}
 

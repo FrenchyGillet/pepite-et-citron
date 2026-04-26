@@ -1,5 +1,6 @@
 import { useNavigate } from 'react-router-dom';
 import { useAppStore } from '@/store/appStore';
+import { track, EVENTS } from '@/utils/analytics';
 
 interface GuestPromoViewProps {
   /** null = ?org= flow (can browse results), 'valid' = ?guest= token flow */
@@ -13,6 +14,7 @@ export function GuestPromoView({ canSeeResults }: GuestPromoViewProps) {
   const setGuestToken     = useAppStore(s => s.setGuestToken);
 
   function handleCreateAccount() {
+    track(EVENTS.PROMO_SIGNUP_CLICKED);
     // Clear voter-session flags so App shows AuthView (sign-up mode)
     setIsVoterSession(false);
     setGuestStatus(null);
@@ -60,7 +62,7 @@ export function GuestPromoView({ canSeeResults }: GuestPromoViewProps) {
         </h3>
         <p style={{ fontSize: 14, color: 'var(--label3)', margin: '0 0 20px', lineHeight: 1.6 }}>
           Crée ton équipe gratuitement et organise des votes Pépite &amp; Citron
-          après chaque match — en quelques secondes, depuis le vestiaire.
+          après chaque match — en quelques secondes, au bar.
         </p>
         <button
           className="btn btn-primary btn-full"
@@ -74,7 +76,7 @@ export function GuestPromoView({ canSeeResults }: GuestPromoViewProps) {
       {canSeeResults && (
         <button
           className="btn btn-secondary"
-          onClick={() => navigate('/results')}
+          onClick={() => { track(EVENTS.PROMO_RESULTS_CLICKED); navigate('/results'); }}
           style={{ fontSize: 14 }}
         >
           Voir les résultats du match

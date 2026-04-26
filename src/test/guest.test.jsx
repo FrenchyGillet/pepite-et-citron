@@ -68,7 +68,7 @@ describe("Guest token flow", () => {
 
     // Submit
     await screen.findByText("Récapitulatif");
-    await user.click(screen.getByRole("button", { name: "Valider" }));
+    await user.click(screen.getByRole("button", { name: "Rendre mon verdict →" }));
 
     // After voting, handleVoted() navigates to /results and handleGuestVoted marks the token
     // Wait for the results tab to appear (confirms vote flow completed)
@@ -143,7 +143,7 @@ describe("3-pépite mode", () => {
     expect(screen.getByText("David")).toBeInTheDocument();
 
     // Submit — must not throw "column not found" error
-    await user.click(screen.getByRole("button", { name: "Valider" }));
+    await user.click(screen.getByRole("button", { name: "Rendre mon verdict →" }));
     expect(await screen.findByText("Résultats masqués")).toBeInTheDocument();
 
     // Verify vote was stored with best3_id

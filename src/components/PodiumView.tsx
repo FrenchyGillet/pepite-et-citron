@@ -1,5 +1,6 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { computeScores } from '@/utils';
+import { AnimatedNumber } from './AnimatedNumber';
 import type { Vote, Player, EntityId } from '@/types';
 
 interface Tiebreakers {
@@ -23,6 +24,12 @@ interface RankedPlayer extends Player {
 
 export function PodiumView({ votes, present, allPlayers, tiebreakers = {}, pepiteCount = 2 }: PodiumViewProps) {
   const [podiumTab, setPodiumTab] = useState<'pepite' | 'citron'>('pepite');
+  const [ready,     setReady]     = useState(false);
+
+  useEffect(() => { requestAnimationFrame(() => setReady(true)); }, []);
+  // Reset animation when tab changes
+  useEffect(() => { setReady(false); requestAnimationFrame(() => setReady(true)); }, [podiumTab]);
+
   const { best, lemon } = computeScores(votes, present, allPlayers, pepiteCount);
   const everyone   = allPlayers || present;
   const presentIds = new Set(present.map(p => p.id));
@@ -40,9 +47,13 @@ export function PodiumView({ votes, present, allPlayers, tiebreakers = {}, pepit
 
   const [first, second, third] = ranked;
 
+  // Stagger delays for podium slots: 2nd=0ms, 1st=80ms, 3rd=160ms (center last for drama)
+  const slotDelay = (place: number) => place === 1 ? 80 : place === 2 ? 0 : 160;
+
   const Slot = ({ player, place, height }: { player: RankedPlayer | undefined; place: number; height: number }) => {
     const isFirst   = place === 1;
     const nameColor = isFirst ? color : place === 2 ? 'var(--label2)' : 'var(--label3)';
+    const delay     = slotDelay(place);
     return (
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
         {player ? (
@@ -50,16 +61,22 @@ export function PodiumView({ votes, present, allPlayers, tiebreakers = {}, pepit
             {isFirst && <div style={{ fontSize: 26, lineHeight: 1, marginBottom: 5 }}>👑</div>}
             <div style={{ fontSize: isFirst ? 15 : 13, fontWeight: 700, color: nameColor, textAlign: 'center', lineHeight: 1.2, marginBottom: 2, padding: '0 4px' }}>{player.name}</div>
             {player.absent && <div style={{ fontSize: 10, color: 'var(--label4)', marginBottom: 2, fontStyle: 'italic' }}>absent</div>}
-            <div style={{ fontSize: 12, color: 'var(--label3)', marginBottom: 8 }}>{player.pts} pt{player.pts > 1 ? 's' : ''}</div>
+            <div style={{ fontSize: 12, color: 'var(--label3)', marginBottom: 8 }}>
+              <AnimatedNumber value={player.pts} delay={delay} /> pt{player.pts > 1 ? 's' : ''}
+            </div>
           </>
         ) : (
           <div style={{ height: 56 }} />
         )}
         <div style={{
-          height, width: '100%', borderRadius: '8px 8px 0 0',
+          height: ready ? height : 0,
+          width: '100%',
+          borderRadius: '8px 8px 0 0',
           background: isFirst ? colorDim : 'var(--bg3)',
           border: isFirst ? `1px solid ${color}` : 'none',
           display: 'flex', alignItems: 'center', justifyContent: 'center',
+          overflow: 'hidden',
+          transition: `height 0.85s cubic-bezier(0.22, 1, 0.36, 1) ${delay}ms`,
         }}>
           <span style={{ fontSize: isFirst ? 28 : 20, fontWeight: 800, color: isFirst ? color : 'var(--label4)' }}>{place}</span>
         </div>
@@ -116,9 +133,15 @@ export function PodiumView({ votes, present, allPlayers, tiebreakers = {}, pepit
                     <div className="row-body"><div className="row-title">{p.name}</div></div>
                     <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
                       <div className="score-bar-wrap">
-                        <div className="score-bar" style={{ width: `${(p.pts / (ranked[0]?.pts || 1)) * 100}%`, background: 'var(--label3)' }} />
+                        <div className="score-bar" style={{
+                          width: ready ? `${(p.pts / (ranked[0]?.pts || 1)) * 100}%` : '0%',
+                          background: 'var(--label3)',
+                          transition: `width 0.9s cubic-bezier(0.22, 1, 0.36, 1) ${(i + 3) * 80}ms`,
+                        }} />
                       </div>
-                      <div className="row-value" style={{ color: 'var(--label3)', minWidth: 24, textAlign: 'right' }}>{p.pts}</div>
+                      <div className="row-value" style={{ color: 'var(--label3)', minWidth: 24, textAlign: 'right' }}>
+                        <AnimatedNumber value={p.pts} delay={(i + 3) * 80} />
+                      </div>
                     </div>
                   </div>
                 ))}

@@ -1,6 +1,7 @@
 import { useNavigate } from 'react-router-dom';
 import { api, DEMO_MODE } from '@/api';
 import { useAppStore } from '@/store/appStore';
+import { track, EVENTS } from '@/utils/analytics';
 import { hasVotedLocally } from '@/utils/vote';
 import { VoteView } from './VoteView';
 import { EmptyState } from './EmptyState';
@@ -31,6 +32,7 @@ export function VoteTab({ isAdmin, activeMatch, lastMatch, players }: VoteTabPro
 
   const handleVoted = () => {
     setVotedThisSession(true);
+    track(EVENTS.VOTE_COMPLETED, { anonymous: isAnonymousVoter });
     if (!isAnonymousVoter) navigate('/results');
     // else: stay on VoteTab — GuestPromoView is rendered below
   };

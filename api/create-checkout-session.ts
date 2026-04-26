@@ -38,7 +38,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(404).json({ error: 'Organisation introuvable' });
   }
 
-  const appUrl = process.env.VITE_APP_URL || 'https://pepite-et-citron.vercel.app';
+  const appUrl = process.env.VITE_APP_URL || 'https://pepite-citron.com';
 
   const session = await stripe.checkout.sessions.create({
     mode:       'subscription',

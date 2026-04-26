@@ -27,7 +27,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(404).json({ error: 'Aucun abonnement actif trouvé' });
   }
 
-  const appUrl = process.env.VITE_APP_URL || 'https://pepite-et-citron.vercel.app';
+  const appUrl = process.env.VITE_APP_URL || 'https://pepite-citron.com';
 
   const portalSession = await stripe.billingPortal.sessions.create({
     customer:   org.stripe_customer_id,

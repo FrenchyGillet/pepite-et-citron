@@ -219,9 +219,9 @@ export function GlobalStyle() {
       min-height: 48px;
     }
     .player-chip:active     { background: var(--bg3); }
-    .player-chip.sel-1st    { background: var(--gold-subtle);  color: var(--gold);               }
-    .player-chip.sel-2nd    { background: var(--gold-subtle);  color: rgba(255,214,10,0.6);       }
-    .player-chip.sel-lemon  { background: var(--lemon-subtle); color: var(--lemon);               }
+    .player-chip.sel-1st    { background: var(--gold-subtle);  color: var(--gold);          animation: chipSelect 0.28s cubic-bezier(0.34, 1.56, 0.64, 1); }
+    .player-chip.sel-2nd    { background: var(--gold-subtle);  color: rgba(255,214,10,0.6); animation: chipSelect 0.28s cubic-bezier(0.34, 1.56, 0.64, 1); }
+    .player-chip.sel-lemon  { background: var(--lemon-subtle); color: var(--lemon);         animation: chipSelect 0.28s cubic-bezier(0.34, 1.56, 0.64, 1); }
 
     /* STEP BAR */
     .step-bar { display: flex; gap: 4px; margin-bottom: 16px; }
@@ -270,6 +270,16 @@ export function GlobalStyle() {
     @keyframes revealPop {
       0%   { opacity: 0; transform: translateY(6px) scale(0.97); }
       100% { opacity: 1; transform: translateY(0)   scale(1);    }
+    }
+    @keyframes chipSelect {
+      0%   { transform: scale(1);    }
+      35%  { transform: scale(0.91); }
+      65%  { transform: scale(1.07); }
+      100% { transform: scale(1);    }
+    }
+    @keyframes podiumReveal {
+      0%   { opacity: 0; transform: translateY(20px) scale(0.96); }
+      100% { opacity: 1; transform: translateY(0)    scale(1);    }
     }
 
     .demo-banner {

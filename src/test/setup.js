@@ -8,6 +8,10 @@ beforeAll(() => {
   Object.assign(navigator, {
     clipboard: { writeText: vi.fn().mockResolvedValue(undefined) },
   });
+
+  // jsdom doesn't implement scrollIntoView — stub it globally
+  window.HTMLElement.prototype.scrollIntoView = vi.fn();
+
   server.listen({ onUnhandledRequest: "warn" });
 });
 

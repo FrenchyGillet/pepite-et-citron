@@ -1,6 +1,87 @@
 {
+  "redirects": [
+    {
+      "source": "/(.*)",
+      "has": [{ "type": "host", "value": "www.pepite-citron.com" }],
+      "destination": "https://pepite-citron.com/$1",
+      "permanent": true
+    }
+  ],
+
   "rewrites": [
-    { "source": "/api/(.*)", "destination": "/api/$1" },
-    { "source": "/(.*)",     "destination": "/" }
+    { "source": "/api/(.*)",      "destination": "/api/$1" },
+    { "source": "/privacy",       "destination": "/privacy.html" },
+    { "source": "/sb-api/:path*", "destination": "https://vtjpjkrrvpwoqwrrhgbk.supabase.co/:path*" },
+    { "source": "/(.*)",          "destination": "/" }
+  ],
+
+  "headers": [
+    {
+      "source": "/(.*)",
+      "headers": [
+        {
+          "key": "X-Frame-Options",
+          "value": "DENY"
+        },
+        {
+          "key": "X-Content-Type-Options",
+          "value": "nosniff"
+        },
+        {
+          "key": "X-XSS-Protection",
+          "value": "0"
+        },
+        {
+          "key": "Referrer-Policy",
+          "value": "strict-origin-when-cross-origin"
+        },
+        {
+          "key": "Permissions-Policy",
+          "value": "camera=(), microphone=(), geolocation=(), payment=()"
+        },
+        {
+          "key": "Content-Security-Policy",
+          "value": "default-src 'self'; script-src 'self' https://cloud.umami.is; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self' https://*.supabase.co wss://*.supabase.co https://*.ingest.sentry.io https://cloud.umami.is; worker-src 'self'; frame-src 'none'; frame-ancestors 'none'; object-src 'none'; base-uri 'self'; form-action 'self'; upgrade-insecure-requests"
+        }
+      ]
+    },
+
+    {
+      "source": "/assets/(.*)",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=31536000, immutable"
+        }
+      ]
+    },
+
+    {
+      "source": "/sw.js",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "no-cache, no-store, must-revalidate"
+        },
+        {
+          "key": "Service-Worker-Allowed",
+          "value": "/"
+        }
+      ]
+    },
+
+    {
+      "source": "/manifest.webmanifest",
+      "headers": [
+        {
+          "key": "Content-Type",
+          "value": "application/manifest+json"
+        },
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=86400"
+        }
+      ]
+    }
   ]
 }

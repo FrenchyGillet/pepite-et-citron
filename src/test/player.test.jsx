@@ -53,7 +53,7 @@ describe("Player voting flow", () => {
     expect(allText).toContain("Clément");
     expect(allText).toContain("David");
 
-    await user.click(screen.getByRole("button", { name: "Valider" }));
+    await user.click(screen.getByRole("button", { name: "Rendre mon verdict →" }));
 
     // After voting, handleVoted() switches tab to "results"; verify the vote was stored
     const votes = await __demoAPI.getVotes(matchId);

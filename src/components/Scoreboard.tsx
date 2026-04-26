@@ -1,4 +1,6 @@
+import { useState, useEffect } from 'react';
 import { computeScores } from '@/utils';
+import { AnimatedNumber } from './AnimatedNumber';
 import type { Vote, Player, EntityId } from '@/types';
 
 interface Tiebreakers {
@@ -22,6 +24,9 @@ interface RankedPlayer extends Player {
 }
 
 export function Scoreboard({ votes, present, allPlayers, tiebreakers = {}, showLemons = true, pepiteCount = 2 }: ScoreboardProps) {
+  const [ready, setReady] = useState(false);
+  useEffect(() => { requestAnimationFrame(() => setReady(true)); }, []);
+
   const { best, lemon } = computeScores(votes, present, allPlayers, pepiteCount);
   const everyone = allPlayers || present;
 
@@ -55,9 +60,10 @@ export function Scoreboard({ votes, present, allPlayers, tiebreakers = {}, showL
       <div className="group">
         {bestRanked.length === 0
           ? <div className="row"><span style={{ color: "var(--label3)", fontSize: 14 }}>Aucun vote révélé…</span></div>
-          : bestRanked.map((p) => {
+          : bestRanked.map((p, index) => {
             const isBeer  = tiebreakers.best_id === p.id;
             const isFirst = p.rank === 1;
+            const delay   = index * 80;
             return (
               <div key={String(p.id)}>
                 <div className="row">
@@ -66,9 +72,15 @@ export function Scoreboard({ votes, present, allPlayers, tiebreakers = {}, showL
                   </div>
                   <div className="row-body"><div className="row-title">{p.name}</div></div>
                   <div className="score-bar-wrap">
-                    <div className="score-bar" style={{ width: `${(p.pts / maxBest) * 100}%`, background: isFirst ? "var(--gold)" : "var(--label3)" }} />
+                    <div className="score-bar" style={{
+                      width: ready ? `${(p.pts / maxBest) * 100}%` : '0%',
+                      background: isFirst ? "var(--gold)" : "var(--label3)",
+                      transition: `width 0.9s cubic-bezier(0.22, 1, 0.36, 1) ${delay}ms`,
+                    }} />
                   </div>
-                  <div className="row-value gold" style={{ minWidth: 28, textAlign: "right" }}>{p.pts}</div>
+                  <div className="row-value gold" style={{ minWidth: 28, textAlign: "right" }}>
+                    <AnimatedNumber value={p.pts} delay={delay} />
+                  </div>
                 </div>
                 {p.comments.map((c, j) => <div key={j} className="comment">"{c}"</div>)}
               </div>
@@ -80,9 +92,10 @@ export function Scoreboard({ votes, present, allPlayers, tiebreakers = {}, showL
         <>
           <p className="section-label mb-4" style={{ color: "var(--lemon)" }}>Citrons</p>
           <div className="group">
-            {lemonRanked.map((p) => {
+            {lemonRanked.map((p, index) => {
               const isBeer   = tiebreakers.lemon_id === p.id;
               const isAbsent = !presentIds.has(p.id);
+              const delay    = bestRanked.length * 80 + index * 80;
               return (
                 <div key={String(p.id)}>
                   <div className="row">
@@ -92,9 +105,15 @@ export function Scoreboard({ votes, present, allPlayers, tiebreakers = {}, showL
                       {isAbsent && <div className="row-sub" style={{ color: "var(--label4)", fontSize: 11 }}>absent</div>}
                     </div>
                     <div className="score-bar-wrap">
-                      <div className="score-bar" style={{ width: `${(p.pts / maxLemon) * 100}%`, background: "var(--lemon)" }} />
+                      <div className="score-bar" style={{
+                        width: ready ? `${(p.pts / maxLemon) * 100}%` : '0%',
+                        background: "var(--lemon)",
+                        transition: `width 0.9s cubic-bezier(0.22, 1, 0.36, 1) ${delay}ms`,
+                      }} />
                     </div>
-                    <div className="row-value lemon" style={{ minWidth: 28, textAlign: "right" }}>{p.pts}</div>
+                    <div className="row-value lemon" style={{ minWidth: 28, textAlign: "right" }}>
+                      <AnimatedNumber value={p.pts} delay={delay} />
+                    </div>
                   </div>
                   {p.comments.map((c, j) => <div key={j} className="comment">"{c}"</div>)}
                 </div>

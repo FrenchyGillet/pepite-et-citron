@@ -3,6 +3,7 @@ import { useForm } from 'react-hook-form';
 import { api } from '@/api';
 import { loginSchema, signupSchema, type AuthFormValues } from '@/schemas';
 import { OnboardingModal } from '@/components/OnboardingModal';
+import { track, EVENTS } from '@/utils/analytics';
 import type { UserSession } from '@/types';
 
 interface AuthViewProps {
@@ -54,7 +55,10 @@ export function AuthView({ onAuth }: AuthViewProps) {
         await api.signIn(data.email, data.password);
       }
       const session = await api.getSession();
-      if (session) onAuth(session);
+      if (session) {
+        track(mode === 'signup' ? EVENTS.AUTH_SIGNUP : EVENTS.AUTH_LOGIN);
+        onAuth(session);
+      }
     } catch (err) {
       setApiError(err instanceof Error ? err.message : 'Une erreur est survenue');
     }
@@ -156,6 +160,17 @@ export function AuthView({ onAuth }: AuthViewProps) {
           <span style={{ color: 'var(--label3)' }}>
             Utilisez le lien partagé par votre capitaine.
           </span>
+        </p>
+        <p style={{ marginTop: 12, fontSize: 11, color: 'var(--label4)' }}>
+          En créant un compte, vous acceptez notre{' '}
+          <a
+            href="/privacy.html"
+            target="_blank"
+            rel="noopener noreferrer"
+            style={{ color: 'var(--label3)', textDecoration: 'underline', textUnderlineOffset: 2 }}
+          >
+            politique de confidentialité
+          </a>.
         </p>
       </div>
 

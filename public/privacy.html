@@ -1,0 +1,380 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Politique de confidentialité — Pépite & Citron</title>
+  <meta name="description" content="Politique de confidentialité de l'application Pépite & Citron." />
+  <!-- Umami Analytics — remplacez WEBSITE_ID par votre ID Umami -->
+  <script defer src="https://cloud.umami.is/script.js" data-website-id="49c8f860-14d7-49c4-897b-9c547febd823"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg-primary:   #000000;
+      --bg-secondary: #1C1C1E;
+      --bg-tertiary:  #2C2C2E;
+      --label-primary:   #FFFFFF;
+      --label-secondary: rgba(235,235,245,0.6);
+      --label-tertiary:  rgba(235,235,245,0.3);
+      --separator: rgba(84,84,88,0.65);
+      --pepite: #FFD700;
+      --citron: #32D74B;
+    }
+
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      background: var(--bg-primary);
+      color: var(--label-primary);
+      line-height: 1.7;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* ─── NAV ─── */
+    nav {
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      background: rgba(0,0,0,0.85);
+      backdrop-filter: saturate(180%) blur(20px);
+      -webkit-backdrop-filter: saturate(180%) blur(20px);
+      border-bottom: 1px solid var(--separator);
+      padding: 0 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      height: 56px;
+    }
+    .nav-logo {
+      font-size: 17px;
+      font-weight: 700;
+      letter-spacing: -0.3px;
+      text-decoration: none;
+      color: var(--label-primary);
+    }
+    .nav-back {
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--pepite);
+      text-decoration: none;
+    }
+    .nav-back:hover { opacity: .8; }
+
+    /* ─── CONTENT ─── */
+    .page-wrap {
+      max-width: 720px;
+      margin: 0 auto;
+      padding: 56px 24px 80px;
+    }
+
+    .page-title {
+      font-size: clamp(28px, 5vw, 40px);
+      font-weight: 800;
+      letter-spacing: -0.8px;
+      margin-bottom: 8px;
+    }
+
+    .page-meta {
+      font-size: 13px;
+      color: var(--label-tertiary);
+      margin-bottom: 48px;
+    }
+
+    h2 {
+      font-size: 18px;
+      font-weight: 700;
+      color: var(--label-primary);
+      margin: 40px 0 12px;
+      padding-top: 8px;
+      border-top: 1px solid var(--separator);
+    }
+
+    h2:first-of-type { border-top: none; margin-top: 0; }
+
+    p {
+      font-size: 15px;
+      color: var(--label-secondary);
+      margin-bottom: 14px;
+    }
+
+    ul {
+      margin: 0 0 14px 0;
+      padding-left: 20px;
+    }
+    li {
+      font-size: 15px;
+      color: var(--label-secondary);
+      margin-bottom: 6px;
+    }
+    li strong { color: var(--label-primary); }
+
+    a { color: var(--pepite); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+
+    .highlight-box {
+      background: var(--bg-secondary);
+      border: 1px solid var(--separator);
+      border-radius: 16px;
+      padding: 20px 24px;
+      margin: 20px 0;
+    }
+    .highlight-box p { margin-bottom: 0; }
+
+    /* ─── FOOTER ─── */
+    footer {
+      border-top: 1px solid var(--separator);
+      padding: 32px 24px;
+      text-align: center;
+    }
+    .footer-logo {
+      font-size: 17px;
+      font-weight: 700;
+      margin-bottom: 10px;
+    }
+    .footer-links {
+      display: flex;
+      gap: 20px;
+      justify-content: center;
+      flex-wrap: wrap;
+      margin-bottom: 20px;
+    }
+    .footer-links a {
+      font-size: 13px;
+      color: var(--label-tertiary);
+    }
+    .footer-links a:hover { color: var(--label-primary); }
+    .footer-copy {
+      font-size: 12px;
+      color: var(--label-tertiary);
+    }
+  </style>
+</head>
+<body>
+
+<nav>
+  <a href="/" class="nav-logo">
+    <span style="color:var(--pepite)">⭐</span> Pépite &amp; <span style="color:var(--citron)">🍋</span> Citron
+  </a>
+  <a href="/" class="nav-back">← Retour à l'app</a>
+</nav>
+
+<div class="page-wrap">
+
+  <h1 class="page-title">Politique de confidentialité</h1>
+  <p class="page-meta">Dernière mise à jour : 26 avril 2025</p>
+
+  <!-- 1 -->
+  <h2>1. Qui sommes-nous ?</h2>
+  <p>
+    Pépite &amp; Citron est une application web progressive (PWA) permettant aux membres d'une équipe
+    de désigner le meilleur joueur (⭐ Pépite) et le joueur avec le match le plus difficile (🍋 Citron)
+    après chaque rencontre sportive.
+  </p>
+  <p>
+    Éditeur et responsable du traitement : <strong>Pépite &amp; Citron</strong><br>
+    Contact : <a href="mailto:privacy@pepite-citron.com">privacy@pepite-citron.com</a>
+  </p>
+
+  <!-- 2 -->
+  <h2>2. Données collectées</h2>
+
+  <p>Nous collectons uniquement les données strictement nécessaires au fonctionnement du service :</p>
+
+  <ul>
+    <li>
+      <strong>Données de compte</strong> — adresse e-mail et mot de passe (haché, jamais stocké en clair)
+      lors de la création d'un compte administrateur ou membre.
+    </li>
+    <li>
+      <strong>Noms de joueurs</strong> — les prénoms que vous saisissez pour composer votre effectif.
+      Nous recommandons l'utilisation de prénoms ou de pseudonymes plutôt que de noms complets.
+    </li>
+    <li>
+      <strong>Votes</strong> — le choix de vote (Pépite / Citron) associé à une session anonyme.
+      Aucun vote n'est rattaché à une identité nominative pour les participants invités.
+    </li>
+    <li>
+      <strong>Données de paiement (plan Pro)</strong> — traitées exclusivement par Stripe.
+      Nous ne stockons jamais vos coordonnées bancaires.
+    </li>
+    <li>
+      <strong>Données de diagnostic</strong> — si vous avez consenti à l'envoi de rapports d'erreur
+      (Sentry), des informations techniques anonymisées (type d'erreur, navigateur, URL de la page)
+      peuvent être collectées automatiquement en cas de bug.
+    </li>
+  </ul>
+
+  <div class="highlight-box">
+    <p>
+      Nous ne collectons <strong>ni données de géolocalisation</strong>, ni liste de contacts,
+      ni informations biométriques. L'application ne contient aucun traceur publicitaire.
+    </p>
+  </div>
+
+  <!-- 3 -->
+  <h2>3. Finalités et bases légales (RGPD)</h2>
+
+  <ul>
+    <li>
+      <strong>Exécution du contrat</strong> — création et gestion de votre compte, fourniture du
+      service de vote, traitement du paiement Pro.
+    </li>
+    <li>
+      <strong>Intérêt légitime</strong> — surveillance de la qualité du service (rapports d'erreur
+      Sentry), sécurité applicative.
+    </li>
+    <li>
+      <strong>Obligation légale</strong> — conservation des données de facturation conformément aux
+      obligations fiscales françaises (10 ans).
+    </li>
+  </ul>
+
+  <!-- 4 -->
+  <h2>4. Sous-traitants et transferts</h2>
+
+  <p>Vos données peuvent être traitées par les sous-traitants suivants :</p>
+
+  <ul>
+    <li>
+      <strong>Supabase Inc.</strong> (États-Unis) — base de données PostgreSQL, authentification,
+      synchronisation temps réel. Données hébergées dans la région AWS eu-west-3 (Paris).
+      <a href="https://supabase.com/privacy" target="_blank" rel="noopener">Politique Supabase →</a>
+    </li>
+    <li>
+      <strong>Vercel Inc.</strong> (États-Unis) — hébergement de l'application web.
+      Certains logs de requêtes peuvent être traités temporairement aux États-Unis.
+      <a href="https://vercel.com/legal/privacy-policy" target="_blank" rel="noopener">Politique Vercel →</a>
+    </li>
+    <li>
+      <strong>Stripe Inc.</strong> (États-Unis) — traitement des paiements pour le plan Pro.
+      Stripe est certifié PCI-DSS niveau 1.
+      <a href="https://stripe.com/fr/privacy" target="_blank" rel="noopener">Politique Stripe →</a>
+    </li>
+    <li>
+      <strong>Functional Software, Inc. (Sentry)</strong> (États-Unis) — surveillance des erreurs
+      applicatives. Utilisé uniquement si <code>VITE_SENTRY_DSN</code> est configuré.
+      <a href="https://sentry.io/privacy/" target="_blank" rel="noopener">Politique Sentry →</a>
+    </li>
+  </ul>
+
+  <p>
+    Les transferts hors Union Européenne s'effectuent sur la base des Clauses Contractuelles Types
+    (CCT) approuvées par la Commission européenne.
+  </p>
+
+  <!-- 5 -->
+  <h2>5. Durée de conservation</h2>
+
+  <ul>
+    <li>
+      <strong>Données de compte</strong> — conservées jusqu'à la suppression du compte,
+      puis effacées sous 30 jours.
+    </li>
+    <li>
+      <strong>Données de vote et de match</strong> — conservées tant que l'organisation est active.
+      Supprimées sur demande ou lors de la résiliation du compte.
+    </li>
+    <li>
+      <strong>Données de facturation</strong> — 10 ans à compter de la transaction (obligation légale).
+    </li>
+    <li>
+      <strong>Journaux d'erreurs (Sentry)</strong> — 90 jours glissants.
+    </li>
+  </ul>
+
+  <!-- 6 -->
+  <h2>6. Sécurité</h2>
+
+  <p>
+    Les communications entre votre appareil et nos serveurs sont chiffrées via HTTPS (TLS 1.2+).
+    Les mots de passe sont hachés avec bcrypt par Supabase Auth avant toute persistance.
+    Les règles de sécurité au niveau des lignes (Row-Level Security, RLS) de PostgreSQL garantissent
+    que chaque utilisateur n'accède qu'aux données de sa propre organisation.
+  </p>
+
+  <!-- 7 -->
+  <h2>7. Vos droits (RGPD)</h2>
+
+  <p>Vous disposez des droits suivants sur vos données personnelles :</p>
+
+  <ul>
+    <li><strong>Droit d'accès</strong> — obtenir une copie des données vous concernant.</li>
+    <li><strong>Droit de rectification</strong> — corriger des données inexactes ou incomplètes.</li>
+    <li><strong>Droit à l'effacement</strong> — demander la suppression de votre compte et de vos données.</li>
+    <li><strong>Droit à la portabilité</strong> — recevoir vos données dans un format structuré (JSON/CSV).</li>
+    <li><strong>Droit d'opposition</strong> — vous opposer à un traitement basé sur l'intérêt légitime.</li>
+    <li><strong>Droit à la limitation</strong> — restreindre temporairement l'utilisation de vos données.</li>
+  </ul>
+
+  <p>
+    Pour exercer ces droits, contactez-nous à
+    <a href="mailto:privacy@pepite-citron.com">privacy@pepite-citron.com</a>.
+    Nous répondrons dans un délai maximum de 30 jours.
+  </p>
+
+  <p>
+    Vous pouvez également introduire une réclamation auprès de la
+    <strong>Commission Nationale de l'Informatique et des Libertés (CNIL)</strong> :
+    <a href="https://www.cnil.fr/fr/plaintes" target="_blank" rel="noopener">cnil.fr/fr/plaintes</a>.
+  </p>
+
+  <!-- 8 -->
+  <h2>8. Cookies et stockage local</h2>
+
+  <p>
+    L'application utilise le <strong>stockage local du navigateur</strong> (<code>localStorage</code>)
+    uniquement pour mémoriser vos préférences locales (thème, jeton de session invité).
+    Aucun cookie de traçage ou publicitaire n'est déposé.
+  </p>
+  <p>
+    Supabase Auth stocke le jeton de session dans <code>localStorage</code> pour maintenir votre
+    connexion entre les visites. Ce jeton expire automatiquement.
+  </p>
+
+  <!-- 9 -->
+  <h2>9. Mineurs</h2>
+
+  <p>
+    Le service est destiné à des adultes. Nous ne collectons pas sciemment de données concernant des
+    enfants de moins de 15 ans. Si vous pensez qu'un enfant nous a fourni des informations personnelles,
+    contactez-nous immédiatement.
+  </p>
+
+  <!-- 10 -->
+  <h2>10. Modifications</h2>
+
+  <p>
+    Nous pouvons mettre à jour cette politique pour refléter des changements dans notre service ou
+    la réglementation applicable. En cas de modification substantielle, un bandeau d'information
+    sera affiché dans l'application lors de votre prochaine connexion.
+  </p>
+  <p>
+    La date de dernière mise à jour figure en tête de ce document.
+  </p>
+
+  <!-- 11 -->
+  <h2>11. Contact</h2>
+
+  <div class="highlight-box">
+    <p>
+      Pour toute question relative à la protection de vos données personnelles :<br>
+      📧 <a href="mailto:privacy@pepite-citron.com">privacy@pepite-citron.com</a>
+    </p>
+  </div>
+
+</div>
+
+<footer>
+  <div class="footer-logo">
+    <span style="color:var(--pepite)">⭐</span> Pépite &amp; <span style="color:var(--citron)">🍋</span> Citron
+  </div>
+  <div class="footer-links">
+    <a href="/">Ouvrir l'app</a>
+    <a href="/landing.html">Accueil</a>
+    <a href="/privacy.html" style="color:var(--label-secondary)">Confidentialité</a>
+  </div>
+  <div class="footer-copy">© 2025 Pépite &amp; Citron</div>
+</footer>
+
+</body>
+</html>

@@ -15,7 +15,7 @@ describe("Admin flow", () => {
     const user = userEvent.setup();
     const adminBtn = await screen.findByRole("button", { name: /admin/i });
     await user.click(adminBtn);
-    expect(await screen.findByText("Match du jour")).toBeInTheDocument();
+    expect(await screen.findByText("Match du soir")).toBeInTheDocument();
   });
 
   it("shows admin UI when navigating to admin tab", async () => {
@@ -23,8 +23,8 @@ describe("Admin flow", () => {
     const user = userEvent.setup();
     const adminBtn = await screen.findByRole("button", { name: /admin/i });
     await user.click(adminBtn);
-    expect(await screen.findByText("Match du jour")).toBeInTheDocument();
-    expect(await screen.findByText("Mes joueurs")).toBeInTheDocument();
+    expect(await screen.findByText("Match du soir")).toBeInTheDocument();
+    expect(await screen.findByText("Effectif")).toBeInTheDocument();
   });
 
   it("can create a match", async () => {
@@ -34,7 +34,7 @@ describe("Admin flow", () => {
     // Go to admin tab
     const adminBtn = await screen.findByRole("button", { name: /admin/i });
     await user.click(adminBtn);
-    await screen.findByText("Match du jour");
+    await screen.findByText("Match du soir");
 
     // Type match name
     const matchInput = screen.getByPlaceholderText(/vs Dragons/i);

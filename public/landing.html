@@ -8,6 +8,8 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
+  <!-- Umami Analytics — remplacez WEBSITE_ID par votre ID Umami -->
+  <script defer src="https://cloud.umami.is/script.js" data-website-id="49c8f860-14d7-49c4-897b-9c547febd823"></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -577,7 +579,7 @@
   </div>
   <div style="display:flex;gap:10px;align-items:center">
     <a href="#tarifs" style="font-size:14px;font-weight:600;color:var(--label-secondary);text-decoration:none">Tarifs</a>
-    <a href="/" class="nav-cta">Lancer l'app →</a>
+    <a href="/" class="nav-cta" data-umami-event="landing_nav_cta">Lancer l'app →</a>
   </div>
 </nav>
 
@@ -590,11 +592,11 @@
     de chaque match.
   </h1>
   <p class="hero-sub">
-    Parce qu'après chaque soirée, quelqu'un était clairement au-dessus, et quelqu'un franchement en dessous.
+    Après chaque match, au bar, quelqu'un était clairement au-dessus — et quelqu'un franchement en dessous. L'équipe décide, anonymement, en 30 secondes.
   </p>
   <div class="hero-cta-group">
-    <a href="/" class="btn-primary">Commencer à voter</a>
-    <a href="#tarifs" class="btn-secondary">Voir les tarifs</a>
+    <a href="/" class="btn-primary" data-umami-event="landing_hero_cta">Commencer à voter</a>
+    <a href="#tarifs" class="btn-secondary" data-umami-event="landing_hero_tarifs">Voir les tarifs</a>
   </div>
 </section>
 <div class="tagline-strip">"Aucun joueur n'a été blessé lors de la création de cette app. (Sauf leur ego.)"</div>
@@ -603,8 +605,8 @@
 <section id="comment-ca-marche">
   <div class="section-inner">
     <div class="section-tag">Comment ça marche</div>
-    <h2 class="section-title">Votez pour vos pépites et votre citron.</h2>
-    <p class="section-desc">Tout le monde vote, les résultats tombent en direct. Pas de compte obligatoire, pas d'inscription.</p>
+    <h2 class="section-title">Trois étapes, au bar après le match.</h2>
+    <p class="section-desc">Le capitaine crée le match, l'équipe vote depuis son téléphone. Résultats en direct, stats de saison automatiques. Zéro inscription pour les joueurs.</p>
 
     <div class="how-grid">
 
@@ -686,13 +688,14 @@
 <section id="occasions">
   <div class="section-inner">
     <div class="section-tag">Pour quelles occasions</div>
-    <h2 class="section-title">Partout où il y a un gagnant et un perdant.</h2>
-    <p class="section-desc">Pépite & Citron s'adapte à toutes les situations où un groupe veut désigner les extrêmes.</p>
+    <h2 class="section-title">Né au bar après le match. Adopté partout.</h2>
+    <p class="section-desc">Conçu pour les équipes de sport après chaque match — et vite détourné pour n'importe quelle occasion où un groupe veut désigner son meilleur et son pire.</p>
     <div class="occ-grid">
-      <div class="occ-card">
+      <div class="occ-card" style="border-color:rgba(255,215,0,0.35);position:relative;">
+        <div style="position:absolute;top:14px;right:14px;background:rgba(255,215,0,0.15);color:var(--pepite);font-size:10px;font-weight:700;letter-spacing:.5px;padding:3px 8px;border-radius:20px;border:1px solid rgba(255,215,0,0.3);">LE CAS D'USAGE</div>
         <div class="occ-emoji">⚽</div>
         <div class="occ-title">Sport collectif</div>
-        <div class="occ-desc">Foot, basket, volley, rugby… Le vestiaire a enfin une voix officielle après chaque match.</div>
+        <div class="occ-desc">Foot, basket, volley, rugby… Après le coup de sifflet final, le capitaine partage le lien au bar. L'équipe vote depuis son téléphone, les résultats tombent en direct.</div>
       </div>
       <div class="occ-card">
         <div class="occ-emoji">🎊</div>
@@ -728,7 +731,7 @@
   <div class="section-inner">
     <div class="section-tag">Tarifs</div>
     <h2 class="section-title">Simple. Transparent. Sans surprise.</h2>
-    <p class="section-desc">Commencez gratuitement, passez Pro quand votre équipe est accro aux stats.</p>
+    <p class="section-desc">Commencez gratuitement. Passez Pro quand votre équipe veut suivre la saison match par match.</p>
 
     <!-- Billing toggle -->
     <div class="pricing-toggle">
@@ -754,7 +757,7 @@
         <div class="pricing-feature"><span class="cross">✕</span><span class="pricing-feature-text muted">Statistiques de saison</span></div>
         <div class="pricing-feature"><span class="cross">✕</span><span class="pricing-feature-text muted">Historique complet des matchs</span></div>
         <div class="pricing-feature"><span class="cross">✕</span><span class="pricing-feature-text muted">Sans publicité</span></div>
-        <a href="/" class="pricing-cta free">Commencer gratuitement</a>
+        <a href="/" class="pricing-cta free" data-umami-event="landing_pricing_free_cta">Commencer gratuitement</a>
       </div>
 
       <!-- PRO -->
@@ -768,7 +771,7 @@
         <div class="pricing-feature"><span class="star">⭐</span><span class="pricing-feature-text"><strong>Historique de tous vos matchs</strong></span></div>
         <div class="pricing-feature"><span class="star">⭐</span><span class="pricing-feature-text"><strong>Sans publicité</strong></span></div>
         <div class="pricing-feature"><span class="star">⭐</span><span class="pricing-feature-text">Support prioritaire</span></div>
-        <a href="/" class="pricing-cta pro" id="pro-cta">Passer Pro — 12,99 €/an →</a>
+        <a href="/" class="pricing-cta pro" id="pro-cta" data-umami-event="landing_pricing_pro_cta">Passer Pro — 12,99 €/an →</a>
         <div style="text-align:center;font-size:11px;color:var(--label-tertiary);margin-top:10px">Résiliation en un clic · Paiement sécurisé Stripe</div>
       </div>
 
@@ -887,6 +890,7 @@
     <a href="#tarifs">Tarifs</a>
     <a href="#occasions">Occasions</a>
     <a href="#installer">Installer</a>
+    <a href="/privacy.html">Confidentialité</a>
   </div>
   <div class="footer-copy">© 2025 Pépite &amp; Citron · Fait avec ⭐ et 🍋</div>
 </footer>

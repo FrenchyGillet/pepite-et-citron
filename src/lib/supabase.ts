@@ -1,26 +1,35 @@
 import { createClient } from '@supabase/supabase-js';
 import { SUPABASE_URL, SUPABASE_ANON_KEY } from '@/config';
 
-// Wrap PostgREST data requests (/rest/v1/) so that:
-//  1. Requests are aborted after 10 s (prevents indefinite hangs in production;
-//     10 s gives breathing room for high-latency regions and cold-start wake-ups).
-//  2. Network-level TypeErrors are re-thrown as AbortErrors. The SDK retries GET
-//     requests on TypeErrors with 1s+2s+4s backoff (7 s total), which would blow
-//     through test timeouts. AbortErrors skip that retry loop entirely, so our
-//     own withRetry in api.ts stays in full control of the retry strategy.
-//
-// Auth requests (/auth/v1/) bypass this wrapper entirely and use native fetch so
-// GoTrue's internal session management (refresh, lock, SIGNED_OUT events) is not
-// disrupted — preserving the same behaviour as the previous authClient.
-function wrappedFetch(url: RequestInfo | URL, options: RequestInit = {}): Promise<Response> {
-  const urlStr = String(url);
+// ── Safari ITP proxy ──────────────────────────────────────────────────────────
+// Safari's Intelligent Tracking Prevention classifies supabase.co as a
+// cross-site tracker and silently times out all requests from our domain.
+// Fix: in production, route every Supabase HTTP call through /sb-api on our
+// own domain. Vercel proxies /sb-api/:path* → supabase.co/:path*, so the
+// browser sees same-origin requests and ITP never fires.
+// In dev (localhost), the real Supabase URL is used directly.
+const PROXY = import.meta.env.PROD ? '/sb-api' : SUPABASE_URL;
 
-  // Auth, storage, functions — use native fetch untouched.
+function proxyUrl(url: string): string {
+  return PROXY !== SUPABASE_URL ? url.replace(SUPABASE_URL, PROXY) : url;
+}
+
+// ── Custom fetch wrapper ──────────────────────────────────────────────────────
+// 1. Rewrite URLs to the proxy (fixes Safari ITP).
+// 2. Add a 10 s abort timeout to PostgREST/RPC calls to prevent indefinite
+//    hangs on cold-start or bad connections.
+// 3. Auth paths use native fetch (no extra timeout) so GoTrue's internal
+//    session management (refresh, lock, SIGNED_OUT events) is not disrupted.
+function wrappedFetch(url: RequestInfo | URL, options: RequestInit = {}): Promise<Response> {
+  const urlStr = proxyUrl(String(url));
+
+  // Auth, storage, realtime handshake — native fetch, just rewrite the URL.
   if (!urlStr.includes('/rest/v1/')) {
     return fetch(urlStr, options);
   }
 
-  // PostgREST data calls — add timeout + AbortError conversion.
+  // PostgREST data + RPC calls — abort after 10 s, convert TypeErrors to
+  // AbortErrors so withRetry() in api.ts stays in control of retry logic.
   const ctrl  = new AbortController();
   const timer = setTimeout(() => ctrl.abort(), 10000);
   return fetch(urlStr, { ...options, signal: ctrl.signal })
