@@ -215,7 +215,7 @@ export default function App() {
         )}
 
         <Routes>
-          <Route index element={<Navigate to="/vote" replace />} />
+          <Route index element={<Navigate to={`/vote${location.search}`} replace />} />
           <Route path="/vote" element={
             <ErrorBoundary label="Vote">
               <VoteTab isAdmin={isAdmin} activeMatch={activeMatch} lastMatch={lastMatch} players={players} />
