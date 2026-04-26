@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { api } from '@/api';
 import { markVotedLocally, classifyVoteError } from '@/utils/vote';
 import type { Player, Match } from '@/types';
@@ -26,6 +26,14 @@ export function VoteView({ players, match, onVoted, guestName = null, onGuestVot
   const [submitError,  setSubmitError]  = useState<string | null>(null);
   const [alreadyVoted, setAlreadyVoted] = useState(false);
   const [checking,     setChecking]     = useState(false);
+
+  // Scroll to the comment+action area after a player is selected so
+  // voters with long player lists don't miss the input/button below the fold.
+  const actionRef = useRef<HTMLDivElement>(null);
+  const scrollToAction = () =>
+    requestAnimationFrame(() =>
+      actionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
+    );
 
   const pepiteCount  = match.pepite_count ?? 2;
   const lemonStep    = pepiteCount === 3 ? 4 : 3;
@@ -126,19 +134,21 @@ export function VoteView({ players, match, onVoted, guestName = null, onGuestVot
               <div className="player-grid">
                 {present.filter(p => p.name !== voterName).map(p => (
                   <button key={String(p.id)} className={`player-chip ${best1?.id === p.id ? 'sel-1st' : ''}`}
-                    onClick={() => setBest1(p)}>{p.name}</button>
+                    onClick={() => { setBest1(p); scrollToAction(); }}>{p.name}</button>
                 ))}
               </div>
-              {best1 && (
-                <>
-                  <p className="section-label mt-12 mb-4">Commentaire (optionnel)</p>
-                  <input placeholder={`Pourquoi ${best1.name} ?`} value={best1Comment}
-                    onChange={e => setBest1Comment(e.target.value)} />
-                </>
-              )}
-              <button className="btn btn-primary btn-full mt-12" disabled={!best1} onClick={() => setStep(2)}>
-                Suivant
-              </button>
+              <div ref={actionRef}>
+                {best1 && (
+                  <>
+                    <p className="section-label mt-12 mb-4">Commentaire (optionnel)</p>
+                    <input placeholder={`Pourquoi ${best1.name} ?`} value={best1Comment}
+                      onChange={e => setBest1Comment(e.target.value)} />
+                  </>
+                )}
+                <button className="btn btn-primary btn-full mt-12" disabled={!best1} onClick={() => setStep(2)}>
+                  Suivant
+                </button>
+              </div>
             </>
           )}
 
@@ -157,19 +167,21 @@ export function VoteView({ players, match, onVoted, guestName = null, onGuestVot
               <div className="player-grid">
                 {present.filter(p => p.name !== voterName && p.id !== best1?.id).map(p => (
                   <button key={String(p.id)} className={`player-chip ${best2?.id === p.id ? 'sel-2nd' : ''}`}
-                    onClick={() => setBest2(p)}>{p.name}</button>
+                    onClick={() => { setBest2(p); scrollToAction(); }}>{p.name}</button>
                 ))}
               </div>
-              {best2 && (
-                <>
-                  <p className="section-label mt-12 mb-4">Commentaire (optionnel)</p>
-                  <input placeholder={`Pourquoi ${best2.name} ?`} value={best2Comment}
-                    onChange={e => setBest2Comment(e.target.value)} />
-                </>
-              )}
-              <div className="flex gap-8 mt-12">
-                <button className="btn btn-secondary" onClick={() => setStep(1)}>Retour</button>
-                <button className="btn btn-primary" style={{ flex: 1 }} disabled={!best2} onClick={() => setStep(3)}>Suivant</button>
+              <div ref={actionRef}>
+                {best2 && (
+                  <>
+                    <p className="section-label mt-12 mb-4">Commentaire (optionnel)</p>
+                    <input placeholder={`Pourquoi ${best2.name} ?`} value={best2Comment}
+                      onChange={e => setBest2Comment(e.target.value)} />
+                  </>
+                )}
+                <div className="flex gap-8 mt-12">
+                  <button className="btn btn-secondary" onClick={() => setStep(1)}>Retour</button>
+                  <button className="btn btn-primary" style={{ flex: 1 }} disabled={!best2} onClick={() => setStep(3)}>Suivant</button>
+                </div>
               </div>
             </>
           )}
@@ -189,19 +201,21 @@ export function VoteView({ players, match, onVoted, guestName = null, onGuestVot
               <div className="player-grid">
                 {present.filter(p => p.name !== voterName && p.id !== best1?.id && p.id !== best2?.id).map(p => (
                   <button key={String(p.id)} className={`player-chip ${best3?.id === p.id ? 'sel-2nd' : ''}`}
-                    onClick={() => setBest3(p)}>{p.name}</button>
+                    onClick={() => { setBest3(p); scrollToAction(); }}>{p.name}</button>
                 ))}
               </div>
-              {best3 && (
-                <>
-                  <p className="section-label mt-12 mb-4">Commentaire (optionnel)</p>
-                  <input placeholder={`Pourquoi ${best3.name} ?`} value={best3Comment}
-                    onChange={e => setBest3Comment(e.target.value)} />
-                </>
-              )}
-              <div className="flex gap-8 mt-12">
-                <button className="btn btn-secondary" onClick={() => setStep(2)}>Retour</button>
-                <button className="btn btn-primary" style={{ flex: 1 }} disabled={!best3} onClick={() => setStep(4)}>Suivant</button>
+              <div ref={actionRef}>
+                {best3 && (
+                  <>
+                    <p className="section-label mt-12 mb-4">Commentaire (optionnel)</p>
+                    <input placeholder={`Pourquoi ${best3.name} ?`} value={best3Comment}
+                      onChange={e => setBest3Comment(e.target.value)} />
+                  </>
+                )}
+                <div className="flex gap-8 mt-12">
+                  <button className="btn btn-secondary" onClick={() => setStep(2)}>Retour</button>
+                  <button className="btn btn-primary" style={{ flex: 1 }} disabled={!best3} onClick={() => setStep(4)}>Suivant</button>
+                </div>
               </div>
             </>
           )}
@@ -219,7 +233,7 @@ export function VoteView({ players, match, onVoted, guestName = null, onGuestVot
               <div className="player-grid">
                 {present.map(p => (
                   <button key={String(p.id)} className={`player-chip ${lemon?.id === p.id ? 'sel-lemon' : ''}`}
-                    onClick={() => setLemon(p)}>{p.name}</button>
+                    onClick={() => { setLemon(p); scrollToAction(); }}>{p.name}</button>
                 ))}
               </div>
               {absent.length > 0 && (
@@ -231,7 +245,7 @@ export function VoteView({ players, match, onVoted, guestName = null, onGuestVot
                     {absent.map(p => (
                       <button key={String(p.id)}
                         className={`player-chip ${lemon?.id === p.id ? 'sel-lemon' : ''}`}
-                        onClick={() => setLemon(p)}
+                        onClick={() => { setLemon(p); scrollToAction(); }}
                         style={{ opacity: lemon?.id === p.id ? 1 : 0.5, borderStyle: 'dashed' }}>
                         {p.name}
                       </button>
@@ -239,16 +253,18 @@ export function VoteView({ players, match, onVoted, guestName = null, onGuestVot
                   </div>
                 </>
               )}
-              {lemon && (
-                <>
-                  <p className="section-label mt-12 mb-4">Commentaire (optionnel)</p>
-                  <input placeholder={`Pourquoi ${lemon.name} ?`} value={lemonComment}
-                    onChange={e => setLemonComment(e.target.value)} />
-                </>
-              )}
-              <div className="flex gap-8 mt-12">
-                <button className="btn btn-secondary" onClick={() => setStep(lemonStep - 1)}>Retour</button>
-                <button className="btn btn-primary" style={{ flex: 1 }} disabled={!lemon} onClick={() => setStep(summaryStep)}>Suivant</button>
+              <div ref={actionRef}>
+                {lemon && (
+                  <>
+                    <p className="section-label mt-12 mb-4">Commentaire (optionnel)</p>
+                    <input placeholder={`Pourquoi ${lemon.name} ?`} value={lemonComment}
+                      onChange={e => setLemonComment(e.target.value)} />
+                  </>
+                )}
+                <div className="flex gap-8 mt-12">
+                  <button className="btn btn-secondary" onClick={() => setStep(lemonStep - 1)}>Retour</button>
+                  <button className="btn btn-primary" style={{ flex: 1 }} disabled={!lemon} onClick={() => setStep(summaryStep)}>Suivant</button>
+                </div>
               </div>
             </>
           )}
