@@ -38,9 +38,10 @@ interface AppStore {
   orgsLoadErrorDetail: string | null;
 
   // ── Guest ─────────────────────────────────────────────────────────────────
-  guestToken:  string | null;
-  guestName:   string | null;
-  guestStatus: GuestStatus;
+  guestToken:      string | null;
+  guestName:       string | null;
+  guestStatus:     GuestStatus;
+  isVoterSession:  boolean;  // true when user arrived via ?org= or ?guest= link
 
   // ── UI ────────────────────────────────────────────────────────────────────
   theme:             string;
@@ -59,6 +60,7 @@ interface AppStore {
   setGuestToken:        (v: string | null) => void;
   setGuestName:         (v: string | null) => void;
   setGuestStatus:       (v: GuestStatus) => void;
+  setIsVoterSession:    (v: boolean) => void;
   setTheme:             (t: string) => void;
   setVotedThisSession:  (v: boolean) => void;
   setShowOnboarding:    (v: boolean) => void;
@@ -82,6 +84,7 @@ export function resetAppStore() {
     guestToken: null,
     guestName: null,
     guestStatus: null,
+    isVoterSession: false,
     theme: localStorage.getItem('pepite_theme') || 'dark',
     votedThisSession: false,
     showOnboarding: false,
@@ -101,6 +104,7 @@ export const useAppStore = create<AppStore>((set, get) => ({
   guestToken:       null,
   guestName:        null,
   guestStatus:      null,
+  isVoterSession:   false,
   theme:            localStorage.getItem('pepite_theme') || 'dark',
   votedThisSession: false,
   showOnboarding:   false,
@@ -117,6 +121,7 @@ export const useAppStore = create<AppStore>((set, get) => ({
   setGuestToken:       (v)   => set({ guestToken: v }),
   setGuestName:        (v)   => set({ guestName: v }),
   setGuestStatus:      (v)   => set({ guestStatus: v }),
+  setIsVoterSession:   (v)   => set({ isVoterSession: v }),
   setTheme:            (t)   => set({ theme: t }),
   setVotedThisSession: (v)   => set({ votedThisSession: v }),
   setShowOnboarding:   (v)   => set({ showOnboarding: v }),

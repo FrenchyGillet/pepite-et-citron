@@ -1,9 +1,10 @@
 import { useNavigate } from 'react-router-dom';
-import { api } from '@/api';
+import { api, DEMO_MODE } from '@/api';
 import { useAppStore } from '@/store/appStore';
 import { hasVotedLocally } from '@/utils/vote';
 import { VoteView } from './VoteView';
 import { EmptyState } from './EmptyState';
+import { GuestPromoView } from './GuestPromoView';
 import type { Player, Match } from '@/types';
 
 interface VoteTabProps {
@@ -14,15 +15,25 @@ interface VoteTabProps {
 }
 
 export function VoteTab({ isAdmin, activeMatch, lastMatch, players }: VoteTabProps) {
+  const session            = useAppStore(s => s.session);
   const guestStatus        = useAppStore(s => s.guestStatus);
   const guestName          = useAppStore(s => s.guestName);
   const guestToken         = useAppStore(s => s.guestToken);
+  const isVoterSession     = useAppStore(s => s.isVoterSession);
   const votedThisSession   = useAppStore(s => s.votedThisSession);
   const setVotedThisSession = useAppStore(s => s.setVotedThisSession);
   const setGuestToken      = useAppStore(s => s.setGuestToken);
   const navigate           = useNavigate();
 
-  const handleVoted = () => { setVotedThisSession(true); navigate('/results'); };
+  // Voter-link users (no account) see the promo screen after voting;
+  // authenticated users go directly to /results.
+  const isAnonymousVoter = !DEMO_MODE && !session && isVoterSession;
+
+  const handleVoted = () => {
+    setVotedThisSession(true);
+    if (!isAnonymousVoter) navigate('/results');
+    // else: stay on VoteTab — GuestPromoView is rendered below
+  };
 
   const handleGuestVoted = async () => {
     if (guestToken) await api.useGuestToken(guestToken);
@@ -60,6 +71,11 @@ export function VoteTab({ isAdmin, activeMatch, lastMatch, players }: VoteTabPro
   }
 
   if ((votedThisSession || hasVotedLocally(activeMatch?.id)) && phase === 'voting') {
+    if (isAnonymousVoter) {
+      // ?org= voters: can browse results (isVoterLink stays true via isVoterSession)
+      // ?guest= voters: results are locked, so hide that button
+      return <GuestPromoView canSeeResults={!guestToken && guestStatus !== 'valid'} />;
+    }
     return (
       <EmptyState
         icon={<><path d="M22 11.08V12a10 10 0 11-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></>}

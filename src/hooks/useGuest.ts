@@ -7,10 +7,11 @@ export function useGuest() {
   const navigate       = useNavigate();
   const [searchParams] = useSearchParams();
 
-  const setGuestToken  = useAppStore(s => s.setGuestToken);
-  const setGuestName   = useAppStore(s => s.setGuestName);
-  const setGuestStatus = useAppStore(s => s.setGuestStatus);
-  const setCurrentOrg  = useAppStore(s => s.setCurrentOrg);
+  const setGuestToken      = useAppStore(s => s.setGuestToken);
+  const setGuestName       = useAppStore(s => s.setGuestName);
+  const setGuestStatus     = useAppStore(s => s.setGuestStatus);
+  const setIsVoterSession  = useAppStore(s => s.setIsVoterSession);
+  const setCurrentOrg      = useAppStore(s => s.setCurrentOrg);
 
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
@@ -18,6 +19,7 @@ export function useGuest() {
     const orgSlug    = searchParams.get('org');
 
     if (guestParam) {
+      setIsVoterSession(true);
       setGuestStatus('checking');
       void api.validateGuestToken(guestParam).then(async result => {
         if (result && !result.used) {
@@ -38,6 +40,7 @@ export function useGuest() {
         }
       });
     } else if (orgSlug && !DEMO_MODE) {
+      setIsVoterSession(true);
       void api.getOrgBySlug(orgSlug).then(org => {
         if (org) {
           setCurrentOrgId(org.id);

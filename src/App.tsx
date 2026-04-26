@@ -78,6 +78,7 @@ export default function App() {
   const theme            = useAppStore(s => s.theme);
   const guestStatus      = useAppStore(s => s.guestStatus);
   const guestToken       = useAppStore(s => s.guestToken);
+  const isVoterSession   = useAppStore(s => s.isVoterSession);
   const setSession       = useAppStore(s => s.setSession);
   const setCurrentOrg    = useAppStore(s => s.setCurrentOrg);
   const setMyOrgs        = useAppStore(s => s.setMyOrgs);
@@ -105,7 +106,8 @@ export default function App() {
     !!searchParams.get('org')   ||
     !!searchParams.get('guest') ||
     guestStatus !== null        ||   // covers 'checking' / 'valid' / 'invalid'
-    !!guestToken
+    !!guestToken                ||
+    isVoterSession                   // set when ?org= or ?guest= was detected, survives navigation
   );
 
   // Show a one-time success toast after Stripe redirect
