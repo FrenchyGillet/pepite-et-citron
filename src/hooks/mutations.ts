@@ -33,8 +33,28 @@ export function useCreateMatch(orgId?: string | null) {
     mutationFn: ({ label, presentIds, teamId, season, pepiteCount }: {
       label: string; presentIds: EntityId[]; teamId: EntityId | null; season: number; pepiteCount?: 2 | 3;
     }) => api.createMatch(label, presentIds, teamId, season, pepiteCount),
-    onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.activeMatch(orgId) }),
+    onSuccess: (_match, vars) => {
+      qc.invalidateQueries({ queryKey: queryKeys.activeMatch(orgId) });
+      // Fire-and-forget email notification — failure is silently ignored
+      if (orgId) void sendMatchNotification(orgId, vars.label);
+    },
   });
+}
+
+async function sendMatchNotification(orgId: string, matchLabel: string): Promise<void> {
+  try {
+    const { supabase } = await import('@/lib/supabase');
+    const { data: { session } } = await supabase.auth.getSession();
+    const token = session?.access_token;
+    if (!token) return;
+    await fetch('/api/send-match-notification', {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+      body:    JSON.stringify({ orgId, matchLabel }),
+    });
+  } catch {
+    // Best-effort — never throw
+  }
 }
 
 export function useCloseMatch(orgId?: string | null) {

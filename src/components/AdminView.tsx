@@ -590,6 +590,9 @@ export function AdminView({ players, activeMatch, currentOrg, onSignOut, onShowG
                 </button>
               </div>
             )}
+            {currentOrg?.plan === 'pro' && (
+              <ManageSubscriptionButton orgId={currentOrg.id} />
+            )}
             <button className="btn btn-secondary btn-full" style={{ fontSize: 13, marginBottom: 8 }} onClick={onShowGuide}>
               📖 Comment ça marche
             </button>
@@ -748,6 +751,45 @@ function DeleteAccountButton() {
           {loading ? 'Suppression…' : 'Supprimer'}
         </button>
       </div>
+    </div>
+  );
+}
+
+// ── Manage subscription ───────────────────────────────────────────────────────
+
+function ManageSubscriptionButton({ orgId }: { orgId: string }) {
+  const [loading, setLoading] = useState(false);
+  const [error,   setError]   = useState<string | null>(null);
+
+  const openPortal = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const res  = await fetch('/api/create-portal-session', {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({ orgId }),
+      });
+      const data = await res.json() as { url?: string; error?: string };
+      if (!res.ok || !data.url) throw new Error(data.error || 'Erreur inattendue');
+      window.location.href = data.url;
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Erreur inconnue');
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div style={{ marginBottom: 8 }}>
+      <button
+        className="btn btn-secondary btn-full"
+        style={{ fontSize: 13 }}
+        onClick={openPortal}
+        disabled={loading}
+      >
+        {loading ? 'Redirection…' : '💳 Gérer mon abonnement'}
+      </button>
+      {error && <p style={{ fontSize: 12, color: 'var(--red)', marginTop: 4 }}>{error}</p>}
     </div>
   );
 }
