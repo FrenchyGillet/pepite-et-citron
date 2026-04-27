@@ -92,8 +92,14 @@ export function VoteTab({ isAdmin, activeMatch, lastMatch, players }: VoteTabPro
     return (
       <EmptyState
         icon={<><rect x="3" y="3" width="18" height="18" rx="3"/><path d="M8 12h8M12 8v8"/></>}
-        title="Pas de match ce soir"
-        subtitle={isAdmin ? "Ouvre un match depuis l'onglet Admin pour lancer le vote." : "Ton capitaine n'a pas encore ouvert le vote."}
+        title={isVoterSession ? "Pas encore de vote ouvert" : "Pas de match ce soir"}
+        subtitle={
+          isVoterSession
+            ? "Ton capitaine n'a pas encore lancé le vote. Reviens quand il partage le lien !"
+            : isAdmin
+              ? "Ouvre un match depuis l'onglet Admin pour lancer le vote."
+              : "Ton capitaine n'a pas encore ouvert le vote."
+        }
         action={isAdmin ? { label: 'Ouvrir un match', onClick: () => navigate('/admin') } : null}
       />
     );
@@ -104,7 +110,7 @@ export function VoteTab({ isAdmin, activeMatch, lastMatch, players }: VoteTabPro
       <EmptyState
         icon={<><rect x="3" y="11" width="18" height="10" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></>}
         title="Vote terminé"
-        subtitle="La période de vote est clôturée."
+        subtitle={isVoterSession ? "Le vote est clôturé pour ce match. Résultats visibles ci-dessous." : "La période de vote est clôturée."}
         action={{ label: 'Voir les résultats', onClick: () => navigate('/results') }}
       />
     );

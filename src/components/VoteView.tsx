@@ -97,7 +97,24 @@ export function VoteView({ players, match, onVoted, guestName = null, onGuestVot
 
       {step === 0 && !guestName && (
         <>
-          <p className="section-label mt-8 mb-4">Qui es-tu ?</p>
+          {/* Context banner for first-time anonymous voters */}
+          <div style={{
+            background: 'linear-gradient(135deg, var(--gold-subtle) 0%, var(--lemon-subtle) 100%)',
+            border: '1px solid var(--separator2)',
+            borderRadius: 'var(--radius-lg)',
+            padding: '14px 16px',
+            marginBottom: 20,
+            marginTop: 8,
+          }}>
+            <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--label)', marginBottom: 4 }}>
+              ⭐ Pépite &amp; 🍋 Citron · {match.label}
+            </div>
+            <div style={{ fontSize: 12, color: 'var(--label3)', lineHeight: 1.5 }}>
+              Désigne le meilleur joueur du match et celui qui a le moins performé.
+              Vote anonyme — personne ne voit qui a voté quoi.
+            </div>
+          </div>
+          <p className="section-label mb-4">Qui es-tu ?</p>
           <div className="player-grid">
             {present.map(p => (
               <button key={String(p.id)} className={`player-chip ${voterName === p.name ? 'sel-1st' : ''}`}
