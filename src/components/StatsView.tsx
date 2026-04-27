@@ -60,7 +60,7 @@ export function StatsView({ players, activeMatch, isAdmin, orgId }: StatsViewPro
   const filteredMatchIds = new Set(filteredMatches.map(m => m.id));
   const filteredVotes = allVotes.filter(v => filteredMatchIds.has(v.match_id));
 
-  const { rankedBest, rankedLemon, maxPts, maxLemonPts } = computeSeasonStats(players, filteredMatches, allVotes);
+  const { rankedBest, rankedLemon, rankedAttendance, maxPts, maxLemonPts, totalMatches } = computeSeasonStats(players, filteredMatches, allVotes);
 
   const handleDelete = (match: Match) => {
     if (!confirm(`Supprimer "${match.label}" et tous ses votes ?`)) return;
@@ -135,7 +135,12 @@ export function StatsView({ players, activeMatch, isAdmin, orgId }: StatsViewPro
                     <div style={{ width: 24, fontWeight: 700, fontSize: 13, flexShrink: 0, color: i === 0 ? 'var(--gold)' : 'var(--label3)' }}>{i + 1}</div>
                     <div className="row-body">
                       <div className="row-title">{s.name}</div>
-                      {s.wins > 0 && <div className="flex gap-8 mt-4"><span className="tag tag-gold">⭐ ×{s.wins}</span></div>}
+                      {(s.wins > 0 || s.absences > 0) && (
+                        <div className="flex gap-8 mt-4">
+                          {s.wins > 0 && <span className="tag tag-gold">⭐ ×{s.wins}</span>}
+                          {s.absences > 0 && <span className="tag tag-dim">{s.absences} abs.</span>}
+                        </div>
+                      )}
                     </div>
                     <div className="flex gap-8" style={{ alignItems: 'center' }}>
                       <Sparkline data={s.bestHistory} color={i === 0 ? 'var(--gold)' : '#8E8E93'} />
@@ -160,7 +165,12 @@ export function StatsView({ players, activeMatch, isAdmin, orgId }: StatsViewPro
                     <div style={{ width: 24, fontWeight: 700, fontSize: 13, flexShrink: 0, color: i === 0 ? '#f5c542' : 'var(--label3)' }}>{i + 1}</div>
                     <div className="row-body">
                       <div className="row-title">{s.name}</div>
-                      {s.lemons > 0 && <div className="flex gap-8 mt-4"><span className="tag tag-lemon">🍋 ×{s.lemons}</span></div>}
+                      {(s.lemons > 0 || s.absences > 0) && (
+                        <div className="flex gap-8 mt-4">
+                          {s.lemons > 0 && <span className="tag tag-lemon">🍋 ×{s.lemons}</span>}
+                          {s.absences > 0 && <span className="tag tag-dim">{s.absences} abs.</span>}
+                        </div>
+                      )}
                     </div>
                     <div className="flex gap-8" style={{ alignItems: 'center' }}>
                       <Sparkline data={s.lemonHistory} color={i === 0 ? '#f5c542' : '#8E8E93'} />
@@ -174,6 +184,39 @@ export function StatsView({ players, activeMatch, isAdmin, orgId }: StatsViewPro
               </div>
             )
           }
+
+          {rankedAttendance.length > 0 && (
+            <>
+              <p className="section-label mb-4">Assiduité 📋</p>
+              <div className="group" style={{ marginBottom: 12 }}>
+                {rankedAttendance.map(s => {
+                  const pct = totalMatches > 0 ? Math.round((s.matchesPlayed / totalMatches) * 100) : 0;
+                  const isAbsent = s.absences > 0;
+                  return (
+                    <div key={s.name} className="row">
+                      <div className="row-body">
+                        <div className="row-title">{s.name}</div>
+                      </div>
+                      <div className="flex gap-8" style={{ alignItems: 'center' }}>
+                        <div className="score-bar-wrap">
+                          <div className="score-bar" style={{
+                            width: `${pct}%`,
+                            background: isAbsent ? 'var(--label3)' : 'var(--gold)',
+                          }} />
+                        </div>
+                        <div style={{
+                          fontSize: 12, fontWeight: 600, minWidth: 44, textAlign: 'right',
+                          color: isAbsent ? 'var(--label3)' : 'var(--gold)',
+                        }}>
+                          {s.matchesPlayed}/{totalMatches}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </>
+          )}
 
           <p className="section-label mb-8">Matchs</p>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 20 }}>
