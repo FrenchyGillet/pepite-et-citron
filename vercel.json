@@ -12,6 +12,8 @@
     { "source": "/api/(.*)",      "destination": "/api/$1" },
     { "source": "/privacy",       "destination": "/privacy.html" },
     { "source": "/sb-api/:path*", "destination": "https://vtjpjkrrvpwoqwrrhgbk.supabase.co/:path*" },
+    { "source": "/landing.js",    "destination": "/landing.js" },
+    { "source": "/landing.html",  "destination": "/landing.html" },
     { "source": "/(.*)",          "destination": "/" }
   ],
 
