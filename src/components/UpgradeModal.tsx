@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useModalA11y } from '@/hooks/useModalA11y';
 
 interface Props {
   orgId: string;
@@ -23,6 +24,7 @@ export function UpgradeModal({ orgId, onClose }: Props) {
   const [plan,    setPlan]    = useState<Plan>('annual');
   const [loading, setLoading] = useState(false);
   const [error,   setError]   = useState<string | null>(null);
+  const dialogRef = useModalA11y(onClose);
 
   async function handleUpgrade() {
     setLoading(true);
@@ -52,11 +54,17 @@ export function UpgradeModal({ orgId, onClose }: Props) {
       }}
       onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
     >
-      <div style={{
-        background: 'var(--bg2)', borderRadius: '24px 24px 0 0',
-        padding: '32px 24px 40px', width: '100%', maxWidth: 480,
-        border: '1px solid var(--separator)',
-      }}>
+      <div
+        ref={dialogRef}
+        role="dialog"
+        aria-modal="true"
+        aria-label="Passer à Pépite & Citron Pro"
+        style={{
+          background: 'var(--bg2)', borderRadius: '24px 24px 0 0',
+          padding: '32px 24px 40px', width: '100%', maxWidth: 480,
+          border: '1px solid var(--separator)',
+        }}
+      >
 
         {/* Header */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 24 }}>
@@ -70,6 +78,7 @@ export function UpgradeModal({ orgId, onClose }: Props) {
           </div>
           <button
             onClick={onClose}
+            aria-label="Fermer"
             style={{ background: 'var(--bg3)', border: 'none', borderRadius: '50%', width: 32, height: 32, cursor: 'pointer', color: 'var(--label2)', fontSize: 18, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
           >×</button>
         </div>
@@ -148,3 +157,4 @@ export function UpgradeModal({ orgId, onClose }: Props) {
     </div>
   );
 }
+

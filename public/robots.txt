@@ -1,0 +1,8 @@
+User-agent: *
+Allow: /landing.html
+Allow: /privacy.html
+Allow: /terms.html
+Allow: /sitemap.xml
+Disallow: /
+
+Sitemap: https://pepite-citron.com/sitemap.xml

@@ -7,6 +7,7 @@ import {
 } from '@/schemas';
 import { shuffleRevealOrder } from '@/utils/vote';
 import { Toast } from './Toast';
+import { SetupChecklist } from './SetupChecklist';
 import { useTeams, useGuestTokens, useOrgMembers, useVotes, useCurrentSeason, useSeasonNames } from '@/hooks/queries';
 import {
   useAddPlayer, useRemovePlayer,
@@ -78,6 +79,12 @@ export function AdminView({ players, activeMatch, currentOrg, onSignOut, onShowG
   const [matchLabel,      setMatchLabel]      = useState('');
   const [presentIds,      setPresentIds]      = useState<EntityId[]>([]);
   const [toast,           setToast]           = useState<string | null>(null);
+  const [linkCopied,      setLinkCopied]      = useState(() =>
+    currentOrg?.id ? !!localStorage.getItem(`pepite_link_copied_${currentOrg.id}`) : false
+  );
+  const [matchEverLaunched, setMatchEverLaunched] = useState(() =>
+    currentOrg?.id ? !!localStorage.getItem(`pepite_match_launched_${currentOrg.id}`) : false
+  );
   const [teamName,        setTeamName]        = useState('');
   const [teamIds,         setTeamIds]         = useState<EntityId[]>([]);
   const [showNewTeam,     setShowNewTeam]     = useState(false);
@@ -216,6 +223,7 @@ export function AdminView({ players, activeMatch, currentOrg, onSignOut, onShowG
           track(EVENTS.MATCH_CREATED, { playerCount: presentIds.length, pepiteCount });
           setMatchLabel(''); setPresentIds([]); setSelectedTeamId(null);
           setToast('Match ouvert !');
+          if (currentOrg?.id) { localStorage.setItem(`pepite_match_launched_${currentOrg.id}`, '1'); setMatchEverLaunched(true); }
         },
       }
     );
@@ -259,6 +267,17 @@ export function AdminView({ players, activeMatch, currentOrg, onSignOut, onShowG
     <div className="content">
       {toast && <Toast msg={toast} onDone={() => setToast(null)} />}
 
+      {/* ── Setup checklist (new orgs only) ───────────────────────────── */}
+      {!DEMO_MODE && currentOrg?.id && !activeMatch && (
+        <SetupChecklist
+          orgId={currentOrg.id}
+          playerCount={players.length}
+          teamCount={teams.length}
+          matchCount={matchEverLaunched ? 1 : 0}
+          onCopiedLink={linkCopied}
+        />
+      )}
+
       {/* ── ZONE 1 : Match du soir ─────────────────────────────────────── */}
       <div style={{ marginBottom: 4 }}>
         <div style={{ marginBottom: 10, paddingTop: 4 }}>
@@ -282,7 +301,7 @@ export function AdminView({ players, activeMatch, currentOrg, onSignOut, onShowG
               </div>
               <div className="row-body">
                 <div className="row-title">{activeMatch.label}</div>
-                <div className="row-sub">
+                <div className="row-sub" aria-live="polite" aria-atomic="true">
                   {phase === 'voting'   && `${voteCount} vote${voteCount !== 1 ? 's' : ''} reçu${voteCount !== 1 ? 's' : ''} sur ${activeMatch.present_ids.length} joueurs`}
                   {phase === 'counting' && `Dépouillement — ${activeMatch.revealed_count || 0}/${(activeMatch.reveal_order || []).length} votes révélés`}
                 </div>
@@ -309,6 +328,7 @@ export function AdminView({ players, activeMatch, currentOrg, onSignOut, onShowG
                       onClick={() => {
                         void navigator.clipboard.writeText(`${window.location.origin}/?org=${currentOrg.slug}`);
                         setToast('Lien copié !');
+                        if (currentOrg?.id) { localStorage.setItem(`pepite_link_copied_${currentOrg.id}`, '1'); setLinkCopied(true); }
                       }}>
                       Copier
                     </button>
@@ -585,7 +605,7 @@ export function AdminView({ players, activeMatch, currentOrg, onSignOut, onShowG
                   {window.location.origin}/?org={currentOrg.slug}
                 </div>
                 <button className="btn btn-secondary btn-full" style={{ marginTop: 8, fontSize: 13 }}
-                  onClick={() => { void navigator.clipboard.writeText(`${window.location.origin}/?org=${currentOrg.slug}`); track(EVENTS.ORG_LINK_COPIED); setToast('Lien copié !'); }}>
+                  onClick={() => { void navigator.clipboard.writeText(`${window.location.origin}/?org=${currentOrg.slug}`); track(EVENTS.ORG_LINK_COPIED); setToast('Lien copié !'); if (currentOrg?.id) { localStorage.setItem(`pepite_link_copied_${currentOrg.id}`, '1'); setLinkCopied(true); } }}>
                   Copier le lien
                 </button>
               </div>

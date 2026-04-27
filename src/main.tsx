@@ -15,24 +15,46 @@ const queryClient = new QueryClient({
   },
 });
 
-const SENTRY_DSN = import.meta.env.VITE_SENTRY_DSN;
+const SENTRY_DSN = import.meta.env.VITE_SENTRY_DSN as string | undefined;
+const IS_PROD    = import.meta.env.MODE === 'production';
 
-if (SENTRY_DSN) {
-  Sentry.init({
-    dsn: SENTRY_DSN as string,
-    environment: import.meta.env.MODE,
-    release: import.meta.env.VITE_APP_VERSION as string | undefined,
-    integrations: [
-      Sentry.browserTracingIntegration(),
-    ],
-    tracesSampleRate: import.meta.env.MODE === 'production' ? 0.1 : 0,
-    ignoreErrors: [
-      'AbortError',
-      'Délai dépassé',
-      'NetworkError',
-      'Failed to fetch',
-      'Load failed',
-    ],
+// Always initialise Sentry — without DSN it stays in "no-op" mode but the
+// ErrorBoundary still works. With DSN, errors are sent to Sentry cloud.
+Sentry.init({
+  dsn: SENTRY_DSN || undefined,
+  environment: import.meta.env.MODE,
+  release: import.meta.env.VITE_APP_VERSION as string | undefined,
+  enabled: IS_PROD,
+  integrations: [
+    Sentry.browserTracingIntegration(),
+  ],
+  tracesSampleRate: IS_PROD ? 0.1 : 0,
+  ignoreErrors: [
+    'AbortError',
+    'Délai dépassé',
+    'NetworkError',
+    'Failed to fetch',
+    'Load failed',
+  ],
+});
+
+// Fallback error capture — fires even when Sentry has no DSN configured.
+// In production without DSN, errors are logged to console with full context
+// so they appear in Vercel's function logs.
+if (IS_PROD && !SENTRY_DSN) {
+  window.addEventListener('error', (e) => {
+    console.error('[unhandled error]', {
+      message: e.message,
+      source:  e.filename,
+      line:    e.lineno,
+      col:     e.colno,
+      stack:   e.error?.stack,
+    });
+  });
+  window.addEventListener('unhandledrejection', (e) => {
+    console.error('[unhandled promise rejection]', {
+      reason: e.reason instanceof Error ? e.reason.stack : String(e.reason),
+    });
   });
 }
 

@@ -1,4 +1,5 @@
 import { useState, type ReactNode } from 'react';
+import { useModalA11y } from '@/hooks/useModalA11y';
 
 interface Step {
   color: string;
@@ -65,19 +66,28 @@ export function OnboardingModal({ onClose }: OnboardingModalProps) {
   const [step, setStep] = useState(0);
   const isLast = step === STEPS.length - 1;
   const s = STEPS[step];
+  const dialogRef = useModalA11y(onClose);
 
   return (
-    <div style={{
-      position: 'fixed', inset: 0, zIndex: 1000,
-      background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)',
-      display: 'flex', alignItems: 'flex-end', justifyContent: 'center',
-      padding: '0 0 env(safe-area-inset-bottom, 0)',
-    }}>
-      <div style={{
-        background: 'var(--bg2)', borderRadius: '24px 24px 0 0',
-        width: '100%', maxWidth: 480, padding: '8px 24px 32px',
-        animation: 'slideUp 0.3s ease',
-      }}>
+    <div
+      style={{
+        position: 'fixed', inset: 0, zIndex: 1000,
+        background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)',
+        display: 'flex', alignItems: 'flex-end', justifyContent: 'center',
+        padding: '0 0 env(safe-area-inset-bottom, 0)',
+      }}
+      onClick={e => { if (e.target === e.currentTarget) onClose(); }}
+    >
+      <div
+        ref={dialogRef}
+        role="dialog"
+        aria-modal="true"
+        aria-label={`Guide de démarrage — étape ${step + 1} sur ${STEPS.length} : ${s.title}`}
+        style={{
+          background: 'var(--bg2)', borderRadius: '24px 24px 0 0',
+          width: '100%', maxWidth: 480, padding: '8px 24px 32px',
+          animation: 'slideUp 0.3s ease',
+        }}>
         <div style={{ width: 36, height: 4, borderRadius: 2, background: 'var(--separator)', margin: '12px auto 28px' }}/>
 
         <div style={{ display: 'flex', gap: 6, justifyContent: 'center', marginBottom: 28 }}>
