@@ -35,14 +35,14 @@ const makeVote = (id: number, matchId: number, overrides: Partial<Vote> = {}): V
 
 describe('computeSeasonStats', () => {
   it('returns empty ranked lists when there are no matches', () => {
-    const { rankedBest, rankedLemon } = computeSeasonStats(allPlayers, [], []);
+    const { rankedBest, rankedLemon } = computeSeasonStats(allPlayers, [], [], []);
     expect(rankedBest).toEqual([]);
     expect(rankedLemon).toEqual([]);
   });
 
   it('returns empty lists when there are matches but no votes', () => {
     const matches = [makeMatch(1, [1, 2, 3])];
-    const { rankedBest, rankedLemon } = computeSeasonStats(allPlayers, matches, []);
+    const { rankedBest, rankedLemon } = computeSeasonStats(allPlayers, matches, [], []);
     expect(rankedBest).toEqual([]);
     expect(rankedLemon).toEqual([]);
   });
@@ -54,7 +54,7 @@ describe('computeSeasonStats', () => {
       makeVote(2, 2, { best1_id: 1 }), // alice +2 in match 2
       makeVote(3, 2, { best2_id: 2 }), // bob +1 in match 2
     ];
-    const { rankedBest } = computeSeasonStats(allPlayers, matches, votes);
+    const { rankedBest } = computeSeasonStats(allPlayers, matches, votes, []);
     const alice = rankedBest.find(s => s.name === 'Alice');
     const bob   = rankedBest.find(s => s.name === 'Bob');
     expect(alice?.bestPts).toBe(4);
@@ -68,7 +68,7 @@ describe('computeSeasonStats', () => {
       makeVote(2, 2, { lemon_id: 3 }),
       makeVote(3, 2, { lemon_id: 1 }),
     ];
-    const { rankedLemon } = computeSeasonStats(allPlayers, matches, votes);
+    const { rankedLemon } = computeSeasonStats(allPlayers, matches, votes, []);
     const charlie = rankedLemon.find(s => s.name === 'Charlie');
     const alice   = rankedLemon.find(s => s.name === 'Alice');
     expect(charlie?.lemonPts).toBe(2);
@@ -81,7 +81,7 @@ describe('computeSeasonStats', () => {
       makeVote(1, 1, { best1_id: 2, best2_id: 1 }),
       makeVote(2, 1, { best1_id: 2, best2_id: 3 }),
     ];
-    const { rankedBest } = computeSeasonStats(allPlayers, matches, votes);
+    const { rankedBest } = computeSeasonStats(allPlayers, matches, votes, []);
     expect(rankedBest[0].name).toBe('Bob');   // 4 pts
     expect(rankedBest[1].name).toBe('Alice');  // 1 pt
     expect(rankedBest[2].name).toBe('Charlie'); // 1 pt
@@ -94,7 +94,7 @@ describe('computeSeasonStats', () => {
       makeVote(2, 1, { lemon_id: 1 }),
       makeVote(3, 1, { lemon_id: 3 }),
     ];
-    const { rankedLemon } = computeSeasonStats(allPlayers, matches, votes);
+    const { rankedLemon } = computeSeasonStats(allPlayers, matches, votes, []);
     expect(rankedLemon[0].name).toBe('Alice');   // 2 pts
     expect(rankedLemon[1].name).toBe('Charlie'); // 1 pt
   });
@@ -107,7 +107,7 @@ describe('computeSeasonStats', () => {
       makeVote(3, 2, { best1_id: 2 }),   // bob wins match 2
       makeVote(4, 2, { best1_id: 2 }),
     ];
-    const { rankedBest } = computeSeasonStats(allPlayers, matches, votes);
+    const { rankedBest } = computeSeasonStats(allPlayers, matches, votes, []);
     // match 1: alice=2, bob=2 → tie, bW is last assigned so bob wins (implementation detail)
     // match 2: bob=4 → bob wins
     const bob = rankedBest.find(s => s.name === 'Bob');
@@ -122,7 +122,7 @@ describe('computeSeasonStats', () => {
       makeVote(2, 1, { lemon_id: 3 }),
       makeVote(3, 1, { lemon_id: 1 }),
     ];
-    const { rankedLemon } = computeSeasonStats(allPlayers, matches, votes);
+    const { rankedLemon } = computeSeasonStats(allPlayers, matches, votes, []);
     const charlie = rankedLemon.find(s => s.name === 'Charlie');
     expect(charlie?.lemons).toBe(1);
   });
@@ -130,14 +130,14 @@ describe('computeSeasonStats', () => {
   it('only counts players who participated in that match for pepite', () => {
     const matches = [makeMatch(1, [1, 2])]; // charlie absent
     const votes = [makeVote(1, 1, { best1_id: 1 })];
-    const { rankedBest } = computeSeasonStats(allPlayers, matches, votes);
+    const { rankedBest } = computeSeasonStats(allPlayers, matches, votes, []);
     const charlie = rankedBest.find(s => s.name === 'Charlie');
     expect(charlie).toBeUndefined(); // 0 pts → excluded from ranking
   });
 
   it('returns maxPts=1 as floor when there are no votes (avoids division by zero)', () => {
     const matches = [makeMatch(1, [1, 2])];
-    const { maxPts, maxLemonPts } = computeSeasonStats(allPlayers, matches, []);
+    const { maxPts, maxLemonPts } = computeSeasonStats(allPlayers, matches, [], []);
     expect(maxPts).toBe(1);
     expect(maxLemonPts).toBe(1);
   });
@@ -148,7 +148,7 @@ describe('computeSeasonStats', () => {
       makeVote(1, 1, { best1_id: 1 }),
       makeVote(2, 1, { best1_id: 1 }),
     ];
-    const { maxPts } = computeSeasonStats(allPlayers, matches, votes);
+    const { maxPts } = computeSeasonStats(allPlayers, matches, votes, []);
     expect(maxPts).toBe(4); // alice: 2+2
   });
 });

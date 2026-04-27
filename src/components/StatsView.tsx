@@ -60,7 +60,7 @@ export function StatsView({ players, activeMatch, isAdmin, orgId }: StatsViewPro
   const filteredMatchIds = new Set(filteredMatches.map(m => m.id));
   const filteredVotes = allVotes.filter(v => filteredMatchIds.has(v.match_id));
 
-  const { rankedBest, rankedLemon, rankedAttendance, maxPts, maxLemonPts, totalMatches } = computeSeasonStats(players, filteredMatches, allVotes);
+  const { rankedBest, rankedLemon, rankedAttendance, maxPts, maxLemonPts, totalMatches } = computeSeasonStats(players, filteredMatches, allVotes, allTeams);
 
   const handleDelete = (match: Match) => {
     if (!confirm(`Supprimer "${match.label}" et tous ses votes ?`)) return;

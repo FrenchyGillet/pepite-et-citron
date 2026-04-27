@@ -1,4 +1,4 @@
-import type { Player, Match, Vote, EntityId } from '@/types';
+import type { Player, Match, Vote, Team, EntityId } from '@/types';
 import { computeScores } from '@/utils';
 
 export interface PlayerStat {
@@ -28,6 +28,7 @@ export function computeSeasonStats(
   players: Player[],
   matches: Match[],
   allVotes: Vote[],
+  teams: Team[],
 ): SeasonStats {
   const stats: Record<string, PlayerStat> = {};
   players.forEach(p => {
@@ -37,6 +38,8 @@ export function computeSeasonStats(
       bestHistory: [], lemonHistory: [],
     };
   });
+
+  const teamsById = new Map(teams.map(t => [String(t.id), t]));
 
   // Chronological order so sparkline data points are in the right sequence.
   const sortedMatches = [...matches].sort(
@@ -52,6 +55,13 @@ export function computeSeasonStats(
 
     const presentSet = new Set((match.present_ids || []).map(String));
 
+    // Team roster for this match — absent = in team but not in present_ids.
+    // If the match has no team_id, absence tracking is skipped (no reference roster).
+    const team = match.team_id ? teamsById.get(String(match.team_id)) : null;
+    const teamMemberSet = team
+      ? new Set(team.player_ids.map(String))
+      : null;
+
     pp.forEach(p => {
       const s = stats[String(p.id)];
       if (!s) return;
@@ -63,7 +73,6 @@ export function computeSeasonStats(
       if (bp > maxB) { maxB = bp; bW = p.id; }
     });
 
-    // Absences: players known to the team but not in present_ids.
     players.forEach(p => {
       const s = stats[String(p.id)];
       if (!s) return;
@@ -71,22 +80,26 @@ export function computeSeasonStats(
       // Lemon pts accumulate for all (absent players can still receive citron votes).
       s.lemonPts += lp;
       if (lp > maxL) { maxL = lp; lW = p.id; }
-      if (!presentSet.has(String(p.id))) s.absences++;
+
+      // Absence: only for players who belong to this match's team and weren't called up.
+      if (teamMemberSet && teamMemberSet.has(String(p.id)) && !presentSet.has(String(p.id))) {
+        s.absences++;
+      }
     });
 
     if (bW != null && stats[String(bW)]) stats[String(bW)].wins++;
     if (lW != null && stats[String(lW)]) stats[String(lW)].lemons++;
   });
 
-  // Players who scored OR who played at least once (to surface attendance data).
+  // Players who scored, played, or were absent from at least one team match.
   const allStats = Object.values(stats).filter(
-    s => s.bestPts > 0 || s.lemonPts > 0 || s.matchesPlayed > 0
+    s => s.bestPts > 0 || s.lemonPts > 0 || s.matchesPlayed > 0 || s.absences > 0
   );
 
   const rankedBest  = [...allStats].filter(s => s.bestPts  > 0).sort((a, b) => b.bestPts  - a.bestPts);
   const rankedLemon = [...allStats].filter(s => s.lemonPts > 0).sort((a, b) => b.lemonPts - a.lemonPts);
 
-  // Attendance: sort by fewest absences first, then most games played as tiebreaker.
+  // Attendance: fewest absences first, most games played as tiebreaker.
   const rankedAttendance = [...allStats]
     .filter(s => s.matchesPlayed > 0 || s.absences > 0)
     .sort((a, b) => a.absences - b.absences || b.matchesPlayed - a.matchesPlayed);
