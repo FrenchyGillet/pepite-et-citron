@@ -56,9 +56,31 @@
       font-size: 17px;
       font-weight: 700;
       letter-spacing: -0.3px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      min-width: 0;
+      flex-shrink: 1;
     }
     .nav-logo .star { color: var(--pepite); }
     .nav-logo .lemon { color: var(--citron); }
+    .nav-actions {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      flex-shrink: 0;
+    }
+    .nav-tarifs {
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--label-secondary);
+      text-decoration: none;
+    }
+    @media (max-width: 380px) {
+      .nav-logo { font-size: 14px; }
+      .nav-tarifs { display: none; }
+      .nav-cta { padding: 7px 12px; font-size: 13px; }
+    }
     .nav-cta {
       background: var(--pepite);
       color: #000;
@@ -577,8 +599,8 @@
   <div class="nav-logo">
     <span class="star">⭐</span> Pépite <span style="color:var(--label-tertiary);">&</span> <span class="lemon">🍋</span> Citron
   </div>
-  <div style="display:flex;gap:10px;align-items:center">
-    <a href="#tarifs" style="font-size:14px;font-weight:600;color:var(--label-secondary);text-decoration:none">Tarifs</a>
+  <div class="nav-actions">
+    <a href="#tarifs" class="nav-tarifs">Tarifs</a>
     <a href="/" class="nav-cta" data-umami-event="landing_nav_cta">Lancer l'app →</a>
   </div>
 </nav>

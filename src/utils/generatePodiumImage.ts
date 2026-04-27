@@ -122,9 +122,9 @@ export async function generatePodiumImage({
   const SLOT_GAP = 18;
 
   const slots = [
-    { rank: 2, player: pepiteRanked[1], barH: 190, x: W / 2 - BAR_W - SLOT_GAP },
+    { rank: 2, player: pepiteRanked[1], barH: 190, x: W / 2 - BAR_W * 1.5 - SLOT_GAP },
     { rank: 1, player: pepiteRanked[0], barH: 310, x: W / 2 - BAR_W / 2 },
-    { rank: 3, player: pepiteRanked[2], barH: 140, x: W / 2 + SLOT_GAP },
+    { rank: 3, player: pepiteRanked[2], barH: 140, x: W / 2 + BAR_W / 2 + SLOT_GAP },
   ] as const;
 
   slots.forEach(({ rank, player, barH, x }) => {
