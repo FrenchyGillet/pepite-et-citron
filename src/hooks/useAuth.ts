@@ -8,10 +8,11 @@ export function useAuth() {
   const navigate     = useNavigate();
   const queryClient  = useQueryClient();
 
-  const setSession       = useAppStore(s => s.setSession);
-  const setAuthLoading   = useAppStore(s => s.setAuthLoading);
-  const setCurrentOrg    = useAppStore(s => s.setCurrentOrg);
-  const loadOrgs         = useAppStore(s => s.loadOrgs);
+  const setSession          = useAppStore(s => s.setSession);
+  const setAuthLoading      = useAppStore(s => s.setAuthLoading);
+  const setCurrentOrg       = useAppStore(s => s.setCurrentOrg);
+  const loadOrgs            = useAppStore(s => s.loadOrgs);
+  const setPasswordRecovery = useAppStore(s => s.setPasswordRecovery);
 
   const handleSignOut = useCallback(async () => {
     await api.signOut();
@@ -61,6 +62,11 @@ export function useAuth() {
 
     const sub = api.onAuthChange(async (event, s) => {
       setSession(s);
+      if (event === 'PASSWORD_RECOVERY') {
+        // User clicked the password-reset link — show the new-password form.
+        setPasswordRecovery(true);
+        return;
+      }
       if (!s) {
         // Signed out (explicit or session expired) — clear everything.
         setCurrentOrg(null);

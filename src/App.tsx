@@ -3,6 +3,7 @@ import { Routes, Route, Navigate, useNavigate, useLocation } from 'react-router-
 import { DEMO_MODE, setCurrentOrgId } from '@/api';
 import { GlobalStyle }       from '@/GlobalStyle';
 import { AuthView }          from '@/components/AuthView';
+import { ResetPasswordView } from '@/components/ResetPasswordView';
 import { OrgSetupView }      from '@/components/OrgSetupView';
 import { AppHeader }         from '@/components/AppHeader';
 import { VoteTab }           from '@/components/VoteTab';
@@ -74,8 +75,9 @@ export default function App() {
   const orgsResolved     = useAppStore(s => s.orgsResolved);
   const orgsLoadError       = useAppStore(s => s.orgsLoadError);
   const orgsLoadErrorDetail = useAppStore(s => s.orgsLoadErrorDetail);
-  const showOnboarding   = useAppStore(s => s.showOnboarding);
-  const theme            = useAppStore(s => s.theme);
+  const showOnboarding     = useAppStore(s => s.showOnboarding);
+  const passwordRecovery   = useAppStore(s => s.passwordRecovery);
+  const theme              = useAppStore(s => s.theme);
   const guestStatus      = useAppStore(s => s.guestStatus);
   const guestToken       = useAppStore(s => s.guestToken);
   const isVoterSession   = useAppStore(s => s.isVoterSession);
@@ -114,6 +116,10 @@ export default function App() {
   const upgradeSuccess = searchParams.get('upgrade') === 'success';
 
   // ── Auth gates ──────────────────────────────────────────────────────────
+  if (passwordRecovery) {
+    return <><GlobalStyle /><ResetPasswordView /></>;
+  }
+
   if (authLoading && !isVoterLink) {
     return (
       <>

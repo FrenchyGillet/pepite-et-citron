@@ -69,11 +69,13 @@ export let demoState = {
 
 export const demoAPI: API = {
   // Auth (stubs pour le mode démo)
-  signUp:       () => Promise.resolve({ user: { id: "demo" } }),
-  signIn:       () => Promise.resolve({ user: { id: "demo" } }),
-  signOut:      () => Promise.resolve(),
-  getSession:   () => Promise.resolve({ user: { id: "demo", email: "demo@demo.com" } }),
-  onAuthChange: () => ({ unsubscribe: () => {} }),
+  signUp:         () => Promise.resolve({ user: { id: "demo" } }),
+  signIn:         () => Promise.resolve({ user: { id: "demo" } }),
+  signOut:        () => Promise.resolve(),
+  getSession:     () => Promise.resolve({ user: { id: "demo", email: "demo@demo.com" } }),
+  onAuthChange:   () => ({ unsubscribe: () => {} }),
+  resetPassword:  () => Promise.resolve(),
+  updatePassword: () => Promise.resolve(),
   createOrg:    (name, slug) => Promise.resolve({ id: "demo-org", name, slug }),
   getMyOrg:     () => Promise.resolve({ id: "demo-org", name: "Demo", slug: "demo", role: "admin" }),
   getMyOrgs:    () => Promise.resolve([{ id: "demo-org", name: "Demo", slug: "demo", role: "admin" }]),
@@ -197,6 +199,16 @@ export const realAPI: API = {
       (event, session) => callback(event, session as UserSession | null)
     );
     return subscription;
+  },
+  resetPassword: async (email) => {
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: window.location.origin,
+    });
+    if (error) throw new Error(error.message);
+  },
+  updatePassword: async (password) => {
+    const { error } = await supabase.auth.updateUser({ password });
+    if (error) throw new Error(error.message);
   },
 
   // ── Organisations ─────────────────────────────────────────────────────────

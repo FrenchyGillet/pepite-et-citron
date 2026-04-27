@@ -48,6 +48,7 @@ interface AppStore {
   votedThisSession:  boolean;
   showOnboarding:    boolean;
   lastMatchId:       EntityId | null;
+  passwordRecovery:  boolean;
 
   // ── Setters ───────────────────────────────────────────────────────────────
   setSession:           (s: UserSession | null) => void;
@@ -65,6 +66,7 @@ interface AppStore {
   setVotedThisSession:  (v: boolean) => void;
   setShowOnboarding:    (v: boolean) => void;
   setLastMatchId:       (id: EntityId | null) => void;
+  setPasswordRecovery:  (v: boolean) => void;
 
   // ── Async actions ─────────────────────────────────────────────────────────
   loadOrgs: () => Promise<Org | null>;
@@ -89,6 +91,7 @@ export function resetAppStore() {
     votedThisSession: false,
     showOnboarding: false,
     lastMatchId: null,
+    passwordRecovery: false,
   });
 }
 
@@ -109,6 +112,7 @@ export const useAppStore = create<AppStore>((set, get) => ({
   votedThisSession: false,
   showOnboarding:   false,
   lastMatchId:      null,
+  passwordRecovery: false,
 
   // Setters
   setSession:          (s)   => set({ session: s }),
@@ -126,6 +130,7 @@ export const useAppStore = create<AppStore>((set, get) => ({
   setVotedThisSession: (v)   => set({ votedThisSession: v }),
   setShowOnboarding:   (v)   => set({ showOnboarding: v }),
   setLastMatchId:      (id)  => set({ lastMatchId: id }),
+  setPasswordRecovery: (v)   => set({ passwordRecovery: v }),
 
   // ── Async actions ──────────────────────────────────────────────────────────
   loadOrgs: async () => {
