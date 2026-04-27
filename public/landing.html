@@ -440,22 +440,21 @@
       background: var(--pepite);
       border-radius: 14px;
       cursor: pointer;
-      border: none;
-      outline: none;
-      transition: background .2s;
       flex-shrink: 0;
+      transition: background .2s;
+      user-select: none;
     }
-    .pricing-toggle-switch::after {
-      content: '';
+    .toggle-thumb {
       position: absolute;
       top: 3px; left: 3px;
       width: 22px; height: 22px;
       background: #fff;
       border-radius: 50%;
       transition: transform .2s;
+      pointer-events: none;
     }
-    .pricing-toggle-switch.monthly::after { transform: translateX(0); }
-    .pricing-toggle-switch.annual::after  { transform: translateX(20px); }
+    .pricing-toggle-switch.monthly .toggle-thumb { transform: translateX(0); }
+    .pricing-toggle-switch.annual  .toggle-thumb { transform: translateX(20px); }
     .pricing-badge {
       background: rgba(255,215,0,0.15);
       color: var(--pepite);
@@ -840,7 +839,9 @@
     <!-- Billing toggle -->
     <div class="pricing-toggle">
       <span class="pricing-toggle-label" id="label-monthly">Mensuel</span>
-      <button class="pricing-toggle-switch annual" id="billing-toggle" onclick="toggleBilling()" aria-label="Basculer facturation"></button>
+      <div class="pricing-toggle-switch annual" id="billing-toggle" onclick="toggleBilling()" role="switch" aria-checked="true" aria-label="Basculer facturation" tabindex="0">
+        <span class="toggle-thumb"></span>
+      </div>
       <span class="pricing-toggle-label" id="label-annual" style="color:var(--label-primary)">Annuel</span>
       <span class="pricing-badge">− 63 %</span>
     </div>
