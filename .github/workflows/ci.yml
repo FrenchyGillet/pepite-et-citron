@@ -1,0 +1,38 @@
+name: CI
+
+on:
+  push:
+    branches: [main, master, develop]
+  pull_request:
+    branches: [main, master]
+
+jobs:
+  test:
+    name: Test & Build
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run tests
+        run: npm test
+        env:
+          # Pas de Supabase en CI → DEMO_MODE automatique
+          VITE_SUPABASE_URL: VOTRE_PROJET
+          VITE_SUPABASE_ANON_KEY: placeholder
+
+      - name: Build
+        run: npm run build
+        env:
+          VITE_SUPABASE_URL: VOTRE_PROJET
+          VITE_SUPABASE_ANON_KEY: placeholder

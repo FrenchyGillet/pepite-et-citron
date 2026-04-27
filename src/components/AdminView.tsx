@@ -1,5 +1,5 @@
 import { useState, type ReactNode } from 'react';
-import { DEMO_MODE } from '@/api';
+import { DEMO_MODE, api } from '@/api';
 import { track, EVENTS } from '@/utils/analytics';
 import {
   playerNameSchema, matchLabelSchema, teamNameSchema,
@@ -596,6 +596,7 @@ export function AdminView({ players, activeMatch, currentOrg, onSignOut, onShowG
             <button className="btn btn-danger btn-full" style={{ fontSize: 13 }} onClick={onSignOut}>
               Se déconnecter
             </button>
+            <DeleteAccountButton />
           </div>
         )}
 
@@ -691,6 +692,62 @@ export function AdminView({ players, activeMatch, currentOrg, onSignOut, onShowG
           </div>
         )}
       </CollapsibleSection>
+    </div>
+  );
+}
+
+// ── Delete account ────────────────────────────────────────────────────────────
+
+function DeleteAccountButton() {
+  const [confirm1, setConfirm1] = useState(false);
+  const [loading,  setLoading]  = useState(false);
+  const [error,    setError]    = useState<string | null>(null);
+
+  const handleDelete = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      await api.deleteAccount();
+      // After deletion the auth state change will redirect to AuthView
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Erreur inconnue');
+      setLoading(false);
+      setConfirm1(false);
+    }
+  };
+
+  if (!confirm1) {
+    return (
+      <button
+        className="btn btn-secondary btn-full"
+        style={{ fontSize: 13, marginTop: 8, color: 'var(--red)' }}
+        onClick={() => setConfirm1(true)}
+      >
+        Supprimer mon compte
+      </button>
+    );
+  }
+
+  return (
+    <div style={{
+      marginTop: 8, background: 'rgba(255,69,58,0.08)', borderRadius: 'var(--radius-sm)',
+      padding: '14px 16px', display: 'flex', flexDirection: 'column', gap: 10,
+    }}>
+      <p style={{ fontSize: 13, color: 'var(--label)', fontWeight: 600 }}>
+        Confirmer la suppression
+      </p>
+      <p style={{ fontSize: 12, color: 'var(--label3)', lineHeight: 1.5 }}>
+        Toutes tes données (équipes, matchs, votes) seront supprimées définitivement. Cette action est irréversible.
+      </p>
+      {error && <p style={{ fontSize: 12, color: 'var(--red)' }}>{error}</p>}
+      <div className="flex gap-8">
+        <button className="btn btn-secondary" style={{ flex: 1 }} onClick={() => setConfirm1(false)} disabled={loading}>
+          Annuler
+        </button>
+        <button className="btn btn-danger" style={{ flex: 1 }} onClick={handleDelete} disabled={loading}>
+          {loading ? 'Suppression…' : 'Supprimer'}
+        </button>
+      </div>
     </div>
   );
 }

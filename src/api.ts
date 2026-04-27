@@ -75,7 +75,8 @@ export const demoAPI: API = {
   getSession:     () => Promise.resolve({ user: { id: "demo", email: "demo@demo.com" } }),
   onAuthChange:   () => ({ unsubscribe: () => {} }),
   resetPassword:  () => Promise.resolve(),
-  updatePassword: () => Promise.resolve(),
+  updatePassword:  () => Promise.resolve(),
+  deleteAccount:   () => Promise.resolve(),
   createOrg:    (name, slug) => Promise.resolve({ id: "demo-org", name, slug }),
   getMyOrg:     () => Promise.resolve({ id: "demo-org", name: "Demo", slug: "demo", role: "admin" }),
   getMyOrgs:    () => Promise.resolve([{ id: "demo-org", name: "Demo", slug: "demo", role: "admin" }]),
@@ -209,6 +210,21 @@ export const realAPI: API = {
   updatePassword: async (password) => {
     const { error } = await supabase.auth.updateUser({ password });
     if (error) throw new Error(error.message);
+  },
+  deleteAccount: async () => {
+    const { data: { session } } = await supabase.auth.getSession();
+    const token = session?.access_token;
+    if (!token) throw new Error('Non connecté');
+    const res = await fetch('/api/delete-account', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({})) as { error?: string };
+      throw new Error(body.error || `Erreur ${res.status}`);
+    }
+    // Sign out locally after deletion
+    await supabase.auth.signOut();
   },
 
   // ── Organisations ─────────────────────────────────────────────────────────

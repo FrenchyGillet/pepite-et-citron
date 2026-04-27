@@ -113,6 +113,7 @@ export interface API {
   onAuthChange(callback: (event: string, session: UserSession | null) => void): { unsubscribe: () => void };
   resetPassword(email: string): Promise<void>;
   updatePassword(password: string): Promise<void>;
+  deleteAccount(): Promise<void>;
 
   // Orgs
   createOrg(name: string, slug: string): Promise<Org>;

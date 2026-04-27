@@ -248,7 +248,16 @@ export function AuthView({ onAuth }: AuthViewProps) {
           </span>
         </p>
         <p style={{ marginTop: 12, fontSize: 11, color: 'var(--label4)' }}>
-          En créant un compte, vous acceptez notre{' '}
+          En créant un compte, vous acceptez nos{' '}
+          <a
+            href="/terms.html"
+            target="_blank"
+            rel="noopener noreferrer"
+            style={{ color: 'var(--label3)', textDecoration: 'underline', textUnderlineOffset: 2 }}
+          >
+            CGU
+          </a>
+          {' '}et notre{' '}
           <a
             href="/privacy.html"
             target="_blank"
