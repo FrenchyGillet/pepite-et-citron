@@ -47,7 +47,10 @@ export function AppHeader() {
             {activeMatch ? activeMatch.label : 'Aucun match en cours'}
           </div>
         </div>
-        <ThemeToggle theme={theme} onToggle={toggleTheme} />
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <FeedbackButton />
+          <ThemeToggle theme={theme} onToggle={toggleTheme} />
+        </div>
       </div>
     </div>
   );
@@ -116,6 +119,26 @@ function RoleBadge() {
     <span style={{ fontSize: 10, fontWeight: 700, background: 'rgba(170,221,0,0.15)', color: 'var(--lemon)', borderRadius: 4, padding: '1px 5px' }}>
       votant
     </span>
+  );
+}
+
+function FeedbackButton() {
+  return (
+    <a
+      href="mailto:citron@drill-faktory.odoo.com"
+      aria-label="Envoyer un feedback"
+      title="Envoyer un feedback"
+      style={{
+        background: 'var(--bg3)', border: 'none', borderRadius: '10px', padding: '8px',
+        cursor: 'pointer', color: 'var(--label2)', display: 'flex', alignItems: 'center',
+        width: 36, height: 36, justifyContent: 'center', textDecoration: 'none',
+        boxSizing: 'border-box',
+      }}
+    >
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/>
+      </svg>
+    </a>
   );
 }
 
