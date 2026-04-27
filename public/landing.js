@@ -26,10 +26,25 @@ function toggleBilling() {
 }
 
 document.addEventListener('DOMContentLoaded', function() {
+  // Billing toggle
   var toggle = document.getElementById('billing-toggle');
-  if (!toggle) return;
-  toggle.addEventListener('click', toggleBilling);
-  toggle.addEventListener('keydown', function(e) {
-    if (e.key === ' ' || e.key === 'Enter') { e.preventDefault(); toggleBilling(); }
-  });
+  if (toggle) {
+    toggle.addEventListener('click', toggleBilling);
+    toggle.addEventListener('keydown', function(e) {
+      if (e.key === ' ' || e.key === 'Enter') { e.preventDefault(); toggleBilling(); }
+    });
+  }
+
+  // Analytics notice
+  var notice  = document.getElementById('analytics-notice');
+  var dismiss = document.getElementById('analytics-dismiss');
+  if (notice && !localStorage.getItem('analytics_notice_dismissed')) {
+    notice.style.display = 'flex';
+    if (dismiss) {
+      dismiss.addEventListener('click', function() {
+        localStorage.setItem('analytics_notice_dismissed', '1');
+        notice.style.display = 'none';
+      });
+    }
+  }
 });

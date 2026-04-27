@@ -715,6 +715,30 @@ export function AdminView({ players, activeMatch, currentOrg, onSignOut, onShowG
           </div>
         )}
       </CollapsibleSection>
+
+      {/* Legal footer */}
+      <div style={{
+        display: 'flex',
+        justifyContent: 'center',
+        gap: 16,
+        padding: '24px 16px 8px',
+        borderTop: '1px solid var(--separator)',
+        marginTop: 8,
+      }}>
+        {[
+          { label: 'Confidentialité', href: '/privacy.html' },
+          { label: 'CGU', href: '/terms.html' },
+          { label: 'Contact', href: 'mailto:citron@drill-faktory.odoo.com' },
+        ].map(link => (
+          <a
+            key={link.href}
+            href={link.href}
+            style={{ fontSize: 12, color: 'var(--label3)', textDecoration: 'none' }}
+          >
+            {link.label}
+          </a>
+        ))}
+      </div>
     </div>
   );
 }
