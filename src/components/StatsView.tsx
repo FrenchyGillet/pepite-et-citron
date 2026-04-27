@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { formatDate } from '@/utils';
 import { computeSeasonStats } from '@/utils/season';
 import { Scoreboard } from './Scoreboard';
+import { Sparkline } from './Sparkline';
 import { EmptyState } from './EmptyState';
 import { useAllVotes, useMatches, useTeams, useCurrentSeason, useSeasonNames } from '@/hooks/queries';
 import { useDeleteMatch, useUpdateMatch } from '@/hooks/mutations';
@@ -137,6 +138,7 @@ export function StatsView({ players, activeMatch, isAdmin, orgId }: StatsViewPro
                       {s.wins > 0 && <div className="flex gap-8 mt-4"><span className="tag tag-gold">⭐ ×{s.wins}</span></div>}
                     </div>
                     <div className="flex gap-8" style={{ alignItems: 'center' }}>
+                      <Sparkline data={s.bestHistory} color={i === 0 ? 'var(--gold)' : '#8E8E93'} />
                       <div className="score-bar-wrap">
                         <div className="score-bar" style={{ width: `${(s.bestPts / maxPts) * 100}%`, background: i === 0 ? 'var(--gold)' : 'var(--label3)' }} />
                       </div>
@@ -161,6 +163,7 @@ export function StatsView({ players, activeMatch, isAdmin, orgId }: StatsViewPro
                       {s.lemons > 0 && <div className="flex gap-8 mt-4"><span className="tag tag-lemon">🍋 ×{s.lemons}</span></div>}
                     </div>
                     <div className="flex gap-8" style={{ alignItems: 'center' }}>
+                      <Sparkline data={s.lemonHistory} color={i === 0 ? '#f5c542' : '#8E8E93'} />
                       <div className="score-bar-wrap">
                         <div className="score-bar" style={{ width: `${(s.lemonPts / maxLemonPts) * 100}%`, background: i === 0 ? '#f5c542' : 'var(--label3)' }} />
                       </div>

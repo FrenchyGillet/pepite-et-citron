@@ -7,6 +7,10 @@ export interface PlayerStat {
   lemonPts: number;
   wins: number;
   lemons: number;
+  /** Best pts earned per match, chronological order, present matches only. */
+  bestHistory: number[];
+  /** Lemon pts earned per match, chronological order, present matches only. */
+  lemonHistory: number[];
 }
 
 export interface SeasonStats {
@@ -22,9 +26,16 @@ export function computeSeasonStats(
   allVotes: Vote[],
 ): SeasonStats {
   const stats: Record<string, PlayerStat> = {};
-  players.forEach(p => { stats[String(p.id)] = { name: p.name, bestPts: 0, lemonPts: 0, wins: 0, lemons: 0 }; });
+  players.forEach(p => {
+    stats[String(p.id)] = { name: p.name, bestPts: 0, lemonPts: 0, wins: 0, lemons: 0, bestHistory: [], lemonHistory: [] };
+  });
 
-  matches.forEach(match => {
+  // Chronological order so sparkline data points are in the right sequence.
+  const sortedMatches = [...matches].sort(
+    (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+  );
+
+  sortedMatches.forEach(match => {
     const mv = allVotes.filter(v => v.match_id === match.id);
     const pp = players.filter(p => (match.present_ids || []).includes(p.id));
     const { best, lemon } = computeScores(mv, pp, players, match.pepite_count ?? 2);
@@ -36,8 +47,12 @@ export function computeSeasonStats(
       if (!s) return;
       const bp = best[p.id]?.pts || 0;
       s.bestPts += bp;
+      s.bestHistory.push(bp);
+      s.lemonHistory.push(lemon[p.id]?.pts || 0);
       if (bp > maxB) { maxB = bp; bW = p.id; }
     });
+    // Lemon pts accumulate for ALL players (absent players can receive citron votes).
+    // History entries are only pushed for present players (in the pp loop above).
     players.forEach(p => {
       const s = stats[String(p.id)];
       if (!s) return;
