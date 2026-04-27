@@ -584,11 +584,67 @@
       color: var(--label-tertiary);
     }
 
+    /* ─── ORIGIN STORY ─── */
+    .story-section {
+      padding: 16px 24px 64px;
+    }
+    .story-card {
+      background: var(--bg-secondary);
+      border: 1px solid var(--separator);
+      border-left: 3px solid var(--pepite);
+      border-radius: 24px;
+      padding: 44px 52px;
+      max-width: 680px;
+      margin: 0 auto;
+    }
+    .story-eyebrow {
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 1.2px;
+      text-transform: uppercase;
+      color: var(--pepite);
+      margin-bottom: 12px;
+    }
+    .story-title {
+      font-size: clamp(22px, 3.5vw, 30px);
+      font-weight: 800;
+      letter-spacing: -0.6px;
+      line-height: 1.2;
+      margin-bottom: 20px;
+    }
+    .story-body {
+      font-size: 16px;
+      color: var(--label-secondary);
+      line-height: 1.75;
+      margin-bottom: 16px;
+    }
+    .story-body:last-child { margin-bottom: 0; }
+    .story-citron-note {
+      margin-top: 24px;
+      padding-top: 24px;
+      border-top: 1px solid var(--separator);
+      font-size: 15px;
+      color: var(--label-secondary);
+      line-height: 1.7;
+    }
+    .story-citron-label {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      color: var(--citron);
+      margin-bottom: 8px;
+    }
+
     /* ─── RESPONSIVE ─── */
     @media (max-width: 600px) {
       .hero { padding: 72px 20px 60px; }
       section { padding: 56px 20px; }
       .how-phone { max-width: 130px; }
+      .story-card { padding: 32px 24px; }
     }
   </style>
 </head>
@@ -614,7 +670,7 @@
     de chaque match.
   </h1>
   <p class="hero-sub">
-    Après chaque match, au bar, quelqu'un était clairement au-dessus — et quelqu'un franchement en dessous. L'équipe décide, anonymement, en 30 secondes.
+    Fini les sous-verres en carton et les bics qui traînent. Après le coup de sifflet, le capitaine partage un lien — l'équipe vote depuis son téléphone, les résultats tombent en direct.
   </p>
   <div class="hero-cta-group">
     <a href="/" class="btn-primary" data-umami-event="landing_hero_cta">Commencer à voter</a>
@@ -622,6 +678,32 @@
   </div>
 </section>
 <div class="tagline-strip">"Aucun joueur n'a été blessé lors de la création de cette app. (Sauf leur ego.)"</div>
+
+<!-- ORIGIN STORY -->
+<div class="story-section">
+  <div class="story-card">
+    <div class="story-eyebrow">L'histoire derrière l'app</div>
+    <h2 class="story-title">Tout a commencé avec des sous-verres en carton.</h2>
+    <p class="story-body">
+      Après chaque match, on voulait voter pour la pépite et le citron du soir.
+      Sauf que trouver du papier, des sous-verres en carton et des bics au bar
+      relevait de l'expédition. Et quand on y arrivait, la moitié des noms
+      étaient illisibles.
+    </p>
+    <p class="story-body">
+      Alors on a créé Pépite &amp; Citron. Une app née au vestiaire, pour le vestiaire.
+      Le capitaine crée le match depuis son téléphone, partage un lien —
+      l'équipe vote en 30 secondes depuis le bar, sans inscription.
+    </p>
+    <div class="story-citron-note">
+      <div class="story-citron-label">🍋 C'est quoi le citron, au juste ?</div>
+      Le citron, c'est pas le plus mauvais du match. C'est le plus distrait,
+      celui qui a fait la bévue mémorable, qui avait visiblement la tête ailleurs
+      ou qui a déclenché le fou rire collectif. Rien de méchant —
+      juste une tradition d'équipe qui se souvient.
+    </div>
+  </div>
+</div>
 
 <!-- HOW IT WORKS -->
 <section id="comment-ca-marche">
@@ -665,7 +747,7 @@
           <div class="phone-confirm green">Valider →</div>
         </div>
         <div class="how-title">Choisissez le 🍋 Citron</div>
-        <div class="how-desc">Votez pour le joueur qui a eu un match plus difficile. Bienveillant mais honnête.</div>
+        <div class="how-desc">Pas le plus mauvais — le plus distrait. Celui qui avait la tête ailleurs, qui a fait la bévue du soir, ou qui a involontairement animé le vestiaire. Bienveillant, mais la mémoire collective fait son travail.</div>
       </div>
 
       <!-- Card 3 — résultats -->
