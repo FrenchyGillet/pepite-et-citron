@@ -23,6 +23,16 @@ function getRawBody(req: VercelRequest): Promise<Buffer> {
   });
 }
 
+// Statuses that mean the subscription is effectively active.
+// Note: 'past_due' is intentionally included — Stripe retries payment for several
+// days before cancelling. Downgrading immediately on first failure is overly
+// aggressive; we wait for Stripe to give up (status → 'unpaid' | 'canceled').
+const ACTIVE_STATUSES: Stripe.Subscription.Status[] = ['active', 'trialing', 'past_due'];
+
+function isPlanPro(status: Stripe.Subscription.Status): boolean {
+  return ACTIVE_STATUSES.includes(status);
+}
+
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'POST') return res.status(405).end();
 
@@ -43,18 +53,32 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   switch (event.type) {
 
-    // Payment successful → activate Pro plan
+    // ── New subscription ───────────────────────────────────────────────────────
     case 'checkout.session.completed': {
       const session = event.data.object as Stripe.Checkout.Session;
       const orgId   = session.metadata?.orgId;
       if (!orgId) { console.warn('checkout.session.completed: no orgId in metadata'); break; }
 
+      // Retrieve subscription to get period details
+      let periodEnd: string | null = null;
+      if (session.subscription) {
+        try {
+          const sub = await stripe.subscriptions.retrieve(session.subscription as string);
+          periodEnd = new Date(sub.current_period_end * 1000).toISOString();
+        } catch (e) {
+          console.error('Could not retrieve subscription for period_end:', e);
+        }
+      }
+
       const { error } = await supabase
         .from('organizations')
         .update({
-          plan:                    'pro',
-          stripe_customer_id:      session.customer      as string,
-          stripe_subscription_id:  session.subscription  as string,
+          plan:                   'pro',
+          stripe_customer_id:     session.customer     as string,
+          stripe_subscription_id: session.subscription as string,
+          current_period_end:     periodEnd,
+          cancel_at_period_end:   false,
+          last_payment_failed_at: null,
         })
         .eq('id', orgId);
 
@@ -62,35 +86,111 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       break;
     }
 
-    // Subscription cancelled → downgrade to Free
+    // ── Subscription state change (renewal, cancellation request, payment failure) ─
+    case 'customer.subscription.updated': {
+      const sub = event.data.object as Stripe.Subscription;
+      const pro = isPlanPro(sub.status);
+
+      const { error } = await supabase
+        .from('organizations')
+        .update({
+          plan:                 pro ? 'pro' : 'free',
+          current_period_end:   new Date(sub.current_period_end * 1000).toISOString(),
+          cancel_at_period_end: sub.cancel_at_period_end,
+          // Clear payment failure flag if back to healthy
+          ...(sub.status === 'active' ? { last_payment_failed_at: null } : {}),
+        })
+        .eq('stripe_subscription_id', sub.id);
+
+      if (error) console.error('DB update failed (customer.subscription.updated):', error);
+
+      // Log graceful cancellation requests (access retained until period end)
+      if (sub.cancel_at_period_end) {
+        const end = new Date(sub.current_period_end * 1000).toLocaleDateString('fr-BE');
+        console.info(`Subscription ${sub.id} set to cancel at period end (${end})`);
+      }
+      break;
+    }
+
+    // ── Subscription fully cancelled (after period end or immediately) ─────────
     case 'customer.subscription.deleted': {
       const sub = event.data.object as Stripe.Subscription;
 
       const { error } = await supabase
         .from('organizations')
-        .update({ plan: 'free', stripe_subscription_id: null })
+        .update({
+          plan:                   'free',
+          stripe_subscription_id: null,
+          current_period_end:     null,
+          cancel_at_period_end:   false,
+          last_payment_failed_at: null,
+        })
         .eq('stripe_subscription_id', sub.id);
 
       if (error) console.error('DB update failed (customer.subscription.deleted):', error);
       break;
     }
 
-    // Payment failed / subscription paused → downgrade if no longer active
-    case 'customer.subscription.updated': {
-      const sub   = event.data.object as Stripe.Subscription;
-      const isPro = ['active', 'trialing'].includes(sub.status);
+    // ── Invoice paid (subscription renewal confirmation) ───────────────────────
+    // Safety net: idempotently re-confirms Pro on each successful renewal.
+    // Fixes any DB inconsistency without relying solely on subscription.updated.
+    case 'invoice.paid': {
+      const invoice = event.data.object as Stripe.Invoice;
+      const subId   = typeof invoice.subscription === 'string'
+        ? invoice.subscription
+        : invoice.subscription?.id;
+      if (!subId) break;
 
-      const { error } = await supabase
-        .from('organizations')
-        .update({ plan: isPro ? 'pro' : 'free' })
-        .eq('stripe_subscription_id', sub.id);
+      try {
+        const sub = await stripe.subscriptions.retrieve(subId);
+        const { error } = await supabase
+          .from('organizations')
+          .update({
+            plan:                   'pro',
+            current_period_end:     new Date(sub.current_period_end * 1000).toISOString(),
+            last_payment_failed_at: null,
+          })
+          .eq('stripe_subscription_id', subId);
 
-      if (error) console.error('DB update failed (customer.subscription.updated):', error);
+        if (error) console.error('DB update failed (invoice.paid):', error);
+      } catch (e) {
+        console.error('Could not retrieve subscription for invoice.paid:', e);
+      }
+      break;
+    }
+
+    // ── Payment failure ────────────────────────────────────────────────────────
+    // Stripe retries automatically (smart retry). We record the failure timestamp
+    // for visibility and future email notifications, but do NOT downgrade yet —
+    // customer.subscription.updated will fire with status 'past_due' (still Pro)
+    // and eventually 'unpaid'/'canceled' (→ Free) if all retries fail.
+    case 'invoice.payment_failed': {
+      const invoice = event.data.object as Stripe.Invoice;
+      const subId   = typeof invoice.subscription === 'string'
+        ? invoice.subscription
+        : invoice.subscription?.id;
+
+      console.warn('invoice.payment_failed:', {
+        customer:    invoice.customer,
+        subscription: subId,
+        attempt:     invoice.attempt_count,
+        amount_due:  invoice.amount_due,
+        currency:    invoice.currency,
+      });
+
+      if (subId) {
+        const { error } = await supabase
+          .from('organizations')
+          .update({ last_payment_failed_at: new Date().toISOString() })
+          .eq('stripe_subscription_id', subId);
+
+        if (error) console.error('DB update failed (invoice.payment_failed):', error);
+      }
       break;
     }
 
     default:
-      // Ignore unhandled event types
+      // Unhandled event types — safely ignored
       break;
   }
 
