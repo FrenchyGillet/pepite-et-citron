@@ -12,7 +12,6 @@ import { StatsView }         from '@/components/StatsView';
 import { AdminView }         from '@/components/AdminView';
 import { ErrorBoundary }     from '@/components/ErrorBoundary';
 import { OnboardingModal }   from '@/components/OnboardingModal';
-import { AdBanner }          from '@/components/AdBanner';
 import { UpgradeModal }      from '@/components/UpgradeModal';
 import { StatsLockedView }   from '@/components/StatsLockedView';
 import { useAuth }           from '@/hooks/useAuth';
@@ -270,11 +269,6 @@ export default function App() {
           <UpgradeModal orgId={currentOrg.id} onClose={() => setShowUpgradeModal(false)} />
         )}
       </div>
-
-      {/* Ad banner — free orgs only, between content and tab bar */}
-      {!isPro && !isVoterLink && currentOrg && (
-        <AdBanner onUpgradeClick={() => setShowUpgradeModal(true)} />
-      )}
 
       <nav className="tab-bar">
         {tabs.map(t => (
