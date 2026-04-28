@@ -15,16 +15,17 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!,
 );
 
-const RESEND_API_KEY = process.env.RESEND_API_KEY;
-const APP_URL        = process.env.VITE_APP_URL || 'https://pepite-citron.com';
-const FROM_EMAIL     = 'Pépite & Citron <noreply@pepite-citron.com>';
+const BREVO_API_KEY = process.env.BREVO_API_KEY;
+const APP_URL       = process.env.VITE_APP_URL || 'https://pepite-citron.com';
+const FROM_NAME     = 'Pépite & Citron';
+const FROM_EMAIL    = 'francois@pepite-citron.com';
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'POST') return res.status(405).end();
 
-  // Require RESEND_API_KEY — fail silently if not configured
-  if (!RESEND_API_KEY) {
-    console.warn('send-match-notification: RESEND_API_KEY not set, skipping');
+  // Require BREVO_API_KEY — fail silently if not configured
+  if (!BREVO_API_KEY) {
+    console.warn('send-match-notification: BREVO_API_KEY not set, skipping');
     return res.status(200).json({ skipped: true });
   }
 
@@ -100,17 +101,17 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 </html>`;
 
   try {
-    const emailRes = await fetch('https://api.resend.com/emails', {
+    const emailRes = await fetch('https://api.brevo.com/v3/smtp/email', {
       method:  'POST',
       headers: {
-        'Authorization': `Bearer ${RESEND_API_KEY}`,
-        'Content-Type':  'application/json',
+        'api-key':      BREVO_API_KEY,
+        'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        from:    FROM_EMAIL,
-        to:      recipients,
-        subject: `⭐ Vote ouvert — ${matchLabel}`,
-        html,
+        sender:      { name: FROM_NAME, email: FROM_EMAIL },
+        to:          recipients.map(email => ({ email })),
+        subject:     `⭐ Vote ouvert — ${matchLabel}`,
+        htmlContent: html,
       }),
     });
 
