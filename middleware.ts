@@ -70,7 +70,7 @@ export default function middleware(req: Request): Response | undefined {
 
   maybeCleanup();
 
-  const { ok, remaining, resetAt } = rateLimit(key, limit);
+  const { ok, resetAt } = rateLimit(key, limit);
 
   if (!ok) {
     return new Response(
