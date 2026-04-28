@@ -33,6 +33,24 @@ function isPlanPro(status: Stripe.Subscription.Status): boolean {
   return ACTIVE_STATUSES.includes(status);
 }
 
+// Stripe v22 removed current_period_end from the TypeScript Subscription type
+// (billing moved to a per-item model), but the field is still present at runtime
+// for subscriptions using the legacy fixed billing mode.
+type SubscriptionWithPeriod = Stripe.Subscription & { current_period_end?: number };
+
+function getPeriodEnd(sub: SubscriptionWithPeriod): string | null {
+  const ts = sub.current_period_end;
+  return ts ? new Date(ts * 1000).toISOString() : null;
+}
+
+// Stripe v22: invoice.subscription was moved to invoice.parent.subscription_details.subscription
+function getInvoiceSubId(invoice: Stripe.Invoice): string | null {
+  const details = invoice.parent?.subscription_details;
+  if (!details) return null;
+  const sub = details.subscription;
+  return typeof sub === 'string' ? sub : (sub?.id ?? null);
+}
+
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'POST') return res.status(405).end();
 
@@ -63,8 +81,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       let periodEnd: string | null = null;
       if (session.subscription) {
         try {
-          const sub = await stripe.subscriptions.retrieve(session.subscription as string);
-          periodEnd = new Date(sub.current_period_end * 1000).toISOString();
+          const sub = await stripe.subscriptions.retrieve(session.subscription as string) as SubscriptionWithPeriod;
+          periodEnd = getPeriodEnd(sub);
         } catch (e) {
           console.error('Could not retrieve subscription for period_end:', e);
         }
@@ -88,14 +106,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     // ── Subscription state change (renewal, cancellation request, payment failure) ─
     case 'customer.subscription.updated': {
-      const sub = event.data.object as Stripe.Subscription;
+      const sub = event.data.object as SubscriptionWithPeriod;
       const pro = isPlanPro(sub.status);
 
       const { error } = await supabase
         .from('organizations')
         .update({
           plan:                 pro ? 'pro' : 'free',
-          current_period_end:   new Date(sub.current_period_end * 1000).toISOString(),
+          current_period_end:   getPeriodEnd(sub),
           cancel_at_period_end: sub.cancel_at_period_end,
           // Clear payment failure flag if back to healthy
           ...(sub.status === 'active' ? { last_payment_failed_at: null } : {}),
@@ -106,7 +124,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
       // Log graceful cancellation requests (access retained until period end)
       if (sub.cancel_at_period_end) {
-        const end = new Date(sub.current_period_end * 1000).toLocaleDateString('fr-BE');
+        const end = getPeriodEnd(sub);
         console.info(`Subscription ${sub.id} set to cancel at period end (${end})`);
       }
       break;
@@ -136,18 +154,16 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     // Fixes any DB inconsistency without relying solely on subscription.updated.
     case 'invoice.paid': {
       const invoice = event.data.object as Stripe.Invoice;
-      const subId   = typeof invoice.subscription === 'string'
-        ? invoice.subscription
-        : invoice.subscription?.id;
+      const subId   = getInvoiceSubId(invoice);
       if (!subId) break;
 
       try {
-        const sub = await stripe.subscriptions.retrieve(subId);
+        const sub = await stripe.subscriptions.retrieve(subId) as SubscriptionWithPeriod;
         const { error } = await supabase
           .from('organizations')
           .update({
             plan:                   'pro',
-            current_period_end:     new Date(sub.current_period_end * 1000).toISOString(),
+            current_period_end:     getPeriodEnd(sub),
             last_payment_failed_at: null,
           })
           .eq('stripe_subscription_id', subId);
@@ -166,16 +182,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     // and eventually 'unpaid'/'canceled' (→ Free) if all retries fail.
     case 'invoice.payment_failed': {
       const invoice = event.data.object as Stripe.Invoice;
-      const subId   = typeof invoice.subscription === 'string'
-        ? invoice.subscription
-        : invoice.subscription?.id;
+      const subId   = getInvoiceSubId(invoice);
 
       console.warn('invoice.payment_failed:', {
-        customer:    invoice.customer,
+        customer:     invoice.customer,
         subscription: subId,
-        attempt:     invoice.attempt_count,
-        amount_due:  invoice.amount_due,
-        currency:    invoice.currency,
+        attempt:      invoice.attempt_count,
+        amount_due:   invoice.amount_due,
+        currency:     invoice.currency,
       });
 
       if (subId) {

@@ -1,39 +1,39 @@
 /**
  * Vercel Edge Middleware — Rate limiting for /api/* routes
  *
- * Uses an in-memory sliding window per IP. Resets on cold starts, which is
- * acceptable for a small SaaS without a Redis dependency.
+ * Uses the native Web Request/Response APIs (no next/server dependency).
+ * In-memory sliding window per IP — resets on cold starts, acceptable for
+ * a small SaaS without a Redis dependency.
+ *
  * Limits:
  *   - /api/create-checkout-session  → 5 req / minute
  *   - /api/send-match-notification  → 10 req / minute
  *   - /api/delete-account           → 3 req / minute
  *   - All other /api/*              → 60 req / minute
  */
-import { NextResponse } from 'next/server';
-import type { NextRequest } from 'next/server';
 
-interface Window {
-  count:     number;
-  resetAt:   number;
+interface RateWindow {
+  count:   number;
+  resetAt: number;
 }
 
-const store = new Map<string, Window>();
+const store = new Map<string, RateWindow>();
 
 const LIMITS: Record<string, number> = {
   '/api/create-checkout-session': 5,
   '/api/send-match-notification': 10,
   '/api/delete-account':          3,
 };
-const DEFAULT_LIMIT  = 60;
-const WINDOW_MS      = 60_000; // 1 minute
+const DEFAULT_LIMIT = 60;
+const WINDOW_MS     = 60_000; // 1 minute
 
 function getLimit(pathname: string): number {
   return LIMITS[pathname] ?? DEFAULT_LIMIT;
 }
 
 function rateLimit(key: string, limit: number): { ok: boolean; remaining: number; resetAt: number } {
-  const now  = Date.now();
-  let   win  = store.get(key);
+  const now = Date.now();
+  let   win = store.get(key);
 
   if (!win || win.resetAt <= now) {
     win = { count: 0, resetAt: now + WINDOW_MS };
@@ -56,12 +56,13 @@ function maybeCleanup() {
   }
 }
 
-export function middleware(req: NextRequest) {
-  const { pathname } = req.nextUrl;
-  if (!pathname.startsWith('/api/')) return NextResponse.next();
+export default function middleware(req: Request): Response | undefined {
+  const { pathname } = new URL(req.url);
+
+  if (!pathname.startsWith('/api/')) return undefined;
 
   // Stripe webhook must never be rate-limited (Stripe retries are legitimate)
-  if (pathname === '/api/stripe-webhook') return NextResponse.next();
+  if (pathname === '/api/stripe-webhook') return undefined;
 
   const ip    = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ?? 'unknown';
   const key   = `${ip}:${pathname}`;
@@ -71,22 +72,23 @@ export function middleware(req: NextRequest) {
 
   const { ok, remaining, resetAt } = rateLimit(key, limit);
 
-  const headers = {
-    'X-RateLimit-Limit':     String(limit),
-    'X-RateLimit-Remaining': String(remaining),
-    'X-RateLimit-Reset':     String(Math.ceil(resetAt / 1000)),
-  };
-
   if (!ok) {
-    return NextResponse.json(
-      { error: 'Trop de requêtes. Réessaie dans quelques secondes.' },
-      { status: 429, headers },
+    return new Response(
+      JSON.stringify({ error: 'Trop de requêtes. Réessaie dans quelques secondes.' }),
+      {
+        status: 429,
+        headers: {
+          'Content-Type':          'application/json',
+          'X-RateLimit-Limit':     String(limit),
+          'X-RateLimit-Remaining': '0',
+          'X-RateLimit-Reset':     String(Math.ceil(resetAt / 1000)),
+        },
+      },
     );
   }
 
-  const res = NextResponse.next();
-  Object.entries(headers).forEach(([k, v]) => res.headers.set(k, v));
-  return res;
+  // Returning undefined lets the request pass through to the handler
+  return undefined;
 }
 
 export const config = {
