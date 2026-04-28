@@ -369,7 +369,7 @@ export function AdminView({ players, activeMatch, currentOrg, onSignOut, onShowG
 
             {teams.length > 0 && (
               <>
-                <p style={{ fontSize: 13, color: 'var(--label3)', marginBottom: 8 }}>Partir d'une équipe sauvegardée</p>
+                <p style={{ fontSize: 13, color: 'var(--label3)', marginBottom: 8 }}>Charger une équipe</p>
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 16 }}>
                   {teams.map(t => (
                     <button key={String(t.id)} onClick={() => loadTeamIntoMatch(t)} style={{
@@ -484,7 +484,7 @@ export function AdminView({ players, activeMatch, currentOrg, onSignOut, onShowG
       <CollapsibleSection
         title="Effectif"
         badge={players.length}
-        subtitle="Joueurs de l'équipe et compositions sauvegardées."
+        subtitle="Joueurs et équipes de l'organisation."
         isOpen={effectifOpen}
         onToggle={() => setEffectifOpen(v => !v)}
       >
@@ -507,7 +507,21 @@ export function AdminView({ players, activeMatch, currentOrg, onSignOut, onShowG
               ? <div className="row"><span style={{ color: 'var(--label3)', fontSize: 14 }}>Aucun joueur. Commence par en ajouter un ci-dessus.</span></div>
               : players.map(p => (
                 <div key={String(p.id)} className="row">
-                  <div className="row-body"><div className="row-title">{p.name}</div></div>
+                          <div className="row-body">
+                    <div className="row-title">{p.name}</div>
+                    {teams.filter(t => t.player_ids.includes(p.id)).length > 0 && (
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginTop: 4 }}>
+                        {teams.filter(t => t.player_ids.includes(p.id)).map(t => (
+                          <span key={String(t.id)} style={{
+                            fontSize: 11, fontWeight: 600,
+                            color: 'var(--gold)', background: 'var(--gold-subtle)',
+                            border: '1px solid var(--gold-dim)',
+                            borderRadius: 20, padding: '1px 7px',
+                          }}>{t.name}</span>
+                        ))}
+                      </div>
+                    )}
+                  </div>
                   <button className="btn btn-danger" style={{ padding: '5px 12px', fontSize: 13 }}
                     onClick={() => removePlayer(p.id, p.name)}>Retirer</button>
                 </div>
@@ -519,7 +533,7 @@ export function AdminView({ players, activeMatch, currentOrg, onSignOut, onShowG
         {/* Mes équipes */}
         <div>
           <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--label3)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 10 }}>
-            Compositions sauvegardées
+            Équipes · {teams.length}
           </p>
           {teams.length > 0 && (
             <div className="group" style={{ marginBottom: 12 }}>
@@ -543,13 +557,13 @@ export function AdminView({ players, activeMatch, currentOrg, onSignOut, onShowG
           <div style={{ marginBottom: 8 }}>
             <button className="tag tag-dim" style={{ fontSize: 13, padding: '7px 12px' }}
               onClick={() => setShowNewTeam(v => !v)}>
-              {showNewTeam ? '▲ Masquer' : '＋ Sauvegarder une composition'}
+              {showNewTeam ? '▲ Masquer' : '＋ Créer une équipe'}
             </button>
           </div>
           {showNewTeam && (
             <div className="group" style={{ padding: '14px 16px' }}>
-              <p style={{ fontSize: 13, color: 'var(--label3)', marginBottom: 8 }}>Nom de la composition</p>
-              <input placeholder="ex : Équipe A, Jeudi soir…" value={teamName}
+              <p style={{ fontSize: 13, color: 'var(--label3)', marginBottom: 8 }}>Nom de l'équipe</p>
+              <input placeholder="ex : Équipe championnat, Coupe, Tournoi…" value={teamName}
                 onChange={e => { setTeamName(e.target.value); setTeamError(null); }}
                 style={{ marginBottom: teamError ? 4 : 16, borderColor: teamError ? '#ff6b6b' : undefined }} />
               {teamError && <p style={{ fontSize: 12, color: '#ff6b6b', marginBottom: 12 }}>{teamError}</p>}
@@ -572,7 +586,7 @@ export function AdminView({ players, activeMatch, currentOrg, onSignOut, onShowG
               <button className="btn btn-primary btn-full"
                 disabled={!teamName.trim() || teamIds.length < 2 || createTeamMutation.isPending}
                 onClick={saveTeam}>
-                {createTeamMutation.isPending ? 'Sauvegarde…' : `Sauvegarder · ${teamIds.length} joueur${teamIds.length !== 1 ? 's' : ''}`}
+                {createTeamMutation.isPending ? 'Création…' : `Créer l'équipe · ${teamIds.length} joueur${teamIds.length !== 1 ? 's' : ''}`}
               </button>
             </div>
           )}
