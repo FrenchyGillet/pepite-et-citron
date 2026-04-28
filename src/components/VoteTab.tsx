@@ -6,7 +6,7 @@ import { hasVotedLocally } from '@/utils/vote';
 import { VoteView } from './VoteView';
 import { EmptyState } from './EmptyState';
 import { GuestPromoView } from './GuestPromoView';
-import type { Player, Match } from '@/types';
+import type { Player, Match, EntityId } from '@/types';
 
 interface VoteTabProps {
   isAdmin:    boolean;
@@ -26,6 +26,7 @@ export function VoteTab({ isAdmin, activeMatch, lastMatch, players }: VoteTabPro
   const currentOrg         = useAppStore(s => s.currentOrg);
   const setVotedThisSession = useAppStore(s => s.setVotedThisSession);
   const setVoterName        = useAppStore(s => s.setVoterName);
+  const setPendingPlayerId  = useAppStore(s => s.setPendingPlayerId);
   const setGuestToken      = useAppStore(s => s.setGuestToken);
   const navigate           = useNavigate();
 
@@ -33,9 +34,14 @@ export function VoteTab({ isAdmin, activeMatch, lastMatch, players }: VoteTabPro
   // authenticated users go directly to /results.
   const isAnonymousVoter = !DEMO_MODE && !session && isVoterSession;
 
-  const handleVoted = (name: string) => {
+  const handleVoted = (name: string, playerId?: EntityId) => {
     setVotedThisSession(true);
     setVoterName(name);
+    // Remember which player this voter is so we can auto-link after signup.
+    // Only for anonymous team voters (not guest-token supporters).
+    if (playerId && isAnonymousVoter && !guestToken) {
+      setPendingPlayerId(playerId);
+    }
     track(EVENTS.VOTE_COMPLETED, { anonymous: isAnonymousVoter });
     if (!isAnonymousVoter) navigate('/results');
     // else: stay on VoteTab — GuestPromoView is rendered below

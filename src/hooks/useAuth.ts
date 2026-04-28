@@ -75,6 +75,15 @@ export function useAuth() {
       } else if (event === 'SIGNED_IN') {
         // Explicit sign-in: reload orgs (bootstrap handles the initial load).
         await loadOrgs().catch(err => console.error('onAuthChange loadOrgs:', err));
+
+        // If the user voted before signing up, link their account to the player
+        // they selected at vote time so historical votes are preserved.
+        const { pendingPlayerId, setPendingPlayerId } = useAppStore.getState();
+        if (pendingPlayerId) {
+          api.linkPlayer(pendingPlayerId)
+            .catch(err => console.warn('auto-link player:', err))
+            .finally(() => setPendingPlayerId(null));
+        }
       }
       // TOKEN_REFRESHED / USER_UPDATED / INITIAL_SESSION → session is still
       // valid, orgs haven't changed; no need to hit the server again.

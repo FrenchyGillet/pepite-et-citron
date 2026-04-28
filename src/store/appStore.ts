@@ -46,7 +46,8 @@ interface AppStore {
   // ── UI ────────────────────────────────────────────────────────────────────
   theme:             string;
   votedThisSession:  boolean;
-  voterName:         string | null;   // name picked on step 0 of vote (for post-vote CTA)
+  voterName:         string | null;     // name picked on step 0 of vote (for post-vote CTA)
+  pendingPlayerId:   EntityId | null;   // player.id to auto-link after signup
   showOnboarding:    boolean;
   lastMatchId:       EntityId | null;
   passwordRecovery:  boolean;
@@ -66,6 +67,7 @@ interface AppStore {
   setTheme:             (t: string) => void;
   setVotedThisSession:  (v: boolean) => void;
   setVoterName:         (v: string | null) => void;
+  setPendingPlayerId:   (id: EntityId | null) => void;
   setShowOnboarding:    (v: boolean) => void;
   setLastMatchId:       (id: EntityId | null) => void;
   setPasswordRecovery:  (v: boolean) => void;
@@ -92,6 +94,7 @@ export function resetAppStore() {
     theme: localStorage.getItem('pepite_theme') || 'dark',
     votedThisSession: false,
     voterName: null,
+    pendingPlayerId: null,
     showOnboarding: false,
     lastMatchId: null,
     passwordRecovery: false,
@@ -114,6 +117,7 @@ export const useAppStore = create<AppStore>((set, get) => ({
   theme:            localStorage.getItem('pepite_theme') || 'dark',
   votedThisSession: false,
   voterName:        null,
+  pendingPlayerId:  null,
   showOnboarding:   false,
   lastMatchId:      null,
   passwordRecovery: false,
@@ -133,6 +137,7 @@ export const useAppStore = create<AppStore>((set, get) => ({
   setTheme:            (t)   => set({ theme: t }),
   setVotedThisSession: (v)   => set({ votedThisSession: v }),
   setVoterName:        (v)   => set({ voterName: v }),
+  setPendingPlayerId:  (id)  => set({ pendingPlayerId: id }),
   setShowOnboarding:   (v)   => set({ showOnboarding: v }),
   setLastMatchId:      (id)  => set({ lastMatchId: id }),
   setPasswordRecovery: (v)   => set({ passwordRecovery: v }),

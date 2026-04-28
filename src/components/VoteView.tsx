@@ -1,18 +1,19 @@
 import { useState, useRef, useEffect } from 'react';
 import { api } from '@/api';
 import { markVotedLocally, classifyVoteError } from '@/utils/vote';
-import type { Player, Match } from '@/types';
+import type { Player, Match, EntityId } from '@/types';
 
 interface VoteViewProps {
   players: Player[];
   match: Match;
-  onVoted: (voterName: string) => void;
+  onVoted: (voterName: string, playerId?: EntityId) => void;
   guestName?: string | null;
   onGuestVoted?: (() => Promise<void>) | null;
 }
 
 export function VoteView({ players, match, onVoted, guestName = null, onGuestVoted = null }: VoteViewProps) {
-  const [voterName,    setVoterName]    = useState(guestName || '');
+  const [voterName,          setVoterName]          = useState(guestName || '');
+  const [selectedVoterPlayer, setSelectedVoterPlayer] = useState<Player | null>(null);
   const [step,         setStep]         = useState(guestName ? 1 : 0);
   const [best1,        setBest1]        = useState<Player | null>(null);
   const [best1Comment, setBest1Comment] = useState('');
@@ -71,7 +72,7 @@ export function VoteView({ players, match, onVoted, guestName = null, onGuestVot
       });
       if (onGuestVoted) await onGuestVoted();
       markVotedLocally(match.id);
-      onVoted(voterName);
+      onVoted(voterName, selectedVoterPlayer?.id);
     } catch (err) {
       setSubmitError(classifyVoteError(err));
     } finally {
@@ -118,7 +119,7 @@ export function VoteView({ players, match, onVoted, guestName = null, onGuestVot
           <div className="player-grid">
             {present.map(p => (
               <button key={String(p.id)} className={`player-chip ${voterName === p.name ? 'sel-1st' : ''}`}
-                onClick={() => setVoterName(p.name)}>{p.name}</button>
+                onClick={() => { setVoterName(p.name); setSelectedVoterPlayer(p); }}>{p.name}</button>
             ))}
           </div>
           {alreadyVoted && (
