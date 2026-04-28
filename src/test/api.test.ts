@@ -34,6 +34,32 @@ describe('demoAPI', () => {
     expect((await demoAPI.getPlayers()).find(p => p.id === 1)).toBeUndefined();
   });
 
+  it('updatePlayer updates the nickname of an existing player', async () => {
+    const added = await demoAPI.addPlayer('TestPlayer');
+    await demoAPI.updatePlayer(added.id, { nickname: 'TP' });
+    const players = await demoAPI.getPlayers();
+    expect(players.find(p => p.id === added.id)?.nickname).toBe('TP');
+  });
+
+  it('updatePlayer can clear a nickname by setting it to null', async () => {
+    const added = await demoAPI.addPlayer('TestPlayer');
+    await demoAPI.updatePlayer(added.id, { nickname: 'TP' });
+    await demoAPI.updatePlayer(added.id, { nickname: null });
+    const players = await demoAPI.getPlayers();
+    expect(players.find(p => p.id === added.id)?.nickname).toBeNull();
+  });
+
+  it('updatePlayer does not affect other players', async () => {
+    await demoAPI.updatePlayer(1, { nickname: 'Tony' });
+    const players = await demoAPI.getPlayers();
+    // player id=2 (Baptiste) should be unchanged
+    expect(players.find(p => p.id === 2)?.nickname).toBeUndefined();
+  });
+
+  it('linkPlayer resolves with a truthy value', async () => {
+    await expect(demoAPI.linkPlayer(1)).resolves.toBeTruthy();
+  });
+
   // ── Matches ──
 
   it('getActiveMatch returns null when no match exists', async () => {
@@ -278,6 +304,34 @@ describe('realAPI', () => {
     it('sends DELETE and resolves', async () => {
       server.use(http.delete(`${BASE}/players`, () => new HttpResponse(null, { status: 204 })));
       await expect(realAPI.removePlayer('p1')).resolves.toBe(true);
+    });
+  });
+
+  describe('updatePlayer', () => {
+    it('sends PATCH and resolves to true', async () => {
+      server.use(http.patch(`${BASE}/players`, () => new HttpResponse(null, { status: 204 })));
+      await expect(realAPI.updatePlayer('p1', { nickname: 'Tony' })).resolves.toBe(true);
+    });
+
+    it('throws on server error', async () => {
+      server.use(http.patch(`${BASE}/players`, () =>
+        HttpResponse.json({ message: 'RLS violation' }, { status: 403 }),
+      ));
+      await expect(realAPI.updatePlayer('p1', { nickname: 'X' })).rejects.toThrow('RLS violation');
+    });
+  });
+
+  describe('linkPlayer', () => {
+    it('sends PATCH to players and resolves to true', async () => {
+      server.use(http.patch(`${BASE}/players`, () => new HttpResponse(null, { status: 204 })));
+      await expect(realAPI.linkPlayer('p1')).resolves.toBe(true);
+    });
+
+    it('throws when server returns an error', async () => {
+      server.use(http.patch(`${BASE}/players`, () =>
+        HttpResponse.json({ message: 'already claimed' }, { status: 403 }),
+      ));
+      await expect(realAPI.linkPlayer('p1')).rejects.toThrow('already claimed');
     });
   });
 

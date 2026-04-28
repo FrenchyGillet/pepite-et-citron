@@ -182,4 +182,38 @@ describe('GuestPromoView', () => {
     expect(guestStatus).toBeNull();
     expect(guestToken).toBeNull();
   });
+
+  // ── Personalization with voterName / orgName ────────────────────────────────
+
+  it('shows personalized heading when voterName is provided', () => {
+    render(withRouter(<GuestPromoView canSeeResults={false} voterName="Kevin" />));
+    expect(screen.getByText(/Bien joué, Kevin/i)).toBeInTheDocument();
+  });
+
+  it('shows generic heading when voterName is null', () => {
+    render(withRouter(<GuestPromoView canSeeResults={false} voterName={null} />));
+    expect(screen.getByText(/Vote enregistré/i)).toBeInTheDocument();
+  });
+
+  it('shows org-specific CTA button when orgName is provided', () => {
+    render(withRouter(<GuestPromoView canSeeResults={false} orgName="FC Test" />));
+    expect(screen.getByRole('button', { name: /Rejoindre FC Test/i })).toBeInTheDocument();
+  });
+
+  it('shows generic CTA button when orgName is null', () => {
+    render(withRouter(<GuestPromoView canSeeResults={false} orgName={null} />));
+    expect(screen.getByRole('button', { name: /créer mon équipe gratuitement/i })).toBeInTheDocument();
+  });
+
+  it('shows org-specific subtitle when orgName is provided', () => {
+    render(withRouter(<GuestPromoView canSeeResults={false} orgName="FC Test" />));
+    expect(screen.getByText(/Tu fais partie de l'équipe FC Test/i)).toBeInTheDocument();
+  });
+
+  it('clears store flags when org-specific CTA is clicked', () => {
+    useAppStore.setState({ isVoterSession: true, guestStatus: null, guestToken: null });
+    render(withRouter(<GuestPromoView canSeeResults={false} orgName="FC Test" />));
+    fireEvent.click(screen.getByRole('button', { name: /Rejoindre FC Test/i }));
+    expect(useAppStore.getState().isVoterSession).toBe(false);
+  });
 });
