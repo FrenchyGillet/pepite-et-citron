@@ -157,6 +157,10 @@ export const demoAPI: API = {
     demoState.teams.push(t);
     return Promise.resolve(t);
   },
+  updateTeam: (id, playerIds) => {
+    demoState.teams = demoState.teams.map(t => t.id === id ? { ...t, player_ids: playerIds } : t);
+    return Promise.resolve(true);
+  },
   deleteTeam:       (id) => {
     demoState.teams = demoState.teams.filter(t => t.id !== id);
     return Promise.resolve(true);
@@ -507,6 +511,11 @@ export const realAPI: API = {
       supabase.from("teams").insert({ name, player_ids: playerIds, org_id: _orgId }).select()
     );
     return rows[0];
+  },
+  updateTeam: async (id, playerIds) => {
+    const { error } = await supabase.from("teams").update({ player_ids: playerIds }).eq("id", id);
+    if (error) throw new Error(error.message);
+    return true;
   },
   deleteTeam: async (id) => {
     const { error } = await supabase.from("teams").delete().eq("id", id);

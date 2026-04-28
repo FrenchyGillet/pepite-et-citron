@@ -160,6 +160,7 @@ export interface API {
   // Teams
   getTeams(): Promise<Team[]>;
   createTeam(name: string, playerIds: EntityId[]): Promise<Team>;
+  updateTeam(id: EntityId, playerIds: EntityId[]): Promise<unknown>;
   deleteTeam(id: EntityId): Promise<unknown>;
 
   // Guest tokens

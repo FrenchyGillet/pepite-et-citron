@@ -12,7 +12,7 @@ import { useTeams, useGuestTokens, useOrgMembers, useVotes, useCurrentSeason, us
 import {
   useAddPlayer, useRemovePlayer,
   useCreateMatch, useCloseMatch, useStartCounting,
-  useCreateTeam, useDeleteTeam,
+  useCreateTeam, useUpdateTeam, useDeleteTeam,
   useCreateGuestToken, useDeleteGuestToken,
   useAddMember, useRemoveMember,
   useAdvanceSeason, useSetSeasonName,
@@ -89,6 +89,8 @@ export function AdminView({ players, activeMatch, currentOrg, onSignOut, onShowG
   const [teamIds,         setTeamIds]         = useState<EntityId[]>([]);
   const [showNewTeam,     setShowNewTeam]     = useState(false);
   const [selectedTeamId,  setSelectedTeamId]  = useState<EntityId | null>(null);
+  const [editingTeamId,   setEditingTeamId]   = useState<EntityId | null>(null);
+  const [editingPlayerIds, setEditingPlayerIds] = useState<EntityId[]>([]);
   const [seasonNameDraft, setSeasonNameDraft] = useState('');
   const [editingSeason,   setEditingSeason]   = useState(false);
   const [guestInput,      setGuestInput]      = useState('');
@@ -122,6 +124,7 @@ export function AdminView({ players, activeMatch, currentOrg, onSignOut, onShowG
   const closeMatchMutation       = useCloseMatch(currentOrg?.id);
   const startCountingMutation    = useStartCounting(currentOrg?.id);
   const createTeamMutation       = useCreateTeam(currentOrg?.id);
+  const updateTeamMutation       = useUpdateTeam(currentOrg?.id);
   const deleteTeamMutation       = useDeleteTeam(currentOrg?.id);
   const createGuestTokenMutation = useCreateGuestToken(activeMatch?.id);
   const deleteGuestTokenMutation = useDeleteGuestToken(activeMatch?.id);
@@ -259,6 +262,23 @@ export function AdminView({ players, activeMatch, currentOrg, onSignOut, onShowG
   const deleteTeam = (id: EntityId, name: string) => {
     if (!confirm(`Supprimer l'équipe "${name}" ?`)) return;
     deleteTeamMutation.mutate(id);
+  };
+
+  const startEditTeam = (t: { id: EntityId; player_ids: EntityId[] }) => {
+    if (editingTeamId === t.id) { setEditingTeamId(null); return; } // toggle off
+    setEditingTeamId(t.id);
+    setEditingPlayerIds([...t.player_ids]);
+  };
+
+  const toggleEditingPlayerId = (id: EntityId) =>
+    setEditingPlayerIds(p => p.includes(id) ? p.filter(x => x !== id) : [...p, id]);
+
+  const saveTeamEdit = () => {
+    if (!editingTeamId || editingPlayerIds.length < 2) return;
+    updateTeamMutation.mutate(
+      { id: editingTeamId, playerIds: editingPlayerIds },
+      { onSuccess: () => { setEditingTeamId(null); setToast('Équipe mise à jour !'); } },
+    );
   };
 
   const phase = activeMatch?.phase || 'voting';
@@ -537,21 +557,74 @@ export function AdminView({ players, activeMatch, currentOrg, onSignOut, onShowG
           </p>
           {teams.length > 0 && (
             <div className="group" style={{ marginBottom: 12 }}>
-              {teams.map((t, i) => (
-                <div key={String(t.id)}>
-                  {i > 0 && <div style={{ height: 1, background: 'var(--separator)', margin: '0 16px' }} />}
-                  <div className="row">
-                    <div className="row-body">
-                      <div className="row-title">{t.name}</div>
-                      <div className="row-sub" style={{ marginTop: 3 }}>
-                        {players.filter(p => t.player_ids.includes(p.id)).map(p => p.name).join(' · ')}
+              {teams.map((t, i) => {
+                const isEditing = editingTeamId === t.id;
+                return (
+                  <div key={String(t.id)}>
+                    {i > 0 && <div style={{ height: 1, background: 'var(--separator)', margin: '0 16px' }} />}
+                    <div className="row">
+                      <div className="row-body">
+                        <div className="row-title">{t.name}</div>
+                        <div className="row-sub" style={{ marginTop: 3 }}>
+                          {players.filter(p => t.player_ids.includes(p.id)).map(p => p.name).join(' · ')}
+                        </div>
+                      </div>
+                      <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
+                        <button
+                          className={`btn ${isEditing ? 'btn-secondary' : 'btn-secondary'}`}
+                          style={{ padding: '5px 12px', fontSize: 13, color: isEditing ? 'var(--gold)' : undefined }}
+                          onClick={() => startEditTeam(t)}
+                        >
+                          {isEditing ? 'Annuler' : 'Modifier'}
+                        </button>
+                        <button className="btn btn-danger" style={{ padding: '5px 12px', fontSize: 13 }}
+                          onClick={() => deleteTeam(t.id, t.name)}>Supprimer</button>
                       </div>
                     </div>
-                    <button className="btn btn-danger" style={{ padding: '5px 12px', fontSize: 13 }}
-                      onClick={() => deleteTeam(t.id, t.name)}>Supprimer</button>
+
+                    {/* Inline edit panel */}
+                    {isEditing && (
+                      <div style={{ padding: '14px 16px', borderTop: '1px solid var(--separator)', background: 'var(--bg3)' }}>
+                        <div className="flex-between" style={{ marginBottom: 8 }}>
+                          <p style={{ fontSize: 13, color: 'var(--label3)' }}>
+                            Joueurs
+                            <span style={{ color: 'var(--label2)', marginLeft: 6 }}>
+                              {editingPlayerIds.length} sélectionné{editingPlayerIds.length !== 1 ? 's' : ''}
+                            </span>
+                          </p>
+                          <div className="flex gap-8">
+                            <button className="tag tag-dim" onClick={() => setEditingPlayerIds(players.map(p => p.id))}>Tous</button>
+                            <button className="tag tag-dim" onClick={() => setEditingPlayerIds([])}>Aucun</button>
+                          </div>
+                        </div>
+                        <div className="player-grid" style={{ marginBottom: 12 }}>
+                          {players.map(p => (
+                            <button
+                              key={String(p.id)}
+                              className={`player-chip ${editingPlayerIds.includes(p.id) ? 'sel-1st' : ''}`}
+                              onClick={() => toggleEditingPlayerId(p.id)}
+                            >
+                              {p.name}
+                            </button>
+                          ))}
+                        </div>
+                        {editingPlayerIds.length < 2 && (
+                          <p style={{ fontSize: 12, color: 'var(--label3)', marginBottom: 8 }}>
+                            Sélectionne au moins 2 joueurs.
+                          </p>
+                        )}
+                        <button
+                          className="btn btn-primary btn-full"
+                          disabled={editingPlayerIds.length < 2 || updateTeamMutation.isPending}
+                          onClick={saveTeamEdit}
+                        >
+                          {updateTeamMutation.isPending ? 'Sauvegarde…' : `Enregistrer · ${editingPlayerIds.length} joueur${editingPlayerIds.length !== 1 ? 's' : ''}`}
+                        </button>
+                      </div>
+                    )}
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
           <div style={{ marginBottom: 8 }}>

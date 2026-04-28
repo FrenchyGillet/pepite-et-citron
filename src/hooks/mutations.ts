@@ -139,6 +139,15 @@ export function useCreateTeam(orgId?: string | null) {
   });
 }
 
+export function useUpdateTeam(orgId?: string | null) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, playerIds }: { id: EntityId; playerIds: EntityId[] }) =>
+      api.updateTeam(id, playerIds),
+    onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.teams(orgId) }),
+  });
+}
+
 export function useDeleteTeam(orgId?: string | null) {
   const qc = useQueryClient();
   return useMutation({

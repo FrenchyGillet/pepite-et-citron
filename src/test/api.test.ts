@@ -168,6 +168,21 @@ describe('demoAPI', () => {
     expect(t.player_ids).toEqual([1, 2, 3]);
   });
 
+  it('updateTeam replaces player_ids of an existing team', async () => {
+    const t = await demoAPI.createTeam('Team A', [1, 2, 3]);
+    await demoAPI.updateTeam(t.id, [1, 4]);
+    const teams = await demoAPI.getTeams();
+    expect(teams[0].player_ids).toEqual([1, 4]);
+  });
+
+  it('updateTeam does not affect other teams', async () => {
+    const t1 = await demoAPI.createTeam('Team A', [1, 2]);
+    const t2 = await demoAPI.createTeam('Team B', [3, 4]);
+    await demoAPI.updateTeam(t1.id, [1, 5]);
+    const teams = await demoAPI.getTeams();
+    expect(teams.find(t => t.id === t2.id)?.player_ids).toEqual([3, 4]);
+  });
+
   it('deleteTeam removes the team', async () => {
     const t = await demoAPI.createTeam('Team A', [1, 2]);
     await demoAPI.deleteTeam(t.id);
@@ -511,6 +526,20 @@ describe('realAPI', () => {
       server.use(http.post(`${BASE}/teams`, () => HttpResponse.json([t])));
       const team = await realAPI.createTeam('Team A', ['p1', 'p2']);
       expect(team.name).toBe('Team A');
+    });
+  });
+
+  describe('updateTeam', () => {
+    it('sends PATCH to teams and resolves to true', async () => {
+      server.use(http.patch(`${BASE}/teams`, () => new HttpResponse(null, { status: 204 })));
+      await expect(realAPI.updateTeam('t1', ['p1', 'p2', 'p3'])).resolves.toBe(true);
+    });
+
+    it('throws on server error', async () => {
+      server.use(http.patch(`${BASE}/teams`, () =>
+        HttpResponse.json({ message: 'not found' }, { status: 404 }),
+      ));
+      await expect(realAPI.updateTeam('t1', ['p1'])).rejects.toThrow('not found');
     });
   });
 
