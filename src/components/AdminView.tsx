@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from 'react';
+import { useState, useRef, type ReactNode } from 'react';
 import { DEMO_MODE, api } from '@/api';
 import { track, EVENTS } from '@/utils/analytics';
 import {
@@ -77,6 +77,7 @@ function CollapsibleSection({
 export function AdminView({ players, activeMatch, currentOrg, onSignOut, onShowGuide, onGoToResults }: AdminViewProps) {
   const [newPlayer,       setNewPlayer]       = useState('');
   const [matchLabel,      setMatchLabel]      = useState('');
+  const labelInputRef = useRef<HTMLInputElement>(null);
   const [presentIds,      setPresentIds]      = useState<EntityId[]>([]);
   const [toast,           setToast]           = useState<string | null>(null);
   const [linkCopied,      setLinkCopied]      = useState(() =>
@@ -216,7 +217,13 @@ export function AdminView({ players, activeMatch, currentOrg, onSignOut, onShowG
 
   const createMatch = () => {
     const result = matchLabelSchema.safeParse({ label: matchLabel });
-    if (!result.success) { setMatchError(result.error.issues[0].message); return; }
+    if (!result.success) {
+      setMatchError(result.error.issues[0].message);
+      // Guide the user straight to the problematic field
+      labelInputRef.current?.focus();
+      labelInputRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      return;
+    }
     if (presentIds.length < 2) return;
     setMatchError(null);
     createMatchMutation.mutate(
@@ -382,7 +389,7 @@ export function AdminView({ players, activeMatch, currentOrg, onSignOut, onShowG
         ) : (
           <div className="group" style={{ padding: '14px 16px' }}>
             <p style={{ fontSize: 13, color: 'var(--label3)', marginBottom: 8 }}>Nom du match ou de l'adversaire</p>
-            <input placeholder="ex : vs Dragons, Entraînement…" value={matchLabel}
+            <input ref={labelInputRef} placeholder="ex : vs Dragons, Entraînement…" value={matchLabel}
               onChange={e => { setMatchLabel(e.target.value); setMatchError(null); }}
               style={{ marginBottom: matchError ? 4 : 16, borderColor: matchError ? '#ff6b6b' : undefined }} />
             {matchError && <p style={{ fontSize: 12, color: '#ff6b6b', marginBottom: 12 }}>{matchError}</p>}
@@ -445,7 +452,7 @@ export function AdminView({ players, activeMatch, currentOrg, onSignOut, onShowG
               </p>
             )}
             <button className="btn btn-primary btn-full"
-              disabled={!matchLabel.trim() || presentIds.length < 2 || createMatchMutation.isPending}
+              disabled={presentIds.length < 2 || createMatchMutation.isPending}
               onClick={createMatch}>
               {createMatchMutation.isPending ? 'Lancement…' : `Lancer le vote · ${presentIds.length} joueur${presentIds.length !== 1 ? 's' : ''}`}
             </button>
