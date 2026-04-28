@@ -121,6 +121,22 @@ export default defineConfig({
     }),
   ],
 
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          // React core — almost never changes, longest cache life
+          'vendor-react':    ['react', 'react-dom', 'react-router-dom'],
+          // Server-state & client-state
+          'vendor-query':    ['@tanstack/react-query'],
+          'vendor-zustand':  ['zustand'],
+          // Supabase SDK — large but infrequently updated
+          'vendor-supabase': ['@supabase/supabase-js'],
+        },
+      },
+    },
+  },
+
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "src"),
