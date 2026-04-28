@@ -1,15 +1,19 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { DEMO_MODE } from '@/api';
 import { useAppStore } from '@/store/appStore';
 import { useOrg } from '@/hooks/useOrg';
 import { useTheme } from '@/hooks/useTheme';
 import { useActiveMatch } from '@/hooks/queries';
+import { initials, avatarColor } from '@/utils/player';
 import type { Org } from '@/types';
 
 export function AppHeader() {
   const currentOrg = useAppStore(s => s.currentOrg);
   const myOrgs     = useAppStore(s => s.myOrgs);
+  const session    = useAppStore(s => s.session);
 
+  const navigate               = useNavigate();
   const { switchOrg }          = useOrg();
   const { theme, toggleTheme } = useTheme();
   const { data: activeMatch }  = useActiveMatch(currentOrg?.id);
@@ -50,6 +54,9 @@ export function AppHeader() {
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           <FeedbackButton />
           <ThemeToggle theme={theme} onToggle={toggleTheme} />
+          {session && !DEMO_MODE && (
+            <ProfileButton email={session.user.email ?? ''} onNavigate={() => navigate('/profile')} />
+          )}
         </div>
       </div>
     </div>
@@ -139,6 +146,25 @@ function FeedbackButton() {
         <path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/>
       </svg>
     </a>
+  );
+}
+
+function ProfileButton({ email, onNavigate }: { email: string; onNavigate: () => void }) {
+  const seed = email || '?';
+  return (
+    <button
+      onClick={onNavigate}
+      aria-label="Mon profil"
+      title="Mon profil"
+      style={{
+        background: avatarColor(seed), border: 'none', borderRadius: '50%', padding: 0,
+        cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
+        width: 36, height: 36, flexShrink: 0, color: '#fff',
+        fontSize: 13, fontWeight: 700, letterSpacing: '-0.01em',
+      }}
+    >
+      {initials(seed)}
+    </button>
   );
 }
 

@@ -96,6 +96,11 @@ export const demoAPI: API = {
     demoState.players = demoState.players.filter(p => p.id !== id);
     return Promise.resolve(true);
   },
+  updatePlayer: (id, data) => {
+    demoState.players = demoState.players.map(p => p.id === id ? { ...p, ...data } : p);
+    return Promise.resolve(true);
+  },
+  linkPlayer: (_playerId) => Promise.resolve(true),
   getActiveMatch: () => Promise.resolve(
     demoState.matches.find(m => m.is_open || m.phase === "counting") ?? null
   ),
@@ -332,6 +337,20 @@ export const realAPI: API = {
     if (error) throw new Error(error.message);
     return true;
   },
+  updatePlayer: (id, data) =>
+    withRetry(async () => {
+      const { error } = await supabase.from("players").update(data).eq("id", id);
+      if (error) throw new Error(error.message);
+      return true;
+    }),
+  linkPlayer: (playerId) =>
+    withRetry(async () => {
+      // Links the current authenticated user to a player record they claim is them.
+      // RLS policy on players ensures user_id must be null (unclaimed) first.
+      const { error } = await supabase.from("players").update({ user_id: (await supabase.auth.getUser()).data.user?.id ?? null }).eq("id", playerId).is("user_id", null);
+      if (error) throw new Error(error.message);
+      return true;
+    }),
 
   // ── Matchs ────────────────────────────────────────────────────────────────
   getActiveMatch: () =>

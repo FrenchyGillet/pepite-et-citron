@@ -22,7 +22,10 @@ export function VoteTab({ isAdmin, activeMatch, lastMatch, players }: VoteTabPro
   const guestToken         = useAppStore(s => s.guestToken);
   const isVoterSession     = useAppStore(s => s.isVoterSession);
   const votedThisSession   = useAppStore(s => s.votedThisSession);
+  const voterName          = useAppStore(s => s.voterName);
+  const currentOrg         = useAppStore(s => s.currentOrg);
   const setVotedThisSession = useAppStore(s => s.setVotedThisSession);
+  const setVoterName        = useAppStore(s => s.setVoterName);
   const setGuestToken      = useAppStore(s => s.setGuestToken);
   const navigate           = useNavigate();
 
@@ -30,8 +33,9 @@ export function VoteTab({ isAdmin, activeMatch, lastMatch, players }: VoteTabPro
   // authenticated users go directly to /results.
   const isAnonymousVoter = !DEMO_MODE && !session && isVoterSession;
 
-  const handleVoted = () => {
+  const handleVoted = (name: string) => {
     setVotedThisSession(true);
+    setVoterName(name);
     track(EVENTS.VOTE_COMPLETED, { anonymous: isAnonymousVoter });
     if (!isAnonymousVoter) navigate('/results');
     // else: stay on VoteTab — GuestPromoView is rendered below
@@ -76,7 +80,13 @@ export function VoteTab({ isAdmin, activeMatch, lastMatch, players }: VoteTabPro
     if (isAnonymousVoter) {
       // ?org= voters: can browse results (isVoterLink stays true via isVoterSession)
       // ?guest= voters: results are locked, so hide that button
-      return <GuestPromoView canSeeResults={!guestToken && guestStatus !== 'valid'} />;
+      return (
+        <GuestPromoView
+          canSeeResults={!guestToken && guestStatus !== 'valid'}
+          voterName={voterName}
+          orgName={currentOrg?.name ?? null}
+        />
+      );
     }
     return (
       <EmptyState

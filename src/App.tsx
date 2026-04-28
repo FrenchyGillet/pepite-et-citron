@@ -14,6 +14,7 @@ import { ErrorBoundary }     from '@/components/ErrorBoundary';
 import { OnboardingModal }   from '@/components/OnboardingModal';
 import { UpgradeModal }      from '@/components/UpgradeModal';
 import { StatsLockedView }   from '@/components/StatsLockedView';
+import { ProfileView }       from '@/components/ProfileView';
 import { useAuth }           from '@/hooks/useAuth';
 import { useGuest }          from '@/hooks/useGuest';
 import { useTheme }          from '@/hooks/useTheme';
@@ -255,6 +256,11 @@ export default function App() {
                   />
                 </ErrorBoundary>
               : <Navigate to="/vote" replace />
+          } />
+          <Route path="/profile" element={
+            <ErrorBoundary>
+              <ProfileView />
+            </ErrorBoundary>
           } />
           <Route path="*" element={<Navigate to="/vote" replace />} />
         </Routes>

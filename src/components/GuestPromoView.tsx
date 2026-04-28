@@ -5,9 +5,13 @@ import { track, EVENTS } from '@/utils/analytics';
 interface GuestPromoViewProps {
   /** null = ?org= flow (can browse results), 'valid' = ?guest= token flow */
   canSeeResults: boolean;
+  /** Name the voter typed at step 0 */
+  voterName?: string | null;
+  /** Name of the current org / team */
+  orgName?: string | null;
 }
 
-export function GuestPromoView({ canSeeResults }: GuestPromoViewProps) {
+export function GuestPromoView({ canSeeResults, voterName, orgName }: GuestPromoViewProps) {
   const navigate          = useNavigate();
   const setIsVoterSession = useAppStore(s => s.setIsVoterSession);
   const setGuestStatus    = useAppStore(s => s.setGuestStatus);
@@ -42,11 +46,13 @@ export function GuestPromoView({ canSeeResults }: GuestPromoViewProps) {
       </div>
 
       <h2 style={{ fontSize: 22, fontWeight: 700, color: 'var(--label)', margin: '0 0 8px' }}>
-        Vote enregistré ! 🎉
+        {voterName ? `Bien joué, ${voterName} ! 🎉` : 'Vote enregistré ! 🎉'}
       </h2>
 
       <p style={{ fontSize: 15, color: 'var(--label2)', margin: '0 0 32px', lineHeight: 1.55, maxWidth: 300 }}>
-        Merci pour ta participation.
+        {orgName
+          ? `Tu fais partie de l'équipe ${orgName}. Rejoins l'app pour suivre tes stats et personnaliser ton profil.`
+          : 'Merci pour ta participation.'}
       </p>
 
       {/* Promo card */}
@@ -58,18 +64,19 @@ export function GuestPromoView({ canSeeResults }: GuestPromoViewProps) {
       }}>
         <div style={{ fontSize: 32, marginBottom: 10 }}>⭐🍋</div>
         <h3 style={{ fontSize: 17, fontWeight: 700, color: 'var(--label)', margin: '0 0 8px' }}>
-          Tu as aimé l'expérience ?
+          {orgName ? `Rejoins ${orgName} sur l’app` : "Tu as aimé l’expérience ?"}
         </h3>
         <p style={{ fontSize: 14, color: 'var(--label3)', margin: '0 0 20px', lineHeight: 1.6 }}>
-          Crée ton équipe gratuitement et organise des votes Pépite &amp; Citron
-          après chaque match — en quelques secondes, au bar.
+          {orgName
+            ? 'Crée ton compte gratuit pour retrouver tes stats, choisir un surnom affiché sur le podium, et ne plus jamais rater un vote.'
+            : 'Crée ton équipe gratuitement et organise des votes Pépite & Citron après chaque match — en quelques secondes, au bar.'}
         </p>
         <button
           className="btn btn-primary btn-full"
           onClick={handleCreateAccount}
           style={{ fontWeight: 700, fontSize: 15 }}
         >
-          Créer mon équipe gratuitement
+          {orgName ? `Rejoindre ${orgName}` : 'Créer mon équipe gratuitement'}
         </button>
       </div>
 

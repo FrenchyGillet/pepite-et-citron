@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { computeScores } from '@/utils';
+import { displayName } from '@/utils/player';
 import { AnimatedNumber } from './AnimatedNumber';
 import type { Vote, Player, EntityId } from '@/types';
 
@@ -59,7 +60,7 @@ export function PodiumView({ votes, present, allPlayers, tiebreakers = {}, pepit
         {player ? (
           <>
             {isFirst && <div style={{ fontSize: 26, lineHeight: 1, marginBottom: 5 }}>👑</div>}
-            <div style={{ fontSize: isFirst ? 15 : 13, fontWeight: 700, color: nameColor, textAlign: 'center', lineHeight: 1.2, marginBottom: 2, padding: '0 4px' }}>{player.name}</div>
+            <div style={{ fontSize: isFirst ? 15 : 13, fontWeight: 700, color: nameColor, textAlign: 'center', lineHeight: 1.2, marginBottom: 2, padding: '0 4px' }}>{displayName(player)}</div>
             {player.absent && <div style={{ fontSize: 10, color: 'var(--label4)', marginBottom: 2, fontStyle: 'italic' }}>absent</div>}
             <div style={{ fontSize: 12, color: 'var(--label3)', marginBottom: 8 }}>
               <AnimatedNumber value={player.pts} delay={delay} /> pt{player.pts > 1 ? 's' : ''}
@@ -112,7 +113,7 @@ export function PodiumView({ votes, present, allPlayers, tiebreakers = {}, pepit
 
           {first?.comments?.length > 0 && (
             <>
-              <p className="section-label mb-4">Commentaires sur {first.name}</p>
+              <p className="section-label mb-4">Commentaires sur {displayName(first)}</p>
               <div className="group" style={{ marginBottom: 16 }}>
                 {first.comments.map((c, i) => (
                   <div key={i} style={{ padding: '12px 16px', borderBottom: '1px solid var(--separator)' }}>
@@ -130,7 +131,7 @@ export function PodiumView({ votes, present, allPlayers, tiebreakers = {}, pepit
                 {ranked.slice(3).map((p, i) => (
                   <div key={String(p.id)} className="row">
                     <div style={{ width: 24, fontWeight: 700, fontSize: 13, flexShrink: 0, color: 'var(--label3)' }}>{i + 4}</div>
-                    <div className="row-body"><div className="row-title">{p.name}</div></div>
+                    <div className="row-body"><div className="row-title">{displayName(p)}</div></div>
                     <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
                       <div className="score-bar-wrap">
                         <div className="score-bar" style={{

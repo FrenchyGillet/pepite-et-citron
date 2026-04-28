@@ -6,7 +6,7 @@ import type { Player, Match } from '@/types';
 interface VoteViewProps {
   players: Player[];
   match: Match;
-  onVoted: () => void;
+  onVoted: (voterName: string) => void;
   guestName?: string | null;
   onGuestVoted?: (() => Promise<void>) | null;
 }
@@ -71,7 +71,7 @@ export function VoteView({ players, match, onVoted, guestName = null, onGuestVot
       });
       if (onGuestVoted) await onGuestVoted();
       markVotedLocally(match.id);
-      onVoted();
+      onVoted(voterName);
     } catch (err) {
       setSubmitError(classifyVoteError(err));
     } finally {

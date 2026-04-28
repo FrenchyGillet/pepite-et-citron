@@ -1,7 +1,7 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/api';
 import { queryKeys } from './queries';
-import type { EntityId, Vote, Match } from '@/types';
+import type { EntityId, Vote, Match, Player } from '@/types';
 
 export function useSubmitVote(matchId: EntityId | null | undefined) {
   const qc = useQueryClient();
@@ -23,6 +23,23 @@ export function useRemovePlayer(orgId?: string | null) {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (id: EntityId) => api.removePlayer(id),
+    onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.players(orgId) }),
+  });
+}
+
+export function useUpdatePlayer(orgId?: string | null) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, data }: { id: EntityId; data: Partial<Pick<Player, 'nickname' | 'avatar_url'>> }) =>
+      api.updatePlayer(id, data),
+    onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.players(orgId) }),
+  });
+}
+
+export function useLinkPlayer(orgId?: string | null) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (playerId: EntityId) => api.linkPlayer(playerId),
     onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.players(orgId) }),
   });
 }

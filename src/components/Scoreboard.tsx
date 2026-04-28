@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { computeScores } from '@/utils';
+import { displayName } from '@/utils/player';
 import { AnimatedNumber } from './AnimatedNumber';
 import type { Vote, Player, EntityId } from '@/types';
 
@@ -70,7 +71,7 @@ export function Scoreboard({ votes, present, allPlayers, tiebreakers = {}, showL
                   <div style={{ width: 24, fontWeight: 700, fontSize: isBeer ? 16 : 13, flexShrink: 0, color: isFirst ? "var(--gold)" : "var(--label3)" }}>
                     {isBeer ? "🍺" : p.rank}
                   </div>
-                  <div className="row-body"><div className="row-title">{p.name}</div></div>
+                  <div className="row-body"><div className="row-title">{displayName(p)}</div></div>
                   <div className="score-bar-wrap">
                     <div className="score-bar" style={{
                       width: ready ? `${(p.pts / maxBest) * 100}%` : '0%',

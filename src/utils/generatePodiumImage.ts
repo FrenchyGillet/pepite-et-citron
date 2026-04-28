@@ -1,5 +1,6 @@
 interface RankedEntry {
   name: string;
+  nickname?: string | null;
   pts: number;
   absent?: boolean;
 }
@@ -151,7 +152,7 @@ export async function generatePodiumImage({
 
     const nameY = isFirst ? barTop - 115 : barTop - 18;
     const nameFont = `${isFirst ? 700 : 600} ${isFirst ? 44 : 36}px ${FONT}`;
-    const name = fitText(player.name, BAR_W - 10, nameFont);
+    const name = fitText(player.nickname?.trim() || player.name, BAR_W - 10, nameFont);
     ctx.font = nameFont;
     ctx.fillStyle = isFirst ? c.gold : c.t1;
     ctx.textBaseline = 'bottom';
@@ -186,7 +187,7 @@ export async function generatePodiumImage({
     ctx.fillText('Le Citron', PAD + 112, CITRON_Y + 38);
 
     const lName = fitText(
-      lemonWinner.name + (lemonWinner.absent ? ' (absent)' : ''),
+      (lemonWinner.nickname?.trim() || lemonWinner.name) + (lemonWinner.absent ? ' (absent)' : ''),
       W - PAD * 2 - 200,
       `700 40px ${FONT}`,
     );

@@ -6,6 +6,9 @@ export interface Player {
   id: EntityId;
   name: string;
   org_id?: string;
+  nickname?:   string | null;
+  user_id?:    string | null;
+  avatar_url?: string | null;
 }
 
 export type MatchPhase = 'voting' | 'counting' | 'closed';
@@ -128,6 +131,8 @@ export interface API {
   getPlayers(): Promise<Player[]>;
   addPlayer(name: string): Promise<Player>;
   removePlayer(id: EntityId): Promise<unknown>;
+  updatePlayer(id: EntityId, data: Partial<Pick<Player, 'nickname' | 'avatar_url'>>): Promise<unknown>;
+  linkPlayer(playerId: EntityId): Promise<unknown>;
 
   // Matches
   getActiveMatch(): Promise<Match | null>;
