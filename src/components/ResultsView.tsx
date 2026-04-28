@@ -290,6 +290,16 @@ export function ResultsView({ players, match, isAdmin, isDark, orgId }: ResultsV
       ) : (
         <div style={{ animation: 'podiumReveal 0.5s cubic-bezier(0.22, 1, 0.36, 1)' }}>
           <PodiumView votes={votes} present={present} allPlayers={players} tiebreakers={tiebreakers} pepiteCount={match.pepite_count ?? 2} />
+          {pepiteRanked.length > 0 && (
+            <div style={{ marginTop: 16 }}>
+              <SharePodiumButton
+                match={match}
+                pepiteRanked={pepiteRanked}
+                lemonRanked={lemonRanked}
+                isDark={isDark !== false}
+              />
+            </div>
+          )}
         </div>
       )}
 
@@ -316,16 +326,6 @@ export function ResultsView({ players, match, isAdmin, isDark, orgId }: ResultsV
         </div>
       )}
 
-      {pepiteRanked.length > 0 && (
-        <div style={{ marginTop: 16, marginBottom: 8 }}>
-          <SharePodiumButton
-            match={match}
-            pepiteRanked={pepiteRanked}
-            lemonRanked={lemonRanked}
-            isDark={isDark !== false}
-          />
-        </div>
-      )}
     </div>
   );
 }
