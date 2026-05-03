@@ -580,7 +580,7 @@ export const realAPI: API = {
     }
     const { error } = await supabase.from('push_subscriptions').upsert(
       { org_id: orgId, endpoint: sub.endpoint, p256dh: keys.p256dh, auth: keys.auth },
-      { onConflict: 'user_id,org_id,endpoint' },
+      { onConflict: 'endpoint' },
     );
     if (error) throw new Error(error.message);
   },
