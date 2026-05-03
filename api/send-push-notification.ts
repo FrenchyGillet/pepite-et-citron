@@ -46,7 +46,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   const { data: { user }, error: authError } = await supabase.auth.getUser(token);
   if (authError || !user) return res.status(401).json({ error: 'Invalid token' });
 
-  const { orgId, type, matchLabel, matchId } = req.body as {
+  const { orgId, type, matchLabel } = req.body as {
     orgId?: string;
     type?: 'vote_open' | 'results_ready';
     matchLabel?: string;
