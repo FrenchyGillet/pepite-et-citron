@@ -56,7 +56,7 @@ export function OrgSetupView({ onOrgCreated, userEmail }: OrgSetupViewProps) {
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Erreur lors de la création';
       if (msg.includes('unique') || msg.includes('duplicate')) {
-        setError('slug', { message: 'Cet identifiant est déjà pris. Choisissez-en un autre.' });
+        setError('name', { message: 'Ce nom d\'équipe est déjà utilisé. Essayez un autre nom.' });
       } else {
         setError('root', { message: msg });
       }
@@ -100,29 +100,26 @@ export function OrgSetupView({ onOrgCreated, userEmail }: OrgSetupViewProps) {
             <FieldError msg={errors.name?.message} />
           </div>
 
-          <div>
-            <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--label3)', display: 'block', marginBottom: 6 }}>
-              Identifiant unique{' '}
-              <span style={{ fontWeight: 400, color: 'var(--label4)' }}>(dans l'URL de vote)</span>
-            </label>
-            <input
-              placeholder="hc-montreal"
-              style={{ width: '100%', boxSizing: 'border-box', borderColor: errors.slug ? '#ff6b6b' : undefined }}
-              {...register('slug', {
-                onChange: e => {
-                  // Keep only valid slug chars as the user types
-                  e.target.value = toSlug(e.target.value);
-                },
-              })}
-            />
-            {slug && !errors.slug && (
-              <p style={{ fontSize: 11, color: 'var(--label4)', marginTop: 6 }}>
-                Lien de vote :{' '}
-                <span style={{ color: 'var(--label3)' }}>{window.location.origin}/?org={slug}</span>
-              </p>
-            )}
-            <FieldError msg={errors.slug?.message} />
-          </div>
+          {/* Slug is auto-generated from name — hidden from user */}
+          <input type="hidden" {...register('slug')} />
+
+          {slug && (
+            <div style={{
+              display: 'flex', alignItems: 'center', gap: 8,
+              background: 'var(--bg3)', borderRadius: 'var(--radius-sm)',
+              padding: '10px 12px',
+            }}>
+              <span style={{ fontSize: 16 }}>🔗</span>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--label3)', marginBottom: 2 }}>
+                  Lien de vote de votre équipe
+                </div>
+                <div style={{ fontSize: 12, color: 'var(--label2)', wordBreak: 'break-all' }}>
+                  {window.location.origin}/?org=<strong>{slug}</strong>
+                </div>
+              </div>
+            </div>
+          )}
 
           {errors.root && (
             <div style={{

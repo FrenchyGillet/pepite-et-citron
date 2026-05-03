@@ -18,6 +18,7 @@ import {
   useAdvanceSeason, useSetSeasonName,
 } from '@/hooks/mutations';
 import type { Player, Match, Org, EntityId } from '@/types';
+import { PushNotificationBanner } from './PushNotificationBanner';
 
 interface AdminViewProps {
   players: Player[];
@@ -26,6 +27,7 @@ interface AdminViewProps {
   onSignOut: () => Promise<void>;
   onShowGuide: () => void;
   onGoToResults?: () => void;
+  onUpgrade?: () => void;
 }
 
 // ── Collapsible section wrapper ───────────────────────────────────────────────
@@ -73,8 +75,61 @@ function CollapsibleSection({
   );
 }
 
+// ── Notify team button ────────────────────────────────────────────────────────
+function NotifyTeamButton({
+  voteUrl,
+  matchLabel,
+  onFallback,
+}: {
+  voteUrl: string;
+  matchLabel: string;
+  onFallback: () => void;
+}) {
+  const [sent, setSent] = useState(false);
+
+  const handleNotify = async () => {
+    const text = `🗳️ Vote ouvert — ${matchLabel}\nVotez maintenant : ${voteUrl}`;
+    if (navigator.share) {
+      try {
+        await navigator.share({ text });
+        setSent(true);
+        setTimeout(() => setSent(false), 3000);
+      } catch {
+        // user cancelled
+      }
+    } else {
+      onFallback();
+      setSent(true);
+      setTimeout(() => setSent(false), 3000);
+    }
+  };
+
+  return (
+    <button
+      onClick={() => void handleNotify()}
+      style={{
+        width: '100%',
+        display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+        background: sent
+          ? 'rgba(48,209,88,0.12)'
+          : 'linear-gradient(135deg, rgba(255,214,10,0.12) 0%, rgba(255,214,10,0.06) 100%)',
+        border: `1px solid ${sent ? 'var(--green)' : 'var(--gold-dim)'}`,
+        borderRadius: 'var(--radius)',
+        padding: '13px 20px',
+        fontSize: 15, fontWeight: 700,
+        color: sent ? 'var(--green)' : 'var(--gold)',
+        cursor: 'pointer',
+        transition: 'all 0.2s ease',
+      }}
+    >
+      <span style={{ fontSize: 18 }}>{sent ? '✅' : '📣'}</span>
+      {sent ? 'Envoyé !' : 'Prévenir l\'équipe'}
+    </button>
+  );
+}
+
 // ── Main component ────────────────────────────────────────────────────────────
-export function AdminView({ players, activeMatch, currentOrg, onSignOut, onShowGuide, onGoToResults }: AdminViewProps) {
+export function AdminView({ players, activeMatch, currentOrg, onSignOut, onShowGuide, onGoToResults, onUpgrade }: AdminViewProps) {
   const [newPlayer,       setNewPlayer]       = useState('');
   const [matchLabel,      setMatchLabel]      = useState('');
   const labelInputRef = useRef<HTMLInputElement>(null);
@@ -123,7 +178,7 @@ export function AdminView({ players, activeMatch, currentOrg, onSignOut, onShowG
   const removePlayerMutation     = useRemovePlayer(currentOrg?.id);
   const createMatchMutation      = useCreateMatch(currentOrg?.id);
   const closeMatchMutation       = useCloseMatch(currentOrg?.id);
-  const startCountingMutation    = useStartCounting(currentOrg?.id);
+  const startCountingMutation    = useStartCounting(currentOrg?.id, activeMatch?.label);
   const createTeamMutation       = useCreateTeam(currentOrg?.id);
   const updateTeamMutation       = useUpdateTeam(currentOrg?.id);
   const deleteTeamMutation       = useDeleteTeam(currentOrg?.id);
@@ -294,6 +349,11 @@ export function AdminView({ players, activeMatch, currentOrg, onSignOut, onShowG
     <div className="content">
       {toast && <Toast msg={toast} onDone={() => setToast(null)} />}
 
+      {/* ── Push notification opt-in banner ───────────────────────────── */}
+      {!DEMO_MODE && currentOrg?.id && (
+        <PushNotificationBanner orgId={currentOrg.id} />
+      )}
+
       {/* ── Setup checklist (new orgs only) ───────────────────────────── */}
       {!DEMO_MODE && currentOrg?.id && !activeMatch && (
         <SetupChecklist
@@ -337,29 +397,39 @@ export function AdminView({ players, activeMatch, currentOrg, onSignOut, onShowG
             {phase === 'voting' && (
               <div style={{ padding: '12px 16px', display: 'flex', flexDirection: 'column', gap: 8 }}>
                 {currentOrg?.slug && (
-                  <div style={{
-                    background: 'var(--bg3)', borderRadius: 'var(--radius-sm)',
-                    padding: '10px 12px', display: 'flex', alignItems: 'center', gap: 10,
-                  }}>
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--label3)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 2 }}>
-                        🔗 Lien de vote
+                  <>
+                    <div style={{
+                      background: 'var(--bg3)', borderRadius: 'var(--radius-sm)',
+                      padding: '10px 12px', display: 'flex', alignItems: 'center', gap: 10,
+                    }}>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--label3)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 2 }}>
+                          🔗 Lien de vote
+                        </div>
+                        <div style={{ fontSize: 12, color: 'var(--label2)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          {window.location.origin}/?org={currentOrg.slug}
+                        </div>
                       </div>
-                      <div style={{ fontSize: 12, color: 'var(--label2)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                        {window.location.origin}/?org={currentOrg.slug}
-                      </div>
+                      <button
+                        className="btn btn-secondary"
+                        style={{ padding: '6px 12px', fontSize: 13, whiteSpace: 'nowrap', flexShrink: 0 }}
+                        onClick={() => {
+                          void navigator.clipboard.writeText(`${window.location.origin}/?org=${currentOrg.slug}`);
+                          setToast('Lien copié !');
+                          if (currentOrg?.id) { localStorage.setItem(`pepite_link_copied_${currentOrg.id}`, '1'); setLinkCopied(true); }
+                        }}>
+                        Copier
+                      </button>
                     </div>
-                    <button
-                      className="btn btn-secondary"
-                      style={{ padding: '6px 12px', fontSize: 13, whiteSpace: 'nowrap', flexShrink: 0 }}
-                      onClick={() => {
+                    <NotifyTeamButton
+                      voteUrl={`${window.location.origin}/?org=${currentOrg.slug}`}
+                      matchLabel={activeMatch?.label ?? ''}
+                      onFallback={() => {
                         void navigator.clipboard.writeText(`${window.location.origin}/?org=${currentOrg.slug}`);
                         setToast('Lien copié !');
-                        if (currentOrg?.id) { localStorage.setItem(`pepite_link_copied_${currentOrg.id}`, '1'); setLinkCopied(true); }
-                      }}>
-                      Copier
-                    </button>
-                  </div>
+                      }}
+                    />
+                  </>
                 )}
                 <button className="btn btn-primary btn-full" onClick={startCounting} disabled={startCountingMutation.isPending || voteCount === 0}>
                   {startCountingMutation.isPending ? 'Préparation…' : `Lancer le dépouillement · ${voteCount} vote${voteCount !== 1 ? 's' : ''}`}
@@ -704,8 +774,37 @@ export function AdminView({ players, activeMatch, currentOrg, onSignOut, onShowG
                 </button>
               </div>
             )}
-            {currentOrg?.plan === 'pro' && (
+            {currentOrg?.plan === 'pro' ? (
               <ManageSubscriptionButton orgId={currentOrg.id} />
+            ) : (
+              <div style={{
+                background: 'linear-gradient(135deg, rgba(255,215,0,0.08) 0%, rgba(255,215,0,0.04) 100%)',
+                border: '1px solid var(--gold-dim)',
+                borderRadius: 'var(--radius-lg)',
+                padding: '16px',
+                marginBottom: 12,
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+                  <span style={{ fontSize: 16 }}>⭐</span>
+                  <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--gold)', letterSpacing: '0.02em' }}>
+                    Pépite &amp; Citron Pro
+                  </span>
+                </div>
+                <p style={{ fontSize: 13, color: 'var(--label2)', lineHeight: 1.5, marginBottom: 12 }}>
+                  Stats de saison, historique de matchs et tendances par joueur — dès 12,99 €/an.
+                </p>
+                <button
+                  className="btn btn-full"
+                  style={{
+                    background: '#FFD700', color: '#000', border: 'none',
+                    borderRadius: 'var(--radius-sm)', padding: '11px',
+                    fontSize: 13, fontWeight: 800, cursor: 'pointer',
+                  }}
+                  onClick={onUpgrade}
+                >
+                  Passer Pro →
+                </button>
+              </div>
             )}
             <button className="btn btn-secondary btn-full" style={{ fontSize: 13, marginBottom: 8 }} onClick={onShowGuide}>
               📖 Comment ça marche
@@ -822,7 +921,7 @@ export function AdminView({ players, activeMatch, currentOrg, onSignOut, onShowG
         {[
           { label: 'Confidentialité', href: '/privacy.html' },
           { label: 'CGU', href: '/terms.html' },
-          { label: 'Contact', href: 'mailto:citron@drill-faktory.odoo.com' },
+          { label: 'Contact', href: 'mailto:contact@pepite-citron.com' },
         ].map(link => (
           <a
             key={link.href}

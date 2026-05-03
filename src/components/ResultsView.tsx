@@ -1,10 +1,12 @@
 import { useState, useEffect, type ReactNode } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { formatDate } from '@/utils';
 import { computeResultsSummary } from '@/utils/scoring';
 import { Scoreboard } from './Scoreboard';
 import { PodiumView } from './PodiumView';
 import { EmptyState } from './EmptyState';
 import { SharePodiumButton } from './SharePodiumButton';
+import { SeasonTeaser } from './SeasonTeaser';
 import { useVotes } from '@/hooks/queries';
 import { useRevealNext, useCloseMatch, useUpdateMatch } from '@/hooks/mutations';
 import type { Player, Match, EntityId } from '@/types';
@@ -15,6 +17,8 @@ interface ResultsViewProps {
   isAdmin: boolean;
   isDark: boolean;
   orgId?: string | null;
+  isPro?: boolean;
+  onUpgrade?: () => void;
 }
 
 interface TiebreakerCardProps {
@@ -24,7 +28,71 @@ interface TiebreakerCardProps {
   tiedPlayers: Player[];
 }
 
-export function ResultsView({ players, match, isAdmin, isDark, orgId }: ResultsViewProps) {
+// ── Share results via Web Share API (iMessage, WhatsApp, etc.) ────────────────
+function ShareResultsButton({
+  match,
+  pepiteRanked,
+  lemonRanked,
+}: {
+  match: Match;
+  pepiteRanked: Array<{ name: string }>;
+  lemonRanked:  Array<{ name: string }>;
+}) {
+  const [shared, setShared] = useState(false);
+
+  const buildText = () => {
+    const pepiteNames = pepiteRanked.slice(0, 2).map(p => p.name).join(' & ');
+    const lemonName   = lemonRanked[0]?.name ?? '';
+    const lines = [
+      `🏆 ${match.label}`,
+      pepiteNames ? `⭐ Pépite : ${pepiteNames}` : '',
+      lemonName   ? `🍋 Citron : ${lemonName}`   : '',
+      '',
+      'Résultats via Pépite & Citron 🔥',
+    ].filter(Boolean);
+    return lines.join('\n');
+  };
+
+  const handleShare = async () => {
+    const text = buildText();
+    if (navigator.share) {
+      try {
+        await navigator.share({ text });
+        setShared(true);
+        setTimeout(() => setShared(false), 3000);
+      } catch {
+        // user cancelled — no-op
+      }
+    } else {
+      // Desktop fallback: open WhatsApp web
+      window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank');
+    }
+  };
+
+  return (
+    <button
+      onClick={handleShare}
+      style={{
+        width: '100%',
+        display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+        background: shared ? 'rgba(48,209,88,0.12)' : 'var(--bg2)',
+        border: `1px solid ${shared ? 'var(--green)' : 'var(--separator2)'}`,
+        borderRadius: 'var(--radius)',
+        padding: '13px 20px',
+        fontSize: 15, fontWeight: 600,
+        color: shared ? 'var(--green)' : 'var(--label2)',
+        cursor: 'pointer',
+        transition: 'all 0.2s ease',
+      }}
+    >
+      <span style={{ fontSize: 18 }}>{shared ? '✅' : '💬'}</span>
+      {shared ? 'Partagé !' : 'Envoyer les résultats'}
+    </button>
+  );
+}
+
+export function ResultsView({ players, match, isAdmin, isDark, orgId, isPro, onUpgrade }: ResultsViewProps) {
+  const navigate = useNavigate();
   const [localRevealedCount, setLocalRevealedCount] = useState<number | null>(null);
   const [podiumRevealed,     setPodiumRevealed]     = useState(false);
 
@@ -291,13 +359,14 @@ export function ResultsView({ players, match, isAdmin, isDark, orgId }: ResultsV
         <div style={{ animation: 'podiumReveal 0.5s cubic-bezier(0.22, 1, 0.36, 1)' }}>
           <PodiumView votes={votes} present={present} allPlayers={players} tiebreakers={tiebreakers} pepiteCount={match.pepite_count ?? 2} />
           {pepiteRanked.length > 0 && (
-            <div style={{ marginTop: 16 }}>
+            <div style={{ marginTop: 16, display: 'flex', flexDirection: 'column', gap: 10 }}>
               <SharePodiumButton
                 match={match}
                 pepiteRanked={pepiteRanked}
                 lemonRanked={lemonRanked}
                 isDark={isDark !== false}
               />
+              <ShareResultsButton match={match} pepiteRanked={pepiteRanked} lemonRanked={lemonRanked} />
             </div>
           )}
         </div>
@@ -323,6 +392,64 @@ export function ResultsView({ players, match, isAdmin, isDark, orgId }: ResultsV
               </div>
             ))}
           </div>
+        </div>
+      )}
+
+      {/* ── Post-podium CTAs ─────────────────────────────────────────────── */}
+      {podiumRevealed && (
+        <div style={{ marginTop: 8, marginBottom: 20, display: 'flex', flexDirection: 'column', gap: 10 }}>
+
+          {/* Pro: shortcut to season stats */}
+          {isPro && (
+            <button
+              onClick={() => navigate('/stats')}
+              style={{
+                width: '100%',
+                display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                background: 'rgba(255,214,10,0.07)', border: '1px solid var(--gold-dim)',
+                borderRadius: 'var(--radius-lg)', padding: '14px 16px',
+                fontSize: 14, fontWeight: 600, color: 'var(--gold)', cursor: 'pointer',
+              }}
+            >
+              <span>📊 Voir le classement de saison</span>
+              <span style={{ opacity: 0.7 }}>→</span>
+            </button>
+          )}
+
+          {/* Free: season teaser (real data, locked scores) + fallback nudge */}
+          {!isPro && onUpgrade && (
+            <>
+              <SeasonTeaser orgId={orgId} players={players} onUpgrade={onUpgrade} />
+              <div style={{
+                background: 'linear-gradient(135deg, rgba(255,215,0,0.07) 0%, rgba(255,215,0,0.03) 100%)',
+                border: '1px solid var(--gold-dim)',
+                borderRadius: 'var(--radius-lg)',
+                padding: '16px',
+                display: 'flex', alignItems: 'center', gap: 14,
+              }}>
+                <div style={{ fontSize: 28, flexShrink: 0 }}>📊</div>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--label)', marginBottom: 3 }}>
+                    Stats de saison disponibles avec Pro
+                  </div>
+                  <div style={{ fontSize: 12, color: 'var(--label3)', lineHeight: 1.4 }}>
+                    Classement cumulé, historique et tendances par joueur.
+                  </div>
+                </div>
+                <button
+                  onClick={onUpgrade}
+                  style={{
+                    background: '#FFD700', color: '#000', border: 'none',
+                    borderRadius: 10, padding: '9px 14px',
+                    fontSize: 12, fontWeight: 800, cursor: 'pointer',
+                    whiteSpace: 'nowrap', flexShrink: 0,
+                  }}
+                >
+                  Voir Pro →
+                </button>
+              </div>
+            </>
+          )}
         </div>
       )}
 

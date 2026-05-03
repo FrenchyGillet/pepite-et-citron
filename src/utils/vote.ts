@@ -20,6 +20,31 @@ export function classifyVoteError(err: unknown): string {
   return e?.message || "Erreur lors de l'envoi, réessaie.";
 }
 
+// ── Voter identity persistence ────────────────────────────────────────────────
+
+const VOTER_IDENTITY_KEY = 'pepite_voter_identity';
+
+interface StoredVoterIdentity {
+  name: string;
+  playerId: EntityId | null;
+}
+
+/** Retrieve the stored voter name for this device (null if none). */
+export function getStoredVoterIdentity(): StoredVoterIdentity | null {
+  try {
+    const raw = localStorage.getItem(VOTER_IDENTITY_KEY);
+    if (!raw) return null;
+    return JSON.parse(raw) as StoredVoterIdentity;
+  } catch { return null; }
+}
+
+/** Persist the voter's name after a successful vote. */
+export function saveVoterIdentity(name: string, playerId: EntityId | null): void {
+  try {
+    localStorage.setItem(VOTER_IDENTITY_KEY, JSON.stringify({ name, playerId }));
+  } catch { /* quota exceeded — ignore */ }
+}
+
 export function shuffleRevealOrder(votes: Vote[]): EntityId[] {
   return [...votes]
     .sort(() => Math.random() - 0.5)

@@ -3,6 +3,7 @@ import { api, DEMO_MODE } from '@/api';
 import { useAppStore } from '@/store/appStore';
 import { track, EVENTS } from '@/utils/analytics';
 import { hasVotedLocally } from '@/utils/vote';
+import { useVotes } from '@/hooks/queries';
 import { VoteView } from './VoteView';
 import { EmptyState } from './EmptyState';
 import { GuestPromoView } from './GuestPromoView';
@@ -54,6 +55,11 @@ export function VoteTab({ isAdmin, activeMatch, lastMatch, players }: VoteTabPro
 
   const phase = activeMatch?.phase || 'voting';
 
+  // Real-time vote count for post-vote confirmation screen
+  const { data: votes = [] } = useVotes(activeMatch?.id);
+  const voteCount    = votes.length;
+  const presentCount = activeMatch?.present_ids?.length ?? 0;
+
   if (guestStatus === 'checking') return (
     <EmptyState
       icon={<><circle cx="12" cy="12" r="9"/><path d="M12 8v4l2.5 2.5" strokeLinecap="round"/></>}
@@ -97,8 +103,12 @@ export function VoteTab({ isAdmin, activeMatch, lastMatch, players }: VoteTabPro
     return (
       <EmptyState
         icon={<><path d="M22 11.08V12a10 10 0 11-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></>}
-        title="Vote enregistré"
-        subtitle="Les résultats se mettent à jour en temps réel."
+        title="Vote enregistré ✓"
+        subtitle={
+          presentCount > 0
+            ? `${voteCount} / ${presentCount} ont voté · résultats en temps réel.`
+            : 'Les résultats se mettent à jour en temps réel.'
+        }
         action={{ label: 'Voir les résultats', onClick: () => navigate('/results') }}
       />
     );

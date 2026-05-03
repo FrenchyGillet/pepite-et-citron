@@ -1,6 +1,8 @@
 import { useState, useRef, useEffect } from 'react';
 import { api } from '@/api';
-import { markVotedLocally, classifyVoteError } from '@/utils/vote';
+import { markVotedLocally, classifyVoteError, getStoredVoterIdentity, saveVoterIdentity } from '@/utils/vote';
+import { saveOfflineVote, isNetworkError } from '@/utils/offlineVote';
+import { useVotes } from '@/hooks/queries';
 import type { Player, Match, EntityId } from '@/types';
 
 interface VoteViewProps {
@@ -12,9 +14,19 @@ interface VoteViewProps {
 }
 
 export function VoteView({ players, match, onVoted, guestName = null, onGuestVoted = null }: VoteViewProps) {
-  const [voterName,          setVoterName]          = useState(guestName || '');
-  const [selectedVoterPlayer, setSelectedVoterPlayer] = useState<Player | null>(null);
-  const [step,         setStep]         = useState(guestName ? 1 : 0);
+  // ── Voter identity: restore from localStorage if the player is present ───
+  const storedIdentity = !guestName ? getStoredVoterIdentity() : null;
+  const presentIds = match.present_ids || [];
+
+  const storedPlayer = storedIdentity
+    ? (players.find(p => p.id === storedIdentity.playerId && presentIds.includes(p.id))
+       ?? players.find(p => p.name === storedIdentity.name && presentIds.includes(p.id)))
+    : null;
+
+  const [voterName,           setVoterName]           = useState(guestName || storedPlayer?.name || '');
+  const [selectedVoterPlayer, setSelectedVoterPlayer] = useState<Player | null>(storedPlayer ?? null);
+  // Skip step 0 if we recognise the voter (still present this match)
+  const [step,         setStep]         = useState(guestName ? 1 : storedPlayer ? 1 : 0);
   const [best1,        setBest1]        = useState<Player | null>(null);
   const [best1Comment, setBest1Comment] = useState('');
   const [best2,        setBest2]        = useState<Player | null>(null);
@@ -46,9 +58,13 @@ export function VoteView({ players, match, onVoted, guestName = null, onGuestVot
   const [absentOpen, setAbsentOpen] = useState(false);
   useEffect(() => { if (step === lemonStep) setAbsentOpen(false); }, [step, lemonStep]);
 
-  const presentIds = match.present_ids || [];
   const present = players.filter(p =>  presentIds.includes(p.id));
   const absent  = players.filter(p => !presentIds.includes(p.id));
+
+  // Real-time vote count — updated via Realtime subscription in useRealtime()
+  const { data: votes = [] } = useVotes(match.id);
+  const voteCount    = votes.length;
+  const presentCount = present.length;
 
   const checkAndNext = async () => {
     if (!voterName) return;
@@ -62,18 +78,41 @@ export function VoteView({ players, match, onVoted, guestName = null, onGuestVot
   const submit = async () => {
     setSubmitting(true);
     setSubmitError(null);
+
+    const votePayload = {
+      match_id: match.id, voter_name: voterName,
+      best1_id: best1?.id,   best1_comment: best1Comment,
+      best2_id: best2?.id,   best2_comment: best2Comment,
+      ...(pepiteCount === 3 ? { best3_id: best3?.id, best3_comment: best3Comment } : {}),
+      lemon_id: lemon?.id,   lemon_comment: lemonComment,
+    };
+
+    // ── Offline-first: if device is offline, queue locally and proceed ──────
+    if (!navigator.onLine) {
+      saveOfflineVote(votePayload);
+      markVotedLocally(match.id);
+      saveVoterIdentity(voterName, selectedVoterPlayer?.id ?? null);
+      setSubmitting(false);
+      onVoted(voterName, selectedVoterPlayer?.id);
+      return;
+    }
+
     try {
-      await api.submitVote({
-        match_id: match.id, voter_name: voterName,
-        best1_id: best1?.id, best1_comment: best1Comment,
-        best2_id: best2?.id, best2_comment: best2Comment,
-        ...(pepiteCount === 3 ? { best3_id: best3?.id, best3_comment: best3Comment } : {}),
-        lemon_id: lemon?.id, lemon_comment: lemonComment,
-      });
+      await api.submitVote(votePayload);
       if (onGuestVoted) await onGuestVoted();
       markVotedLocally(match.id);
+      saveVoterIdentity(voterName, selectedVoterPlayer?.id ?? null);
       onVoted(voterName, selectedVoterPlayer?.id);
     } catch (err) {
+      // Transient network failure → save offline and proceed optimistically
+      if (isNetworkError(err)) {
+        saveOfflineVote(votePayload);
+        markVotedLocally(match.id);
+        saveVoterIdentity(voterName, selectedVoterPlayer?.id ?? null);
+        setSubmitting(false);
+        onVoted(voterName, selectedVoterPlayer?.id);
+        return;
+      }
       setSubmitError(classifyVoteError(err));
     } finally {
       setSubmitting(false);
@@ -127,6 +166,20 @@ export function VoteView({ players, match, onVoted, guestName = null, onGuestVot
               Tu as déjà voté pour ce match.
             </div>
           )}
+
+          {/* Vote progress on identity step */}
+          {voteCount > 0 && presentCount > 0 && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 12 }}>
+              <span style={{
+                display: 'inline-block', width: 7, height: 7, borderRadius: '50%',
+                background: 'var(--green)', animation: 'livePulse 2s ease-in-out infinite',
+              }} />
+              <span style={{ fontSize: 12, color: 'var(--label3)' }}>
+                <strong style={{ color: 'var(--label2)' }}>{voteCount}</strong> / {presentCount} ont déjà voté
+              </span>
+            </div>
+          )}
+
           <button className="btn btn-primary btn-full mt-12"
             disabled={!voterName || checking} onClick={checkAndNext}>
             {checking ? 'Vérification…' : 'Continuer'}
@@ -136,11 +189,53 @@ export function VoteView({ players, match, onVoted, guestName = null, onGuestVot
 
       {step >= 1 && step <= summaryStep - 1 && (
         <>
+          {/* Identity banner when voter was recognised from previous session */}
+          {storedPlayer && step === 1 && (
+            <div style={{
+              display: 'flex', alignItems: 'center', gap: 10,
+              background: 'var(--bg2)', borderRadius: 'var(--radius-sm)',
+              padding: '10px 14px', marginBottom: 8, marginTop: 8,
+            }}>
+              <span style={{ fontSize: 15 }}>👤</span>
+              <span style={{ fontSize: 13, color: 'var(--label2)', flex: 1 }}>
+                Tu votes en tant que <strong style={{ color: 'var(--label)' }}>{storedPlayer.name}</strong>
+              </span>
+              <button
+                onClick={() => { setVoterName(''); setSelectedVoterPlayer(null); setStep(0); }}
+                style={{
+                  background: 'none', border: 'none', padding: 0,
+                  fontSize: 12, color: 'var(--label3)', cursor: 'pointer',
+                  textDecoration: 'underline',
+                }}
+              >
+                Changer
+              </button>
+            </div>
+          )}
+
           <div className="step-bar mt-8">
             {Array.from({ length: stepBarCount }, (_, i) => i + 1).map(i => (
               <div key={i} className={`step-seg ${step > i ? 'done' : step === i ? 'active' : ''}`} />
             ))}
           </div>
+
+          {/* Real-time vote counter */}
+          {presentCount > 0 && (
+            <div style={{
+              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+              marginBottom: 12,
+            }}>
+              <span style={{
+                display: 'inline-block', width: 7, height: 7, borderRadius: '50%',
+                background: voteCount > 0 ? 'var(--green)' : 'var(--label4)',
+                animation: voteCount > 0 ? 'livePulse 2s ease-in-out infinite' : 'none',
+              }} />
+              <span style={{ fontSize: 12, color: 'var(--label3)' }}>
+                <strong style={{ color: 'var(--label2)' }}>{voteCount}</strong>
+                {' '}/ {presentCount} ont voté
+              </span>
+            </div>
+          )}
 
           {step === 1 && (
             <>

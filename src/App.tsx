@@ -14,12 +14,14 @@ import { ErrorBoundary }     from '@/components/ErrorBoundary';
 import { OnboardingModal }   from '@/components/OnboardingModal';
 import { UpgradeModal }      from '@/components/UpgradeModal';
 import { StatsLockedView }   from '@/components/StatsLockedView';
+import { JoinOrgView }       from '@/components/JoinOrgView';
 import { ProfileView }       from '@/components/ProfileView';
 import { useAuth }           from '@/hooks/useAuth';
 import { useGuest }          from '@/hooks/useGuest';
 import { useTheme }          from '@/hooks/useTheme';
 import { useLastMatch }      from '@/hooks/useLastMatch';
 import { useRealtime }       from '@/hooks/useRealtime';
+import { useOfflineSync }    from '@/hooks/useOfflineSync';
 import { usePlayers }        from '@/hooks/queries';
 import { useAppStore }       from '@/store/appStore';
 import { useSearchParams }   from 'react-router-dom';
@@ -62,6 +64,7 @@ export default function App() {
   const [searchParams] = useSearchParams();
 
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
+  const [offlineToast,     setOfflineToast]     = useState<string | null>(null);
 
   // ── Bootstrap side-effects ──────────────────────────────────────────────
   const { handleSignOut }  = useAuth();
@@ -88,6 +91,8 @@ export default function App() {
   const setOrgsLoadError = useAppStore(s => s.setOrgsLoadError);
   const setShowOnboarding = useAppStore(s => s.setShowOnboarding);
   const loadOrgs         = useAppStore(s => s.loadOrgs);
+  const pendingOrgId     = useAppStore(s => s.pendingOrgId);
+  const pendingOrgName   = useAppStore(s => s.pendingOrgName);
 
   // ── Server state ────────────────────────────────────────────────────────
   const { data: players = [] }       = usePlayers(currentOrg?.id);
@@ -95,6 +100,12 @@ export default function App() {
 
   // ── Realtime subscriptions ──────────────────────────────────────────────
   useRealtime(currentOrg?.id, activeMatch?.id);
+
+  // ── Offline vote sync ───────────────────────────────────────────────────
+  useOfflineSync(
+    () => { setOfflineToast('✅ Vote synchronisé !'); setTimeout(() => setOfflineToast(null), 3000); },
+    () => { /* still offline — keep queued, no toast */ },
+  );
 
   // ── Derived ─────────────────────────────────────────────────────────────
   const isAdmin = DEMO_MODE || (!!session && !!currentOrg && currentOrg.role !== 'voter');
@@ -179,6 +190,20 @@ export default function App() {
   }
 
   if (!DEMO_MODE && session && orgsResolved && !orgsLoadError && !currentOrg) {
+    // ── New user who arrived via ?org= link: join existing team ──────────────
+    // pendingOrgId is set by useGuest when the org link is used. JoinOrgView
+    // calls selfJoinOrg() then reloads orgs, which sets currentOrg and exits
+    // this branch automatically. Never show OrgSetupView in this case.
+    if (pendingOrgId) {
+      return (
+        <>
+          <GlobalStyle />
+          <JoinOrgView orgId={pendingOrgId} orgName={pendingOrgName ?? ''} />
+        </>
+      );
+    }
+
+    // ── Brand-new user with no team: create one ───────────────────────────────
     return (
       <>
         <GlobalStyle />
@@ -232,7 +257,7 @@ export default function App() {
           <Route path="/results" element={
             <ErrorBoundary label="Résultats">
               <ResultsView players={players} match={lastMatch} isAdmin={isAdmin} isDark={theme === 'dark'}
-                orgId={currentOrg?.id} />
+                orgId={currentOrg?.id} isPro={isPro} onUpgrade={() => setShowUpgradeModal(true)} />
             </ErrorBoundary>
           } />
           <Route path="/stats" element={
@@ -241,7 +266,7 @@ export default function App() {
                   <StatsView players={players} activeMatch={activeMatch} isAdmin={isAdmin}
                     orgId={currentOrg?.id} />
                 </ErrorBoundary>
-              : <StatsLockedView onUpgrade={() => setShowUpgradeModal(true)} />
+              : <StatsLockedView onUpgrade={() => setShowUpgradeModal(true)} players={players} />
           } />
           <Route path="/admin" element={
             isAdmin
@@ -253,6 +278,7 @@ export default function App() {
                     onSignOut={handleSignOut}
                     onShowGuide={() => setShowOnboarding(true)}
                     onGoToResults={() => navigate('/results')}
+                    onUpgrade={() => setShowUpgradeModal(true)}
                   />
                 </ErrorBoundary>
               : <Navigate to="/vote" replace />
@@ -274,6 +300,9 @@ export default function App() {
         {showUpgradeModal && currentOrg && (
           <UpgradeModal orgId={currentOrg.id} onClose={() => setShowUpgradeModal(false)} />
         )}
+        {offlineToast && (
+          <div className="toast">{offlineToast}</div>
+        )}
       </div>
 
       <nav className="tab-bar">
@@ -282,11 +311,22 @@ export default function App() {
             key={t.id}
             className={`tab-bar-item ${location.pathname === `/${t.id}` ? 'active' : ''}`}
             onClick={() => t.locked ? setShowUpgradeModal(true) : navigate(`/${t.id}`)}
-            style={t.locked ? { opacity: 0.5 } : undefined}
+            style={t.locked ? { opacity: 0.6 } : undefined}
           >
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" stroke="currentColor">
-              {t.icon}
-            </svg>
+            <div style={{ position: 'relative', display: 'inline-flex' }}>
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" stroke="currentColor">
+                {t.icon}
+              </svg>
+              {t.locked && (
+                <div style={{
+                  position: 'absolute', top: -4, right: -6,
+                  background: '#FFD700', borderRadius: '50%',
+                  width: 14, height: 14,
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  fontSize: 8, lineHeight: 1,
+                }}>🔒</div>
+              )}
+            </div>
             <span>{t.label}</span>
           </button>
         ))}

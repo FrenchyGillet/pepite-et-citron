@@ -126,6 +126,7 @@ export interface API {
   getOrgMembers(orgId: string): Promise<OrgMember[]>;
   addMember(email: string, orgId: string, role?: 'admin' | 'voter'): Promise<void>;
   removeMember(userId: string, orgId: string): Promise<unknown>;
+  selfJoinOrg(orgId: string): Promise<void>;
 
   // Players
   getPlayers(): Promise<Player[]>;
@@ -169,4 +170,19 @@ export interface API {
   validateGuestToken(token: string): Promise<GuestToken | null>;
   useGuestToken(token: string): Promise<unknown>;
   deleteGuestToken(id: EntityId): Promise<unknown>;
+
+  // Push notifications
+  subscribePush(orgId: string, sub: PushSubscriptionJSON): Promise<void>;
+  unsubscribePush(orgId: string, endpoint: string): Promise<void>;
+}
+
+// ─── Push notification types ──────────────────────────────────────────────────
+
+export type PushNotificationType = 'vote_open' | 'results_ready';
+
+export interface PushPayload {
+  type: PushNotificationType;
+  title: string;
+  body: string;
+  url?: string;
 }

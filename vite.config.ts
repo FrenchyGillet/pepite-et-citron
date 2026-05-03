@@ -10,6 +10,11 @@ export default defineConfig({
     VitePWA({
       registerType: "autoUpdate",
 
+      // ── injectManifest: use our own SW (src/sw.ts) for push support ─────────
+      strategies: "injectManifest",
+      srcDir: "src",
+      filename: "sw.ts",
+
       // Assets to precache alongside the generated SW manifest
       includeAssets: ["icon.svg", "icon-192x192.png", "icon-512x512.png"],
 
@@ -58,60 +63,11 @@ export default defineConfig({
         ],
       },
 
-      // ── Workbox (Service Worker) ────────────────────────────────────────────
-      workbox: {
+      // injectManifest mode: Workbox config passed to the injection step
+      injectManifest: {
         // Precache all build output
         globPatterns: ["**/*.{js,css,html,ico,png,svg,webmanifest}"],
-
-        // Never precache source maps
-        globIgnores: ["**/*.map"],
-
-        runtimeCaching: [
-          // ── Supabase API → Network-first ───────────────────────────────────
-          // Always try the network first so users see fresh data.
-          // Falls back to cache when offline (up to 10 s timeout).
-          {
-            urlPattern: /^https:\/\/[^/]+\.supabase\.co\//,
-            handler: "NetworkFirst",
-            options: {
-              cacheName: "supabase-api",
-              networkTimeoutSeconds: 10,
-              expiration: {
-                maxEntries: 100,
-                maxAgeSeconds: 5 * 60, // 5 min
-              },
-              cacheableResponse: { statuses: [0, 200] },
-            },
-          },
-
-          // ── Google Fonts / external fonts → Stale-While-Revalidate ─────────
-          {
-            urlPattern: /^https:\/\/fonts\.(googleapis|gstatic)\.com\//,
-            handler: "StaleWhileRevalidate",
-            options: {
-              cacheName: "google-fonts",
-              expiration: {
-                maxEntries: 20,
-                maxAgeSeconds: 365 * 24 * 60 * 60,
-              },
-              cacheableResponse: { statuses: [0, 200] },
-            },
-          },
-
-          // ── Static assets (images, SVG) → Cache-first ─────────────────────
-          {
-            urlPattern: /\.(?:png|jpe?g|gif|svg|webp|ico)$/,
-            handler: "CacheFirst",
-            options: {
-              cacheName: "static-assets",
-              expiration: {
-                maxEntries: 60,
-                maxAgeSeconds: 30 * 24 * 60 * 60, // 30 days
-              },
-              cacheableResponse: { statuses: [0, 200] },
-            },
-          },
-        ],
+        globIgnores:  ["**/*.map"],
       },
 
       // Silence dev-mode logs

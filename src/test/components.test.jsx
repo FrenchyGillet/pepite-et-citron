@@ -145,6 +145,45 @@ describe('StatsLockedView', () => {
     render(<StatsLockedView onUpgrade={vi.fn()} />);
     expect(screen.getByText(/classement cumulé/i)).toBeInTheDocument();
   });
+
+  // ── Real player names ────────────────────────────────────────────────────────
+
+  it('shows real player names in blurred preview when players prop provided', () => {
+    const players = [
+      { id: 1, name: 'Baptiste' },
+      { id: 2, name: 'Clément' },
+      { id: 3, name: 'David' },
+    ];
+    render(<StatsLockedView onUpgrade={vi.fn()} players={players} />);
+    expect(screen.getByText('Baptiste')).toBeInTheDocument();
+    expect(screen.getByText('Clément')).toBeInTheDocument();
+    expect(screen.getByText('David')).toBeInTheDocument();
+  });
+
+  it('shows at most 4 players in the preview', () => {
+    const players = [1, 2, 3, 4, 5, 6].map(i => ({ id: i, name: `Joueur${i}` }));
+    render(<StatsLockedView onUpgrade={vi.fn()} players={players} />);
+    expect(screen.getByText('Joueur1')).toBeInTheDocument();
+    expect(screen.getByText('Joueur4')).toBeInTheDocument();
+    expect(screen.queryByText('Joueur5')).not.toBeInTheDocument();
+  });
+
+  it('falls back to placeholder names when no players provided', () => {
+    render(<StatsLockedView onUpgrade={vi.fn()} />);
+    // Fallback names defined in FALLBACK_NAMES constant
+    expect(screen.getByText('Théo')).toBeInTheDocument();
+    expect(screen.getByText('Maxime')).toBeInTheDocument();
+  });
+
+  it('falls back to placeholder names when empty players array provided', () => {
+    render(<StatsLockedView onUpgrade={vi.fn()} players={[]} />);
+    expect(screen.getByText('Théo')).toBeInTheDocument();
+  });
+
+  it('shows "Réservé au plan Pro" overlay badge', () => {
+    render(<StatsLockedView onUpgrade={vi.fn()} />);
+    expect(screen.getByText(/réservé au plan pro/i)).toBeInTheDocument();
+  });
 });
 
 // ── GuestPromoView ─────────────────────────────────────────────────────────────

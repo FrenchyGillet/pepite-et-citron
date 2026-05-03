@@ -84,6 +84,7 @@ export const demoAPI: API = {
   getOrgMembers: () => Promise.resolve([] as OrgMember[]),
   addMember:    () => Promise.resolve(),
   removeMember: () => Promise.resolve(),
+  selfJoinOrg:  () => Promise.resolve(),
 
   // Données
   getPlayers:     () => Promise.resolve([...demoState.players]),
@@ -182,6 +183,10 @@ export const demoAPI: API = {
     return Promise.resolve(true);
   },
   getMatchById: (id) => Promise.resolve(demoState.matches.find(m => m.id === id) ?? null),
+
+  // Push notifications (no-op stubs in demo mode)
+  subscribePush:   () => Promise.resolve(),
+  unsubscribePush: () => Promise.resolve(),
 };
 
 // ─── Real API ─────────────────────────────────────────────────────────────────
@@ -319,6 +324,22 @@ export const realAPI: API = {
     const { error } = await supabase.from("org_members").delete().eq("user_id", userId).eq("org_id", orgId);
     if (error) throw new Error(error.message);
     return true;
+  },
+  selfJoinOrg: async (orgId) => {
+    // Called when an anonymous voter signs up via the ?org= link.
+    // Inserts the current user as a voter member of the org they just voted in.
+    // Requires an RLS policy: "authenticated users can insert their own voter membership".
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) throw new Error('Non authentifié');
+    const { error } = await supabase.from('org_members').insert({
+      org_id:  orgId,
+      user_id: user.id,
+      role:    'voter',
+    });
+    // Ignore duplicate-membership errors (already a member is fine)
+    if (error && !error.message.includes('duplicate') && !error.message.includes('unique')) {
+      throw new Error(error.message);
+    }
   },
   getOrgBySlug: async (slug) => {
     const { data, error } = await supabase.from("organizations").select("*").eq("slug", slug);
@@ -549,6 +570,26 @@ export const realAPI: API = {
     const { error } = await supabase.from("guest_tokens").delete().eq("id", id);
     if (error) throw new Error(error.message);
     return true;
+  },
+
+  // ── Push subscriptions ────────────────────────────────────────────────────
+  subscribePush: async (orgId, sub) => {
+    const keys = sub.keys as { p256dh?: string; auth?: string } | undefined;
+    if (!sub.endpoint || !keys?.p256dh || !keys?.auth) {
+      throw new Error('Subscription invalide');
+    }
+    const { error } = await supabase.from('push_subscriptions').upsert(
+      { org_id: orgId, endpoint: sub.endpoint, p256dh: keys.p256dh, auth: keys.auth },
+      { onConflict: 'user_id,org_id,endpoint' },
+    );
+    if (error) throw new Error(error.message);
+  },
+  unsubscribePush: async (orgId, endpoint) => {
+    const { error } = await supabase.from('push_subscriptions')
+      .delete()
+      .eq('org_id', orgId)
+      .eq('endpoint', endpoint);
+    if (error) throw new Error(error.message);
   },
 };
 

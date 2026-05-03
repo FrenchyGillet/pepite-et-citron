@@ -52,10 +52,33 @@ export function useCreateMatch(orgId?: string | null) {
     }) => api.createMatch(label, presentIds, teamId, season, pepiteCount),
     onSuccess: (_match, vars) => {
       qc.invalidateQueries({ queryKey: queryKeys.activeMatch(orgId) });
-      // Fire-and-forget email notification — failure is silently ignored
-      if (orgId) void sendMatchNotification(orgId, vars.label);
+      // Fire-and-forget email + push notifications — failures are silently ignored
+      if (orgId) {
+        void sendMatchNotification(orgId, vars.label);
+        void sendPushNotification(orgId, 'vote_open', vars.label);
+      }
     },
   });
+}
+
+async function sendPushNotification(
+  orgId: string,
+  type: 'vote_open' | 'results_ready',
+  matchLabel: string,
+): Promise<void> {
+  try {
+    const { supabase } = await import('@/lib/supabase');
+    const { data: { session } } = await supabase.auth.getSession();
+    const token = session?.access_token;
+    if (!token) return;
+    await fetch('/api/send-push-notification', {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+      body:    JSON.stringify({ orgId, type, matchLabel }),
+    });
+  } catch {
+    // Best-effort — never throw
+  }
 }
 
 async function sendMatchNotification(orgId: string, matchLabel: string): Promise<void> {
@@ -85,7 +108,7 @@ export function useCloseMatch(orgId?: string | null) {
   });
 }
 
-export function useStartCounting(orgId?: string | null) {
+export function useStartCounting(orgId?: string | null, matchLabel?: string) {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: ({ id, order }: { id: EntityId; order: EntityId[] }) =>
@@ -93,6 +116,8 @@ export function useStartCounting(orgId?: string | null) {
     onSuccess: (_data, vars) => {
       qc.invalidateQueries({ queryKey: queryKeys.activeMatch(orgId) });
       qc.invalidateQueries({ queryKey: queryKeys.votes(vars.id) });
+      // Fire-and-forget push notification — failure is silently ignored
+      if (orgId && matchLabel) void sendPushNotification(orgId, 'results_ready', matchLabel);
     },
   });
 }
