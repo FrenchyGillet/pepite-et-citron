@@ -3,6 +3,8 @@ import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { BrowserRouter } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { persistQueryClient } from '@tanstack/query-persist-client-core';
+import { createSyncStoragePersister } from '@tanstack/query-sync-storage-persister';
 import * as Sentry from '@sentry/react';
 import App from '@/App';
 
@@ -11,9 +13,41 @@ const queryClient = new QueryClient({
     queries: {
       retry: 1,
       staleTime: 10_000,
+      // gcTime must be ≥ persister maxAge to keep data alive between sessions
+      gcTime: 24 * 60 * 60 * 1000, // 24 h
     },
   },
 });
+
+// ── Persist query cache to localStorage ───────────────────────────────────────
+// On reload, stale data is served instantly while a fresh fetch runs in the
+// background — eliminates the empty-state flash after page refresh.
+try {
+  const persister = createSyncStoragePersister({
+    storage: window.localStorage,
+    key:     'pepite_query_cache',
+    // Throttle writes to avoid hammering localStorage on every invalidation
+    throttleTime: 1_000,
+  });
+
+  void persistQueryClient({
+    queryClient,
+    persister,
+    maxAge: 24 * 60 * 60 * 1000, // discard cache older than 24 h
+    // Only persist the queries that matter for the initial render;
+    // sensitive / user-specific data is re-fetched fresh every session.
+    dehydrateOptions: {
+      shouldDehydrateQuery: (query) => {
+        const key = query.queryKey[0] as string;
+        // Persist: players, activeMatch, matches, votes, currentSeason
+        // Skip: orgMembers (sensitive), allVotes (heavy), guestTokens (short-lived)
+        return ['players', 'activeMatch', 'match', 'votes', 'matches', 'currentSeason'].includes(key);
+      },
+    },
+  });
+} catch {
+  // localStorage unavailable (private browsing quota) — degrade gracefully
+}
 
 const SENTRY_DSN = import.meta.env.VITE_SENTRY_DSN as string | undefined;
 const IS_PROD    = import.meta.env.MODE === 'production';

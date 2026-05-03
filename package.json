@@ -15,6 +15,8 @@
     "@hookform/resolvers": "^5.2.2",
     "@sentry/react": "^10.49.0",
     "@supabase/supabase-js": "^2.104.0",
+    "@tanstack/query-persist-client-core": "^5.100.8",
+    "@tanstack/query-sync-storage-persister": "^5.100.8",
     "@tanstack/react-query": "^5.99.2",
     "@vercel/og": "^0.11.1",
     "react": "^18.3.1",

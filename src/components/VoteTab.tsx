@@ -14,9 +14,10 @@ interface VoteTabProps {
   activeMatch: Match | null;
   lastMatch:  Match | null;
   players:    Player[];
+  isLoading?: boolean;
 }
 
-export function VoteTab({ isAdmin, activeMatch, lastMatch, players }: VoteTabProps) {
+export function VoteTab({ isAdmin, activeMatch, lastMatch, players, isLoading = false }: VoteTabProps) {
   const session            = useAppStore(s => s.session);
   const guestStatus        = useAppStore(s => s.guestStatus);
   const guestName          = useAppStore(s => s.guestName);
@@ -111,6 +112,17 @@ export function VoteTab({ isAdmin, activeMatch, lastMatch, players }: VoteTabPro
         }
         action={{ label: 'Voir les résultats', onClick: () => navigate('/results') }}
       />
+    );
+  }
+
+  // ── Ne pas afficher d'empty state tant que les queries chargent ────────────
+  // Sans ce guard, un refresh affiche brièvement "Pas de match ce soir" avant
+  // que activeMatch arrive de Supabase (ou du cache persisté).
+  if (isLoading && !activeMatch && !lastMatch) {
+    return (
+      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: 200 }}>
+        <div style={{ fontSize: 13, color: 'var(--label3)' }}>Chargement…</div>
+      </div>
     );
   }
 

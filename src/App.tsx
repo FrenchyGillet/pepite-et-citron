@@ -95,8 +95,8 @@ export default function App() {
   const pendingOrgName   = useAppStore(s => s.pendingOrgName);
 
   // ── Server state ────────────────────────────────────────────────────────
-  const { data: players = [] }       = usePlayers(currentOrg?.id);
-  const { activeMatch, lastMatch }   = useLastMatch(currentOrg?.id);
+  const { data: players = [], isLoading: playersLoading }  = usePlayers(currentOrg?.id);
+  const { activeMatch, lastMatch, isLoading: matchLoading } = useLastMatch(currentOrg?.id);
 
   // ── Realtime subscriptions ──────────────────────────────────────────────
   useRealtime(currentOrg?.id, activeMatch?.id);
@@ -251,7 +251,8 @@ export default function App() {
           <Route index element={<Navigate to={`/vote${location.search}`} replace />} />
           <Route path="/vote" element={
             <ErrorBoundary label="Vote">
-              <VoteTab isAdmin={isAdmin} activeMatch={activeMatch} lastMatch={lastMatch} players={players} />
+              <VoteTab isAdmin={isAdmin} activeMatch={activeMatch} lastMatch={lastMatch} players={players}
+                isLoading={matchLoading || playersLoading} />
             </ErrorBoundary>
           } />
           <Route path="/results" element={
