@@ -1,5 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Routes, Route, Navigate, useNavigate, useLocation } from 'react-router-dom';
+import { useQueryClient } from '@tanstack/react-query';
 import { DEMO_MODE, setCurrentOrgId } from '@/api';
 import { GlobalStyle }       from '@/GlobalStyle';
 import { AuthView }          from '@/components/AuthView';
@@ -11,8 +12,10 @@ import { ResultsView }       from '@/components/ResultsView';
 import { StatsView }         from '@/components/StatsView';
 import { AdminView }         from '@/components/AdminView';
 import { ErrorBoundary }     from '@/components/ErrorBoundary';
-import { OnboardingModal }   from '@/components/OnboardingModal';
-import { UpgradeModal }      from '@/components/UpgradeModal';
+import { OnboardingModal }          from '@/components/OnboardingModal';
+import { UpgradeModal }             from '@/components/UpgradeModal';
+import { PullToRefreshIndicator }   from '@/components/PullToRefreshIndicator';
+import { usePullToRefresh }         from '@/hooks/usePullToRefresh';
 import { StatsLockedView }   from '@/components/StatsLockedView';
 import { JoinOrgView }       from '@/components/JoinOrgView';
 import { ProfileView }       from '@/components/ProfileView';
@@ -106,6 +109,16 @@ export default function App() {
     () => { setOfflineToast('✅ Vote synchronisé !'); setTimeout(() => setOfflineToast(null), 3000); },
     () => { /* still offline — keep queued, no toast */ },
   );
+
+  // ── Pull-to-refresh ─────────────────────────────────────────────────────
+  const queryClient = useQueryClient();
+  const handleRefresh = useCallback(async () => {
+    await queryClient.invalidateQueries();
+  }, [queryClient]);
+  const { pullY, isRefreshing } = usePullToRefresh({
+    onRefresh: handleRefresh,
+    disabled:  DEMO_MODE,
+  });
 
   // ── Derived ─────────────────────────────────────────────────────────────
   const isAdmin = DEMO_MODE || (!!session && !!currentOrg && currentOrg.role !== 'voter');
@@ -236,6 +249,7 @@ export default function App() {
   return (
     <>
       <GlobalStyle />
+      <PullToRefreshIndicator pullY={pullY} isRefreshing={isRefreshing} />
       <div className="app-wrapper">
         <AppHeader />
         {DEMO_MODE && <div className="demo-banner">Mode démo · Configure Supabase pour le multi-device</div>}

@@ -37,6 +37,9 @@ export function GlobalStyle() {
       min-height: 100vh;
       font-size: 15px;
       -webkit-font-smoothing: antialiased;
+      /* Désactive le pull-to-refresh natif du navigateur (Android Chrome)
+         pour laisser place à notre implémentation custom */
+      overscroll-behavior-y: none;
     }
 
     button { font-family: inherit; cursor: pointer; border: none; transition: all 0.15s ease; }
@@ -281,6 +284,9 @@ export function GlobalStyle() {
       0%   { opacity: 0; transform: translateY(20px) scale(0.96); }
       100% { opacity: 1; transform: translateY(0)    scale(1);    }
     }
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
 
     .demo-banner {
       background: rgba(255,214,10,0.06);
@@ -313,6 +319,17 @@ export function GlobalStyle() {
       --label2:       rgba(60,60,67,0.6);
       --label3:       rgba(60,60,67,0.35);
       --label4:       rgba(60,60,67,0.18);
+      /* Darker brand colours — contrast-safe on white/light backgrounds */
+      --gold:         #b8860b;
+      --gold-dim:     rgba(184,134,11,0.15);
+      --gold-subtle:  rgba(184,134,11,0.08);
+      --lemon:        #5a8a00;
+      --lemon-dim:    rgba(90,138,0,0.15);
+      --lemon-subtle: rgba(90,138,0,0.08);
+      --green:        #248a3d;
+      --green-dim:    rgba(36,138,61,0.12);
+      --red:          #d70015;
+      --red-dim:      rgba(215,0,21,0.10);
       color-scheme: light;
     }
     [data-theme="light"] body { background: #f2f2f7; }
@@ -321,6 +338,7 @@ export function GlobalStyle() {
     [data-theme="light"] input,
     [data-theme="light"] textarea { background: var(--bg3); color: var(--label); }
     [data-theme="light"] .demo-banner { background: rgba(255,180,0,0.08); color: rgba(160,100,0,0.7); border-color: rgba(255,180,0,0.15); }
+    [data-theme="light"] .btn-primary { background: var(--gold); color: #ffffff; }
   `}</style>
   );
 }
