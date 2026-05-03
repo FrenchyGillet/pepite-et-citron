@@ -60,10 +60,16 @@ export function usePushNotifications(): UsePushNotificationsReturn {
         applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY),
       });
 
-      await api.subscribePush(orgId, sub.toJSON());
-
+      // La souscription navigateur est créée : on considère l'activation réussie
+      // même si la sauvegarde en DB échoue (best-effort).
       localStorage.setItem(STORAGE_KEY, '1');
       setStatus('subscribed');
+
+      try {
+        await api.subscribePush(orgId, sub.toJSON());
+      } catch (err) {
+        console.error('Push subscribe DB save failed (best-effort):', err);
+      }
     } catch (err) {
       console.error('Push subscribe failed:', err);
       setStatus('error');

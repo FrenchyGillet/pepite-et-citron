@@ -28,6 +28,7 @@ export function PushNotificationBanner({ orgId }: Props) {
   if (dismissed)              return null;
   if (status === 'subscribed') return null;
   if (status === 'denied')    return null;
+  if (status === 'error')     return null;
 
   const handleDismiss = () => {
     localStorage.setItem(DISMISS_KEY, '1');
