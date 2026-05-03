@@ -302,7 +302,10 @@ export function ResultsView({ players, match, isAdmin, isDark, orgId, isPro, onU
         )}
       </div>
       <div style={{ fontSize: 13, color: 'var(--label3)', marginBottom: 12 }}>
-        {tiedPlayers.map(p => p.name).join(' et ')} sont à égalité.<br />Qui a gagné le concours de bière ?
+        {tiedPlayers.map(p => p.name).join(' et ')} sont à égalité.<br />
+        {color === 'lemon'
+          ? 'Qui a perdu le concours de bière ?'
+          : 'Qui a gagné le concours de bière ?'}
       </div>
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
         {tiedPlayers.map(p => (
@@ -312,7 +315,7 @@ export function ResultsView({ players, match, isAdmin, isDark, orgId, isPro, onU
             disabled={updateMatchMutation.isPending}
             onClick={() => setTiebreaker(field, p.id)}
           >
-            🍺 {p.name}
+            {color === 'lemon' ? '🍋' : '🍺'} {p.name}
           </button>
         ))}
       </div>
