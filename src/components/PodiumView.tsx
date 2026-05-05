@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { computeScores } from '@/utils';
-import { displayName } from '@/utils/player';
+import { displayName, initials, avatarColor } from '@/utils/player';
 import { AnimatedNumber } from './AnimatedNumber';
 import type { Vote, Player, EntityId } from '@/types';
 
@@ -52,13 +52,26 @@ export function PodiumView({ votes, present, allPlayers, tiebreakers = {}, pepit
   const slotDelay = (place: number) => place === 1 ? 80 : place === 2 ? 0 : 160;
 
   const Slot = ({ player, place, height }: { player: RankedPlayer | undefined; place: number; height: number }) => {
-    const isFirst   = place === 1;
-    const nameColor = isFirst ? color : place === 2 ? 'var(--label2)' : 'var(--label3)';
-    const delay     = slotDelay(place);
+    const isFirst    = place === 1;
+    const nameColor  = isFirst ? color : place === 2 ? 'var(--label2)' : 'var(--label3)';
+    const delay      = slotDelay(place);
+    const avatarSize = isFirst ? 44 : place === 2 ? 36 : 30;
     return (
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
         {player ? (
           <>
+            {/* Avatar circle */}
+            <div style={{
+              width: avatarSize, height: avatarSize, borderRadius: '50%',
+              background: avatarColor(player.name),
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              fontSize: Math.round(avatarSize * 0.38), fontWeight: 800,
+              color: '#fff', letterSpacing: '-0.3px',
+              marginBottom: isFirst ? 3 : 4, flexShrink: 0,
+              userSelect: 'none',
+            }}>
+              {initials(displayName(player))}
+            </div>
             {isFirst && <div style={{ fontSize: 26, lineHeight: 1, marginBottom: 5 }}>👑</div>}
             <div style={{ fontSize: isFirst ? 15 : 13, fontWeight: 700, color: nameColor, textAlign: 'center', lineHeight: 1.2, marginBottom: 2, padding: '0 4px' }}>{displayName(player)}</div>
             {player.absent && <div style={{ fontSize: 10, color: 'var(--label4)', marginBottom: 2, fontStyle: 'italic' }}>absent</div>}
@@ -67,7 +80,7 @@ export function PodiumView({ votes, present, allPlayers, tiebreakers = {}, pepit
             </div>
           </>
         ) : (
-          <div style={{ height: 56 }} />
+          <div style={{ height: avatarSize + (isFirst ? 3 : 4) }} />
         )}
         <div style={{
           height: ready ? height : 0,

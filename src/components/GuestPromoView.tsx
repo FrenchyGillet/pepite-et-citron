@@ -1,4 +1,5 @@
 import { useNavigate } from 'react-router-dom';
+import { setCurrentOrgId } from '@/api';
 import { useAppStore } from '@/store/appStore';
 import { track, EVENTS } from '@/utils/analytics';
 
@@ -16,13 +17,19 @@ export function GuestPromoView({ canSeeResults, voterName, orgName }: GuestPromo
   const setIsVoterSession = useAppStore(s => s.setIsVoterSession);
   const setGuestStatus    = useAppStore(s => s.setGuestStatus);
   const setGuestToken     = useAppStore(s => s.setGuestToken);
+  const setCurrentOrg     = useAppStore(s => s.setCurrentOrg);
 
   function handleCreateAccount() {
     track(EVENTS.PROMO_SIGNUP_CLICKED);
-    // Clear voter-session flags so App shows AuthView (sign-up mode)
+    // Clear voter-session flags so App shows AuthView (sign-up mode).
+    // Also clear currentOrg so that loadOrgs() (called after SIGNED_IN) can
+    // set it correctly — App.tsx will then route to JoinOrgView (not OrgSetupView)
+    // because pendingOrgId is still set in the store.
     setIsVoterSession(false);
     setGuestStatus(null);
     setGuestToken(null);
+    setCurrentOrg(null);
+    setCurrentOrgId(null);
     navigate('/vote', { replace: true });
   }
 

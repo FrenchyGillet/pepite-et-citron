@@ -82,12 +82,14 @@ function OrgPicker({ currentOrg, myOrgs, open, setOpen, onSwitch }: OrgPickerPro
           cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 5,
         }}>
           <span className="header-sub" style={{ color: 'var(--gold)', fontWeight: 600 }}>{currentOrg.name}</span>
+          {currentOrg.plan === 'pro' && <ProCrown />}
           <span style={{ fontSize: 9, color: 'var(--gold)', opacity: 0.7, marginTop: 1 }}>▼</span>
           {currentOrg.role === 'voter' && <RoleBadge />}
         </button>
       ) : (
         <div className="header-sub" style={{ color: 'var(--gold)', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 5 }}>
           {currentOrg.name}
+          {currentOrg.plan === 'pro' && <ProCrown />}
           {currentOrg.role === 'voter' && <RoleBadge />}
         </div>
       )}
@@ -103,13 +105,17 @@ function OrgPicker({ currentOrg, myOrgs, open, setOpen, onSwitch }: OrgPickerPro
               width: '100%', background: org.id === currentOrg.id ? 'var(--bg3)' : 'none',
               border: 'none', padding: '12px 14px', cursor: 'pointer',
               display: 'flex', justifyContent: 'space-between', alignItems: 'center', textAlign: 'left',
+              gap: 8,
             }}>
-              <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--label)' }}>{org.name}</span>
+              <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--label)', display: 'flex', alignItems: 'center', gap: 5 }}>
+                {org.name}
+                {org.plan === 'pro' && <ProCrown />}
+              </span>
               <span style={{
                 fontSize: 11, fontWeight: 700,
                 color: org.role === 'admin' ? 'var(--gold)' : 'var(--lemon)',
                 background: org.role === 'admin' ? 'rgba(255,214,10,0.12)' : 'rgba(170,221,0,0.12)',
-                borderRadius: 4, padding: '2px 6px',
+                borderRadius: 4, padding: '2px 6px', flexShrink: 0,
               }}>
                 {org.role === 'admin' ? 'Admin' : 'Votant'}
               </span>
@@ -129,10 +135,25 @@ function RoleBadge() {
   );
 }
 
+function ProCrown() {
+  return (
+    <span
+      title="Plan Pro"
+      style={{
+        fontSize: 12,
+        lineHeight: 1,
+        filter: 'drop-shadow(0 0 3px rgba(255,215,0,0.5))',
+      }}
+    >
+      👑
+    </span>
+  );
+}
+
 function FeedbackButton() {
   return (
     <a
-      href="mailto:citron@drill-faktory.odoo.com"
+      href="mailto:feedback@pepite-citron.com"
       aria-label="Envoyer un feedback"
       title="Envoyer un feedback"
       style={{

@@ -10,13 +10,13 @@ type Plan = 'monthly' | 'annual';
 
 const FEATURES_FREE = [
   'Vote illimité après chaque match',
-  'Résultats en temps réel',
-  'Liens invité pour les coéquipiers',
+  'Résultats et podium en temps réel',
+  'Partage du podium en image',
 ];
 const FEATURES_PRO = [
-  'Statistiques de saison complètes',
-  'Historique de tous vos matchs',
-  'Sans publicité',
+  'Statistiques et classement de la saison',
+  'Historique complet de tous vos matchs',
+  'Tendances par joueur & assiduité',
   'Support prioritaire',
 ];
 
@@ -73,7 +73,7 @@ export function UpgradeModal({ orgId, onClose }: Props) {
               Pépite &amp; Citron Pro
             </div>
             <div style={{ fontSize: 22, fontWeight: 800, letterSpacing: -0.5 }}>
-              Débloquez toutes les stats
+              Tout pour votre saison
             </div>
           </div>
           <button

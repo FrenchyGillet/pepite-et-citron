@@ -1,18 +1,12 @@
 import { useState } from 'react';
 import { generatePodiumImage } from '@/utils/generatePodiumImage';
+import type { RankedPlayer, RankedLemonPlayer } from '@/utils/scoring';
 import type { Match } from '@/types';
-
-interface RankedEntry {
-  id: string | number;
-  name: string;
-  pts: number;
-  absent?: boolean;
-}
 
 interface SharePodiumButtonProps {
   match: Match;
-  pepiteRanked: RankedEntry[];
-  lemonRanked: RankedEntry[];
+  pepiteRanked: RankedPlayer[];
+  lemonRanked: RankedLemonPlayer[];
   isDark: boolean;
 }
 

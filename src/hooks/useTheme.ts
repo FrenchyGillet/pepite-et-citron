@@ -8,6 +8,9 @@ export function useTheme() {
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', theme);
     localStorage.setItem('pepite_theme', theme);
+    // Keep the PWA status bar / browser chrome in sync (iOS, Android)
+    document.querySelector('meta[name="theme-color"]')
+      ?.setAttribute('content', theme === 'light' ? '#f2f2f7' : '#000000');
   }, [theme]);
 
   const toggleTheme = useCallback(() => {

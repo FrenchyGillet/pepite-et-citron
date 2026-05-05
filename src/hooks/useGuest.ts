@@ -12,6 +12,8 @@ export function useGuest() {
   const setGuestStatus     = useAppStore(s => s.setGuestStatus);
   const setIsVoterSession  = useAppStore(s => s.setIsVoterSession);
   const setCurrentOrg      = useAppStore(s => s.setCurrentOrg);
+  const setPendingOrgId    = useAppStore(s => s.setPendingOrgId);
+  const setPendingOrgName  = useAppStore(s => s.setPendingOrgName);
 
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
@@ -45,6 +47,9 @@ export function useGuest() {
         if (org) {
           setCurrentOrgId(org.id);
           if (!useAppStore.getState().currentOrg) setCurrentOrg(org);
+          // Remember this org so we can auto-join after signup (instead of OrgSetupView)
+          setPendingOrgId(org.id);
+          setPendingOrgName(org.name);
         }
       });
     }

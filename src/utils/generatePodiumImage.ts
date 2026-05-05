@@ -1,3 +1,21 @@
+// ── Canvas-local helpers (no external imports needed) ─────────────────────────
+
+/** Deterministic HSL color from a seed string (matches avatarColor in player.ts) */
+function seedHSL(seed: string): string {
+  let h = 0;
+  for (let i = 0; i < seed.length; i++) h = (h * 31 + seed.charCodeAt(i)) & 0xffff;
+  return `hsl(${h % 360}, 65%, 55%)`;
+}
+
+/** 1-2 uppercase initials from a display name */
+function playerInitials(name: string): string {
+  const parts = name.trim().replace(/\s+/g, ' ').split(' ');
+  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+  return (parts[0][0] + parts[1][0]).toUpperCase();
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+
 interface RankedEntry {
   name: string;
   nickname?: string | null;
@@ -117,8 +135,8 @@ export async function generatePodiumImage({
   ctx.fillStyle = c.gold;
   ctx.fillText('⭐  PÉPITES DU MATCH', W / 2, 265);
 
-  // Podium
-  const BOTTOM = 830;
+  // Podium — BOTTOM is pushed to 900 to leave room for avatar circles above names
+  const BOTTOM = 900;
   const BAR_W  = 230;
   const SLOT_GAP = 18;
 
@@ -150,9 +168,25 @@ export async function generatePodiumImage({
       ctx.fillText('👑', cx, barTop - 52);
     }
 
-    const nameY = isFirst ? barTop - 115 : barTop - 18;
-    const nameFont = `${isFirst ? 700 : 600} ${isFirst ? 44 : 36}px ${FONT}`;
-    const name = fitText(player.nickname?.trim() || player.name, BAR_W - 10, nameFont);
+    const nameY       = isFirst ? barTop - 115 : barTop - 18;
+    const nameFontSz  = isFirst ? 44 : 36;
+    const nameFont    = `${isFirst ? 700 : 600} ${nameFontSz}px ${FONT}`;
+    const displayedName = player.nickname?.trim() || player.name;
+    const name        = fitText(displayedName, BAR_W - 10, nameFont);
+
+    // Avatar circle — centered above the name with an 8px gap
+    const avatarR  = isFirst ? 42 : 33;
+    const avatarCY = nameY - nameFontSz - 8 - avatarR;
+    ctx.beginPath();
+    ctx.arc(cx, avatarCY, avatarR, 0, Math.PI * 2);
+    ctx.fillStyle = seedHSL(player.name);
+    ctx.fill();
+    ctx.font = `800 ${Math.round(avatarR * 0.75)}px ${FONT}`;
+    ctx.fillStyle = '#FFFFFF';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(playerInitials(displayedName), cx, avatarCY + 2);
+
     ctx.font = nameFont;
     ctx.fillStyle = isFirst ? c.gold : c.t1;
     ctx.textBaseline = 'bottom';

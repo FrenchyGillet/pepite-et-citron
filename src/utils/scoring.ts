@@ -4,6 +4,7 @@ import { computeScores } from '@/utils';
 export interface RankedPlayer {
   id: EntityId;
   name: string;
+  nickname?: string | null;
   pts: number;
 }
 
@@ -46,12 +47,12 @@ export function computeResultsSummary(
   );
 
   const pepiteRanked: RankedPlayer[] = present
-    .map(p => ({ id: p.id, name: p.name, pts: bestScores[p.id]?.pts || 0 }))
+    .map(p => ({ id: p.id, name: p.name, nickname: p.nickname, pts: bestScores[p.id]?.pts || 0 }))
     .filter(p => p.pts > 0)
     .sort((a, b) => b.pts - a.pts);
 
   const lemonRanked: RankedLemonPlayer[] = everyone
-    .map(p => ({ id: p.id, name: p.name, pts: lemonScores[p.id]?.pts || 0, absent: !presentIds.has(p.id) }))
+    .map(p => ({ id: p.id, name: p.name, nickname: p.nickname, pts: lemonScores[p.id]?.pts || 0, absent: !presentIds.has(p.id) }))
     .filter(p => p.pts > 0)
     .sort((a, b) => b.pts - a.pts);
 

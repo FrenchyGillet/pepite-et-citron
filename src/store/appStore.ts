@@ -48,6 +48,8 @@ interface AppStore {
   votedThisSession:  boolean;
   voterName:         string | null;     // name picked on step 0 of vote (for post-vote CTA)
   pendingPlayerId:   EntityId | null;   // player.id to auto-link after signup
+  pendingOrgId:      string | null;     // org.id to auto-join after signup (?org= flow)
+  pendingOrgName:    string | null;     // org.name — kept for display in JoinOrgView
   showOnboarding:    boolean;
   lastMatchId:       EntityId | null;
   passwordRecovery:  boolean;
@@ -68,6 +70,8 @@ interface AppStore {
   setVotedThisSession:  (v: boolean) => void;
   setVoterName:         (v: string | null) => void;
   setPendingPlayerId:   (id: EntityId | null) => void;
+  setPendingOrgId:      (id: string | null) => void;
+  setPendingOrgName:    (name: string | null) => void;
   setShowOnboarding:    (v: boolean) => void;
   setLastMatchId:       (id: EntityId | null) => void;
   setPasswordRecovery:  (v: boolean) => void;
@@ -91,15 +95,21 @@ export function resetAppStore() {
     guestName: null,
     guestStatus: null,
     isVoterSession: false,
-    theme: localStorage.getItem('pepite_theme') || 'dark',
+    theme: localStorage.getItem('pepite_theme') || (window.matchMedia?.('(prefers-color-scheme: light)').matches ? 'light' : 'dark'),
     votedThisSession: false,
     voterName: null,
     pendingPlayerId: null,
+    pendingOrgId: null,
+    pendingOrgName: null,
     showOnboarding: false,
     lastMatchId: null,
     passwordRecovery: false,
   });
 }
+
+/** Reads the system colour-scheme preference, falling back to 'dark'. */
+const systemTheme = () =>
+  window.matchMedia?.('(prefers-color-scheme: light)').matches ? 'light' : 'dark';
 
 export const useAppStore = create<AppStore>((set, get) => ({
   // Initial state
@@ -114,10 +124,12 @@ export const useAppStore = create<AppStore>((set, get) => ({
   guestName:        null,
   guestStatus:      null,
   isVoterSession:   false,
-  theme:            localStorage.getItem('pepite_theme') || 'dark',
+  theme:            localStorage.getItem('pepite_theme') || systemTheme(),
   votedThisSession: false,
   voterName:        null,
   pendingPlayerId:  null,
+  pendingOrgId:     null,
+  pendingOrgName:   null,
   showOnboarding:   false,
   lastMatchId:      null,
   passwordRecovery: false,
@@ -138,6 +150,8 @@ export const useAppStore = create<AppStore>((set, get) => ({
   setVotedThisSession: (v)   => set({ votedThisSession: v }),
   setVoterName:        (v)   => set({ voterName: v }),
   setPendingPlayerId:  (id)  => set({ pendingPlayerId: id }),
+  setPendingOrgId:     (id)   => set({ pendingOrgId: id }),
+  setPendingOrgName:   (name) => set({ pendingOrgName: name }),
   setShowOnboarding:   (v)   => set({ showOnboarding: v }),
   setLastMatchId:      (id)  => set({ lastMatchId: id }),
   setPasswordRecovery: (v)   => set({ passwordRecovery: v }),
