@@ -1,9 +1,10 @@
 import { useState } from 'react';
 import { formatDate } from '@/utils';
 import { computeSeasonStats } from '@/utils/season';
-import { Scoreboard } from './Scoreboard';
+import { computeResultsSummary } from '@/utils/scoring';
 import { Sparkline } from './Sparkline';
 import { EmptyState } from './EmptyState';
+import { PodiumView } from './PodiumView';
 import { useAllVotes, useMatches, useTeams, useCurrentSeason, useSeasonNames } from '@/hooks/queries';
 import { useDeleteMatch, useUpdateMatch } from '@/hooks/mutations';
 import type { Player, Match, EntityId } from '@/types';
@@ -244,10 +245,46 @@ export function StatsView({ players, activeMatch, isAdmin, orgId }: StatsViewPro
 
                   {isExpanded && (
                     <div style={{ borderTop: '1px solid var(--separator)', padding: '12px 16px' }}>
-                      {matchVotes.length === 0
-                        ? <p style={{ fontSize: 14, color: 'var(--label3)', marginBottom: 12 }}>Aucun vote.</p>
-                        : <Scoreboard votes={matchVotes} present={matchPresent} allPlayers={players} />
-                      }
+                      {matchVotes.length === 0 ? (
+                        <p style={{ fontSize: 14, color: 'var(--label3)', marginBottom: 12 }}>Aucun vote enregistré.</p>
+                      ) : (
+                        <>
+                          {/* Podium complet avec tabs Pépite / Citron */}
+                          <PodiumView
+                            votes={matchVotes}
+                            present={matchPresent}
+                            allPlayers={players}
+                            tiebreakers={match.tiebreakers}
+                            pepiteCount={match.pepite_count ?? 2}
+                          />
+
+                          {/* 👻 Fantômes — joueurs présents qui n'ont pas voté */}
+                          {(() => {
+                            const { ghosts } = computeResultsSummary(matchVotes, matchPresent, players, match.pepite_count ?? 2);
+                            return ghosts.length > 0 ? (
+                              <div style={{ marginBottom: 16 }}>
+                                <p style={{
+                                  fontSize: 11, fontWeight: 700, color: 'var(--label4)',
+                                  textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 8,
+                                }}>
+                                  👻 Fantômes · {ghosts.length}
+                                </p>
+                                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                                  {ghosts.map(p => (
+                                    <div key={String(p.id)} style={{
+                                      padding: '5px 12px', background: 'var(--bg3)',
+                                      borderRadius: 20, fontSize: 13,
+                                      color: 'var(--label4)', fontWeight: 500,
+                                    }}>
+                                      {p.name}
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                            ) : null;
+                          })()}
+                        </>
+                      )}
 
                       {isAdmin && (isEditing && editingMatch ? (
                         <div style={{ marginTop: 12, display: 'flex', flexDirection: 'column', gap: 8 }}>

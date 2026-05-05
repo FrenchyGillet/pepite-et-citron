@@ -220,11 +220,23 @@ export function AdminView({ players, activeMatch, currentOrg, onSignOut, onShowG
     });
   };
 
-  const copyGuestLink = (token: string) => {
+  const copyGuestLink = async (token: string) => {
     const url = `${window.location.origin}/?guest=${token}`;
-    void navigator.clipboard.writeText(url);
+    try {
+      await navigator.clipboard.writeText(url);
+    } catch {
+      // Fallback : sélection + execCommand pour les contextes sans Clipboard API
+      const ta = document.createElement('textarea');
+      ta.value = url;
+      ta.style.cssText = 'position:fixed;opacity:0;pointer-events:none';
+      document.body.appendChild(ta);
+      ta.select();
+      document.execCommand('copy');
+      document.body.removeChild(ta);
+    }
     track(EVENTS.GUEST_LINK_COPIED);
     setCopiedToken(token);
+    setToast('Lien copié !');
     setTimeout(() => setCopiedToken(null), 2000);
   };
 

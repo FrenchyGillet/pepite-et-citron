@@ -5,14 +5,14 @@
  *  - pullY        : pixels tirés (0 → THRESHOLD), pour animer l'indicateur
  *  - isRefreshing : true pendant l'exécution du callback onRefresh
  *
- * Ne se déclenche que quand la page est déjà scrollée tout en haut (scrollY = 0).
- * Désactivé quand isRefreshing est déjà true (évite les doubles déclenchements).
+ * Ne se déclenche que quand la page est déjà scrollée tout en haut (scrollY ≈ 0).
+ * Désactivé quand isRefreshing est déjà true.
  */
 import { useState, useEffect, useRef, useCallback } from 'react';
 
 export const PTR_THRESHOLD = 72; // px à tirer pour déclencher le refresh
-const PTR_MAX      = 110; // élasticity cap (le pull s'arrête ici visuellement)
-const PTR_DAMPING  = 0.45; // résistance progressive (rubber-band feeling)
+const PTR_MAX     = 110;         // cap élastique
+const PTR_DAMPING = 0.45;        // résistance rubber-band au-delà du threshold
 
 interface UsePullToRefreshOptions {
   onRefresh: () => Promise<void>;
@@ -23,20 +23,22 @@ export function usePullToRefresh({ onRefresh, disabled = false }: UsePullToRefre
   const [pullY,        setPullY]        = useState(0);
   const [isRefreshing, setIsRefreshing] = useState(false);
 
+  // Refs partagées entre les event handlers (pas de re-render)
   const startY      = useRef(0);
-  const pulling     = useRef(false);
-  const refreshing  = useRef(false); // ref mirror pour les event handlers
+  const canPull     = useRef(false); // true UNIQUEMENT si touchstart a eu lieu à scrollY ≈ 0
+  const pulling     = useRef(false); // true dès qu'on a commencé à tirer vers le bas
+  const refreshing  = useRef(false); // mirror de isRefreshing pour les handlers
 
   const triggerRefresh = useCallback(async () => {
     if (refreshing.current) return;
     refreshing.current = true;
     setIsRefreshing(true);
-    setPullY(PTR_THRESHOLD); // freeze l'indicateur à sa position de déclenchement
+    setPullY(PTR_THRESHOLD);
     try {
       await onRefresh();
     } finally {
-      setIsRefreshing(false);
       refreshing.current = false;
+      setIsRefreshing(false);
       setPullY(0);
     }
   }, [onRefresh]);
@@ -45,54 +47,76 @@ export function usePullToRefresh({ onRefresh, disabled = false }: UsePullToRefre
     if (disabled) return;
 
     const onTouchStart = (e: TouchEvent) => {
+      // Réinitialise TOUJOURS le flag — évite les résidus d'un geste précédent
+      canPull.current  = false;
+      pulling.current  = false;
+
       if (refreshing.current) return;
-      // Seulement si on est tout en haut de la page
       if (window.scrollY > 2) return;
-      startY.current = e.touches[0].clientY;
-      pulling.current = false;
+
+      canPull.current  = true;
+      startY.current   = e.touches[0].clientY;
     };
 
     const onTouchMove = (e: TouchEvent) => {
-      if (refreshing.current) return;
-      const dy = e.touches[0].clientY - startY.current;
-      if (dy <= 0) { pulling.current = false; setPullY(0); return; }
+      // Ignore tout geste qui n'a pas commencé en haut de page
+      if (!canPull.current || refreshing.current) return;
 
-      // Ignore si on scroll un container scrollable autre que le body
-      const target = e.target as Element;
-      const scrollable = target.closest('[data-no-ptr]') ||
-        target.closest('textarea') ||
-        target.closest('[contenteditable]');
-      if (scrollable) return;
+      const dy = e.touches[0].clientY - startY.current;
+
+      // Scroll vers le haut ou neutre → rien
+      if (dy <= 0) {
+        pulling.current = false;
+        setPullY(0);
+        return;
+      }
+
+      // Ignore les containers scrollables internes (textarea, modals, etc.)
+      const scrollable = (e.target as Element).closest(
+        '[data-no-ptr], textarea, [contenteditable]',
+      );
+      if (scrollable) {
+        canPull.current = false;
+        setPullY(0);
+        return;
+      }
 
       pulling.current = true;
 
-      // Rubber-band : résistance progressive au-delà du threshold
+      // Résistance rubber-band au-delà du seuil
       const damped = dy < PTR_THRESHOLD
         ? dy
         : PTR_THRESHOLD + (dy - PTR_THRESHOLD) * PTR_DAMPING;
-
       setPullY(Math.min(damped, PTR_MAX));
 
-      // Empêcher le scroll natif pendant le pull
-      if (dy > 4) e.preventDefault();
+      // Empêche le scroll natif UNIQUEMENT quand on est en train de tirer
+      e.preventDefault();
     };
 
     const onTouchEnd = () => {
-      if (!pulling.current || refreshing.current) { setPullY(0); return; }
+      if (!pulling.current || refreshing.current) {
+        setPullY(0);
+        canPull.current = false;
+        pulling.current = false;
+        return;
+      }
+
+      canPull.current = false;
       pulling.current = false;
 
+      // Lecture via callback pour avoir la valeur fraîche sans dépendance
       setPullY(prev => {
         if (prev >= PTR_THRESHOLD) {
           void triggerRefresh();
-          return prev; // triggerRefresh gère la valeur finale
+          return prev; // triggerRefresh positionne à 0 quand fini
         }
-        return 0; // pas assez tiré → snap back
+        return 0; // snap-back
       });
     };
 
-    document.addEventListener('touchstart', onTouchStart, { passive: true });
-    document.addEventListener('touchmove',  onTouchMove,  { passive: false });
-    document.addEventListener('touchend',   onTouchEnd,   { passive: true });
+    document.addEventListener('touchstart', onTouchStart, { passive: true  });
+    document.addEventListener('touchmove',  onTouchMove,  { passive: false }); // passive:false requis pour e.preventDefault()
+    document.addEventListener('touchend',   onTouchEnd,   { passive: true  });
 
     return () => {
       document.removeEventListener('touchstart', onTouchStart);
