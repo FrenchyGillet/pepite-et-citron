@@ -45,6 +45,46 @@ export function saveVoterIdentity(name: string, playerId: EntityId | null): void
   } catch { /* quota exceeded — ignore */ }
 }
 
+// ── In-progress vote draft (step-by-step persistence) ────────────────────────
+// Saved after every navigation step so a refresh or screen-lock resumes
+// from the last completed step rather than the very beginning.
+
+const VOTE_DRAFT_KEY_PREFIX = 'pepite_vote_draft_';
+
+export interface VoteDraft {
+  step: number;
+  voterName: string;
+  voterPlayerId: EntityId | null;
+  best1Id: EntityId | null;
+  best1Comment: string;
+  best2Id: EntityId | null;
+  best2Comment: string;
+  best3Id: EntityId | null;
+  best3Comment: string;
+  lemonId: EntityId | null;
+  lemonComment: string;
+}
+
+export function saveVoteDraft(matchId: EntityId, draft: VoteDraft): void {
+  try {
+    localStorage.setItem(`${VOTE_DRAFT_KEY_PREFIX}${matchId}`, JSON.stringify(draft));
+  } catch { /* quota exceeded — ignore */ }
+}
+
+export function loadVoteDraft(matchId: EntityId): VoteDraft | null {
+  try {
+    const raw = localStorage.getItem(`${VOTE_DRAFT_KEY_PREFIX}${matchId}`);
+    if (!raw) return null;
+    return JSON.parse(raw) as VoteDraft;
+  } catch { return null; }
+}
+
+export function clearVoteDraft(matchId: EntityId): void {
+  try {
+    localStorage.removeItem(`${VOTE_DRAFT_KEY_PREFIX}${matchId}`);
+  } catch { /* ignore */ }
+}
+
 export function shuffleRevealOrder(votes: Vote[]): EntityId[] {
   return [...votes]
     .sort(() => Math.random() - 0.5)

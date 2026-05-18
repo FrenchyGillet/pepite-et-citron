@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { api } from '@/api';
-import { markVotedLocally, classifyVoteError, getStoredVoterIdentity, saveVoterIdentity } from '@/utils/vote';
+import { markVotedLocally, classifyVoteError, getStoredVoterIdentity, saveVoterIdentity, loadVoteDraft, saveVoteDraft, clearVoteDraft } from '@/utils/vote';
 import { saveOfflineVote, isNetworkError } from '@/utils/offlineVote';
 import { useVotes } from '@/hooks/queries';
 import type { Player, Match, EntityId } from '@/types';
@@ -23,18 +23,26 @@ export function VoteView({ players, match, onVoted, guestName = null, onGuestVot
        ?? players.find(p => p.name === storedIdentity.name && presentIds.includes(p.id)))
     : null;
 
-  const [voterName,           setVoterName]           = useState(guestName || storedPlayer?.name || '');
-  const [selectedVoterPlayer, setSelectedVoterPlayer] = useState<Player | null>(storedPlayer ?? null);
-  // Skip step 0 if we recognise the voter (still present this match)
-  const [step,         setStep]         = useState(guestName ? 1 : storedPlayer ? 1 : 0);
-  const [best1,        setBest1]        = useState<Player | null>(null);
-  const [best1Comment, setBest1Comment] = useState('');
-  const [best2,        setBest2]        = useState<Player | null>(null);
-  const [best2Comment, setBest2Comment] = useState('');
-  const [best3,        setBest3]        = useState<Player | null>(null);
-  const [best3Comment, setBest3Comment] = useState('');
-  const [lemon,        setLemon]        = useState<Player | null>(null);
-  const [lemonComment, setLemonComment] = useState('');
+  // ── Draft persistence: restore in-progress vote so a refresh / screen-lock
+  //    resumes from the last completed step (not step 0).
+  //    Draft takes priority over storedPlayer; guests never have a draft.
+  const draft = !guestName ? loadVoteDraft(match.id) : null;
+  const draftVoterPlayer = draft?.voterPlayerId != null
+    ? (players.find(p => p.id === draft.voterPlayerId) ?? null)
+    : null;
+
+  const [voterName,           setVoterName]           = useState(guestName || draft?.voterName || storedPlayer?.name || '');
+  const [selectedVoterPlayer, setSelectedVoterPlayer] = useState<Player | null>(draftVoterPlayer ?? storedPlayer ?? null);
+  // Draft step > storedPlayer recognition > step 0
+  const [step,         setStep]         = useState(guestName ? 1 : draft ? draft.step : storedPlayer ? 1 : 0);
+  const [best1,        setBest1]        = useState<Player | null>(draft?.best1Id != null ? (players.find(p => p.id === draft.best1Id) ?? null) : null);
+  const [best1Comment, setBest1Comment] = useState(draft?.best1Comment ?? '');
+  const [best2,        setBest2]        = useState<Player | null>(draft?.best2Id != null ? (players.find(p => p.id === draft.best2Id) ?? null) : null);
+  const [best2Comment, setBest2Comment] = useState(draft?.best2Comment ?? '');
+  const [best3,        setBest3]        = useState<Player | null>(draft?.best3Id != null ? (players.find(p => p.id === draft.best3Id) ?? null) : null);
+  const [best3Comment, setBest3Comment] = useState(draft?.best3Comment ?? '');
+  const [lemon,        setLemon]        = useState<Player | null>(draft?.lemonId != null ? (players.find(p => p.id === draft.lemonId) ?? null) : null);
+  const [lemonComment, setLemonComment] = useState(draft?.lemonComment ?? '');
   const [submitting,   setSubmitting]   = useState(false);
   const [submitError,  setSubmitError]  = useState<string | null>(null);
   const [alreadyVoted, setAlreadyVoted] = useState(false);
@@ -52,6 +60,22 @@ export function VoteView({ players, match, onVoted, guestName = null, onGuestVot
   const lemonStep    = pepiteCount === 3 ? 4 : 3;
   const summaryStep  = pepiteCount === 3 ? 5 : 4;
   const stepBarCount = pepiteCount === 3 ? 4 : 3;
+
+  // ── Save draft snapshot then navigate to nextStep ─────────────────────────
+  // Use this for every "Suivant" / "Retour" button so a refresh always resumes
+  // at the step the user last reached, with their selections intact.
+  const goToStep = (nextStep: number) => {
+    saveVoteDraft(match.id, {
+      step: nextStep,
+      voterName,
+      voterPlayerId: selectedVoterPlayer?.id ?? null,
+      best1Id:      best1?.id      ?? null,  best1Comment,
+      best2Id:      best2?.id      ?? null,  best2Comment,
+      best3Id:      best3?.id      ?? null,  best3Comment,
+      lemonId:      lemon?.id      ?? null,  lemonComment,
+    });
+    setStep(nextStep);
+  };
 
   // Absent players are collapsed by default on the lemon step.
   // Reset the collapsed state every time the lemon step is entered.
@@ -72,6 +96,15 @@ export function VoteView({ players, match, onVoted, guestName = null, onGuestVot
     const voted = await api.hasVoted(match.id, voterName);
     setChecking(false);
     if (voted) { setAlreadyVoted(true); return; }
+    // Save identity so a refresh at step 1 doesn't force step 0 again
+    saveVoteDraft(match.id, {
+      step: 1, voterName,
+      voterPlayerId: selectedVoterPlayer?.id ?? null,
+      best1Id: null, best1Comment: '',
+      best2Id: null, best2Comment: '',
+      best3Id: null, best3Comment: '',
+      lemonId: null, lemonComment: '',
+    });
     setStep(1);
   };
 
@@ -90,6 +123,7 @@ export function VoteView({ players, match, onVoted, guestName = null, onGuestVot
     // ── Offline-first: if device is offline, queue locally and proceed ──────
     if (!navigator.onLine) {
       saveOfflineVote(votePayload);
+      clearVoteDraft(match.id);
       markVotedLocally(match.id);
       saveVoterIdentity(voterName, selectedVoterPlayer?.id ?? null);
       setSubmitting(false);
@@ -100,6 +134,7 @@ export function VoteView({ players, match, onVoted, guestName = null, onGuestVot
     try {
       await api.submitVote(votePayload);
       if (onGuestVoted) await onGuestVoted();
+      clearVoteDraft(match.id);
       markVotedLocally(match.id);
       saveVoterIdentity(voterName, selectedVoterPlayer?.id ?? null);
       onVoted(voterName, selectedVoterPlayer?.id);
@@ -107,6 +142,7 @@ export function VoteView({ players, match, onVoted, guestName = null, onGuestVot
       // Transient network failure → save offline and proceed optimistically
       if (isNetworkError(err)) {
         saveOfflineVote(votePayload);
+        clearVoteDraft(match.id);
         markVotedLocally(match.id);
         saveVoterIdentity(voterName, selectedVoterPlayer?.id ?? null);
         setSubmitting(false);
@@ -189,8 +225,9 @@ export function VoteView({ players, match, onVoted, guestName = null, onGuestVot
 
       {step >= 1 && step <= summaryStep - 1 && (
         <>
-          {/* Identity banner when voter was recognised from previous session */}
-          {storedPlayer && step === 1 && (
+          {/* Identity banner: shown when the voter was auto-recognised (stored
+              identity or restored draft) so they can confirm or change */}
+          {selectedVoterPlayer && step === 1 && !guestName && (
             <div style={{
               display: 'flex', alignItems: 'center', gap: 10,
               background: 'var(--bg2)', borderRadius: 'var(--radius-sm)',
@@ -198,10 +235,10 @@ export function VoteView({ players, match, onVoted, guestName = null, onGuestVot
             }}>
               <span style={{ fontSize: 15 }}>👤</span>
               <span style={{ fontSize: 13, color: 'var(--label2)', flex: 1 }}>
-                Tu votes en tant que <strong style={{ color: 'var(--label)' }}>{storedPlayer.name}</strong>
+                Tu votes en tant que <strong style={{ color: 'var(--label)' }}>{voterName}</strong>
               </span>
               <button
-                onClick={() => { setVoterName(''); setSelectedVoterPlayer(null); setStep(0); }}
+                onClick={() => { clearVoteDraft(match.id); setVoterName(''); setSelectedVoterPlayer(null); setStep(0); }}
                 style={{
                   background: 'none', border: 'none', padding: 0,
                   fontSize: 12, color: 'var(--label3)', cursor: 'pointer',
@@ -263,7 +300,7 @@ export function VoteView({ players, match, onVoted, guestName = null, onGuestVot
                       onChange={e => setBest1Comment(e.target.value)} />
                   </>
                 )}
-                <button className="btn btn-primary btn-full mt-12" disabled={!best1} onClick={() => setStep(2)}>
+                <button className="btn btn-primary btn-full mt-12" disabled={!best1} onClick={() => goToStep(2)}>
                   Suivant
                 </button>
               </div>
@@ -297,8 +334,8 @@ export function VoteView({ players, match, onVoted, guestName = null, onGuestVot
                   </>
                 )}
                 <div className="flex gap-8 mt-12">
-                  <button className="btn btn-secondary" onClick={() => setStep(1)}>Retour</button>
-                  <button className="btn btn-primary" style={{ flex: 1 }} disabled={!best2} onClick={() => setStep(3)}>Suivant</button>
+                  <button className="btn btn-secondary" onClick={() => goToStep(1)}>Retour</button>
+                  <button className="btn btn-primary" style={{ flex: 1 }} disabled={!best2} onClick={() => goToStep(3)}>Suivant</button>
                 </div>
               </div>
             </>
@@ -331,8 +368,8 @@ export function VoteView({ players, match, onVoted, guestName = null, onGuestVot
                   </>
                 )}
                 <div className="flex gap-8 mt-12">
-                  <button className="btn btn-secondary" onClick={() => setStep(2)}>Retour</button>
-                  <button className="btn btn-primary" style={{ flex: 1 }} disabled={!best3} onClick={() => setStep(4)}>Suivant</button>
+                  <button className="btn btn-secondary" onClick={() => goToStep(2)}>Retour</button>
+                  <button className="btn btn-primary" style={{ flex: 1 }} disabled={!best3} onClick={() => goToStep(4)}>Suivant</button>
                 </div>
               </div>
             </>
@@ -398,8 +435,8 @@ export function VoteView({ players, match, onVoted, guestName = null, onGuestVot
                   </>
                 )}
                 <div className="flex gap-8 mt-12">
-                  <button className="btn btn-secondary" onClick={() => setStep(lemonStep - 1)}>Retour</button>
-                  <button className="btn btn-primary" style={{ flex: 1 }} disabled={!lemon} onClick={() => setStep(summaryStep)}>Suivant</button>
+                  <button className="btn btn-secondary" onClick={() => goToStep(lemonStep - 1)}>Retour</button>
+                  <button className="btn btn-primary" style={{ flex: 1 }} disabled={!lemon} onClick={() => goToStep(summaryStep)}>Suivant</button>
                 </div>
               </div>
             </>
@@ -459,7 +496,7 @@ export function VoteView({ players, match, onVoted, guestName = null, onGuestVot
             </div>
           )}
           <div className="flex gap-8">
-            <button className="btn btn-secondary" onClick={() => setStep(lemonStep)}>Modifier</button>
+            <button className="btn btn-secondary" onClick={() => goToStep(lemonStep)}>Modifier</button>
             <button className="btn btn-primary" style={{ flex: 1 }} disabled={submitting} onClick={submit}>
               {submitting ? 'Envoi…' : submitError ? 'Réessayer' : 'Rendre mon verdict →'}
             </button>
