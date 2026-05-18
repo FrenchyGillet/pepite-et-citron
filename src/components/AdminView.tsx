@@ -6,6 +6,7 @@ import {
   guestNameSchema, memberEmailSchema,
 } from '@/schemas';
 import { shuffleRevealOrder } from '@/utils/vote';
+import { copyToClipboard } from '@/utils/clipboard';
 import { Toast } from './Toast';
 import { SetupChecklist } from './SetupChecklist';
 import { useTeams, useGuestTokens, useOrgMembers, useVotes, useCurrentSeason, useSeasonNames } from '@/hooks/queries';
@@ -221,23 +222,23 @@ export function AdminView({ players, activeMatch, currentOrg, onSignOut, onShowG
   };
 
   const copyGuestLink = async (token: string) => {
-    const url = `${window.location.origin}/?guest=${token}`;
-    try {
-      await navigator.clipboard.writeText(url);
-    } catch {
-      // Fallback : sélection + execCommand pour les contextes sans Clipboard API
-      const ta = document.createElement('textarea');
-      ta.value = url;
-      ta.style.cssText = 'position:fixed;opacity:0;pointer-events:none';
-      document.body.appendChild(ta);
-      ta.select();
-      document.execCommand('copy');
-      document.body.removeChild(ta);
-    }
+    await copyToClipboard(`${window.location.origin}/?guest=${token}`);
     track(EVENTS.GUEST_LINK_COPIED);
     setCopiedToken(token);
     setToast('Lien copié !');
     setTimeout(() => setCopiedToken(null), 2000);
+  };
+
+  // ── Copies the org vote link, shows feedback and marks the checklist step ──
+  const copyOrgLink = async () => {
+    if (!currentOrg) return;
+    await copyToClipboard(`${window.location.origin}/?org=${currentOrg.slug}`);
+    track(EVENTS.ORG_LINK_COPIED);
+    setToast('Lien copié !');
+    if (currentOrg.id) {
+      localStorage.setItem(`pepite_link_copied_${currentOrg.id}`, '1');
+      setLinkCopied(true);
+    }
   };
 
   const revokeGuest = (id: EntityId) => deleteGuestTokenMutation.mutate(id);
@@ -425,21 +426,14 @@ export function AdminView({ players, activeMatch, currentOrg, onSignOut, onShowG
                       <button
                         className="btn btn-secondary"
                         style={{ padding: '6px 12px', fontSize: 13, whiteSpace: 'nowrap', flexShrink: 0 }}
-                        onClick={() => {
-                          void navigator.clipboard.writeText(`${window.location.origin}/?org=${currentOrg.slug}`);
-                          setToast('Lien copié !');
-                          if (currentOrg?.id) { localStorage.setItem(`pepite_link_copied_${currentOrg.id}`, '1'); setLinkCopied(true); }
-                        }}>
+                        onClick={() => void copyOrgLink()}>
                         Copier
                       </button>
                     </div>
                     <NotifyTeamButton
                       voteUrl={`${window.location.origin}/?org=${currentOrg.slug}`}
                       matchLabel={activeMatch?.label ?? ''}
-                      onFallback={() => {
-                        void navigator.clipboard.writeText(`${window.location.origin}/?org=${currentOrg.slug}`);
-                        setToast('Lien copié !');
-                      }}
+                      onFallback={() => void copyOrgLink()}
                     />
                   </>
                 )}
@@ -781,7 +775,7 @@ export function AdminView({ players, activeMatch, currentOrg, onSignOut, onShowG
                   {window.location.origin}/?org={currentOrg.slug}
                 </div>
                 <button className="btn btn-secondary btn-full" style={{ marginTop: 8, fontSize: 13 }}
-                  onClick={() => { void navigator.clipboard.writeText(`${window.location.origin}/?org=${currentOrg.slug}`); track(EVENTS.ORG_LINK_COPIED); setToast('Lien copié !'); if (currentOrg?.id) { localStorage.setItem(`pepite_link_copied_${currentOrg.id}`, '1'); setLinkCopied(true); } }}>
+                  onClick={() => void copyOrgLink()}>
                   Copier le lien
                 </button>
               </div>
