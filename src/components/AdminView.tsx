@@ -168,8 +168,9 @@ export function AdminView({ players, activeMatch, currentOrg, onSignOut, onShowG
   const minPlayersForVote = pepiteCount + 1; // 3 for 2-pépite mode, 4 for 3-pépite
 
   // Collapsible zones
-  const [effectifOpen,  setEffectifOpen]  = useState(players.length === 0);
-  const [settingsOpen,  setSettingsOpen]  = useState(false);
+  const [effectifOpen,      setEffectifOpen]      = useState(players.length === 0);
+  const [settingsOpen,      setSettingsOpen]       = useState(false);
+  const [voterTrackingOpen, setVoterTrackingOpen] = useState(false);
 
   // Validation errors (Zod safeParse)
   const [playerError,  setPlayerError]  = useState<string | null>(null);
@@ -186,6 +187,16 @@ export function AdminView({ players, activeMatch, currentOrg, onSignOut, onShowG
   const seasonNamesMap               = useSeasonNames([currentSeason]);
   const seasonName                   = seasonNamesMap[currentSeason] ?? '';
   const voteCount                    = matchVotes.length;
+
+  // Voter tracking: match each present player against cast votes by name.
+  // Guest votes (voter_name not in present players) are intentionally excluded
+  // — guests already have their own dedicated tracking section below.
+  const presentPlayers = activeMatch
+    ? players.filter(p => activeMatch.present_ids.includes(p.id))
+    : [];
+  const voterNameSet = new Set(matchVotes.map(v => v.voter_name));
+  const votedPlayers    = presentPlayers.filter(p => voterNameSet.has(p.name));
+  const pendingPlayers  = presentPlayers.filter(p => !voterNameSet.has(p.name));
 
   const addPlayerMutation        = useAddPlayer(currentOrg?.id);
   const removePlayerMutation     = useRemovePlayer(currentOrg?.id);
@@ -453,6 +464,51 @@ export function AdminView({ players, activeMatch, currentOrg, onSignOut, onShowG
                 <button className="btn btn-primary btn-full" onClick={startCounting} disabled={startCountingMutation.isPending || voteCount === 0}>
                   {startCountingMutation.isPending ? 'Préparation…' : `Lancer le dépouillement · ${voteCount} vote${voteCount !== 1 ? 's' : ''}`}
                 </button>
+                {/* ── Voter tracking toggle ───────────────────────── */}
+                {presentPlayers.length > 0 && (
+                  <div>
+                    <button
+                      onClick={() => setVoterTrackingOpen(o => !o)}
+                      style={{
+                        width: '100%', background: 'none', border: 'none',
+                        padding: '6px 0', display: 'flex', alignItems: 'center',
+                        justifyContent: 'space-between', cursor: 'pointer',
+                      }}
+                    >
+                      <span style={{ fontSize: 13, color: 'var(--label3)' }}>
+                        Qui a voté ?{' '}
+                        <span style={{ color: pendingPlayers.length === 0 ? 'var(--green)' : 'var(--label2)', fontWeight: 600 }}>
+                          {votedPlayers.length}/{presentPlayers.length}
+                        </span>
+                      </span>
+                      <svg width="14" height="14" viewBox="0 0 16 16" fill="none"
+                        stroke="var(--label3)" strokeWidth="2" strokeLinecap="round"
+                        style={{ transition: 'transform 0.2s', transform: voterTrackingOpen ? 'rotate(90deg)' : 'rotate(0deg)', flexShrink: 0 }}
+                      >
+                        <polyline points="5 3 11 8 5 13" />
+                      </svg>
+                    </button>
+                    {voterTrackingOpen && (
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, paddingBottom: 8 }}>
+                        {[...pendingPlayers, ...votedPlayers].map(p => {
+                          const hasVoted = voterNameSet.has(p.name);
+                          return (
+                            <span key={String(p.id)} style={{
+                              display: 'inline-flex', alignItems: 'center', gap: 5,
+                              padding: '5px 10px', borderRadius: 20, fontSize: 13,
+                              background: hasVoted ? 'rgba(48,209,88,0.12)' : 'var(--bg3)',
+                              color: hasVoted ? 'var(--green)' : 'var(--label2)',
+                              border: `1px solid ${hasVoted ? 'rgba(48,209,88,0.3)' : 'transparent'}`,
+                            }}>
+                              {hasVoted ? '✓' : '⏳'} {p.name}
+                            </span>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                )}
+
                 {!confirmClose ? (
                   <button className="btn btn-danger btn-full" style={{ fontSize: 13 }}
                     onClick={() => setConfirmClose(true)}>
