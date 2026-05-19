@@ -97,6 +97,170 @@ describe("Admin flow", () => {
   });
 });
 
+describe("Close match (inline confirmation)", () => {
+  it("shows inline confirmation after clicking 'Clore sans dépouiller'", async () => {
+    await __demoAPI.createMatch("Match actif", [1, 2, 3, 4, 5], null, 1);
+
+    renderApp();
+    const user = userEvent.setup();
+
+    const adminBtn = await screen.findByRole("button", { name: /admin/i });
+    await user.click(adminBtn);
+
+    // First click — must NOT close immediately; must show confirmation UI
+    const cloreBtn = await screen.findByRole("button", { name: /clore sans dépouiller/i });
+    await user.click(cloreBtn);
+
+    // Confirmation prompt appears
+    expect(await screen.findByRole("button", { name: /confirmer/i })).toBeInTheDocument();
+    expect(await screen.findByRole("button", { name: /annuler/i })).toBeInTheDocument();
+    // Original button is gone
+    expect(screen.queryByRole("button", { name: /clore sans dépouiller/i })).not.toBeInTheDocument();
+  });
+
+  it("cancels and restores the original button when 'Annuler' is clicked", async () => {
+    await __demoAPI.createMatch("Match actif", [1, 2, 3, 4, 5], null, 1);
+
+    renderApp();
+    const user = userEvent.setup();
+
+    const adminBtn = await screen.findByRole("button", { name: /admin/i });
+    await user.click(adminBtn);
+
+    await user.click(await screen.findByRole("button", { name: /clore sans dépouiller/i }));
+    await user.click(await screen.findByRole("button", { name: /annuler/i }));
+
+    // Original button is back, confirmation is gone
+    expect(await screen.findByRole("button", { name: /clore sans dépouiller/i })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /confirmer/i })).not.toBeInTheDocument();
+  });
+
+  it("closes the match and shows toast when 'Confirmer' is clicked", async () => {
+    await __demoAPI.createMatch("Match actif", [1, 2, 3, 4, 5], null, 1);
+
+    renderApp();
+    const user = userEvent.setup();
+
+    const adminBtn = await screen.findByRole("button", { name: /admin/i });
+    await user.click(adminBtn);
+
+    await user.click(await screen.findByRole("button", { name: /clore sans dépouiller/i }));
+    await user.click(await screen.findByRole("button", { name: /confirmer/i }));
+
+    // Toast confirms the action
+    expect(await screen.findByText("Vote clôturé")).toBeInTheDocument();
+    // The active-match section is gone — match is closed
+    expect(screen.queryByRole("button", { name: /clore sans dépouiller/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /confirmer/i })).not.toBeInTheDocument();
+  });
+});
+
+describe("Launch match — minimum players validation", () => {
+  it("disables 'Lancer le vote' when fewer than 3 players are selected (2-pépite mode)", async () => {
+    renderApp();
+    const user = userEvent.setup();
+
+    const adminBtn = await screen.findByRole("button", { name: /admin/i });
+    await user.click(adminBtn);
+    await screen.findByText("Match du soir");
+
+    const matchInput = screen.getByPlaceholderText(/vs Dragons/i);
+    await user.type(matchInput, "Petit match");
+
+    // Select only 2 players — not enough for 2-pépite mode (needs 3)
+    const [btn1] = screen.getAllByRole("button", { name: "Antoine" });
+    const [btn2] = screen.getAllByRole("button", { name: "Baptiste" });
+    await user.click(btn1);
+    await user.click(btn2);
+
+    expect(screen.getByRole("button", { name: /Lancer le vote/i })).toBeDisabled();
+    expect(screen.getByText(/au moins 3 joueurs/i)).toBeInTheDocument();
+  });
+
+  it("enables 'Lancer le vote' with exactly 3 players in 2-pépite mode", async () => {
+    renderApp();
+    const user = userEvent.setup();
+
+    const adminBtn = await screen.findByRole("button", { name: /admin/i });
+    await user.click(adminBtn);
+    await screen.findByText("Match du soir");
+
+    const matchInput = screen.getByPlaceholderText(/vs Dragons/i);
+    await user.type(matchInput, "Petit match");
+
+    const [btn1] = screen.getAllByRole("button", { name: "Antoine" });
+    const [btn2] = screen.getAllByRole("button", { name: "Baptiste" });
+    const [btn3] = screen.getAllByRole("button", { name: "Clément" });
+    await user.click(btn1);
+    await user.click(btn2);
+    await user.click(btn3);
+
+    expect(screen.getByRole("button", { name: /Lancer le vote/i })).not.toBeDisabled();
+  });
+
+  it("requires 4 players in 3-pépite mode and shows the correct hint", async () => {
+    renderApp();
+    const user = userEvent.setup();
+
+    const adminBtn = await screen.findByRole("button", { name: /admin/i });
+    await user.click(adminBtn);
+    await screen.findByText("Match du soir");
+
+    const matchInput = screen.getByPlaceholderText(/vs Dragons/i);
+    await user.type(matchInput, "Grand match");
+
+    // Switch to 3-pépite mode
+    await user.click(screen.getByRole("button", { name: /3 pépites/i }));
+
+    // Select only 3 players — enough for 2-pépite but not 3-pépite (needs 4)
+    const [btn1] = screen.getAllByRole("button", { name: "Antoine" });
+    const [btn2] = screen.getAllByRole("button", { name: "Baptiste" });
+    const [btn3] = screen.getAllByRole("button", { name: "Clément" });
+    await user.click(btn1);
+    await user.click(btn2);
+    await user.click(btn3);
+
+    expect(screen.getByRole("button", { name: /Lancer le vote/i })).toBeDisabled();
+    expect(screen.getByText(/au moins 4 joueurs/i)).toBeInTheDocument();
+
+    // Add a 4th player — button should unlock
+    const [btn4] = screen.getAllByRole("button", { name: "David" });
+    await user.click(btn4);
+    expect(screen.getByRole("button", { name: /Lancer le vote/i })).not.toBeDisabled();
+  });
+
+  it("updates minimum when switching between 2 and 3-pépite modes", async () => {
+    renderApp();
+    const user = userEvent.setup();
+
+    const adminBtn = await screen.findByRole("button", { name: /admin/i });
+    await user.click(adminBtn);
+    await screen.findByText("Match du soir");
+
+    const matchInput = screen.getByPlaceholderText(/vs Dragons/i);
+    await user.type(matchInput, "Test mode");
+
+    // Select 3 players (valid for 2-pépite, not for 3-pépite)
+    const [btn1] = screen.getAllByRole("button", { name: "Antoine" });
+    const [btn2] = screen.getAllByRole("button", { name: "Baptiste" });
+    const [btn3] = screen.getAllByRole("button", { name: "Clément" });
+    await user.click(btn1);
+    await user.click(btn2);
+    await user.click(btn3);
+
+    // In 2-pépite mode → enabled
+    expect(screen.getByRole("button", { name: /Lancer le vote/i })).not.toBeDisabled();
+
+    // Switch to 3-pépite mode → disabled (3 < 4)
+    await user.click(screen.getByRole("button", { name: /3 pépites/i }));
+    expect(screen.getByRole("button", { name: /Lancer le vote/i })).toBeDisabled();
+
+    // Switch back to 2-pépite mode → enabled again
+    await user.click(screen.getByRole("button", { name: /2 pépites/i }));
+    expect(screen.getByRole("button", { name: /Lancer le vote/i })).not.toBeDisabled();
+  });
+});
+
 describe("Copy link buttons", () => {
   afterEach(() => {
     // Restore a clean clipboard spy in case a test replaced it.

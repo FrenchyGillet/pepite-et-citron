@@ -1,4 +1,4 @@
-import { useState, useRef, type ReactNode } from 'react';
+import { useState, useRef, useEffect, type ReactNode } from 'react';
 import { DEMO_MODE, api } from '@/api';
 import { track, EVENTS } from '@/utils/analytics';
 import {
@@ -154,6 +154,18 @@ export function AdminView({ players, activeMatch, currentOrg, onSignOut, onShowG
   const [copiedToken,     setCopiedToken]     = useState<string | null>(null);
   const [memberEmail,     setMemberEmail]     = useState('');
   const [pepiteCount,     setPepiteCount]     = useState<2 | 3>(2);
+  // Inline close-match confirmation (replaces window.confirm, which is
+  // unreliable in iOS PWA standalone mode)
+  const [confirmClose,    setConfirmClose]    = useState(false);
+
+  // Reset the close-confirmation when the active match changes (e.g. already
+  // closed by someone else) so the button always starts in its default state.
+  useEffect(() => { setConfirmClose(false); }, [activeMatch?.id]);
+
+  // Minimum players present for a valid vote:
+  // each voter picks pepiteCount winners (all different from each other and
+  // from the voter themselves), so the squad must contain at least pepiteCount + 1.
+  const minPlayersForVote = pepiteCount + 1; // 3 for 2-pépite mode, 4 for 3-pépite
 
   // Collapsible zones
   const [effectifOpen,  setEffectifOpen]  = useState(players.length === 0);
@@ -292,7 +304,7 @@ export function AdminView({ players, activeMatch, currentOrg, onSignOut, onShowG
       labelInputRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
       return;
     }
-    if (presentIds.length < 2) return;
+    if (presentIds.length < minPlayersForVote) return;
     setMatchError(null);
     createMatchMutation.mutate(
       { label: result.data.label, presentIds, teamId: selectedTeamId, season: currentSeason, pepiteCount },
@@ -308,9 +320,10 @@ export function AdminView({ players, activeMatch, currentOrg, onSignOut, onShowG
   };
 
   const closeMatch = () => {
-    if (!activeMatch || !confirm('Fermer définitivement le vote sans dépouillement ?')) return;
+    if (!activeMatch) return;
     closeMatchMutation.mutate(activeMatch.id, {
-      onSuccess: () => setToast('Vote clôturé'),
+      onSuccess: () => { setToast('Vote clôturé'); setConfirmClose(false); },
+      onError:   (err) => setToast(`Erreur : ${err instanceof Error ? err.message : String(err)}`),
     });
   };
 
@@ -440,9 +453,29 @@ export function AdminView({ players, activeMatch, currentOrg, onSignOut, onShowG
                 <button className="btn btn-primary btn-full" onClick={startCounting} disabled={startCountingMutation.isPending || voteCount === 0}>
                   {startCountingMutation.isPending ? 'Préparation…' : `Lancer le dépouillement · ${voteCount} vote${voteCount !== 1 ? 's' : ''}`}
                 </button>
-                <button className="btn btn-danger btn-full" style={{ fontSize: 13 }} onClick={closeMatch}>
-                  Clore sans dépouiller
-                </button>
+                {!confirmClose ? (
+                  <button className="btn btn-danger btn-full" style={{ fontSize: 13 }}
+                    onClick={() => setConfirmClose(true)}>
+                    Clore sans dépouiller
+                  </button>
+                ) : (
+                  <>
+                    <p style={{ fontSize: 12, color: 'var(--red)', textAlign: 'center', margin: '0 0 8px' }}>
+                      Le vote sera définitivement fermé sans dépouillement. Cette action est irréversible.
+                    </p>
+                    <div className="flex gap-8">
+                      <button className="btn btn-secondary" style={{ flex: 1 }}
+                        onClick={() => setConfirmClose(false)}>
+                        Annuler
+                      </button>
+                      <button className="btn btn-danger" style={{ flex: 1 }}
+                        disabled={closeMatchMutation.isPending}
+                        onClick={closeMatch}>
+                        {closeMatchMutation.isPending ? 'Clôture…' : 'Confirmer'}
+                      </button>
+                    </div>
+                  </>
+                )}
               </div>
             )}
             {phase === 'counting' && (
@@ -506,8 +539,10 @@ export function AdminView({ players, activeMatch, currentOrg, onSignOut, onShowG
                   onClick={() => togglePresent(p.id)}>{p.name}</button>
               ))}
             </div>
-            {presentIds.length < 2 && (
-              <p style={{ fontSize: 12, color: 'var(--label3)', marginBottom: 10 }}>Sélectionne au moins 2 joueurs.</p>
+            {presentIds.length > 0 && presentIds.length < minPlayersForVote && (
+              <p style={{ fontSize: 12, color: 'var(--label3)', marginBottom: 10 }}>
+                Sélectionne au moins {minPlayersForVote} joueurs pour ce mode.
+              </p>
             )}
             <p style={{ fontSize: 13, color: 'var(--label3)', marginBottom: 8 }}>Mode pépite</p>
             <div style={{ display: 'flex', gap: 8, marginBottom: pepiteCount === 3 ? 6 : 16 }}>
@@ -528,7 +563,7 @@ export function AdminView({ players, activeMatch, currentOrg, onSignOut, onShowG
               </p>
             )}
             <button className="btn btn-primary btn-full"
-              disabled={presentIds.length < 2 || createMatchMutation.isPending}
+              disabled={presentIds.length < minPlayersForVote || createMatchMutation.isPending}
               onClick={createMatch}>
               {createMatchMutation.isPending ? 'Lancement…' : `Lancer le vote · ${presentIds.length} joueur${presentIds.length !== 1 ? 's' : ''}`}
             </button>
