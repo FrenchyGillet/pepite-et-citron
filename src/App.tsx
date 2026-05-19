@@ -25,6 +25,7 @@ import { useTheme }          from '@/hooks/useTheme';
 import { useLastMatch }      from '@/hooks/useLastMatch';
 import { useRealtime }       from '@/hooks/useRealtime';
 import { useOfflineSync }    from '@/hooks/useOfflineSync';
+import { useWakeUp }         from '@/hooks/useWakeUp';
 import { usePlayers }        from '@/hooks/queries';
 import { useAppStore }       from '@/store/appStore';
 import { useSearchParams }   from 'react-router-dom';
@@ -103,6 +104,10 @@ export default function App() {
 
   // ── Realtime subscriptions ──────────────────────────────────────────────
   useRealtime(currentOrg?.id, activeMatch?.id);
+
+  // ── Wake-up: refresh all data when app returns to foreground ───────────────
+  // Handles iOS PWA where the Realtime WebSocket dies in the background.
+  useWakeUp();
 
   // ── Offline vote sync ───────────────────────────────────────────────────
   useOfflineSync(

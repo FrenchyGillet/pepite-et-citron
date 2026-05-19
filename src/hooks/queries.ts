@@ -32,9 +32,10 @@ export function useActiveMatch(orgId?: string | null) {
     queryKey: queryKeys.activeMatch(orgId),
     queryFn: () => api.getActiveMatch(),
     enabled: orgEnabled(orgId),
-    // No refetchInterval — Realtime (useRealtime hook) invalidates this query
-    // whenever a match row changes.  staleTime: 0 (default) ensures a full
-    // refetch on window-focus as a lightweight safety net.
+    // staleTime: 0 — always considered stale so window-focus (or useWakeUp)
+    // triggers an immediate refetch.  This is the safety net when Realtime
+    // is disconnected (e.g. app was backgrounded on iOS).
+    staleTime: 0,
   });
 }
 
@@ -52,8 +53,9 @@ export function useVotes(matchId: EntityId | null | undefined) {
     queryKey: queryKeys.votes(matchId),
     queryFn: () => api.getVotes(matchId!),
     enabled: matchId != null,
-    // No refetchInterval — Realtime (useRealtime hook) invalidates this query
-    // on every new INSERT into the votes table for the current match.
+    // staleTime: 0 — vote count must always be fresh; triggers refetch on
+    // window-focus as backup when Realtime WebSocket is disconnected.
+    staleTime: 0,
   });
 }
 

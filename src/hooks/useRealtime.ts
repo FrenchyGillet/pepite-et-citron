@@ -70,7 +70,22 @@ export function useRealtime(
       );
     }
 
-    channel.subscribe();
+    // Track whether this is the initial subscribe or a re-subscribe after a drop.
+    // On re-subscribe we invalidate to catch up on any DB changes that arrived
+    // while the WebSocket was disconnected (e.g. app was backgrounded on iOS).
+    let subscribedOnce = false;
+    channel.subscribe((status) => {
+      if (status !== 'SUBSCRIBED') return;
+      if (subscribedOnce) {
+        // Re-connection after a drop — fetch fresh data immediately
+        void queryClient.invalidateQueries({ queryKey: queryKeys.activeMatch(orgId) });
+        void queryClient.invalidateQueries({ queryKey: queryKeys.matches(orgId) });
+        if (activeMatchId != null) {
+          void queryClient.invalidateQueries({ queryKey: queryKeys.votes(activeMatchId) });
+        }
+      }
+      subscribedOnce = true;
+    });
 
     return () => { void supabase.removeChannel(channel); };
   }, [orgId, activeMatchId, queryClient]);
