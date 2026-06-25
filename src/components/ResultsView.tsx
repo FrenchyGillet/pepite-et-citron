@@ -232,6 +232,15 @@ export function ResultsView({ players, match, isAdmin, isDark, orgId, isPro, onU
             <div style={{ fontSize: 13, color: 'var(--label3)', marginBottom: 16 }}>Affiche le classement définitif pour tout le monde.</div>
             <button className="btn btn-primary btn-full" onClick={handleFinish}>Afficher le classement final</button>
           </div>
+        ) : isAdmin ? (
+          <div style={{ background: 'var(--bg2)', borderRadius: 'var(--radius-lg)', padding: '24px 16px', textAlign: 'center', marginBottom: 16 }}>
+            <div style={{ fontSize: 32, marginBottom: 8 }}>⚠️</div>
+            <div style={{ fontSize: 15, fontWeight: 700, marginBottom: 4 }}>Vote introuvable</div>
+            <div style={{ fontSize: 13, color: 'var(--label3)', marginBottom: 16 }}>
+              Un vote ne peut pas être affiché ({revealedCount + 1}/{revealOrder.length}). Tu peux quand même afficher le classement.
+            </div>
+            <button className="btn btn-primary btn-full" onClick={handleFinish}>Afficher le classement final</button>
+          </div>
         ) : null}
 
         {revealedCount > 0 && (

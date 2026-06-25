@@ -535,10 +535,38 @@ export function AdminView({ players, activeMatch, currentOrg, onSignOut, onShowG
               </div>
             )}
             {phase === 'counting' && (
-              <div style={{ padding: '12px 16px' }}>
+              <div style={{ padding: '12px 16px', display: 'flex', flexDirection: 'column', gap: 8 }}>
                 <p style={{ fontSize: 13, color: 'var(--label3)', textAlign: 'center' }}>
                   Le dépouillement est en cours dans l'onglet Résultats.
                 </p>
+                {onGoToResults && (
+                  <button className="btn btn-primary btn-full" onClick={onGoToResults}>
+                    Aller aux résultats →
+                  </button>
+                )}
+                {!confirmClose ? (
+                  <button className="btn btn-danger btn-full" style={{ fontSize: 13 }}
+                    onClick={() => setConfirmClose(true)}>
+                    Clore le dépouillement
+                  </button>
+                ) : (
+                  <>
+                    <p style={{ fontSize: 12, color: 'var(--red)', textAlign: 'center', margin: '0 0 8px' }}>
+                      Le vote sera définitivement fermé. Cette action est irréversible.
+                    </p>
+                    <div className="flex gap-8">
+                      <button className="btn btn-secondary" style={{ flex: 1 }}
+                        onClick={() => setConfirmClose(false)}>
+                        Annuler
+                      </button>
+                      <button className="btn btn-danger" style={{ flex: 1 }}
+                        disabled={closeMatchMutation.isPending}
+                        onClick={closeMatch}>
+                        {closeMatchMutation.isPending ? 'Clôture…' : 'Confirmer'}
+                      </button>
+                    </div>
+                  </>
+                )}
               </div>
             )}
           </div>
