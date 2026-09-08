@@ -47,6 +47,7 @@ export function VoteView({ players, match, onVoted, guestName = null, onGuestVot
   const [submitError,  setSubmitError]  = useState<string | null>(null);
   const [alreadyVoted, setAlreadyVoted] = useState(false);
   const [checking,     setChecking]     = useState(false);
+  const [checkError,   setCheckError]   = useState<string | null>(null);
 
   // Scroll to the comment+action area after a player is selected so
   // voters with long player lists don't miss the input/button below the fold.
@@ -93,7 +94,17 @@ export function VoteView({ players, match, onVoted, guestName = null, onGuestVot
   const checkAndNext = async () => {
     if (!voterName) return;
     setChecking(true);
-    const voted = await api.hasVoted(match.id, voterName);
+    setCheckError(null);
+    let voted = false;
+    try {
+      voted = await api.hasVoted(match.id, voterName);
+    } catch {
+      // Réseau instable (vestiaire) — ne pas bloquer le votant sur
+      // « Vérification… ». L'insert dédoublonne de toute façon (409).
+      setChecking(false);
+      setCheckError('Connexion instable. Réessaie.');
+      return;
+    }
     setChecking(false);
     if (voted) { setAlreadyVoted(true); return; }
     // Save identity so a refresh at step 1 doesn't force step 0 again
@@ -201,6 +212,11 @@ export function VoteView({ players, match, onVoted, guestName = null, onGuestVot
           {alreadyVoted && (
             <div style={{ color: 'var(--red)', fontSize: 13, marginTop: 8 }}>
               Tu as déjà voté pour ce match.
+            </div>
+          )}
+          {checkError && (
+            <div style={{ color: 'var(--red)', fontSize: 13, marginTop: 8 }}>
+              ⚠️ {checkError}
             </div>
           )}
 

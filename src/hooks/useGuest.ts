@@ -23,24 +23,38 @@ export function useGuest() {
     if (guestParam) {
       setIsVoterSession(true);
       setGuestStatus('checking');
-      void api.validateGuestToken(guestParam).then(async result => {
-        if (result && !result.used) {
-          const match = await api.getMatchById(result.match_id);
-          const orgId = match?.org_id;
-          if (orgId) {
-            setCurrentOrgId(orgId);
-            if (!useAppStore.getState().currentOrg) {
-              setCurrentOrg({ id: orgId, name: '', slug: '', role: null });
+
+      // Safety net: never leave the guest stuck on "Vérification…" if the
+      // network hangs. 8 s matches the timeout budget used in useAuth.
+      const timeout = setTimeout(() => {
+        if (useAppStore.getState().guestStatus === 'checking') setGuestStatus('invalid');
+      }, 8000);
+
+      void (async () => {
+        try {
+          const result = await api.validateGuestToken(guestParam);
+          if (result && !result.used) {
+            const match = await api.getMatchById(result.match_id);
+            const orgId = match?.org_id;
+            if (orgId) {
+              setCurrentOrgId(orgId);
+              if (!useAppStore.getState().currentOrg) {
+                setCurrentOrg({ id: orgId, name: '', slug: '', role: null });
+              }
             }
+            setGuestToken(guestParam);
+            setGuestName(result.name);
+            setGuestStatus('valid');
+            navigate('/vote', { replace: true });
+          } else {
+            setGuestStatus('invalid');
           }
-          setGuestToken(guestParam);
-          setGuestName(result.name);
-          setGuestStatus('valid');
-          navigate('/vote', { replace: true });
-        } else {
+        } catch {
           setGuestStatus('invalid');
+        } finally {
+          clearTimeout(timeout);
         }
-      });
+      })();
     } else if (orgSlug && !DEMO_MODE) {
       setIsVoterSession(true);
       void api.getOrgBySlug(orgSlug).then(org => {
@@ -51,6 +65,8 @@ export function useGuest() {
           setPendingOrgId(org.id);
           setPendingOrgName(org.name);
         }
+      }).catch(() => {
+        // Slug lookup failed — leave the user on the normal (non-org) screen.
       });
     }
   }, []); // intentional: runs once on mount
