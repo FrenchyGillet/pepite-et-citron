@@ -114,6 +114,7 @@ export function VoteView({ players, match, onVoted, guestName = null, onGuestVot
 
     const votePayload = {
       match_id: match.id, voter_name: voterName,
+      ...(selectedVoterPlayer ? { voter_player_id: selectedVoterPlayer.id } : {}),
       best1_id: best1?.id,   best1_comment: best1Comment,
       best2_id: best2?.id,   best2_comment: best2Comment,
       ...(pepiteCount === 3 ? { best3_id: best3?.id, best3_comment: best3Comment } : {}),
