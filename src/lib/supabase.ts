@@ -16,8 +16,9 @@ function proxyUrl(url: string): string {
 
 // ── Custom fetch wrapper ──────────────────────────────────────────────────────
 // 1. Rewrite URLs to the proxy (fixes Safari ITP).
-// 2. Add a 10 s abort timeout to PostgREST/RPC calls to prevent indefinite
-//    hangs on cold-start or bad connections.
+// 2. Add a 6 s abort timeout to PostgREST/RPC calls to prevent indefinite
+//    hangs on cold-start or bad connections. withRetry() in api.ts owns the
+//    retry budget on top (1 retry), so worst case ≈ 2 × 6 s per query.
 // 3. Auth paths use native fetch (no extra timeout) so GoTrue's internal
 //    session management (refresh, lock, SIGNED_OUT events) is not disrupted.
 function wrappedFetch(url: RequestInfo | URL, options: RequestInit = {}): Promise<Response> {
@@ -31,7 +32,7 @@ function wrappedFetch(url: RequestInfo | URL, options: RequestInit = {}): Promis
   // PostgREST data + RPC calls — abort after 10 s, convert TypeErrors to
   // AbortErrors so withRetry() in api.ts stays in control of retry logic.
   const ctrl  = new AbortController();
-  const timer = setTimeout(() => ctrl.abort(), 10000);
+  const timer = setTimeout(() => ctrl.abort(), 6000);
   return fetch(urlStr, { ...options, signal: ctrl.signal })
     .catch((err: unknown) => {
       const e = err instanceof Error ? err : new Error(String(err));

@@ -16,19 +16,27 @@ function rpcWithTimeout<T>(fn: () => PromiseLike<T>, ms = 10000): Promise<T> {
   ]);
 }
 
-// ─── Retry on transient network errors ───────────────────────────────────────
-async function withRetry<T>(fn: () => Promise<T>, retries = 2): Promise<T> {
+// ─── Retry on transient failures ─────────────────────────────────────────────
+// Single retry authority for the whole API layer: the QueryClient is configured
+// with `retry: 0`, so every retry decision lives here. Retries network blips,
+// aborts/timeouts and 5xx; never retries 4xx (client errors are permanent).
+async function withRetry<T>(fn: () => Promise<T>, retries = 1): Promise<T> {
   for (let attempt = 0; attempt <= retries; attempt++) {
     try {
       return await fn();
     } catch (err) {
-      const error = err instanceof Error ? err : new Error(String(err));
+      const error  = err instanceof Error ? err : new Error(String(err));
+      const status = (err as { status?: number })?.status;
       const isLast       = attempt === retries;
       const isNetworkErr = error.name === 'AbortError' || error.name === 'TypeError'
         || error.message?.includes('fetch') || error.message?.includes('network')
-        || error.message?.toLowerCase().includes('abort');
-      const isClientErr  = /Erreur 4\d\d/.test(error.message);
-      if (isLast || isClientErr || !isNetworkErr) throw error;
+        || error.message?.toLowerCase().includes('abort')
+        || error.message?.toLowerCase().includes('délai dépassé');
+      const isServerErr  = typeof status === 'number' && status >= 500;
+      const isClientErr  = (typeof status === 'number' && status >= 400 && status < 500)
+        || /Erreur 4\d\d/.test(error.message);
+      const isRetriable  = (isNetworkErr || isServerErr) && !isClientErr;
+      if (isLast || !isRetriable) throw error;
       await new Promise(r => setTimeout(r, 400 * (attempt + 1)));
     }
   }
@@ -37,10 +45,10 @@ async function withRetry<T>(fn: () => Promise<T>, retries = 2): Promise<T> {
 
 // ─── Unwrap SDK { data, error } response ─────────────────────────────────────
 async function run<T>(
-  builder: PromiseLike<{ data: T | null; error: { message: string } | null }>
+  builder: PromiseLike<{ data: T | null; error: { message: string } | null; status?: number }>
 ): Promise<T> {
-  const { data, error } = await builder;
-  if (error) throw new Error(error.message);
+  const { data, error, status } = await builder;
+  if (error) throw Object.assign(new Error(error.message), { status });
   return data as T;
 }
 
@@ -307,13 +315,14 @@ export const realAPI: API = {
     const orgs = await realAPI.getMyOrgs();
     return orgs.find(o => o.role === "admin") || orgs[0] || null;
   },
-  getOrgMembers: async (orgId) => {
-    const { data, error } = await rpcWithTimeout(() =>
-      supabase.rpc("get_org_members", { target_org_id: orgId })
-    );
-    if (error) throw new Error(error.message);
-    return (data as OrgMember[]) || [];
-  },
+  getOrgMembers: (orgId) =>
+    withRetry(async () => {
+      const { data, error } = await rpcWithTimeout(() =>
+        supabase.rpc("get_org_members", { target_org_id: orgId })
+      );
+      if (error) throw new Error(error.message);
+      return (data as OrgMember[]) || [];
+    }),
   addMember: async (email, orgId, role = "voter") => {
     const { error } = await rpcWithTimeout(() =>
       supabase.rpc("add_org_member", { member_email: email, target_org_id: orgId, member_role: role })
@@ -404,23 +413,26 @@ export const realAPI: API = {
       );
       return rows[0];
     }),
-  closeMatch: async (id) => {
-    const { error } = await supabase.from("matches").update({ is_open: false, phase: "closed" }).eq("id", id);
-    if (error) throw new Error(error.message);
-    return true;
-  },
-  startCounting: async (id, order) => {
-    const { error } = await supabase.from("matches")
-      .update({ is_open: false, phase: "counting", reveal_order: order, revealed_count: 0 })
-      .eq("id", id);
-    if (error) throw new Error(error.message);
-    return true;
-  },
-  revealNext: async (id, count) => {
-    const { error } = await supabase.from("matches").update({ revealed_count: count }).eq("id", id);
-    if (error) throw new Error(error.message);
-    return true;
-  },
+  closeMatch: (id) =>
+    withRetry(async () => {
+      const { error } = await supabase.from("matches").update({ is_open: false, phase: "closed" }).eq("id", id);
+      if (error) throw new Error(error.message);
+      return true;
+    }),
+  startCounting: (id, order) =>
+    withRetry(async () => {
+      const { error } = await supabase.from("matches")
+        .update({ is_open: false, phase: "counting", reveal_order: order, revealed_count: 0 })
+        .eq("id", id);
+      if (error) throw new Error(error.message);
+      return true;
+    }),
+  revealNext: (id, count) =>
+    withRetry(async () => {
+      const { error } = await supabase.from("matches").update({ revealed_count: count }).eq("id", id);
+      if (error) throw new Error(error.message);
+      return true;
+    }),
   updateMatch: async (id, data) => {
     const { error } = await supabase.from("matches").update(data).eq("id", id);
     if (error) throw new Error(error.message);
@@ -433,59 +445,51 @@ export const realAPI: API = {
     if (e2) throw new Error(e2.message);
     return true;
   },
-  getMatchById: async (id) => {
-    const { data, error } = await supabase.from("matches").select("*").eq("id", id);
-    if (error) throw new Error(error.message);
-    return (data?.[0] as Match) ?? null;
-  },
+  getMatchById: (id) =>
+    withRetry(async () => {
+      const { data, error } = await supabase.from("matches").select("*").eq("id", id);
+      if (error) throw new Error(error.message);
+      return (data?.[0] as Match) ?? null;
+    }),
 
   // ── Saison ────────────────────────────────────────────────────────────────
-  getCurrentSeason: async () => {
-    try {
-      const { data, error } = await supabase.from("settings").select("value")
-        .eq("key", "current_season").eq("org_id", _orgId);
+  // Le compteur de saison vit sur organizations.current_season ; les noms de
+  // saison sur la table season_names (org_id, season, name). Cf. migration
+  // 20260004_seasons.sql.
+  getCurrentSeason: () =>
+    withRetry(async () => {
+      const { data, error } = await supabase.from("organizations")
+        .select("current_season").eq("id", _orgId).maybeSingle();
       if (error) throw new Error(error.message);
-      return parseInt((data?.[0] as { value: string } | undefined)?.value || "1");
-    } catch { return 1; }
-  },
-  advanceSeason: async () => {
-    const cur  = await realAPI.getCurrentSeason();
-    const next = cur + 1;
-    const { data: updated, error: updateErr } = await supabase.from("settings")
-      .update({ value: String(next) })
-      .eq("key", "current_season")
-      .eq("org_id", _orgId)
-      .select();
-    if (updateErr) throw new Error(updateErr.message);
-    if (!updated || updated.length === 0) {
-      await run(supabase.from("settings").insert({ key: "current_season", value: String(next), org_id: _orgId }));
-    }
-    return next;
-  },
-  getSeasonName: async (season) => {
-    try {
-      const { data, error } = await supabase.from("settings").select("value")
-        .eq("key", `season_name_${season}`).eq("org_id", _orgId);
+      return (data as { current_season: number } | null)?.current_season ?? 1;
+    }).catch(() => 1),   // lecture best-effort : ne doit pas casser le rendu
+  advanceSeason: () =>
+    withRetry(async () => {
+      // Un seul admin fait avancer une saison quelques fois par an :
+      // read-modify-write acceptable (pas de contention réaliste).
+      const cur  = await realAPI.getCurrentSeason();
+      const rows = await run<{ current_season: number }[]>(
+        supabase.from("organizations")
+          .update({ current_season: cur + 1 })
+          .eq("id", _orgId)
+          .select("current_season"),
+      );
+      return rows[0]?.current_season ?? cur + 1;
+    }),
+  getSeasonName: (season) =>
+    withRetry(async () => {
+      const { data, error } = await supabase.from("season_names")
+        .select("name").eq("org_id", _orgId).eq("season", season).maybeSingle();
       if (error) throw new Error(error.message);
-      return (data?.[0] as { value: string } | undefined)?.value ?? null;
-    } catch { return null; }
-  },
-  setSeasonName: async (season, name) => {
-    const { data: existing, error: selectErr } = await supabase.from("settings").select("value")
-      .eq("key", `season_name_${season}`).eq("org_id", _orgId);
-    if (selectErr) throw new Error(selectErr.message);
-    if (existing && existing.length > 0) {
-      await run(supabase.from("settings").update({ value: name })
-        .eq("key", `season_name_${season}`).eq("org_id", _orgId));
-    } else {
-      try {
-        await run(supabase.from("settings").insert({ key: `season_name_${season}`, value: name, org_id: _orgId }));
-      } catch {
-        await run(supabase.from("settings").update({ value: name })
-          .eq("key", `season_name_${season}`).eq("org_id", _orgId));
-      }
-    }
-  },
+      return (data as { name: string } | null)?.name ?? null;
+    }).catch(() => null),
+  setSeasonName: (season, name) =>
+    withRetry(async () => {
+      await run(
+        supabase.from("season_names")
+          .upsert({ org_id: _orgId, season, name }, { onConflict: "org_id,season" }),
+      );
+    }),
 
   // ── Votes ─────────────────────────────────────────────────────────────────
   hasVoted: async (matchId, voterName) => {
@@ -511,22 +515,21 @@ export const realAPI: API = {
     }
     throw new Error(error.message);
   },
-  getVotes: async (matchId) => {
-    return await run<Vote[]>(supabase.from("votes").select("*").eq("match_id", matchId));
-  },
-  getAllVotes: async () => {
-    const matches = await realAPI.getMatches();
-    if (!matches?.length) return [];
-    const ids = matches.map(m => m.id);
-    return await run<Vote[]>(supabase.from("votes").select("*").in("match_id", ids));
-  },
+  getVotes: (matchId) =>
+    withRetry(() => run<Vote[]>(supabase.from("votes").select("*").eq("match_id", matchId))),
+  getAllVotes: () =>
+    withRetry(async () => {
+      const matches = await realAPI.getMatches();
+      if (!matches?.length) return [];
+      const ids = matches.map(m => m.id);
+      return await run<Vote[]>(supabase.from("votes").select("*").in("match_id", ids));
+    }),
 
   // ── Équipes ───────────────────────────────────────────────────────────────
-  getTeams: async () => {
-    return await run<Team[]>(
+  getTeams: () =>
+    withRetry(() => run<Team[]>(
       supabase.from("teams").select("*").eq("org_id", _orgId).order("name")
-    );
-  },
+    )),
   createTeam: async (name, playerIds) => {
     const rows = await run<Team[]>(
       supabase.from("teams").insert({ name, player_ids: playerIds, org_id: _orgId }).select()
@@ -551,11 +554,10 @@ export const realAPI: API = {
     await run(supabase.from("guest_tokens").insert({ token, name, match_id: matchId, org_id: _orgId }));
     return token;
   },
-  getGuestTokens: async (matchId) => {
-    return await run<GuestToken[]>(
+  getGuestTokens: (matchId) =>
+    withRetry(() => run<GuestToken[]>(
       supabase.from("guest_tokens").select("*").eq("match_id", matchId).order("created_at")
-    );
-  },
+    )),
   validateGuestToken: async (token) => {
     const { data, error } = await supabase.from("guest_tokens").select("*").eq("token", token);
     if (error) throw new Error(error.message);

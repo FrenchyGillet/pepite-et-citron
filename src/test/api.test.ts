@@ -550,21 +550,21 @@ describe('realAPI', () => {
     });
   });
 
-  // ── Season / Settings ──
+  // ── Season ──
 
   describe('getCurrentSeason', () => {
-    it('parses the season number from settings row', async () => {
-      server.use(http.get(`${BASE}/settings`, () => HttpResponse.json([{ value: '3' }])));
+    it('reads organizations.current_season', async () => {
+      server.use(http.get(`${BASE}/organizations`, () => HttpResponse.json([{ current_season: 3 }])));
       expect(await realAPI.getCurrentSeason()).toBe(3);
     });
 
-    it('returns 1 when settings row is missing', async () => {
-      server.use(http.get(`${BASE}/settings`, () => HttpResponse.json([])));
+    it('returns 1 when the org row has no season yet', async () => {
+      server.use(http.get(`${BASE}/organizations`, () => HttpResponse.json([])));
       expect(await realAPI.getCurrentSeason()).toBe(1);
     });
 
     it('returns 1 on server error (graceful fallback)', async () => {
-      server.use(http.get(`${BASE}/settings`, () =>
+      server.use(http.get(`${BASE}/organizations`, () =>
         HttpResponse.json({ message: 'Erreur 500' }, { status: 500 }),
       ));
       expect(await realAPI.getCurrentSeason()).toBe(1);
@@ -573,17 +573,17 @@ describe('realAPI', () => {
 
   describe('getSeasonName', () => {
     it('returns the season name when found', async () => {
-      server.use(http.get(`${BASE}/settings`, () => HttpResponse.json([{ value: 'Hiver 2024' }])));
+      server.use(http.get(`${BASE}/season_names`, () => HttpResponse.json([{ name: 'Hiver 2024' }])));
       expect(await realAPI.getSeasonName(1)).toBe('Hiver 2024');
     });
 
-    it('returns null when no setting row exists', async () => {
-      server.use(http.get(`${BASE}/settings`, () => HttpResponse.json([])));
+    it('returns null when no row exists', async () => {
+      server.use(http.get(`${BASE}/season_names`, () => HttpResponse.json([])));
       expect(await realAPI.getSeasonName(1)).toBeNull();
     });
 
     it('returns null on network error', async () => {
-      server.use(http.get(`${BASE}/settings`, () => HttpResponse.error()));
+      server.use(http.get(`${BASE}/season_names`, () => HttpResponse.error()));
       expect(await realAPI.getSeasonName(1)).toBeNull();
     });
   });
@@ -669,69 +669,50 @@ describe('realAPI', () => {
   // ── advanceSeason ──
 
   describe('advanceSeason', () => {
-    it('updates the season row and returns next season', async () => {
+    it('increments organizations.current_season and returns the new value', async () => {
+      let patched: unknown;
       server.use(
-        http.get(`${BASE}/settings`,   () => HttpResponse.json([{ value: '2' }])),
-        http.patch(`${BASE}/settings`, () => HttpResponse.json([{}])),
+        http.get(`${BASE}/organizations`, () => HttpResponse.json([{ current_season: 2 }])),
+        http.patch(`${BASE}/organizations`, async ({ request }) => {
+          patched = await request.json();
+          return HttpResponse.json([{ current_season: 3 }]);
+        }),
       );
       expect(await realAPI.advanceSeason()).toBe(3);
+      expect(patched).toMatchObject({ current_season: 3 });
     });
 
-    it('inserts a season row when none exists yet', async () => {
-      const called: string[] = [];
+    it('starts from season 1 when the org has no counter yet', async () => {
       server.use(
-        http.get(`${BASE}/settings`,   () => HttpResponse.json([])),
-        http.patch(`${BASE}/settings`, () => { called.push('patch'); return HttpResponse.json([]); }),
-        http.post(`${BASE}/settings`,  () => { called.push('post');  return HttpResponse.json([{}]); }),
+        http.get(`${BASE}/organizations`, () => HttpResponse.json([])),
+        http.patch(`${BASE}/organizations`, () => HttpResponse.json([{ current_season: 2 }])),
       );
       expect(await realAPI.advanceSeason()).toBe(2);
-      expect(called).toContain('post');
     });
   });
 
   // ── setSeasonName ──
 
   describe('setSeasonName', () => {
-    it('updates the season name when a row already exists', async () => {
-      let patched: unknown;
+    it('upserts the season name into season_names', async () => {
+      let body: unknown;
       server.use(
-        http.get(`${BASE}/settings`,   () => HttpResponse.json([{ value: 'old' }])),
-        http.patch(`${BASE}/settings`, async ({ request }) => {
-          patched = await request.json();
+        http.post(`${BASE}/season_names`, async ({ request }) => {
+          body = await request.json();
           return HttpResponse.json([{}]);
         }),
       );
       await realAPI.setSeasonName(1, 'Hiver 2025');
-      expect(patched).toMatchObject({ value: 'Hiver 2025' });
+      expect(body).toMatchObject({ season: 1, name: 'Hiver 2025' });
     });
 
-    it('inserts a new row when no name exists yet', async () => {
-      let inserted: unknown;
+    it('throws on server error', async () => {
       server.use(
-        http.get(`${BASE}/settings`,  () => HttpResponse.json([])),
-        http.post(`${BASE}/settings`, async ({ request }) => {
-          inserted = await request.json();
-          return HttpResponse.json([{}]);
-        }),
-      );
-      await realAPI.setSeasonName(1, 'Hiver 2025');
-      expect(inserted).toMatchObject({ value: 'Hiver 2025' });
-    });
-
-    it('falls back to update when insert fails (race condition)', async () => {
-      let patched: unknown;
-      server.use(
-        http.get(`${BASE}/settings`,   () => HttpResponse.json([])),
-        http.post(`${BASE}/settings`,  () =>
-          HttpResponse.json({ message: 'Erreur 409' }, { status: 409 }),
+        http.post(`${BASE}/season_names`, () =>
+          HttpResponse.json({ message: 'Erreur 500' }, { status: 500 }),
         ),
-        http.patch(`${BASE}/settings`, async ({ request }) => {
-          patched = await request.json();
-          return HttpResponse.json([{}]);
-        }),
       );
-      await realAPI.setSeasonName(1, 'Hiver 2025');
-      expect(patched).toMatchObject({ value: 'Hiver 2025' });
+      await expect(realAPI.setSeasonName(1, 'Hiver 2025')).rejects.toThrow();
     });
   });
 
@@ -954,5 +935,31 @@ describe('realAPI', () => {
       server.use(http.get(`${BASE}/players`, () => HttpResponse.error()));
       await expect(realAPI.getPlayers()).rejects.toThrow();
     }, 12000);
+
+    it('retries on a 5xx and succeeds on the next attempt', async () => {
+      let attempts = 0;
+      server.use(
+        http.get(`${BASE}/players`, () => {
+          attempts++;
+          return attempts < 2
+            ? HttpResponse.json({ message: 'boom' }, { status: 503 })
+            : HttpResponse.json([mockPlayer]);
+        }),
+      );
+      expect((await realAPI.getPlayers())[0].name).toBe('Alice');
+      expect(attempts).toBe(2);
+    }, 5000);
+
+    it('does NOT retry on a 4xx (client error is permanent)', async () => {
+      let attempts = 0;
+      server.use(
+        http.get(`${BASE}/players`, () => {
+          attempts++;
+          return HttpResponse.json({ message: 'nope' }, { status: 400 });
+        }),
+      );
+      await expect(realAPI.getPlayers()).rejects.toThrow();
+      expect(attempts).toBe(1);
+    });
   });
 });

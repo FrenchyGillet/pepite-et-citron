@@ -56,10 +56,10 @@ export const handlers = [
   http.get   (`${BASE}/org_members`, () => HttpResponse.json([])),
   http.delete(`${BASE}/org_members`, () => new HttpResponse(null, { status: 204 })),
 
-  // ── Settings (season name / season counter) ────────────────────────────────
-  http.get   (`${BASE}/settings`, () => HttpResponse.json([])),
-  http.post  (`${BASE}/settings`, () => HttpResponse.json([])),
-  http.patch (`${BASE}/settings`, () => HttpResponse.json([])),
+  // ── Season names (season counter lives on organizations.current_season) ─────
+  http.get   (`${BASE}/season_names`, () => HttpResponse.json([])),
+  http.post  (`${BASE}/season_names`, () => HttpResponse.json([])),
+  http.patch (`${BASE}/season_names`, () => HttpResponse.json([])),
 
   // ── Auth ───────────────────────────────────────────────────────────────────
   http.post(`${AUTH}/signup`, () =>

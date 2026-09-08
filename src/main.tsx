@@ -11,7 +11,10 @@ import App from '@/App';
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      retry: 1,
+      // Retries are owned by withRetry() in api.ts (network blips, timeouts,
+      // 5xx — never 4xx). A second layer here just multiplied every retry
+      // budget and could hang pull-to-refresh for ~60 s. Keep it at 0.
+      retry: 0,
       staleTime: 10_000,
       // gcTime must be ≥ persister maxAge to keep data alive between sessions
       gcTime: 24 * 60 * 60 * 1000, // 24 h

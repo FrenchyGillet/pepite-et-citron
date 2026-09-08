@@ -8,6 +8,9 @@
 --   supabase/migrations/20240003_votes_best3.sql
 --   supabase/migrations/20250001_plan_stripe.sql
 --   supabase/migrations/20260001_subscription_details.sql
+--   supabase/migrations/20260002_player_profiles.sql
+--   supabase/migrations/20260003_push_subscriptions.sql
+--   supabase/migrations/20260004_seasons.sql
 -- ═══════════════════════════════════════════════════════════════════════════
 
 -- ── Tables ──────────────────────────────────────────────────────────────────
@@ -26,7 +29,10 @@ CREATE TABLE IF NOT EXISTS organizations (
   -- Subscription details (migration 20260001)
   current_period_end     timestamptz,
   cancel_at_period_end   boolean NOT NULL DEFAULT false,
-  last_payment_failed_at timestamptz
+  last_payment_failed_at timestamptz,
+
+  -- Season counter (migration 20260004) — season new matches are stamped with
+  current_season         int NOT NULL DEFAULT 1
 );
 
 CREATE TABLE IF NOT EXISTS org_members (
@@ -207,4 +213,16 @@ CREATE POLICY "org_members_can_read_org" ON organizations
 CREATE POLICY "org_admins_can_update_org" ON organizations
   FOR UPDATE USING (
     id IN (SELECT org_id FROM org_members WHERE user_id = auth.uid() AND role = 'admin')
+  );
+
+-- Season names : membres peuvent lire, admins peuvent modifier (migration 20260004)
+CREATE POLICY "org_members_can_read_season_names" ON season_names
+  FOR SELECT USING (
+    org_id IN (SELECT org_id FROM org_members WHERE user_id = auth.uid())
+  );
+CREATE POLICY "org_admins_can_write_season_names" ON season_names
+  FOR ALL USING (
+    org_id IN (SELECT org_id FROM org_members WHERE user_id = auth.uid() AND role = 'admin')
+  ) WITH CHECK (
+    org_id IN (SELECT org_id FROM org_members WHERE user_id = auth.uid() AND role = 'admin')
   );
