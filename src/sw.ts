@@ -88,7 +88,9 @@ self.addEventListener('push', (event) => {
 
   const { title, body, url = '/', icon = '/icon-192x192.png', badge = '/icon-192x192.png' } = payload;
 
-  const notifOptions: NotificationOptions = {
+  // `renotify` and `vibrate` are valid Notification options at runtime but
+  // missing from the DOM lib's NotificationOptions.
+  const notifOptions: NotificationOptions & { renotify?: boolean; vibrate?: number[] } = {
     body,
     icon,
     badge,

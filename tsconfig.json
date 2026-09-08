@@ -6,10 +6,9 @@
     "module": "ESNext",
     "skipLibCheck": true,
 
-    /* Path aliases */
-    "baseUrl": ".",
+    /* Path aliases (baseUrl dropped — deprecated in TS 6; paths are repo-relative) */
     "paths": {
-      "@/*": ["src/*"]
+      "@/*": ["./src/*"]
     },
 
     /* Bundler mode */

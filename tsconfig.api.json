@@ -1,0 +1,12 @@
+{
+  /* Serverless functions + edge middleware — Node/Web runtime, not the browser.
+     Kept separate from the app tsconfig (different libs/globals). */
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "types": ["node"],
+    "lib": ["ES2022", "DOM"],
+    "noEmit": true
+  },
+  "include": ["api", "middleware.ts"],
+  "exclude": ["node_modules"]
+}

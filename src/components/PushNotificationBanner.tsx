@@ -10,7 +10,7 @@
  *  - Permission was explicitly denied
  *  - User dismissed it (localStorage dismiss flag)
  */
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { usePushNotifications } from '@/hooks/usePushNotifications';
 
 const DISMISS_KEY = 'pepite_push_banner_dismissed';

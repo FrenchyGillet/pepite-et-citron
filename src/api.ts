@@ -58,7 +58,7 @@ export function setCurrentOrgId(id: string | null): void { _orgId = id; }
 export function getCurrentOrgId(): string | null { return _orgId; }
 
 // ─── Demo state ───────────────────────────────────────────────────────────────
-export let demoState = {
+export const demoState = {
   players: [
     { id: 1, name: "Antoine" }, { id: 2, name: "Baptiste" },
     { id: 3, name: "Clément" }, { id: 4, name: "David" },
@@ -528,7 +528,7 @@ export const realAPI: API = {
     // best3_comment must not appear in the payload when they are absent, or
     // PostgREST returns "column not found in schema cache".
     const payload = Object.fromEntries(
-      Object.entries(vote as Record<string, unknown>).filter(([, v]) => v !== undefined),
+      Object.entries(vote as unknown as Record<string, unknown>).filter(([, v]) => v !== undefined),
     );
     const { error } = await supabase.from("votes").insert(payload);
     if (!error) return;

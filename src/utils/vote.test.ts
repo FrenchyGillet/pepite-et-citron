@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect } from 'vitest';
 import { hasVotedLocally, markVotedLocally, classifyVoteError, shuffleRevealOrder } from './vote';
 import type { Vote } from '@/types';
 
