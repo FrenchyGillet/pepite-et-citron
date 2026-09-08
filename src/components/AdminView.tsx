@@ -20,6 +20,7 @@ import {
 } from '@/hooks/mutations';
 import type { Player, Match, Org, EntityId } from '@/types';
 import { PushNotificationBanner } from './PushNotificationBanner';
+import { useConfirm } from '@/hooks/useConfirm';
 
 interface AdminViewProps {
   players: Player[];
@@ -172,6 +173,8 @@ export function AdminView({ players, activeMatch, currentOrg, onSignOut, onShowG
   const [settingsOpen,      setSettingsOpen]       = useState(false);
   const [voterTrackingOpen, setVoterTrackingOpen] = useState(false);
 
+  const { confirm, confirmDialog } = useConfirm();
+
   // Validation errors (Zod safeParse)
   const [playerError,  setPlayerError]  = useState<string | null>(null);
   const [matchError,   setMatchError]   = useState<string | null>(null);
@@ -228,8 +231,9 @@ export function AdminView({ players, activeMatch, currentOrg, onSignOut, onShowG
     });
   };
 
-  const handleRemoveMember = (userId: string, email: string) => {
-    if (!currentOrg?.id || !confirm(`Retirer ${email} ?`)) return;
+  const handleRemoveMember = async (userId: string, email: string) => {
+    if (!currentOrg?.id) return;
+    if (!(await confirm({ message: `Retirer ${email} ?`, confirmLabel: 'Retirer', danger: true }))) return;
     removeMemberMutation.mutate(userId, {
       onSuccess: () => setToast(`${email} retiré`),
       onError: (err) => setToast(`Erreur : ${err instanceof Error ? err.message : String(err)}`),
@@ -280,8 +284,8 @@ export function AdminView({ players, activeMatch, currentOrg, onSignOut, onShowG
     });
   };
 
-  const removePlayer = (id: EntityId, name: string) => {
-    if (!confirm(`Supprimer ${name} ?`)) return;
+  const removePlayer = async (id: EntityId, name: string) => {
+    if (!(await confirm({ message: `Supprimer ${name} ?`, confirmLabel: 'Supprimer', danger: true }))) return;
     removePlayerMutation.mutate(id);
   };
 
@@ -300,9 +304,12 @@ export function AdminView({ players, activeMatch, currentOrg, onSignOut, onShowG
     });
   };
 
-  const advanceSeason = () => {
+  const advanceSeason = async () => {
     const label = seasonName ? `"${seasonName}"` : `Saison ${currentSeason}`;
-    if (!confirm(`Démarrer la saison ${currentSeason + 1} ? L'historique de ${label} est conservé.`)) return;
+    if (!(await confirm({
+      message: `Démarrer la saison ${currentSeason + 1} ? L'historique de ${label} est conservé.`,
+      confirmLabel: 'Démarrer',
+    }))) return;
     advanceSeasonMutation.mutate(undefined, {
       onSuccess: (next) => { setSeasonNameDraft(''); setToast(`Saison ${next} démarrée !`); },
       onError: (err) => setToast(`Erreur : ${err instanceof Error ? err.message : String(err)}`),
@@ -361,8 +368,8 @@ export function AdminView({ players, activeMatch, currentOrg, onSignOut, onShowG
     );
   };
 
-  const deleteTeam = (id: EntityId, name: string) => {
-    if (!confirm(`Supprimer l'équipe "${name}" ?`)) return;
+  const deleteTeam = async (id: EntityId, name: string) => {
+    if (!(await confirm({ message: `Supprimer l'équipe "${name}" ?`, confirmLabel: 'Supprimer', danger: true }))) return;
     deleteTeamMutation.mutate(id);
   };
 
@@ -388,6 +395,7 @@ export function AdminView({ players, activeMatch, currentOrg, onSignOut, onShowG
   return (
     <div className="content">
       {toast && <Toast msg={toast} onDone={() => setToast(null)} />}
+      {confirmDialog}
 
       {/* ── Push notification opt-in banner ───────────────────────────── */}
       {!DEMO_MODE && currentOrg?.id && (

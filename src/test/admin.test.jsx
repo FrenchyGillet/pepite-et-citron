@@ -97,6 +97,39 @@ describe("Admin flow", () => {
   });
 });
 
+describe("Destructive actions use the confirm modal (not window.confirm)", () => {
+  it("removing a player asks for confirmation, then deletes on confirm", async () => {
+    renderApp();
+    const user = userEvent.setup();
+
+    await user.click(await screen.findByRole("button", { name: /admin/i }));
+    await user.click(await screen.findByRole("button", { name: /Effectif/i }));
+
+    // Antoine is player #1 in the demo roster
+    const rows = await screen.findAllByText("Retirer");
+    await user.click(rows[0]);
+
+    // Modal, not a native prompt
+    expect(await screen.findByText(/Supprimer Antoine \?/i)).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Supprimer" }));
+
+    expect(await __demoAPI.getPlayers()).toHaveLength(9);
+  });
+
+  it("cancelling the confirm modal keeps the player", async () => {
+    renderApp();
+    const user = userEvent.setup();
+
+    await user.click(await screen.findByRole("button", { name: /admin/i }));
+    await user.click(await screen.findByRole("button", { name: /Effectif/i }));
+    const rows = await screen.findAllByText("Retirer");
+    await user.click(rows[0]);
+
+    await user.click(await screen.findByRole("button", { name: "Annuler" }));
+    expect(await __demoAPI.getPlayers()).toHaveLength(10);
+  });
+});
+
 describe("Close match (inline confirmation)", () => {
   it("shows inline confirmation after clicking 'Clore sans dépouiller'", async () => {
     await __demoAPI.createMatch("Match actif", [1, 2, 3, 4, 5], null, 1);
