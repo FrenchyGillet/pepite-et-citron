@@ -7,13 +7,11 @@
  * Body: { orgId: string; matchLabel: string; matchId: string }
  * Auth: Bearer <user JWT>
  */
-import { createClient } from '@supabase/supabase-js';
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-
-const supabase = createClient(
-  process.env.VITE_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!,
-);
+import { supabaseAdmin as supabase } from './_lib/supabaseAdmin';
+import { requireOrgAdmin } from './_lib/auth';
+import { matchNotificationSchema } from './_lib/validation';
+import { escapeHtml } from './_lib/http';
 
 const BREVO_API_KEY = process.env.BREVO_API_KEY;
 const APP_URL       = process.env.VITE_APP_URL || 'https://pepite-citron.com';
@@ -29,18 +27,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(200).json({ skipped: true });
   }
 
-  // Verify caller JWT
-  const token = req.headers.authorization?.replace('Bearer ', '');
-  if (!token) return res.status(401).json({ error: 'Unauthorized' });
+  const parsed = matchNotificationSchema.safeParse(req.body);
+  if (!parsed.success) return res.status(400).json({ error: 'Requête invalide' });
+  const { orgId, matchLabel } = parsed.data;
 
-  const { data: { user }, error: authError } = await supabase.auth.getUser(token);
-  if (authError || !user) return res.status(401).json({ error: 'Invalid token' });
-
-  const { orgId, matchLabel } = req.body as {
-    orgId?: string;
-    matchLabel?: string;
-  };
-  if (!orgId || !matchLabel) return res.status(400).json({ error: 'Missing params' });
+  // Only an admin of this org may notify its members.
+  const auth = await requireOrgAdmin(req, orgId);
+  if (!auth.ok) return res.status(auth.status).json({ error: auth.error });
 
   // Fetch org info (slug for the vote link)
   const { data: org } = await supabase
@@ -56,15 +49,18 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     .from('org_members')
     .select('email, role')
     .eq('org_id', orgId)
-    .neq('user_id', user.id);
+    .neq('user_id', auth.userId);
 
   const recipients = (members ?? []).map(m => m.email).filter(Boolean);
   if (recipients.length === 0) {
     return res.status(200).json({ sent: 0 });
   }
 
+  // All interpolated values are escaped — matchLabel comes from the request body.
+  const safeLabel   = escapeHtml(matchLabel);
+  const safeOrgName = escapeHtml(org.name ?? '');
   const voteUrl = org.slug
-    ? `${APP_URL}/?org=${org.slug}`
+    ? `${APP_URL}/?org=${encodeURIComponent(org.slug)}`
     : APP_URL;
 
   const html = `
@@ -77,11 +73,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       <p style="font-size:22px;font-weight:800;letter-spacing:-0.5px;margin:0 0 4px">
         <span style="color:#FFD700">Pépite</span> &amp; <span style="color:#32D74B">Citron</span>
       </p>
-      <p style="font-size:13px;color:rgba(235,235,245,0.4);margin:0 0 32px">${org.name}</p>
+      <p style="font-size:13px;color:rgba(235,235,245,0.4);margin:0 0 32px">${safeOrgName}</p>
 
       <p style="font-size:18px;font-weight:700;margin:0 0 8px">⭐ Vote ouvert !</p>
       <p style="font-size:15px;color:rgba(235,235,245,0.7);margin:0 0 24px;line-height:1.5">
-        Un vote a été lancé pour <strong style="color:#fff">${matchLabel}</strong>.
+        Un vote a été lancé pour <strong style="color:#fff">${safeLabel}</strong>.
         Désigne la pépite et le citron de ce match !
       </p>
 
@@ -92,7 +88,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       </a>
 
       <p style="font-size:11px;color:rgba(235,235,245,0.25);margin:24px 0 0;line-height:1.6">
-        Tu reçois cet email parce que tu es membre de l'équipe ${org.name} sur Pépite &amp; Citron.<br>
+        Tu reçois cet email parce que tu es membre de l'équipe ${safeOrgName} sur Pépite &amp; Citron.<br>
         <a href="${APP_URL}/admin" style="color:rgba(235,235,245,0.4)">Gérer les notifications</a>
       </p>
     </td></tr>

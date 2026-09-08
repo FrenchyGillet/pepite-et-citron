@@ -17,14 +17,11 @@
  */
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import webpush from 'web-push';
-import { createClient } from '@supabase/supabase-js';
+import { supabaseAdmin as supabase } from './_lib/supabaseAdmin';
+import { requireOrgAdmin } from './_lib/auth';
+import { pushNotificationSchema } from './_lib/validation';
 
 const APP_URL = process.env.VITE_APP_URL || 'https://pepite-citron.com';
-
-const supabase = createClient(
-  process.env.VITE_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!,
-);
 
 const VAPID_PUBLIC_KEY  = process.env.VAPID_PUBLIC_KEY;
 const VAPID_PRIVATE_KEY = process.env.VAPID_PRIVATE_KEY;
@@ -39,23 +36,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(200).json({ skipped: true });
   }
 
-  // Verify caller JWT
-  const token = req.headers.authorization?.replace('Bearer ', '');
-  if (!token) return res.status(401).json({ error: 'Unauthorized' });
+  const parsed = pushNotificationSchema.safeParse(req.body);
+  if (!parsed.success) return res.status(400).json({ error: 'Requête invalide' });
+  const { orgId, type, matchLabel } = parsed.data;
 
-  const { data: { user }, error: authError } = await supabase.auth.getUser(token);
-  if (authError || !user) return res.status(401).json({ error: 'Invalid token' });
-
-  const { orgId, type, matchLabel } = req.body as {
-    orgId?: string;
-    type?: 'vote_open' | 'results_ready';
-    matchLabel?: string;
-    matchId?: string;
-  };
-
-  if (!orgId || !type || !matchLabel) {
-    return res.status(400).json({ error: 'Missing params' });
-  }
+  // Only an admin of this org may push to its subscribers.
+  const auth = await requireOrgAdmin(req, orgId);
+  if (!auth.ok) return res.status(auth.status).json({ error: auth.error });
 
   // Fetch all push subscriptions for this org
   const { data: subs, error: subsErr } = await supabase
