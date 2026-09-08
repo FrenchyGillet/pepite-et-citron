@@ -1,6 +1,6 @@
 import { useState, useEffect, type ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { formatDate } from '@/utils';
+import { formatDate, PEPITE_POINTS } from '@/utils';
 import { computeResultsSummary } from '@/utils/scoring';
 import { Scoreboard } from './Scoreboard';
 import { PodiumView } from './PodiumView';
@@ -116,6 +116,7 @@ export function ResultsView({ players, match, isAdmin, isDark, orgId, isPro, onU
 
   const present = players.filter(p => (match.present_ids || []).includes(p.id));
   const phase = match.phase || 'voting';
+  const pepiteCount = match.pepite_count ?? 2;
 
   const MatchHeader = ({ badge }: { badge: ReactNode }) => (
     <div className="flex-between mt-4 mb-12">
@@ -158,6 +159,19 @@ export function ResultsView({ players, match, isAdmin, isDark, orgId, isPro, onU
 
     const playerName = (id: EntityId | undefined) => players.find(p => p.id === id)?.name || '?';
 
+    // Pépite rows shown on the reveal card — driven by the match mode so the
+    // 3-pépite scale (3-2-1) and the 3rd pick are never hidden.
+    const pepitePoints = PEPITE_POINTS[pepiteCount];
+    const pepiteRows = currentVote
+      ? [
+          { rank: 1, label: 'La Pépite', id: currentVote.best1_id, comment: currentVote.best1_comment },
+          { rank: 2, label: '2ème',      id: currentVote.best2_id, comment: currentVote.best2_comment },
+          ...(pepiteCount === 3
+            ? [{ rank: 3, label: '3ème', id: currentVote.best3_id, comment: currentVote.best3_comment }]
+            : []),
+        ]
+      : [];
+
     const handleNext = () => {
       const next = revealedCount + 1;
       setLocalRevealedCount(next);
@@ -193,22 +207,22 @@ export function ResultsView({ players, match, isAdmin, isDark, orgId, isPro, onU
             </div>
 
             <div>
-              <div style={{ display: 'flex', alignItems: 'flex-start', gap: 14, padding: '16px 16px 14px', borderBottom: '1px solid var(--separator)', borderLeft: '4px solid var(--gold)' }}>
-                <div style={{ fontSize: 26, lineHeight: 1 }}>⭐</div>
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--gold)', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 4 }}>La Pépite · 2 pts</div>
-                  <div style={{ fontSize: 22, fontWeight: 800, color: 'var(--gold)', letterSpacing: '-0.3px', lineHeight: 1.1 }}>{playerName(currentVote.best1_id)}</div>
-                  {currentVote.best1_comment && <div style={{ fontSize: 12, color: 'var(--label3)', fontStyle: 'italic', marginTop: 5 }}>"{currentVote.best1_comment}"</div>}
-                </div>
-              </div>
-              <div style={{ display: 'flex', alignItems: 'flex-start', gap: 14, padding: '14px 16px', borderBottom: '1px solid var(--separator)', borderLeft: '4px solid rgba(255,214,10,0.35)' }}>
-                <div style={{ fontSize: 22, lineHeight: 1, opacity: 0.5 }}>⭐</div>
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontSize: 10, fontWeight: 700, color: 'rgba(255,214,10,0.5)', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 4 }}>2ème · 1 pt</div>
-                  <div style={{ fontSize: 19, fontWeight: 700, color: 'var(--label)', letterSpacing: '-0.2px' }}>{playerName(currentVote.best2_id)}</div>
-                  {currentVote.best2_comment && <div style={{ fontSize: 12, color: 'var(--label3)', fontStyle: 'italic', marginTop: 5 }}>"{currentVote.best2_comment}"</div>}
-                </div>
-              </div>
+              {pepiteRows.map((row, i) => {
+                const first = i === 0;
+                const points = pepitePoints[row.rank - 1];
+                return (
+                  <div key={row.rank} style={{ display: 'flex', alignItems: 'flex-start', gap: 14, padding: first ? '16px 16px 14px' : '14px 16px', borderBottom: '1px solid var(--separator)', borderLeft: `4px solid ${first ? 'var(--gold)' : 'rgba(255,214,10,0.35)'}` }}>
+                    <div style={{ fontSize: first ? 26 : 22, lineHeight: 1, opacity: first ? 1 : 0.5 }}>⭐</div>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontSize: 10, fontWeight: 700, color: first ? 'var(--gold)' : 'rgba(255,214,10,0.5)', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 4 }}>
+                        {row.label} · {points} pt{points > 1 ? 's' : ''}
+                      </div>
+                      <div style={{ fontSize: first ? 22 : 19, fontWeight: first ? 800 : 700, color: first ? 'var(--gold)' : 'var(--label)', letterSpacing: '-0.3px', lineHeight: 1.1 }}>{playerName(row.id)}</div>
+                      {row.comment && <div style={{ fontSize: 12, color: 'var(--label3)', fontStyle: 'italic', marginTop: 5 }}>"{row.comment}"</div>}
+                    </div>
+                  </div>
+                );
+              })}
               <div style={{ display: 'flex', alignItems: 'flex-start', gap: 14, padding: '14px 16px 16px', borderLeft: '4px solid var(--lemon)' }}>
                 <div style={{ fontSize: 24, lineHeight: 1 }}>🍋</div>
                 <div style={{ flex: 1, minWidth: 0 }}>
@@ -232,7 +246,18 @@ export function ResultsView({ players, match, isAdmin, isDark, orgId, isPro, onU
             <div style={{ fontSize: 13, color: 'var(--label3)', marginBottom: 16 }}>Affiche le classement définitif pour tout le monde.</div>
             <button className="btn btn-primary btn-full" onClick={handleFinish}>Afficher le classement final</button>
           </div>
-        ) : null}
+        ) : (
+          // Vote référencé par reveal_order mais introuvable (supprimé, ou pas
+          // encore synchronisé) — ne jamais bloquer le dépouillement.
+          <div style={{ background: 'var(--bg2)', borderRadius: 'var(--radius-lg)', padding: '24px 16px', textAlign: 'center', marginBottom: 16 }}>
+            <div style={{ fontSize: 28, marginBottom: 8 }}>⏭️</div>
+            <div style={{ fontSize: 15, fontWeight: 700, marginBottom: 4 }}>Ce vote n'est plus disponible</div>
+            <div style={{ fontSize: 13, color: 'var(--label3)', marginBottom: 16 }}>Il a peut-être été supprimé. Passe au suivant.</div>
+            <button className="btn btn-primary btn-full" onClick={handleNext}>
+              {revealedCount + 1 < revealOrder.length ? 'Vote suivant →' : 'Voir le classement final →'}
+            </button>
+          </div>
+        )}
 
         {revealedCount > 0 && (
           <div style={{
@@ -252,7 +277,7 @@ export function ResultsView({ players, match, isAdmin, isDark, orgId, isPro, onU
                 Classement provisoire · {revealedCount}/{revealOrder.length} vote{revealedCount > 1 ? 's' : ''} révélé{revealedCount > 1 ? 's' : ''}
               </span>
             </div>
-            <Scoreboard votes={revealedVotes} present={present} allPlayers={players} pepiteCount={match.pepite_count ?? 2} />
+            <Scoreboard votes={revealedVotes} present={present} allPlayers={players} pepiteCount={pepiteCount} />
           </div>
         )}
       </div>
@@ -265,7 +290,7 @@ export function ResultsView({ players, match, isAdmin, isDark, orgId, isPro, onU
   const {
     pepiteRanked, lemonRanked, ghosts,
     bestTied, lemonTied, bestTiedPlayers, lemonTiedPlayers,
-  } = computeResultsSummary(votes, present, players, match.pepite_count ?? 2);
+  } = computeResultsSummary(votes, present, players, pepiteCount);
 
   const setTiebreaker = (field: string, playerId: EntityId) => {
     updateMatchMutation.mutate({ id: match.id, data: { tiebreakers: { ...tiebreakers, [field]: playerId } } });
@@ -360,7 +385,7 @@ export function ResultsView({ players, match, isAdmin, isDark, orgId, isPro, onU
         </div>
       ) : (
         <div style={{ animation: 'podiumReveal 0.5s cubic-bezier(0.22, 1, 0.36, 1)' }}>
-          <PodiumView votes={votes} present={present} allPlayers={players} tiebreakers={tiebreakers} pepiteCount={match.pepite_count ?? 2} />
+          <PodiumView votes={votes} present={present} allPlayers={players} tiebreakers={tiebreakers} pepiteCount={pepiteCount} />
           {pepiteRanked.length > 0 && (
             <div style={{ marginTop: 16, display: 'flex', flexDirection: 'column', gap: 10 }}>
               <SharePodiumButton

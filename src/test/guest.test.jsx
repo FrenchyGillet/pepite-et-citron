@@ -1,12 +1,17 @@
 import { screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { __resetDemoState, __demoAPI } from "@/App.jsx";
+import { api } from "@/api";
 import { useAppStore } from "@/store/appStore";
 import { renderApp } from "./renderApp";
 
 beforeEach(() => {
   __resetDemoState();
+});
+
+afterEach(() => {
+  vi.restoreAllMocks();
 });
 
 describe("Guest token flow", () => {
@@ -28,6 +33,21 @@ describe("Guest token flow", () => {
     expect(
       await screen.findByText(/Ce lien a déjà été utilisé ou n'existe pas\./i)
     ).toBeInTheDocument();
+  });
+
+  it("network failure while validating a token falls back to the error screen (B4)", async () => {
+    const match = await __demoAPI.createMatch("Match test", [1, 2, 3, 4, 5], null, 1);
+    const token = await __demoAPI.createGuestToken("Tonton", match.id);
+    // The token is valid but resolving the match throws (flaky network).
+    vi.spyOn(api, "getMatchById").mockRejectedValueOnce(new Error("network"));
+
+    renderApp({ initialPath: `/vote?guest=${token}` });
+
+    expect(
+      await screen.findByText(/Ce lien a déjà été utilisé ou n'existe pas\./i)
+    ).toBeInTheDocument();
+    // never stuck on the checking state
+    expect(screen.queryByText(/Vérification/i)).toBeNull();
   });
 
   it("used/consumed token shows error", async () => {

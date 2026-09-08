@@ -79,4 +79,44 @@ describe("Results view phases", () => {
     // Baptiste should appear in the running scoreboard
     expect(await screen.findByText("Baptiste")).toBeInTheDocument();
   });
+
+  it("counting: 3-pépite mode shows the 3-2-1 scale and the 3rd pick (B5)", async () => {
+    const match = await __demoAPI.createMatch("Match 3 pépites", [1, 2, 3, 4, 5], null, 1, 3);
+    await __demoAPI.submitVote({
+      match_id: match.id,
+      voter_name: "Antoine",
+      best1_id: 2, // Baptiste
+      best2_id: 3, // Clément
+      best3_id: 5, // Étienne
+      lemon_id: 4, // David
+    });
+    const votes = await __demoAPI.getVotes(match.id);
+    await __demoAPI.startCounting(match.id, votes.map((v) => v.id));
+
+    renderApp();
+    const user = userEvent.setup();
+    await user.click(await screen.findByRole("button", { name: /résultats/i }));
+    await screen.findByText("Dépouillement");
+
+    expect(await screen.findByText("La Pépite · 3 pts")).toBeInTheDocument();
+    expect(screen.getByText("2ème · 2 pts")).toBeInTheDocument();
+    expect(screen.getByText("3ème · 1 pt")).toBeInTheDocument();
+    expect(screen.getByText("Étienne")).toBeInTheDocument();
+  });
+
+  it("counting: an unknown vote id in reveal_order never blocks the dépouillement (B6)", async () => {
+    const match = await __demoAPI.createMatch("Match test", [1, 2, 3, 4, 5], null, 1);
+    // reveal_order points at a vote that does not exist
+    await __demoAPI.startCounting(match.id, [999]);
+
+    renderApp();
+    const user = userEvent.setup();
+    await user.click(await screen.findByRole("button", { name: /résultats/i }));
+    await screen.findByText("Dépouillement");
+
+    expect(await screen.findByText(/Ce vote n'est plus disponible/i)).toBeInTheDocument();
+    // the advance button still works → dépouillement can finish
+    await user.click(await screen.findByRole("button", { name: /classement final/i }));
+    expect(await screen.findByText(/Tous les votes ont été révélés/i)).toBeInTheDocument();
+  });
 });

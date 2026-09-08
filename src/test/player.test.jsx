@@ -1,7 +1,8 @@
 import { screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { __resetDemoState, __demoAPI } from "@/App.jsx";
+import { api } from "@/api";
 import { renderApp } from "./renderApp";
 
 let matchId;
@@ -12,10 +13,31 @@ beforeEach(async () => {
   matchId = match.id;
 });
 
+afterEach(() => {
+  vi.restoreAllMocks();
+});
+
 describe("Player voting flow", () => {
   it("shows voter name selection when match is active", async () => {
     renderApp();
     expect(await screen.findByText("Qui es-tu ?")).toBeInTheDocument();
+  });
+
+  it("a failed hasVoted check surfaces an error instead of hanging (B3)", async () => {
+    vi.spyOn(api, "hasVoted").mockRejectedValueOnce(new Error("network"));
+
+    renderApp();
+    const user = userEvent.setup();
+
+    await screen.findByText("Qui es-tu ?");
+    await user.click(screen.getByRole("button", { name: "Antoine" }));
+    await user.click(screen.getByRole("button", { name: "Continuer" }));
+
+    expect(await screen.findByText(/Connexion instable/i)).toBeInTheDocument();
+    // button is back to its normal label, not stuck on "Vérification…"
+    expect(await screen.findByRole("button", { name: "Continuer" })).toBeEnabled();
+    // still on step 0
+    expect(screen.getByText("Qui es-tu ?")).toBeInTheDocument();
   });
 
   it("completes full 4-step vote flow", async () => {
