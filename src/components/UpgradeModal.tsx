@@ -30,9 +30,13 @@ export function UpgradeModal({ orgId, onClose }: Props) {
     setLoading(true);
     setError(null);
     try {
+      const { supabase } = await import('@/lib/supabase');
+      const { data: { session } } = await supabase.auth.getSession();
+      const token = session?.access_token;
+      if (!token) throw new Error('Session expirée, reconnecte-toi');
       const res = await fetch('/api/create-checkout-session', {
         method:  'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body:    JSON.stringify({ orgId, plan }),
       });
       const data = await res.json() as { url?: string; error?: string };

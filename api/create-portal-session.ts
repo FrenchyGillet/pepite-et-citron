@@ -1,23 +1,25 @@
 import Stripe from 'stripe';
-import { createClient } from '@supabase/supabase-js';
 import type { VercelRequest, VercelResponse } from '@vercel/node';
+import { supabaseAdmin } from './_lib/supabaseAdmin';
+import { requireOrgAdmin } from './_lib/auth';
+import { portalSessionSchema } from './_lib/validation';
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!);
-
-const supabase = createClient(
-  process.env.VITE_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!,
-);
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  const { orgId } = req.body as { orgId?: string };
-  if (!orgId) return res.status(400).json({ error: 'Missing orgId' });
+  const parsed = portalSessionSchema.safeParse(req.body);
+  if (!parsed.success) return res.status(400).json({ error: 'Requête invalide' });
+  const { orgId } = parsed.data;
 
-  const { data: org, error } = await supabase
+  // Only an admin of this org may open its Stripe billing portal.
+  const auth = await requireOrgAdmin(req, orgId);
+  if (!auth.ok) return res.status(auth.status).json({ error: auth.error });
+
+  const { data: org, error } = await supabaseAdmin
     .from('organizations')
     .select('stripe_customer_id')
     .eq('id', orgId)
