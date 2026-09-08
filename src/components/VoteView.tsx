@@ -2,7 +2,7 @@ import { useState, useRef, useEffect } from 'react';
 import { api } from '@/api';
 import { markVotedLocally, classifyVoteError, getStoredVoterIdentity, saveVoterIdentity, loadVoteDraft, saveVoteDraft, clearVoteDraft } from '@/utils/vote';
 import { saveOfflineVote, isNetworkError } from '@/utils/offlineVote';
-import { useVotes } from '@/hooks/queries';
+import { useVoteCount } from '@/hooks/queries';
 import type { Player, Match, EntityId } from '@/types';
 
 interface VoteViewProps {
@@ -87,8 +87,7 @@ export function VoteView({ players, match, onVoted, guestName = null, onGuestVot
   const absent  = players.filter(p => !presentIds.includes(p.id));
 
   // Real-time vote count — updated via Realtime subscription in useRealtime()
-  const { data: votes = [] } = useVotes(match.id);
-  const voteCount    = votes.length;
+  const { data: voteCount = 0 } = useVoteCount(match.id);
   const presentCount = present.length;
 
   const checkAndNext = async () => {

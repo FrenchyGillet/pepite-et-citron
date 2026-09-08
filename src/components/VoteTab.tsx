@@ -3,7 +3,7 @@ import { api, DEMO_MODE } from '@/api';
 import { useAppStore } from '@/store/appStore';
 import { track, EVENTS } from '@/utils/analytics';
 import { hasVotedLocally } from '@/utils/vote';
-import { useVotes } from '@/hooks/queries';
+import { useVoteCount } from '@/hooks/queries';
 import { VoteView } from './VoteView';
 import { EmptyState } from './EmptyState';
 import { GuestPromoView } from './GuestPromoView';
@@ -57,8 +57,7 @@ export function VoteTab({ isAdmin, activeMatch, lastMatch, players, isLoading = 
   const phase = activeMatch?.phase || 'voting';
 
   // Real-time vote count for post-vote confirmation screen
-  const { data: votes = [] } = useVotes(activeMatch?.id);
-  const voteCount    = votes.length;
+  const { data: voteCount = 0 } = useVoteCount(activeMatch?.id);
   const presentCount = activeMatch?.present_ids?.length ?? 0;
 
   if (guestStatus === 'checking') return (

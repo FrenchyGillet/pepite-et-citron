@@ -1,8 +1,23 @@
-import { screen } from "@testing-library/react";
+import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it } from "vitest";
+import { MemoryRouter } from "react-router-dom";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { __resetDemoState, __demoAPI } from "@/App.jsx";
+import { ResultsView } from "@/components/ResultsView";
 import { renderApp } from "./renderApp";
+
+/** Render ResultsView in isolation (needed to exercise isAdmin=false). */
+function renderResults(props) {
+  const qc = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } });
+  return render(
+    <MemoryRouter>
+      <QueryClientProvider client={qc}>
+        <ResultsView isDark={false} {...props} />
+      </QueryClientProvider>
+    </MemoryRouter>
+  );
+}
 
 beforeEach(() => {
   __resetDemoState();
@@ -118,5 +133,25 @@ describe("Results view phases", () => {
     // the advance button still works → dépouillement can finish
     await user.click(await screen.findByRole("button", { name: /classement final/i }));
     expect(await screen.findByText(/Tous les votes ont été révélés/i)).toBeInTheDocument();
+  });
+
+  it("counting: a non-admin watcher gets a status view, no reveal controls", async () => {
+    const players = [
+      { id: 1, name: "Antoine" }, { id: 2, name: "Baptiste" },
+      { id: 3, name: "Clément" }, { id: 4, name: "David" }, { id: 5, name: "Étienne" },
+    ];
+    const match = {
+      id: 1, label: "Match test", is_open: false, phase: "counting",
+      present_ids: [1, 2, 3, 4, 5], reveal_order: [10, 11, 12], revealed_count: 1,
+      season: 1, team_id: null, created_at: "2026-01-01T00:00:00Z", pepite_count: 2,
+    };
+
+    renderResults({ players, match, isAdmin: false });
+
+    expect(await screen.findByText(/Dépouillement en cours/i)).toBeInTheDocument();
+    expect(screen.getByText(/Vote 1 \/ 3 révélé par l/i)).toBeInTheDocument();
+    // no reveal controls for a watcher
+    expect(screen.queryByRole("button", { name: /vote suivant/i })).toBeNull();
+    expect(screen.queryByRole("button", { name: /classement final/i })).toBeNull();
   });
 });

@@ -72,8 +72,12 @@ export const handlers = [
   http.get (`${AUTH}/user`,   () => HttpResponse.json(null)),
 
   // ── Supabase RPC functions ─────────────────────────────────────────────────
-  http.post(`${RPC}/create_organization`, () => HttpResponse.json(null)),
-  http.post(`${RPC}/get_my_orgs`,         () => HttpResponse.json([])),
-  http.post(`${RPC}/get_org_members`,     () => HttpResponse.json([])),
-  http.post(`${RPC}/add_org_member`,      () => HttpResponse.json(null)),
+  http.post(`${RPC}/create_organization`,    () => HttpResponse.json(null)),
+  http.post(`${RPC}/get_my_orgs`,            () => HttpResponse.json([])),
+  http.post(`${RPC}/get_org_members`,        () => HttpResponse.json([])),
+  http.post(`${RPC}/add_org_member`,         () => HttpResponse.json(null)),
+  http.post(`${RPC}/get_match_votes`,        () => HttpResponse.json([])),
+  http.post(`${RPC}/get_all_votes`,          () => HttpResponse.json([])),
+  http.post(`${RPC}/get_match_vote_count`,   () => HttpResponse.json(0)),
+  http.post(`${RPC}/has_voted`,              () => HttpResponse.json(false)),
 ];
