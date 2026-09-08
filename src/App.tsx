@@ -26,6 +26,7 @@ import { useLastMatch }      from '@/hooks/useLastMatch';
 import { useRealtime }       from '@/hooks/useRealtime';
 import { useOfflineSync }    from '@/hooks/useOfflineSync';
 import { useWakeUp }         from '@/hooks/useWakeUp';
+import { refreshCoreData }   from '@/lib/refresh';
 import { usePlayers }        from '@/hooks/queries';
 import { useAppStore }       from '@/store/appStore';
 import { useSearchParams }   from 'react-router-dom';
@@ -117,9 +118,7 @@ export default function App() {
 
   // ── Pull-to-refresh ─────────────────────────────────────────────────────
   const queryClient = useQueryClient();
-  const handleRefresh = useCallback(async () => {
-    await queryClient.invalidateQueries();
-  }, [queryClient]);
+  const handleRefresh = useCallback(() => refreshCoreData(queryClient), [queryClient]);
   const { pullY, isRefreshing } = usePullToRefresh({
     onRefresh: handleRefresh,
     disabled:  DEMO_MODE,

@@ -7,12 +7,20 @@
  *
  * Ne se déclenche que quand la page est déjà scrollée tout en haut (scrollY ≈ 0).
  * Désactivé quand isRefreshing est déjà true.
+ *
+ * Garanties anti-blocage :
+ *  - `triggerRefresh` borne l'attente à PTR_TIMEOUT et avale les erreurs : le
+ *    spinner se termine toujours, même si le réseau ne revient jamais.
+ *  - `touchcancel` (émis par iOS au lieu de `touchend` sur multi-touch /
+ *    interruption système) est traité comme `touchend`.
+ *  - le déclenchement du refresh se fait hors de tout updater `setState`.
  */
 import { useState, useEffect, useRef, useCallback } from 'react';
 
 export const PTR_THRESHOLD = 72; // px à tirer pour déclencher le refresh
 const PTR_MAX     = 110;         // cap élastique
 const PTR_DAMPING = 0.45;        // résistance rubber-band au-delà du threshold
+const PTR_TIMEOUT = 7_000;       // plafond dur : le geste se termine toujours
 
 interface UsePullToRefreshOptions {
   onRefresh: () => Promise<void>;
@@ -28,20 +36,34 @@ export function usePullToRefresh({ onRefresh, disabled = false }: UsePullToRefre
   const canPull     = useRef(false); // true UNIQUEMENT si touchstart a eu lieu à scrollY ≈ 0
   const pulling     = useRef(false); // true dès qu'on a commencé à tirer vers le bas
   const refreshing  = useRef(false); // mirror de isRefreshing pour les handlers
+  const pullYRef    = useRef(0);     // mirror de pullY, lisible dans les handlers sans effet de bord
+
+  // setPull garde pullYRef synchronisé avec le state
+  const setPull = useCallback((v: number) => {
+    pullYRef.current = v;
+    setPullY(v);
+  }, []);
 
   const triggerRefresh = useCallback(async () => {
     if (refreshing.current) return;
     refreshing.current = true;
     setIsRefreshing(true);
-    setPullY(PTR_THRESHOLD);
+    setPull(PTR_THRESHOLD);
     try {
-      await onRefresh();
+      // Plafond dur : le refetch continue en arrière-plan, on cesse juste
+      // d'attendre visuellement si le réseau ne répond pas.
+      await Promise.race([
+        onRefresh(),
+        new Promise<void>(res => setTimeout(res, PTR_TIMEOUT)),
+      ]);
+    } catch {
+      // Refresh best-effort : une erreur ne doit pas laisser l'UI bloquée.
     } finally {
       refreshing.current = false;
       setIsRefreshing(false);
-      setPullY(0);
+      setPull(0);
     }
-  }, [onRefresh]);
+  }, [onRefresh, setPull]);
 
   useEffect(() => {
     if (disabled) return;
@@ -67,7 +89,7 @@ export function usePullToRefresh({ onRefresh, disabled = false }: UsePullToRefre
       // Scroll vers le haut ou neutre → rien
       if (dy <= 0) {
         pulling.current = false;
-        setPullY(0);
+        setPull(0);
         return;
       }
 
@@ -77,7 +99,7 @@ export function usePullToRefresh({ onRefresh, disabled = false }: UsePullToRefre
       );
       if (scrollable) {
         canPull.current = false;
-        setPullY(0);
+        setPull(0);
         return;
       }
 
@@ -87,43 +109,40 @@ export function usePullToRefresh({ onRefresh, disabled = false }: UsePullToRefre
       const damped = dy < PTR_THRESHOLD
         ? dy
         : PTR_THRESHOLD + (dy - PTR_THRESHOLD) * PTR_DAMPING;
-      setPullY(Math.min(damped, PTR_MAX));
+      setPull(Math.min(damped, PTR_MAX));
 
       // Empêche le scroll natif UNIQUEMENT quand on est en train de tirer
       e.preventDefault();
     };
 
-    const onTouchEnd = () => {
-      if (!pulling.current || refreshing.current) {
-        setPullY(0);
-        canPull.current = false;
-        pulling.current = false;
-        return;
-      }
+    // touchend ET touchcancel : iOS émet touchcancel au lieu de touchend lors
+    // d'un multi-touch, d'une reprise de geste par le système ou d'une
+    // interruption (appel, Control Center).
+    const endGesture = () => {
+      const reached =
+        pulling.current && !refreshing.current && pullYRef.current >= PTR_THRESHOLD;
 
       canPull.current = false;
       pulling.current = false;
 
-      // Lecture via callback pour avoir la valeur fraîche sans dépendance
-      setPullY(prev => {
-        if (prev >= PTR_THRESHOLD) {
-          void triggerRefresh();
-          return prev; // triggerRefresh positionne à 0 quand fini
-        }
-        return 0; // snap-back
-      });
+      // Déclenchement hors de tout updater setState → pas de double-invoke
+      // StrictMode, pas d'updater impur.
+      if (reached) void triggerRefresh();
+      else setPull(0);
     };
 
-    document.addEventListener('touchstart', onTouchStart, { passive: true  });
-    document.addEventListener('touchmove',  onTouchMove,  { passive: false }); // passive:false requis pour e.preventDefault()
-    document.addEventListener('touchend',   onTouchEnd,   { passive: true  });
+    document.addEventListener('touchstart',  onTouchStart, { passive: true  });
+    document.addEventListener('touchmove',   onTouchMove,  { passive: false }); // passive:false requis pour e.preventDefault()
+    document.addEventListener('touchend',    endGesture,   { passive: true  });
+    document.addEventListener('touchcancel', endGesture,   { passive: true  });
 
     return () => {
-      document.removeEventListener('touchstart', onTouchStart);
-      document.removeEventListener('touchmove',  onTouchMove);
-      document.removeEventListener('touchend',   onTouchEnd);
+      document.removeEventListener('touchstart',  onTouchStart);
+      document.removeEventListener('touchmove',   onTouchMove);
+      document.removeEventListener('touchend',    endGesture);
+      document.removeEventListener('touchcancel', endGesture);
     };
-  }, [disabled, triggerRefresh]);
+  }, [disabled, triggerRefresh, setPull]);
 
   return { pullY, isRefreshing };
 }

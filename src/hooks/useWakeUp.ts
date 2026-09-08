@@ -15,6 +15,7 @@
  */
 import { useEffect } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
+import { refreshCoreData } from '@/lib/refresh';
 
 export function useWakeUp(minHiddenMs = 3_000) {
   const queryClient = useQueryClient();
@@ -30,7 +31,7 @@ export function useWakeUp(minHiddenMs = 3_000) {
       // Visible again — only invalidate if the app was hidden long enough
       // that meaningful server-side changes (votes, match state) may have occurred.
       if (Date.now() - hiddenAt >= minHiddenMs) {
-        void queryClient.invalidateQueries();
+        void refreshCoreData(queryClient);
       }
     };
 
