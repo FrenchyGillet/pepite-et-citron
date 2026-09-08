@@ -9,13 +9,14 @@ vi.hoisted(() => {
   process.env.VITE_APP_URL              = 'https://pepite-citron.com';
 });
 
-const { mockAuth, mockFrom } = vi.hoisted(() => ({
+const { mockAuth, mockFrom, mockRpc } = vi.hoisted(() => ({
   mockAuth: { getUser: vi.fn() },
   mockFrom: vi.fn(),
+  mockRpc:  vi.fn(),
 }));
 
 vi.mock('@supabase/supabase-js', () => ({
-  createClient: () => ({ auth: mockAuth, from: mockFrom }),
+  createClient: () => ({ auth: mockAuth, from: mockFrom, rpc: mockRpc }),
 }));
 
 import { makeReq, makeRes, makeFrom } from './_lib/testUtils';
@@ -23,6 +24,10 @@ import handler from './send-match-notification';
 
 const req = (o: Record<string, unknown> = {}) =>
   makeReq({ body: { orgId: 'org-1', matchLabel: 'PSG vs OM' }, ...o });
+
+// get_org_members RPC — returns { user_id, email, role }; user-1 is the caller
+const withMembers = (rows: Array<{ user_id: string; email: string | null }>) =>
+  mockRpc.mockResolvedValue({ data: rows, error: null });
 
 describe('POST /api/send-match-notification', () => {
   beforeEach(() => {
@@ -33,9 +38,13 @@ describe('POST /api/send-match-notification', () => {
 
     mockFrom.mockImplementation(makeFrom({
       role: 'admin',
-      members: [{ email: 'alice@example.com' }, { email: 'bob@example.com' }],
       tables: { organizations: { data: { id: 'org-1', name: 'Les Lions', slug: 'lions' }, error: null } },
     }));
+    withMembers([
+      { user_id: 'user-1', email: 'caller@example.com' },
+      { user_id: 'user-2', email: 'alice@example.com' },
+      { user_id: 'user-3', email: 'bob@example.com' },
+    ]);
 
     (global.fetch as ReturnType<typeof vi.fn>).mockResolvedValue({
       ok: true, text: vi.fn().mockResolvedValue(''),
@@ -87,16 +96,19 @@ describe('POST /api/send-match-notification', () => {
     expect(res.statusCode).toBe(400);
   });
 
-  it('returns {sent: 0} when there are no other members', async () => {
-    mockFrom.mockImplementation(makeFrom({
-      role: 'admin',
-      members: [],
-      tables: { organizations: { data: { id: 'org-1', name: 'Les Lions', slug: 'lions' }, error: null } },
-    }));
+  it('returns {sent: 0} when the caller is the only member', async () => {
+    withMembers([{ user_id: 'user-1', email: 'caller@example.com' }]);
     const res = makeRes();
     await handler(req() as any, res as any);
     expect(res.body).toMatchObject({ sent: 0 });
     expect(global.fetch).not.toHaveBeenCalled();
+  });
+
+  it('returns {sent: 0} when the RPC errors', async () => {
+    mockRpc.mockResolvedValue({ data: null, error: { message: 'boom' } });
+    const res = makeRes();
+    await handler(req() as any, res as any);
+    expect(res.body).toMatchObject({ sent: 0 });
   });
 
   it('calls Brevo and returns {sent: N} for an admin caller', async () => {

@@ -44,14 +44,22 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   if (!org) return res.status(404).json({ error: 'Org not found' });
 
-  // Fetch all org members with emails (excluding the caller — they already know)
-  const { data: members } = await supabase
-    .from('org_members')
-    .select('email, role')
-    .eq('org_id', orgId)
-    .neq('user_id', auth.userId);
+  // Member emails live on auth.users, not org_members — go through the
+  // SECURITY DEFINER RPC that joins them (get_org_members returns
+  // { user_id, email, role }). Exclude the caller — they already know.
+  const { data: members, error: membersErr } = await supabase
+    .rpc('get_org_members', { target_org_id: orgId });
 
-  const recipients = (members ?? []).map(m => m.email).filter(Boolean);
+  if (membersErr) {
+    console.error('get_org_members error:', membersErr);
+    return res.status(200).json({ sent: 0 });
+  }
+
+  const recipients = (members ?? [])
+    .filter((m: { user_id: string; email: string | null }) => m.user_id !== auth.userId)
+    .map((m: { email: string | null }) => m.email)
+    .filter((email: string | null): email is string => Boolean(email));
+
   if (recipients.length === 0) {
     return res.status(200).json({ sent: 0 });
   }

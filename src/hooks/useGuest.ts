@@ -60,7 +60,9 @@ export function useGuest() {
       void api.getOrgBySlug(orgSlug).then(org => {
         if (org) {
           setCurrentOrgId(org.id);
-          if (!useAppStore.getState().currentOrg) setCurrentOrg(org);
+          // No role on a slug-resolved org — force null so isAdmin stays false
+          // until loadOrgs() confirms the real membership.
+          if (!useAppStore.getState().currentOrg) setCurrentOrg({ ...org, role: null });
           // Remember this org so we can auto-join after signup (instead of OrgSetupView)
           setPendingOrgId(org.id);
           setPendingOrgName(org.name);

@@ -19,7 +19,7 @@ function writeOrgsCache(orgs: Org[], currentOrgId: string | null) {
   try { localStorage.setItem(ORGS_CACHE_KEY, JSON.stringify({ orgs, currentOrgId })); }
   catch { /* quota exceeded or private mode — ignore */ }
 }
-function clearOrgsCache() {
+export function clearOrgsCache() {
   try { localStorage.removeItem(ORGS_CACHE_KEY); } catch { /* ignore */ }
 }
 
