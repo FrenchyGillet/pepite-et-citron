@@ -300,7 +300,11 @@ export function StatsView({ players, activeMatch, isAdmin, orgId }: StatsViewPro
                           {allTeams.length > 0 && (
                             <select
                               value={editingMatch.team_id != null ? String(editingMatch.team_id) : ''}
-                              onChange={e => setEditingMatch(em => em ? { ...em, team_id: e.target.value ? parseInt(e.target.value) : null } : em)}
+                              onChange={e => {
+                                // Resolve back to the real team id (int today, could be uuid) — no parseInt.
+                                const picked = allTeams.find(t => String(t.id) === e.target.value)?.id ?? null;
+                                setEditingMatch(em => em ? { ...em, team_id: picked } : em);
+                              }}
                               style={{ background: 'var(--bg3)', color: 'var(--label)', border: 'none', borderRadius: 'var(--radius-sm)', padding: '12px 14px', fontSize: 15, width: '100%', outline: 'none' }}>
                               <option value="">Sans équipe</option>
                               {allTeams.map(t => <option key={String(t.id)} value={String(t.id)}>{t.name}</option>)}

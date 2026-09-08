@@ -14,7 +14,7 @@ declare const self: ServiceWorkerGlobalScope;
 
 import { precacheAndRoute, cleanupOutdatedCaches } from 'workbox-precaching';
 import { registerRoute }                            from 'workbox-routing';
-import { NetworkFirst, StaleWhileRevalidate, CacheFirst } from 'workbox-strategies';
+import { StaleWhileRevalidate, CacheFirst } from 'workbox-strategies';
 import { ExpirationPlugin }    from 'workbox-expiration';
 import { CacheableResponsePlugin } from 'workbox-cacheable-response';
 
@@ -24,18 +24,13 @@ cleanupOutdatedCaches();
 
 // ── Runtime caching ───────────────────────────────────────────────────────────
 
-// Supabase API → Network-first (fresh data; cache fallback when offline)
-registerRoute(
-  ({ url }) => url.hostname.endsWith('.supabase.co'),
-  new NetworkFirst({
-    cacheName: 'supabase-api',
-    networkTimeoutSeconds: 10,
-    plugins: [
-      new ExpirationPlugin({ maxEntries: 100, maxAgeSeconds: 5 * 60 }),
-      new CacheableResponsePlugin({ statuses: [0, 200] }),
-    ],
-  }),
-);
+// NOTE: there is deliberately NO Supabase runtime cache.
+//  - In production every Supabase call goes through the same-origin /sb-api
+//    proxy (src/lib/supabase.ts), so a `*.supabase.co` matcher never fired.
+//  - Caching authenticated PostgREST responses in the (shared, not
+//    Authorization-keyed) Cache Storage would leak one user's data to the next
+//    person using the same browser profile.
+//  - Offline UX is already covered by the persisted TanStack Query cache.
 
 // Google Fonts → Stale-while-revalidate
 registerRoute(
