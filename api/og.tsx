@@ -107,7 +107,7 @@ export default function handler() {
 
         {/* ── Feature pills ── */}
         <div style={{ display: 'flex', gap: 12 }}>
-          {['Vote anonyme', 'Résultats en direct', 'Stats de saison'].map(f => (
+          {['Vote en un geste', 'Résultats en direct', 'Stats de saison'].map(f => (
             <div key={f} style={{
               display:      'flex',
               background:   'rgba(255,255,255,0.06)',
