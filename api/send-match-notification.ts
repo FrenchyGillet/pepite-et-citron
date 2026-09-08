@@ -55,10 +55,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(200).json({ sent: 0 });
   }
 
-  const recipients = (members ?? [])
-    .filter((m: { user_id: string; email: string | null }) => m.user_id !== auth.userId)
-    .map((m: { email: string | null }) => m.email)
-    .filter((email: string | null): email is string => Boolean(email));
+  type OrgMemberRow = { user_id: string; email: string | null };
+  const recipients = ((members ?? []) as OrgMemberRow[])
+    .filter(m => m.user_id !== auth.userId)
+    .map(m => m.email)
+    .filter((email): email is string => Boolean(email));
 
   if (recipients.length === 0) {
     return res.status(200).json({ sent: 0 });

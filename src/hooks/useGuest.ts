@@ -15,7 +15,6 @@ export function useGuest() {
   const setPendingOrgId    = useAppStore(s => s.setPendingOrgId);
   const setPendingOrgName  = useAppStore(s => s.setPendingOrgName);
 
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     const guestParam = searchParams.get('guest');
     const orgSlug    = searchParams.get('org');
@@ -71,5 +70,7 @@ export function useGuest() {
         // Slug lookup failed — leave the user on the normal (non-org) screen.
       });
     }
-  }, []); // intentional: runs once on mount
+    // Reads the initial URL params once on mount; the store setters are stable.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 }

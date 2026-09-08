@@ -57,7 +57,9 @@ export function usePushNotifications(): UsePushNotificationsReturn {
       const reg = await navigator.serviceWorker.ready;
       const sub = await reg.pushManager.subscribe({
         userVisibleOnly:     true,
-        applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY),
+        // Uint8Array is a valid applicationServerKey at runtime; the lib's
+        // BufferSource type is over-narrow across @types/react versions.
+        applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY) as BufferSource,
       });
 
       // La souscription doit être persistée en DB pour que le serveur puisse

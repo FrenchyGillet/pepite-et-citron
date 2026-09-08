@@ -5,7 +5,6 @@
  * Apparaît sous le header et suit le doigt jusqu'au threshold,
  * puis tourne en spinner pendant le refresh.
  */
-import React from 'react';
 import { PTR_THRESHOLD } from '@/hooks/usePullToRefresh';
 
 interface Props {

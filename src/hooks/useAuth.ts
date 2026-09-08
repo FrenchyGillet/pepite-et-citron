@@ -24,7 +24,6 @@ export function useAuth() {
     navigate('/vote');
   }, [navigate, queryClient, setSession, setCurrentOrg]);
 
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     if (DEMO_MODE) return;
 
@@ -91,7 +90,10 @@ export function useAuth() {
       // valid, orgs haven't changed; no need to hit the server again.
     });
     return () => sub?.unsubscribe?.();
-  }, []); // intentional: stable Zustand actions + queryClient
+    // Bootstrap must run exactly once — Zustand actions are stable, queryClient
+    // is app-lifetime. Adding them would re-run the whole auth bootstrap.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   return { handleSignOut };
 }
