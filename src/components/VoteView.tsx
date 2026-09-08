@@ -173,7 +173,7 @@ export function VoteView({ players, match, onVoted, guestName = null, onGuestVot
 
       {step === 0 && !guestName && (
         <>
-          {/* Context banner for first-time anonymous voters */}
+          {/* Context banner for first-time voters */}
           <div style={{
             background: 'linear-gradient(135deg, var(--gold-subtle) 0%, var(--lemon-subtle) 100%)',
             border: '1px solid var(--separator2)',
@@ -187,7 +187,7 @@ export function VoteView({ players, match, onVoted, guestName = null, onGuestVot
             </div>
             <div style={{ fontSize: 12, color: 'var(--label3)', lineHeight: 1.5 }}>
               Désigne le meilleur joueur du match et celui qui a le moins performé.
-              Vote anonyme — personne ne voit qui a voté quoi.
+              Chaque vote est nominatif : l'équipe voit qui a voté quoi.
             </div>
           </div>
           <p className="section-label mb-4">Qui es-tu ?</p>
@@ -484,7 +484,7 @@ export function VoteView({ players, match, onVoted, guestName = null, onGuestVot
             </div>
           </div>
           <p style={{ fontSize: 12, color: 'var(--label3)', textAlign: 'center', marginBottom: 12 }}>
-            Ton vote est anonyme. Assume tes choix.
+            Ton vote est nominatif. Assume tes choix.
           </p>
           {submitError && (
             <div style={{
