@@ -254,9 +254,47 @@
     }
 
     /* ─── HOW IT WORKS ─── */
+    .how-lead {
+      font-size: 13px;
+      font-weight: 700;
+      letter-spacing: 0.6px;
+      text-transform: uppercase;
+      color: var(--label-tertiary);
+      margin: 48px 0 20px;
+    }
+    .how-lead:first-of-type { margin-top: 0; }
+    .how-setup {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      max-width: 620px;
+      margin-bottom: 8px;
+    }
+    .how-setup-step {
+      display: flex;
+      gap: 14px;
+      align-items: flex-start;
+    }
+    .how-setup-num {
+      width: 26px; height: 26px;
+      border-radius: 50%;
+      background: var(--bg-tertiary);
+      border: 1px solid var(--separator);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 12px; font-weight: 700;
+      flex-shrink: 0;
+      color: var(--pepite);
+    }
+    .how-setup-text {
+      font-size: 14.5px;
+      color: var(--label-secondary);
+      line-height: 1.5;
+      padding-top: 2px;
+    }
+    .how-setup-text strong { color: var(--label-primary); font-weight: 700; }
     .how-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+      grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
       gap: 20px;
     }
     .how-card {
@@ -273,9 +311,15 @@
       top: 0; left: 0; right: 0;
       height: 3px;
     }
+    .how-card.setup::before { background: rgba(235,235,245,0.4); }
     .how-card.pepite::before { background: var(--pepite); }
     .how-card.citron::before { background: var(--citron); }
     .how-card.results::before { background: var(--blue); }
+    .phone-confirm.neutral { background: rgba(235,235,245,0.9); color: #000; }
+    .phone-player.present {
+      background: rgba(255,255,255,0.09);
+      color: rgba(255,255,255,0.9);
+    }
 
     .how-phone {
       width: 100%;
@@ -762,16 +806,51 @@
 <section id="comment-ca-marche">
   <div class="section-inner">
     <div class="section-tag">Comment ça marche</div>
-    <h2 class="section-title">Trois étapes, pendant ou après le match.</h2>
-    <p class="section-desc">Le capitaine crée le match, l'équipe vote depuis son téléphone. Résultats en direct, stats de saison automatiques. Zéro inscription pour les joueurs.</p>
+    <h2 class="section-title">Prêt en 2 minutes. Puis 3 taps par match.</h2>
+    <p class="section-desc">Le capitaine (ou n'importe quel membre motivé) crée l'équipe une fois. Ensuite, chaque soir de match, il ouvre le vote et partage le lien. Les joueurs votent depuis leur téléphone — <strong>sans compte, sans app à installer</strong>.</p>
 
+    <div class="how-lead">D'abord — une seule fois</div>
+    <div class="how-setup">
+      <div class="how-setup-step">
+        <div class="how-setup-num">1</div>
+        <div class="how-setup-text"><strong>Crée ton compte et ton équipe.</strong> Un nom, et l'app te donne un lien de partage unique pour toute la saison.</div>
+      </div>
+      <div class="how-setup-step">
+        <div class="how-setup-num">2</div>
+        <div class="how-setup-text"><strong>Ajoute les prénoms de tes joueurs</strong> dans Admin → Effectif. Tu peux aussi créer des équipes-types (titulaires, réserve…) pour aller plus vite.</div>
+      </div>
+      <div class="how-setup-step">
+        <div class="how-setup-num">3</div>
+        <div class="how-setup-text"><strong>Installe l'app sur ton écran d'accueil</strong> (facultatif) — <a href="#installer" style="color:var(--pepite);text-decoration:none;">30 secondes</a>, et elle se lance en plein écran comme une vraie app.</div>
+      </div>
+    </div>
+
+    <div class="how-lead">Puis — à chaque match</div>
     <div class="how-grid">
 
-      <!-- Card 1 — vote pépite -->
-      <div class="how-card pepite">
+      <!-- Card 1 — ouvrir le vote -->
+      <div class="how-card setup">
         <div class="how-step-num">1</div>
         <div class="how-phone">
-          <div class="phone-status"><span>9:41</span><span>●●●</span></div>
+          <div class="phone-status"><span>21:40</span><span>●●●</span></div>
+          <div class="phone-title">Qui est là ce soir ?</div>
+          <div class="phone-player-list">
+            <div class="phone-player present"><span class="dot" style="background:var(--pepite)"></span>Alexandre ✓</div>
+            <div class="phone-player present"><span class="dot" style="background:var(--pepite)"></span>Théo ✓</div>
+            <div class="phone-player"><span class="dot" style="background:#555"></span>Maxime</div>
+            <div class="phone-player present"><span class="dot" style="background:var(--pepite)"></span>Jordan ✓</div>
+          </div>
+          <div class="phone-confirm neutral">Lancer le vote →</div>
+        </div>
+        <div class="how-title">Le capitaine ouvre le vote</div>
+        <div class="how-desc">Coche les joueurs présents, lance le vote et colle le lien dans le groupe WhatsApp. Le vote s'ouvre instantanément sur tous les téléphones.</div>
+      </div>
+
+      <!-- Card 2 — vote pépite -->
+      <div class="how-card pepite">
+        <div class="how-step-num">2</div>
+        <div class="how-phone">
+          <div class="phone-status"><span>21:41</span><span>●●●</span></div>
           <div class="phone-title">⭐ Vote Pépite</div>
           <div class="phone-player-list">
             <div class="phone-player"><span class="dot" style="background:#555"></span>Alexandre</div>
@@ -781,15 +860,15 @@
           </div>
           <div class="phone-confirm">Valider →</div>
         </div>
-        <div class="how-title">Choisissez vos ⭐ Pépites</div>
-        <div class="how-desc">Désignez jusqu'à 3 joueurs qui ont brillé pendant le match. Un classement par les pairs, en un geste.</div>
+        <div class="how-title">Chacun choisit sa ⭐ Pépite</div>
+        <div class="how-desc">Le joueur ouvre le lien, tape son prénom, puis désigne jusqu'à 3 coéquipiers qui ont brillé. Un classement par les pairs, en un geste — pas de compte à créer.</div>
       </div>
 
-      <!-- Card 2 — vote citron -->
+      <!-- Card 3 — vote citron -->
       <div class="how-card citron">
-        <div class="how-step-num">2</div>
+        <div class="how-step-num">3</div>
         <div class="how-phone">
-          <div class="phone-status"><span>9:42</span><span>●●●</span></div>
+          <div class="phone-status"><span>21:42</span><span>●●●</span></div>
           <div class="phone-title">🍋 Vote Citron</div>
           <div class="phone-player-list">
             <div class="phone-player"><span class="dot" style="background:#555"></span>Thomas</div>
@@ -799,16 +878,16 @@
           </div>
           <div class="phone-confirm green">Valider →</div>
         </div>
-        <div class="how-title">Choisissez le 🍋 Citron</div>
-        <div class="how-desc">Pas le plus mauvais — le plus distrait. Celui qui avait la tête ailleurs, qui a fait la bévue du soir, ou qui a involontairement animé le vestiaire. Bienveillant, mais la mémoire collective fait son travail.</div>
+        <div class="how-title">…et son 🍋 Citron</div>
+        <div class="how-desc">Pas le plus mauvais — le plus distrait. Celui qui avait la tête ailleurs, qui a fait la bévue du soir ou qui a involontairement animé le vestiaire. Bienveillant, mais la mémoire collective fait son travail.</div>
       </div>
 
-      <!-- Card 3 — résultats -->
+      <!-- Card 4 — dépouillement & résultats -->
       <div class="how-card results">
-        <div class="how-step-num">3</div>
+        <div class="how-step-num">4</div>
         <div class="how-phone">
-          <div class="phone-status"><span>9:45</span><span>●●●</span></div>
-          <div class="phone-title">📊 Résultats</div>
+          <div class="phone-status"><span>21:55</span><span>●●●</span></div>
+          <div class="phone-title">📊 Classement du match</div>
           <div style="margin-top: 8px;">
             <div class="phone-result-row">
               <div class="phone-rank" style="color:var(--pepite)">⭐</div>
@@ -833,11 +912,15 @@
             </div>
           </div>
         </div>
-        <div class="how-title">Résultats en temps réel</div>
-        <div class="how-desc">Les votes s'accumulent en direct. Les stats de saison se mettent à jour automatiquement.</div>
+        <div class="how-title">Dépouillement & classement</div>
+        <div class="how-desc">Le vote clôturé, le capitaine lance le dépouillement : les bulletins se révèlent un par un, façon podium, pour garder le suspense. La Pépite et le Citron sont couronnés — et les stats de saison se mettent à jour toutes seules.</div>
       </div>
 
     </div>
+
+    <p style="font-size:14px;color:var(--label-tertiary);margin-top:32px;line-height:1.6;">
+      Une saison entière de <strong style="color:var(--label-secondary);font-weight:600;">classements, tendances par joueur et suivi d'assiduité</strong> se construit match après match, sans rien saisir de plus.
+    </p>
   </div>
 </section>
 
