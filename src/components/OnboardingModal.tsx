@@ -42,7 +42,7 @@ const STEPS: Step[] = [
       </>
     ),
     title: 'Partage le lien',
-    desc: "Envoie le lien d'équipe dans ton groupe de discussion. Chaque joueur vote anonymement depuis son téléphone, sans app à installer.",
+    desc: "Envoie le lien d'équipe dans ton groupe de discussion. Chaque joueur vote depuis son téléphone, sans app à installer.",
   },
   {
     color: 'var(--lemon)',
