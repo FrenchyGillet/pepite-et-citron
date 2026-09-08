@@ -1,0 +1,13 @@
+# Vercel turns every file under api/ into a serverless function. Test files
+# (and their helpers) must never ship — they import vitest and would either
+# blow the function count or produce an invalid bundle, failing the deploy.
+**/*.test.ts
+**/*.test.tsx
+**/*.test.js
+**/*.test.jsx
+api/_lib/testUtils.ts
+
+# Not needed at runtime
+src/test/
+eslint.config.js
+tsconfig.api.json
