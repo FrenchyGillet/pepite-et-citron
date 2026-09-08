@@ -135,6 +135,40 @@ describe('computeSeasonStats', () => {
     expect(charlie).toBeUndefined(); // 0 pts → excluded from ranking
   });
 
+  it('credits every player tied at the top score with a win', () => {
+    const matches = [makeMatch(1, [1, 2, 3])];
+    const votes = [
+      makeVote(1, 1, { best1_id: 1 }), // alice 2
+      makeVote(2, 1, { best1_id: 2 }), // bob 2 → tie
+    ];
+    const { rankedBest } = computeSeasonStats(allPlayers, matches, votes, []);
+    expect(rankedBest.find(s => s.name === 'Alice')?.wins).toBe(1);
+    expect(rankedBest.find(s => s.name === 'Bob')?.wins).toBe(1);
+  });
+
+  it('honours a match tiebreaker for the win instead of crediting both', () => {
+    const matches = [{ ...makeMatch(1, [1, 2, 3]), tiebreakers: { best_id: 2 } }];
+    const votes = [
+      makeVote(1, 1, { best1_id: 1 }),
+      makeVote(2, 1, { best1_id: 2 }),
+    ];
+    const { rankedBest } = computeSeasonStats(allPlayers, matches, votes, []);
+    expect(rankedBest.find(s => s.name === 'Bob')?.wins).toBe(1);
+    expect(rankedBest.find(s => s.name === 'Alice')?.wins).toBe(0);
+  });
+
+  it('lemonHistory is consistent with lemonPts even for an absent player', () => {
+    const matches = [makeMatch(1, [1, 2])]; // charlie absent
+    const votes = [
+      makeVote(1, 1, { lemon_id: 3 }), // absent charlie still gets a citron
+      makeVote(2, 1, { lemon_id: 3 }),
+    ];
+    const { rankedLemon } = computeSeasonStats(allPlayers, matches, votes, []);
+    const charlie = rankedLemon.find(s => s.name === 'Charlie');
+    expect(charlie?.lemonPts).toBe(2);
+    expect(charlie?.lemonHistory.reduce((a, b) => a + b, 0)).toBe(2);
+  });
+
   it('returns maxPts=1 as floor when there are no votes (avoids division by zero)', () => {
     const matches = [makeMatch(1, [1, 2])];
     const { maxPts, maxLemonPts } = computeSeasonStats(allPlayers, matches, [], []);

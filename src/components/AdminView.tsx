@@ -188,15 +188,18 @@ export function AdminView({ players, activeMatch, currentOrg, onSignOut, onShowG
   const seasonName                   = seasonNamesMap[currentSeason] ?? '';
   const voteCount                    = matchVotes.length;
 
-  // Voter tracking: match each present player against cast votes by name.
-  // Guest votes (voter_name not in present players) are intentionally excluded
-  // — guests already have their own dedicated tracking section below.
+  // Voter tracking: match each present player against cast votes — by
+  // voter_player_id (reliable, no first-name collisions), falling back to the
+  // name for legacy / guest votes. Guest votes are still excluded because a
+  // guest has no player id and their name isn't in the present roster.
   const presentPlayers = activeMatch
     ? players.filter(p => activeMatch.present_ids.includes(p.id))
     : [];
-  const voterNameSet = new Set(matchVotes.map(v => v.voter_name));
-  const votedPlayers    = presentPlayers.filter(p => voterNameSet.has(p.name));
-  const pendingPlayers  = presentPlayers.filter(p => !voterNameSet.has(p.name));
+  const votedPlayerIds = new Set(matchVotes.map(v => v.voter_player_id).filter(id => id != null));
+  const voterNameSet   = new Set(matchVotes.map(v => v.voter_name));
+  const hasPlayerVoted = (p: Player) => votedPlayerIds.has(p.id) || voterNameSet.has(p.name);
+  const votedPlayers    = presentPlayers.filter(hasPlayerVoted);
+  const pendingPlayers  = presentPlayers.filter(p => !hasPlayerVoted(p));
 
   const addPlayerMutation        = useAddPlayer(currentOrg?.id);
   const removePlayerMutation     = useRemovePlayer(currentOrg?.id);
@@ -491,7 +494,7 @@ export function AdminView({ players, activeMatch, currentOrg, onSignOut, onShowG
                     {voterTrackingOpen && (
                       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, paddingBottom: 8 }}>
                         {[...pendingPlayers, ...votedPlayers].map(p => {
-                          const hasVoted = voterNameSet.has(p.name);
+                          const hasVoted = hasPlayerVoted(p);
                           return (
                             <span key={String(p.id)} style={{
                               display: 'inline-flex', alignItems: 'center', gap: 5,

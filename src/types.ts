@@ -155,7 +155,7 @@ export interface API {
   setSeasonName(season: number, name: string): Promise<void>;
 
   // Votes
-  hasVoted(matchId: EntityId, voterName: string): Promise<boolean>;
+  hasVoted(matchId: EntityId, voterName: string, voterPlayerId?: EntityId | null): Promise<boolean>;
   submitVote(vote: Vote): Promise<void>;
   getVotes(matchId: EntityId): Promise<Vote[]>;
   getAllVotes(): Promise<Vote[]>;

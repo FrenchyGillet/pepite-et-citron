@@ -86,8 +86,12 @@ export function clearVoteDraft(matchId: EntityId): void {
 }
 
 export function shuffleRevealOrder(votes: Vote[]): EntityId[] {
-  return [...votes]
-    .sort(() => Math.random() - 0.5)
-    .map(v => v.id)
-    .filter((id): id is EntityId => id != null);
+  const ids = votes.map(v => v.id).filter((id): id is EntityId => id != null);
+  // Fisher-Yates — `.sort(() => Math.random() - 0.5)` is not a uniform shuffle
+  // (strong bias, engine-dependent).
+  for (let i = ids.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [ids[i], ids[j]] = [ids[j], ids[i]];
+  }
+  return ids;
 }

@@ -51,7 +51,6 @@ export function computeSeasonStats(
     const pp = players.filter(p => (match.present_ids || []).includes(p.id));
     const { best, lemon } = computeScores(mv, pp, players, match.pepite_count ?? 2);
     let maxB = 0, maxL = 0;
-    let bW: EntityId | null = null, lW: EntityId | null = null;
 
     const presentSet = new Set((match.present_ids || []).map(String));
 
@@ -69,17 +68,18 @@ export function computeSeasonStats(
       s.bestPts += bp;
       s.matchesPlayed++;
       s.bestHistory.push(bp);
-      s.lemonHistory.push(lemon[p.id]?.pts || 0);
-      if (bp > maxB) { maxB = bp; bW = p.id; }
+      if (bp > maxB) maxB = bp;
     });
 
     players.forEach(p => {
       const s = stats[String(p.id)];
       if (!s) return;
       const lp = lemon[p.id]?.pts || 0;
-      // Lemon pts accumulate for all (absent players can still receive citron votes).
+      // Lemon pts accumulate for all (absent players can still receive citron
+      // votes). History follows the same rule so sum(lemonHistory) === lemonPts.
       s.lemonPts += lp;
-      if (lp > maxL) { maxL = lp; lW = p.id; }
+      s.lemonHistory.push(lp);
+      if (lp > maxL) maxL = lp;
 
       // Absence: only for players who belong to this match's team and weren't called up.
       if (teamMemberSet && teamMemberSet.has(String(p.id)) && !presentSet.has(String(p.id))) {
@@ -87,8 +87,21 @@ export function computeSeasonStats(
       }
     });
 
-    if (bW != null && stats[String(bW)]) stats[String(bW)].wins++;
-    if (lW != null && stats[String(lW)]) stats[String(lW)].lemons++;
+    // Match winner(s): honour an admin tiebreaker if set, otherwise credit
+    // every player tied at the top score (a `>` comparison silently dropped
+    // all but the first tied player).
+    const tb = match.tiebreakers || {};
+    const creditWin = (id: EntityId) => { const s = stats[String(id)]; if (s) s.wins++; };
+    const creditLemon = (id: EntityId) => { const s = stats[String(id)]; if (s) s.lemons++; };
+
+    if (maxB > 0) {
+      if (tb.best_id != null) creditWin(tb.best_id);
+      else pp.filter(p => (best[p.id]?.pts || 0) === maxB).forEach(p => creditWin(p.id));
+    }
+    if (maxL > 0) {
+      if (tb.lemon_id != null) creditLemon(tb.lemon_id);
+      else players.filter(p => (lemon[p.id]?.pts || 0) === maxL).forEach(p => creditLemon(p.id));
+    }
   });
 
   // Players who scored, played, or were absent from at least one team match.

@@ -97,7 +97,7 @@ export function VoteView({ players, match, onVoted, guestName = null, onGuestVot
     setCheckError(null);
     let voted = false;
     try {
-      voted = await api.hasVoted(match.id, voterName);
+      voted = await api.hasVoted(match.id, voterName, selectedVoterPlayer?.id ?? null);
     } catch {
       // Réseau instable (vestiaire) — ne pas bloquer le votant sur
       // « Vérification… ». L'insert dédoublonne de toute façon (409).
