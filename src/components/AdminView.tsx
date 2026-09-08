@@ -20,6 +20,7 @@ import {
 } from '@/hooks/mutations';
 import type { Player, Match, Org, EntityId } from '@/types';
 import { PushNotificationBanner } from './PushNotificationBanner';
+import { useConfirm } from '@/hooks/useConfirm';
 
 interface AdminViewProps {
   players: Player[];
@@ -172,6 +173,8 @@ export function AdminView({ players, activeMatch, currentOrg, onSignOut, onShowG
   const [settingsOpen,      setSettingsOpen]       = useState(false);
   const [voterTrackingOpen, setVoterTrackingOpen] = useState(false);
 
+  const { confirm, confirmDialog } = useConfirm();
+
   // Validation errors (Zod safeParse)
   const [playerError,  setPlayerError]  = useState<string | null>(null);
   const [matchError,   setMatchError]   = useState<string | null>(null);
@@ -188,15 +191,18 @@ export function AdminView({ players, activeMatch, currentOrg, onSignOut, onShowG
   const seasonName                   = seasonNamesMap[currentSeason] ?? '';
   const voteCount                    = matchVotes.length;
 
-  // Voter tracking: match each present player against cast votes by name.
-  // Guest votes (voter_name not in present players) are intentionally excluded
-  // — guests already have their own dedicated tracking section below.
+  // Voter tracking: match each present player against cast votes — by
+  // voter_player_id (reliable, no first-name collisions), falling back to the
+  // name for legacy / guest votes. Guest votes are still excluded because a
+  // guest has no player id and their name isn't in the present roster.
   const presentPlayers = activeMatch
     ? players.filter(p => activeMatch.present_ids.includes(p.id))
     : [];
-  const voterNameSet = new Set(matchVotes.map(v => v.voter_name));
-  const votedPlayers    = presentPlayers.filter(p => voterNameSet.has(p.name));
-  const pendingPlayers  = presentPlayers.filter(p => !voterNameSet.has(p.name));
+  const votedPlayerIds = new Set(matchVotes.map(v => v.voter_player_id).filter(id => id != null));
+  const voterNameSet   = new Set(matchVotes.map(v => v.voter_name));
+  const hasPlayerVoted = (p: Player) => votedPlayerIds.has(p.id) || voterNameSet.has(p.name);
+  const votedPlayers    = presentPlayers.filter(hasPlayerVoted);
+  const pendingPlayers  = presentPlayers.filter(p => !hasPlayerVoted(p));
 
   const addPlayerMutation        = useAddPlayer(currentOrg?.id);
   const removePlayerMutation     = useRemovePlayer(currentOrg?.id);
@@ -225,8 +231,9 @@ export function AdminView({ players, activeMatch, currentOrg, onSignOut, onShowG
     });
   };
 
-  const handleRemoveMember = (userId: string, email: string) => {
-    if (!currentOrg?.id || !confirm(`Retirer ${email} ?`)) return;
+  const handleRemoveMember = async (userId: string, email: string) => {
+    if (!currentOrg?.id) return;
+    if (!(await confirm({ message: `Retirer ${email} ?`, confirmLabel: 'Retirer', danger: true }))) return;
     removeMemberMutation.mutate(userId, {
       onSuccess: () => setToast(`${email} retiré`),
       onError: (err) => setToast(`Erreur : ${err instanceof Error ? err.message : String(err)}`),
@@ -277,8 +284,8 @@ export function AdminView({ players, activeMatch, currentOrg, onSignOut, onShowG
     });
   };
 
-  const removePlayer = (id: EntityId, name: string) => {
-    if (!confirm(`Supprimer ${name} ?`)) return;
+  const removePlayer = async (id: EntityId, name: string) => {
+    if (!(await confirm({ message: `Supprimer ${name} ?`, confirmLabel: 'Supprimer', danger: true }))) return;
     removePlayerMutation.mutate(id);
   };
 
@@ -297,9 +304,12 @@ export function AdminView({ players, activeMatch, currentOrg, onSignOut, onShowG
     });
   };
 
-  const advanceSeason = () => {
+  const advanceSeason = async () => {
     const label = seasonName ? `"${seasonName}"` : `Saison ${currentSeason}`;
-    if (!confirm(`Démarrer la saison ${currentSeason + 1} ? L'historique de ${label} est conservé.`)) return;
+    if (!(await confirm({
+      message: `Démarrer la saison ${currentSeason + 1} ? L'historique de ${label} est conservé.`,
+      confirmLabel: 'Démarrer',
+    }))) return;
     advanceSeasonMutation.mutate(undefined, {
       onSuccess: (next) => { setSeasonNameDraft(''); setToast(`Saison ${next} démarrée !`); },
       onError: (err) => setToast(`Erreur : ${err instanceof Error ? err.message : String(err)}`),
@@ -358,8 +368,8 @@ export function AdminView({ players, activeMatch, currentOrg, onSignOut, onShowG
     );
   };
 
-  const deleteTeam = (id: EntityId, name: string) => {
-    if (!confirm(`Supprimer l'équipe "${name}" ?`)) return;
+  const deleteTeam = async (id: EntityId, name: string) => {
+    if (!(await confirm({ message: `Supprimer l'équipe "${name}" ?`, confirmLabel: 'Supprimer', danger: true }))) return;
     deleteTeamMutation.mutate(id);
   };
 
@@ -385,6 +395,7 @@ export function AdminView({ players, activeMatch, currentOrg, onSignOut, onShowG
   return (
     <div className="content">
       {toast && <Toast msg={toast} onDone={() => setToast(null)} />}
+      {confirmDialog}
 
       {/* ── Push notification opt-in banner ───────────────────────────── */}
       {!DEMO_MODE && currentOrg?.id && (
@@ -491,7 +502,7 @@ export function AdminView({ players, activeMatch, currentOrg, onSignOut, onShowG
                     {voterTrackingOpen && (
                       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, paddingBottom: 8 }}>
                         {[...pendingPlayers, ...votedPlayers].map(p => {
-                          const hasVoted = voterNameSet.has(p.name);
+                          const hasVoted = hasPlayerVoted(p);
                           return (
                             <span key={String(p.id)} style={{
                               display: 'inline-flex', alignItems: 'center', gap: 5,

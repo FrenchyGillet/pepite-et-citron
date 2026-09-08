@@ -39,7 +39,12 @@ export function PodiumView({ votes, present, allPlayers, tiebreakers = {}, pepit
     pool
       .map(p => ({ ...p, pts: scores[p.id]?.pts || 0, comments: scores[p.id]?.comments || [], absent: !presentIds.has(p.id) }))
       .filter(p => p.pts > 0)
-      .sort((a, b) => b.pts !== a.pts ? b.pts - a.pts : tiebreakers[tieKey] === a.id ? -1 : tiebreakers[tieKey] === b.id ? 1 : 0);
+      // Sort on the numeric key (pts, isTiebreakerWinner) so it stays transitive
+      // even with 3+ players tied on points.
+      .sort((a, b) => {
+        if (b.pts !== a.pts) return b.pts - a.pts;
+        return (tiebreakers[tieKey] === b.id ? 1 : 0) - (tiebreakers[tieKey] === a.id ? 1 : 0);
+      });
 
   const isPepite = podiumTab === 'pepite';
   const ranked   = isPepite ? buildRanked(best, 'best_id', present) : buildRanked(lemon, 'lemon_id', everyone);

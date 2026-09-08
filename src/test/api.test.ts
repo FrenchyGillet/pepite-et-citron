@@ -139,6 +139,21 @@ describe('demoAPI', () => {
     expect(await demoAPI.hasVoted(m.id, 'Bob')).toBe(false);
   });
 
+  it('hasVoted keys on voter_player_id so two same-name voters do not collide (B9)', async () => {
+    const m = await demoAPI.createMatch('test', [1, 2, 3], null, 1);
+    // "Thomas" #1 (player 1) votes
+    await demoAPI.submitVote({ match_id: m.id, voter_name: 'Thomas', voter_player_id: 1, best1_id: 2, lemon_id: 3 });
+    // "Thomas" #2 (player 2) has NOT voted
+    expect(await demoAPI.hasVoted(m.id, 'Thomas', 2)).toBe(false);
+    expect(await demoAPI.hasVoted(m.id, 'Thomas', 1)).toBe(true);
+  });
+
+  it('hasVoted still catches a legacy name-only vote when a player is selected (B9)', async () => {
+    const m = await demoAPI.createMatch('test', [1, 2], null, 1);
+    await demoAPI.submitVote({ match_id: m.id, voter_name: 'Alice', best1_id: 1, lemon_id: 2 }); // no player id
+    expect(await demoAPI.hasVoted(m.id, 'Alice', 1)).toBe(true);
+  });
+
   it('getVotes returns only votes for the given match', async () => {
     const m1 = await demoAPI.createMatch('m1', [1, 2], null, 1);
     const m2 = await demoAPI.createMatch('m2', [1, 2], null, 1);

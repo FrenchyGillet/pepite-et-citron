@@ -7,6 +7,7 @@ import { EmptyState } from './EmptyState';
 import { PodiumView } from './PodiumView';
 import { useAllVotes, useMatches, useTeams, useCurrentSeason, useSeasonNames } from '@/hooks/queries';
 import { useDeleteMatch, useUpdateMatch } from '@/hooks/mutations';
+import { useConfirm } from '@/hooks/useConfirm';
 import type { Player, Match, EntityId } from '@/types';
 
 interface StatsViewProps {
@@ -38,6 +39,7 @@ export function StatsView({ players, activeMatch, isAdmin, orgId }: StatsViewPro
 
   const deleteMatchMutation = useDeleteMatch(orgId);
   const updateMatchMutation = useUpdateMatch(orgId);
+  const { confirm, confirmDialog } = useConfirm();
 
   if (isLoading) return <div className="content"><div className="empty">Chargement…</div></div>;
 
@@ -63,8 +65,11 @@ export function StatsView({ players, activeMatch, isAdmin, orgId }: StatsViewPro
 
   const { rankedBest, rankedLemon, rankedAttendance, maxPts, maxLemonPts, totalMatches } = computeSeasonStats(players, filteredMatches, allVotes, allTeams);
 
-  const handleDelete = (match: Match) => {
-    if (!confirm(`Supprimer "${match.label}" et tous ses votes ?`)) return;
+  const handleDelete = async (match: Match) => {
+    if (!(await confirm({
+      message: `Supprimer "${match.label}" et tous ses votes ?`,
+      confirmLabel: 'Supprimer', danger: true,
+    }))) return;
     deleteMatchMutation.mutate(match.id, {
       onSuccess: () => { if (expandedId === match.id) setExpandedId(null); },
     });
@@ -93,6 +98,7 @@ export function StatsView({ players, activeMatch, isAdmin, orgId }: StatsViewPro
 
   return (
     <div className="content">
+      {confirmDialog}
       {seasons.length > 0 && (
         <div style={{ marginTop: 12, marginBottom: 16 }}>
           <TabBar

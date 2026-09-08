@@ -154,8 +154,13 @@ export const demoAPI: API = {
   advanceSeason:    () => { demoState.currentSeason++; return Promise.resolve(demoState.currentSeason); },
   getSeasonName:    (season) => Promise.resolve(demoState.seasonNames[season] ?? null),
   setSeasonName:    (season, name) => { demoState.seasonNames[season] = name; return Promise.resolve(); },
-  hasVoted:         (matchId, voterName) => Promise.resolve(
-    demoState.votes.some(v => v.match_id === matchId && v.voter_name === voterName)
+  hasVoted:         (matchId, voterName, voterPlayerId) => Promise.resolve(
+    demoState.votes.some(v => v.match_id === matchId && (
+      voterPlayerId != null
+        // own prior vote (chip selected) OR own legacy name-only vote
+        ? v.voter_player_id === voterPlayerId || (v.voter_player_id == null && v.voter_name === voterName)
+        : v.voter_name === voterName
+    ))
   ),
   submitVote:       (vote) => { demoState.votes.push({ ...vote, id: demoState.nextId++ }); return Promise.resolve(); },
   getVotes:         (matchId) => Promise.resolve(demoState.votes.filter(v => v.match_id === matchId)),
@@ -462,7 +467,12 @@ export const realAPI: API = {
         .select("current_season").eq("id", _orgId).maybeSingle();
       if (error) throw new Error(error.message);
       return (data as { current_season: number } | null)?.current_season ?? 1;
-    }).catch(() => 1),   // lecture best-effort : ne doit pas casser le rendu
+    }).catch((err) => {
+      // Lecture best-effort : ne doit pas casser le rendu, mais une panne réelle
+      // doit être visible (sinon indistinguable d'une saison 1 légitime).
+      console.error("getCurrentSeason failed, defaulting to 1:", (err as Error).message);
+      return 1;
+    }),
   advanceSeason: () =>
     withRetry(async () => {
       // Un seul admin fait avancer une saison quelques fois par an :
@@ -482,7 +492,10 @@ export const realAPI: API = {
         .select("name").eq("org_id", _orgId).eq("season", season).maybeSingle();
       if (error) throw new Error(error.message);
       return (data as { name: string } | null)?.name ?? null;
-    }).catch(() => null),
+    }).catch((err) => {
+      console.error("getSeasonName failed:", (err as Error).message);
+      return null;
+    }),
   setSeasonName: (season, name) =>
     withRetry(async () => {
       await run(
@@ -492,11 +505,23 @@ export const realAPI: API = {
     }),
 
   // ── Votes ─────────────────────────────────────────────────────────────────
-  hasVoted: async (matchId, voterName) => {
-    const { data, error } = await supabase.from("votes").select("id")
-      .eq("match_id", matchId).eq("voter_name", voterName);
+  hasVoted: async (matchId, voterName, voterPlayerId) => {
+    const base = () => supabase.from("votes").select("id").eq("match_id", matchId);
+    // With a player id: match on it (unique — two "Thomas" don't collide), plus
+    // this voter's own legacy name-only vote (voter_player_id null). Without one
+    // (typed name / guest): name only, as before.
+    if (voterPlayerId != null) {
+      const [byId, byName] = await Promise.all([
+        base().eq("voter_player_id", voterPlayerId),
+        base().is("voter_player_id", null).eq("voter_name", voterName),
+      ]);
+      if (byId.error)   throw new Error(byId.error.message);
+      if (byName.error) throw new Error(byName.error.message);
+      return (byId.data?.length ?? 0) > 0 || (byName.data?.length ?? 0) > 0;
+    }
+    const { data, error } = await base().eq("voter_name", voterName);
     if (error) throw new Error(error.message);
-    return Array.isArray(data) && data.length > 0;
+    return (data?.length ?? 0) > 0;
   },
   submitVote: async (vote) => {
     // Strip undefined fields before insert — optional columns like best3_id /
