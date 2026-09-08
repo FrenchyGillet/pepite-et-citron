@@ -33,8 +33,12 @@ export function useOfflineSync(onSynced?: () => void, onFailed?: () => void) {
     // Try immediately on mount (covers page reload while online with pending vote)
     if (navigator.onLine) void trySync();
 
-    window.addEventListener('online', () => void trySync());
-    return () => window.removeEventListener('online', () => void trySync());
+    // Same function reference for add/remove — two arrow literals never match,
+    // so the old code leaked a listener on every mount and replayed the queued
+    // vote once per accumulated listener.
+    const onOnline = () => void trySync();
+    window.addEventListener('online', onOnline);
+    return () => window.removeEventListener('online', onOnline);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 }

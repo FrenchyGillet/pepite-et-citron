@@ -2,7 +2,7 @@ import { useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
 import { api, setCurrentOrgId, DEMO_MODE } from '@/api';
-import { useAppStore } from '@/store/appStore';
+import { useAppStore, clearOrgsCache } from '@/store/appStore';
 
 export function useAuth() {
   const navigate     = useNavigate();
@@ -16,6 +16,7 @@ export function useAuth() {
 
   const handleSignOut = useCallback(async () => {
     await api.signOut();
+    clearOrgsCache();   // else loadOrgs() restores the previous account's org
     setSession(null);
     setCurrentOrg(null);
     setCurrentOrgId(null);
@@ -69,6 +70,7 @@ export function useAuth() {
       }
       if (!s) {
         // Signed out (explicit or session expired) — clear everything.
+        clearOrgsCache();
         setCurrentOrg(null);
         setCurrentOrgId(null);
         queryClient.clear();

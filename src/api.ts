@@ -580,9 +580,13 @@ export const realAPI: API = {
     if (!sub.endpoint || !keys?.p256dh || !keys?.auth) {
       throw new Error('Subscription invalide');
     }
+    // user_id is NOT NULL and the unique key is (user_id, org_id, endpoint) —
+    // both were missing, so every insert failed (23502 then 42P10).
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) throw new Error('Non authentifié');
     const { error } = await supabase.from('push_subscriptions').upsert(
-      { org_id: orgId, endpoint: sub.endpoint, p256dh: keys.p256dh, auth: keys.auth },
-      { onConflict: 'endpoint' },
+      { user_id: user.id, org_id: orgId, endpoint: sub.endpoint, p256dh: keys.p256dh, auth: keys.auth },
+      { onConflict: 'user_id,org_id,endpoint' },
     );
     if (error) throw new Error(error.message);
   },

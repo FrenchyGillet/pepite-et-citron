@@ -125,7 +125,11 @@ export default function App() {
   });
 
   // ── Derived ─────────────────────────────────────────────────────────────
-  const isAdmin = DEMO_MODE || (!!session && !!currentOrg && currentOrg.role !== 'voter');
+  // Strict 'admin' check: an org resolved from a ?org= slug carries no role
+  // (role === undefined) until loadOrgs() answers — `!== 'voter'` briefly let
+  // an authenticated voter into the Admin view. Legit admins always get
+  // role === 'admin' from get_my_orgs (COALESCE default).
+  const isAdmin = DEMO_MODE || (!!session && currentOrg?.role === 'admin');
   const isPro   = DEMO_MODE || currentOrg?.plan === 'pro';
 
   // isVoterLink must remain true even AFTER useGuest calls navigate('/vote'),
