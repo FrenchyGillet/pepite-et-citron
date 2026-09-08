@@ -1074,7 +1074,7 @@ function DeleteAccountButton() {
         Confirmer la suppression
       </p>
       <p style={{ fontSize: 12, color: 'var(--label3)', lineHeight: 1.5 }}>
-        Toutes tes données (équipes, matchs, votes) seront supprimées définitivement. Cette action est irréversible.
+        Ton compte, tes votes et les équipes dont tu es le seul administrateur (avec leurs matchs) seront supprimés définitivement. Cette action est irréversible.
       </p>
       {error && <p style={{ fontSize: 12, color: 'var(--red)' }}>{error}</p>}
       <div className="flex gap-8">

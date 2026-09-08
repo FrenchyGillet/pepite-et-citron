@@ -33,6 +33,8 @@ export interface Vote {
   id?: EntityId;
   match_id: EntityId;
   voter_name: string;
+  /** Player who cast the vote — set for logged-in voters, NULL for guests. */
+  voter_player_id?: EntityId | null;
   best1_id?: EntityId;
   best2_id?: EntityId;
   best3_id?: EntityId;
