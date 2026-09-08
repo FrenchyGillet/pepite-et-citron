@@ -184,7 +184,21 @@ export function ResultsView({ players, match, isAdmin, isDark, orgId, isPro, onU
       <div className="content">
         <MatchHeader badge={<span className="badge" style={{ background: 'rgba(170,221,0,0.15)', color: 'var(--lemon)' }}>Dépouillement</span>} />
 
-        {!isDone && currentVote ? (
+        {!isAdmin ? (
+          // Non-admins watch the reveal — they only receive the ballots the
+          // admin has already revealed (get_match_votes), and cannot advance it.
+          <div style={{ background: 'var(--bg2)', borderRadius: 'var(--radius-lg)', padding: '24px 16px', textAlign: 'center', marginBottom: 16 }}>
+            <div style={{ fontSize: 28, marginBottom: 8 }}>{isDone ? '🎉' : '🥁'}</div>
+            <div style={{ fontSize: 15, fontWeight: 700, marginBottom: 4 }}>
+              {isDone ? 'Tous les votes ont été révélés' : 'Dépouillement en cours…'}
+            </div>
+            <div style={{ fontSize: 13, color: 'var(--label3)' }}>
+              {isDone
+                ? 'Le classement final va s’afficher.'
+                : `Vote ${revealedCount} / ${revealOrder.length} révélé par l’organisateur.`}
+            </div>
+          </div>
+        ) : !isDone && currentVote ? (
           <div key={revealedCount} style={{
             background: 'var(--bg2)', borderRadius: 'var(--radius-lg)',
             border: '1px solid var(--separator2)', marginBottom: 16, overflow: 'hidden',

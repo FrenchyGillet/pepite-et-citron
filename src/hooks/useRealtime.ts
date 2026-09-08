@@ -47,6 +47,11 @@ export function useRealtime(
         () => {
           void queryClient.invalidateQueries({ queryKey: queryKeys.activeMatch(orgId) });
           void queryClient.invalidateQueries({ queryKey: queryKeys.matches(orgId) });
+          // reveal_order / revealed_count changes during counting → non-admin
+          // watchers must refetch get_match_votes to see the next ballot.
+          if (activeMatchId != null) {
+            void queryClient.invalidateQueries({ queryKey: queryKeys.votes(activeMatchId) });
+          }
         },
       );
 
@@ -65,6 +70,7 @@ export function useRealtime(
         },
         () => {
           void queryClient.invalidateQueries({ queryKey: queryKeys.votes(activeMatchId) });
+          void queryClient.invalidateQueries({ queryKey: queryKeys.voteCount(activeMatchId) });
           void queryClient.invalidateQueries({ queryKey: queryKeys.allVotes(orgId) });
         },
       );
@@ -82,6 +88,7 @@ export function useRealtime(
         void queryClient.invalidateQueries({ queryKey: queryKeys.matches(orgId) });
         if (activeMatchId != null) {
           void queryClient.invalidateQueries({ queryKey: queryKeys.votes(activeMatchId) });
+          void queryClient.invalidateQueries({ queryKey: queryKeys.voteCount(activeMatchId) });
         }
       }
       subscribedOnce = true;

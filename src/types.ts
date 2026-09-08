@@ -156,6 +156,7 @@ export interface API {
 
   // Votes
   hasVoted(matchId: EntityId, voterName: string, voterPlayerId?: EntityId | null): Promise<boolean>;
+  getVoteCount(matchId: EntityId): Promise<number>;
   submitVote(vote: Vote): Promise<void>;
   getVotes(matchId: EntityId): Promise<Vote[]>;
   getAllVotes(): Promise<Vote[]>;

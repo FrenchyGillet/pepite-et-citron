@@ -7,6 +7,7 @@ export const queryKeys = {
   activeMatch:   (orgId?: string | null)               => ['activeMatch',   orgId]    as const,
   matchById:     (id: EntityId | null | undefined)     => ['match',         id]       as const,
   votes:         (matchId: EntityId | null | undefined) => ['votes',        matchId]  as const,
+  voteCount:     (matchId: EntityId | null | undefined) => ['voteCount',    matchId]  as const,
   allVotes:      (orgId?: string | null)               => ['allVotes',      orgId]    as const,
   matches:       (orgId?: string | null)               => ['matches',       orgId]    as const,
   teams:         (orgId?: string | null)               => ['teams',         orgId]    as const,
@@ -53,8 +54,22 @@ export function useVotes(matchId: EntityId | null | undefined) {
     queryKey: queryKeys.votes(matchId),
     queryFn: () => api.getVotes(matchId!),
     enabled: matchId != null,
-    // staleTime: 0 — vote count must always be fresh; triggers refetch on
-    // window-focus as backup when Realtime WebSocket is disconnected.
+    // staleTime: 0 — must always be fresh; triggers refetch on window-focus
+    // as backup when Realtime WebSocket is disconnected.
+    staleTime: 0,
+  });
+}
+
+/**
+ * Just the number of votes — used by the voting screen's "X / Y ont voté"
+ * counter. Non-members can't read vote rows during an open vote (RLS), so the
+ * count comes from a dedicated RPC that is safe in every phase.
+ */
+export function useVoteCount(matchId: EntityId | null | undefined) {
+  return useQuery({
+    queryKey: queryKeys.voteCount(matchId),
+    queryFn: () => api.getVoteCount(matchId!),
+    enabled: matchId != null,
     staleTime: 0,
   });
 }

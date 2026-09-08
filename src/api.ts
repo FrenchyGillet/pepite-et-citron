@@ -162,6 +162,7 @@ export const demoAPI: API = {
         : v.voter_name === voterName
     ))
   ),
+  getVoteCount:     (matchId) => Promise.resolve(demoState.votes.filter(v => v.match_id === matchId).length),
   submitVote:       (vote) => { demoState.votes.push({ ...vote, id: demoState.nextId++ }); return Promise.resolve(); },
   getVotes:         (matchId) => Promise.resolve(demoState.votes.filter(v => v.match_id === matchId)),
   getAllVotes:       () => Promise.resolve([...demoState.votes]),
@@ -505,24 +506,18 @@ export const realAPI: API = {
     }),
 
   // ── Votes ─────────────────────────────────────────────────────────────────
-  hasVoted: async (matchId, voterName, voterPlayerId) => {
-    const base = () => supabase.from("votes").select("id").eq("match_id", matchId);
-    // With a player id: match on it (unique — two "Thomas" don't collide), plus
-    // this voter's own legacy name-only vote (voter_player_id null). Without one
-    // (typed name / guest): name only, as before.
-    if (voterPlayerId != null) {
-      const [byId, byName] = await Promise.all([
-        base().eq("voter_player_id", voterPlayerId),
-        base().is("voter_player_id", null).eq("voter_name", voterName),
-      ]);
-      if (byId.error)   throw new Error(byId.error.message);
-      if (byName.error) throw new Error(byName.error.message);
-      return (byId.data?.length ?? 0) > 0 || (byName.data?.length ?? 0) > 0;
-    }
-    const { data, error } = await base().eq("voter_name", voterName);
-    if (error) throw new Error(error.message);
-    return (data?.length ?? 0) > 0;
-  },
+  // The votes table is not directly selectable (RLS) — reads go through
+  // SECURITY DEFINER RPCs. See migration 20260008.
+  hasVoted: (matchId, voterName, voterPlayerId) =>
+    withRetry(() => run<boolean>(supabase.rpc("has_voted", {
+      target_match_id:   matchId,
+      p_voter_name:      voterName,
+      p_voter_player_id: voterPlayerId ?? null,
+    }))),
+  getVoteCount: (matchId) =>
+    withRetry(() => run<number>(
+      supabase.rpc("get_match_vote_count", { target_match_id: matchId }),
+    )),
   submitVote: async (vote) => {
     // Strip undefined fields before insert — optional columns like best3_id /
     // best3_comment must not appear in the payload when they are absent, or
@@ -541,14 +536,13 @@ export const realAPI: API = {
     throw new Error(error.message);
   },
   getVotes: (matchId) =>
-    withRetry(() => run<Vote[]>(supabase.from("votes").select("*").eq("match_id", matchId))),
+    withRetry(() => run<Vote[]>(
+      supabase.rpc("get_match_votes", { target_match_id: matchId }),
+    ).then(v => v ?? [])),
   getAllVotes: () =>
-    withRetry(async () => {
-      const matches = await realAPI.getMatches();
-      if (!matches?.length) return [];
-      const ids = matches.map(m => m.id);
-      return await run<Vote[]>(supabase.from("votes").select("*").in("match_id", ids));
-    }),
+    withRetry(() => run<Vote[]>(
+      supabase.rpc("get_all_votes", { target_org_id: _orgId }),
+    ).then(v => v ?? [])),
 
   // ── Équipes ───────────────────────────────────────────────────────────────
   getTeams: () =>

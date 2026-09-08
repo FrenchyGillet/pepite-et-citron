@@ -154,6 +154,16 @@ describe('demoAPI', () => {
     expect(await demoAPI.hasVoted(m.id, 'Alice', 1)).toBe(true);
   });
 
+  it('getVoteCount returns the number of votes for the match', async () => {
+    const m1 = await demoAPI.createMatch('m1', [1, 2, 3], null, 1);
+    const m2 = await demoAPI.createMatch('m2', [1, 2, 3], null, 1);
+    await demoAPI.submitVote({ match_id: m1.id, voter_name: 'A', best1_id: 1, lemon_id: 2 });
+    await demoAPI.submitVote({ match_id: m1.id, voter_name: 'B', best1_id: 2, lemon_id: 1 });
+    await demoAPI.submitVote({ match_id: m2.id, voter_name: 'C', best1_id: 1, lemon_id: 2 });
+    expect(await demoAPI.getVoteCount(m1.id)).toBe(2);
+    expect(await demoAPI.getVoteCount(m2.id)).toBe(1);
+  });
+
   it('getVotes returns only votes for the given match', async () => {
     const m1 = await demoAPI.createMatch('m1', [1, 2], null, 1);
     const m2 = await demoAPI.createMatch('m2', [1, 2], null, 1);
@@ -472,9 +482,9 @@ describe('realAPI', () => {
   // ── Votes ──
 
   describe('getVotes', () => {
-    it('returns votes for the match', async () => {
+    it('returns votes for the match via the get_match_votes RPC', async () => {
       const v = { id: 'v1', match_id: 'm1', voter_name: 'Alice', best1_id: 'p1', lemon_id: 'p2' };
-      server.use(http.get(`${BASE}/votes`, () => HttpResponse.json([v])));
+      server.use(http.post(`${RPC}/get_match_votes`, () => HttpResponse.json([v])));
       const votes = await realAPI.getVotes('m1');
       expect(votes).toHaveLength(1);
       expect(votes[0].voter_name).toBe('Alice');
@@ -482,14 +492,21 @@ describe('realAPI', () => {
   });
 
   describe('hasVoted', () => {
-    it('returns true when the server returns a non-empty array', async () => {
-      server.use(http.get(`${BASE}/votes`, () => HttpResponse.json([{ id: 'v1' }])));
+    it('returns the boolean from the has_voted RPC (true)', async () => {
+      server.use(http.post(`${RPC}/has_voted`, () => HttpResponse.json(true)));
       expect(await realAPI.hasVoted('m1', 'Alice')).toBe(true);
     });
 
-    it('returns false when the server returns an empty array', async () => {
-      server.use(http.get(`${BASE}/votes`, () => HttpResponse.json([])));
+    it('returns the boolean from the has_voted RPC (false)', async () => {
+      server.use(http.post(`${RPC}/has_voted`, () => HttpResponse.json(false)));
       expect(await realAPI.hasVoted('m1', 'Unknown')).toBe(false);
+    });
+  });
+
+  describe('getVoteCount', () => {
+    it('returns the number from the get_match_vote_count RPC', async () => {
+      server.use(http.post(`${RPC}/get_match_vote_count`, () => HttpResponse.json(7)));
+      expect(await realAPI.getVoteCount('m1')).toBe(7);
     });
   });
 
@@ -648,17 +665,14 @@ describe('realAPI', () => {
   // ── getAllVotes ──
 
   describe('getAllVotes', () => {
-    it('returns empty array when there are no matches', async () => {
-      server.use(http.get(`${BASE}/matches`, () => HttpResponse.json([])));
+    it('returns [] when the get_all_votes RPC returns null', async () => {
+      server.use(http.post(`${RPC}/get_all_votes`, () => HttpResponse.json(null)));
       expect(await realAPI.getAllVotes()).toEqual([]);
     });
 
-    it('fetches votes for all matches', async () => {
+    it('returns the org votes from the get_all_votes RPC', async () => {
       const v = { id: 'v1', match_id: 'm1', voter_name: 'Alice' };
-      server.use(
-        http.get(`${BASE}/matches`, () => HttpResponse.json([mockMatch])),
-        http.get(`${BASE}/votes`,   () => HttpResponse.json([v])),
-      );
+      server.use(http.post(`${RPC}/get_all_votes`, () => HttpResponse.json([v])));
       const votes = await realAPI.getAllVotes();
       expect(votes).toHaveLength(1);
       expect(votes[0].voter_name).toBe('Alice');
