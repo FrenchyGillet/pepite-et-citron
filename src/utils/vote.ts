@@ -1,4 +1,5 @@
 import type { EntityId, Vote } from '@/types';
+import { isNetworkError } from '@/utils/offlineVote';
 
 export function hasVotedLocally(matchId: EntityId | null | undefined): boolean {
   if (matchId == null) return false;
@@ -13,11 +14,11 @@ export function markVotedLocally(matchId: EntityId): void {
 }
 
 export function classifyVoteError(err: unknown): string {
-  const e = err instanceof Error ? err : null;
-  if (e?.message?.includes('network') || (err as { name?: string })?.name === 'AbortError') {
+  // Single network-error heuristic, shared with the offline-vote queue.
+  if (isNetworkError(err)) {
     return 'Erreur réseau — vérifie ta connexion et réessaie.';
   }
-  return e?.message || "Erreur lors de l'envoi, réessaie.";
+  return (err instanceof Error ? err.message : '') || "Erreur lors de l'envoi, réessaie.";
 }
 
 // ── Voter identity persistence ────────────────────────────────────────────────
