@@ -13,10 +13,19 @@
 declare const self: ServiceWorkerGlobalScope;
 
 import { precacheAndRoute, cleanupOutdatedCaches } from 'workbox-precaching';
+import { clientsClaim }                             from 'workbox-core';
 import { registerRoute }                            from 'workbox-routing';
 import { StaleWhileRevalidate, CacheFirst } from 'workbox-strategies';
 import { ExpirationPlugin }    from 'workbox-expiration';
 import { CacheableResponsePlugin } from 'workbox-cacheable-response';
+
+// ── Take over immediately on deploy ─────────────────────────────────────────
+// registerType is "autoUpdate" but injectManifest mode leaves the activation
+// policy to us. Without this, a new SW stays "waiting" until every tab of the
+// site is closed — so users kept running the previous build (and, after the
+// app.html entry rename, hit stale-asset mismatches).
+self.skipWaiting();
+clientsClaim();
 
 // ── Precache (manifest injected by vite-plugin-pwa at build time) ────────────
 precacheAndRoute(self.__WB_MANIFEST);

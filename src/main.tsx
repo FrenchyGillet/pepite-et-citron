@@ -52,6 +52,21 @@ try {
   // localStorage unavailable (private browsing quota) — degrade gracefully
 }
 
+// ── Reload once when a freshly-deployed Service Worker takes control ──────────
+// The SW calls skipWaiting()/clientsClaim(), so on a new deploy it activates
+// and claims this page mid-session. Reload so the DOM matches the new asset
+// hashes instead of risking a 404 on the next lazy-loaded chunk.
+if ('serviceWorker' in navigator) {
+  // Only reload on *updates* — not the null→SW transition of a first-ever visit.
+  const hadController = !!navigator.serviceWorker.controller;
+  let reloading = false;
+  navigator.serviceWorker.addEventListener('controllerchange', () => {
+    if (reloading || !hadController) return;
+    reloading = true;
+    window.location.reload();
+  });
+}
+
 const SENTRY_DSN = import.meta.env.VITE_SENTRY_DSN as string | undefined;
 const IS_PROD    = import.meta.env.MODE === 'production';
 
