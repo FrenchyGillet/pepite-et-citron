@@ -115,7 +115,7 @@ export function OrgSetupView({ onOrgCreated, userEmail }: OrgSetupViewProps) {
                   Lien de vote de votre équipe
                 </div>
                 <div style={{ fontSize: 12, color: 'var(--label2)', wordBreak: 'break-all' }}>
-                  {window.location.origin}/?org=<strong>{slug}</strong>
+                  {window.location.origin}/vote?org=<strong>{slug}</strong>
                 </div>
               </div>
             </div>

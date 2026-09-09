@@ -4,7 +4,7 @@
   "description": "Vote pour la pépite et le citron de chaque match — en quelques secondes, depuis le vestiaire.",
   "lang": "fr",
   "scope": "/",
-  "start_url": "/",
+  "start_url": "/vote",
   "display": "standalone",
   "theme_color": "#000000",
   "background_color": "#000000",

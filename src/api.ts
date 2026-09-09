@@ -231,7 +231,7 @@ export const realAPI: API = {
   },
   resetPassword: async (email) => {
     const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: window.location.origin,
+      redirectTo: `${window.location.origin}/login`,
     });
     if (error) throw new Error(error.message);
   },

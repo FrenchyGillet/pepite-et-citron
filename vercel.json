@@ -14,6 +14,14 @@
     { "source": "/sb-api/:path*", "destination": "https://vtjpjkrrvpwoqwrrhgbk.supabase.co/:path*" },
     { "source": "/landing.js",    "destination": "/landing.js" },
     { "source": "/landing.html",  "destination": "/landing.html" },
+    {
+      "source": "/",
+      "missing": [
+        { "type": "query", "key": "org" },
+        { "type": "query", "key": "guest" }
+      ],
+      "destination": "/landing.html"
+    },
     { "source": "/(.*)",          "destination": "/" }
   ],
 

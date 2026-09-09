@@ -1,4 +1,5 @@
 User-agent: *
+Allow: /$
 Allow: /landing.html
 Allow: /privacy.html
 Allow: /terms.html

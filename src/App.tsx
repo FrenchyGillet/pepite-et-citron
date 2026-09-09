@@ -165,6 +165,12 @@ export default function App() {
   }
 
   if (!DEMO_MODE && !session && !isVoterLink) {
+    // Marketing lives at "/" (static landing.html). The auth screen has its
+    // own URL so it can be linked to directly; any other app path a logged-out
+    // visitor hits sends them there.
+    if (location.pathname !== '/login') {
+      return <Navigate to="/login" replace />;
+    }
     return <><GlobalStyle /><AuthView onAuth={setSession} /></>;
   }
 
@@ -271,6 +277,9 @@ export default function App() {
 
         <Routes>
           <Route index element={<Navigate to={`/vote${location.search}`} replace />} />
+          {/* Reached after a successful sign-in (URL is still /login) or by an
+              already-authenticated visitor — send them into the app. */}
+          <Route path="/login" element={<Navigate to="/vote" replace />} />
           <Route path="/vote" element={
             <ErrorBoundary label="Vote">
               <VoteTab isAdmin={isAdmin} activeMatch={activeMatch} lastMatch={lastMatch} players={players}

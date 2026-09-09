@@ -252,7 +252,7 @@ export function AdminView({ players, activeMatch, currentOrg, onSignOut, onShowG
   };
 
   const copyGuestLink = async (token: string) => {
-    await copyToClipboard(`${window.location.origin}/?guest=${token}`);
+    await copyToClipboard(`${window.location.origin}/vote?guest=${token}`);
     track(EVENTS.GUEST_LINK_COPIED);
     setCopiedToken(token);
     setToast('Lien copié !');
@@ -262,7 +262,7 @@ export function AdminView({ players, activeMatch, currentOrg, onSignOut, onShowG
   // ── Copies the org vote link, shows feedback and marks the checklist step ──
   const copyOrgLink = async () => {
     if (!currentOrg) return;
-    await copyToClipboard(`${window.location.origin}/?org=${currentOrg.slug}`);
+    await copyToClipboard(`${window.location.origin}/vote?org=${currentOrg.slug}`);
     track(EVENTS.ORG_LINK_COPIED);
     setToast('Lien copié !');
     if (currentOrg.id) {
@@ -455,7 +455,7 @@ export function AdminView({ players, activeMatch, currentOrg, onSignOut, onShowG
                           🔗 Lien de vote
                         </div>
                         <div style={{ fontSize: 12, color: 'var(--label2)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                          {window.location.origin}/?org={currentOrg.slug}
+                          {window.location.origin}/vote?org={currentOrg.slug}
                         </div>
                       </div>
                       <button
@@ -466,7 +466,7 @@ export function AdminView({ players, activeMatch, currentOrg, onSignOut, onShowG
                       </button>
                     </div>
                     <NotifyTeamButton
-                      voteUrl={`${window.location.origin}/?org=${currentOrg.slug}`}
+                      voteUrl={`${window.location.origin}/vote?org=${currentOrg.slug}`}
                       matchLabel={activeMatch?.label ?? ''}
                       onFallback={() => void copyOrgLink()}
                     />
@@ -874,7 +874,7 @@ export function AdminView({ players, activeMatch, currentOrg, onSignOut, onShowG
                   padding: '10px 12px', fontSize: 12, color: 'var(--label2)',
                   wordBreak: 'break-all',
                 }}>
-                  {window.location.origin}/?org={currentOrg.slug}
+                  {window.location.origin}/vote?org={currentOrg.slug}
                 </div>
                 <button className="btn btn-secondary btn-full" style={{ marginTop: 8, fontSize: 13 }}
                   onClick={() => void copyOrgLink()}>
