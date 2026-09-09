@@ -22,7 +22,7 @@
       ],
       "destination": "/landing.html"
     },
-    { "source": "/(.*)",          "destination": "/" }
+    { "source": "/(.*)",          "destination": "/app.html" }
   ],
 
   "headers": [

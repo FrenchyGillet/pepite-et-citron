@@ -1,10 +1,52 @@
-import { defineConfig } from "vite";
+import { defineConfig, type Plugin } from "vite";
 import react from "@vitejs/plugin-react";
 import path from "path";
 import { VitePWA } from "vite-plugin-pwa";
 
+/**
+ * The SPA entry is app.html (not index.html), so Vite's built-in "serve
+ * index.html for every route" fallback no longer fires. This plugin restores
+ * it for `vite dev` / `vite preview` and mirrors the production vercel.json
+ * routing: "/" is the static landing page, every other app route is the SPA.
+ */
+function devRouting(): Plugin {
+  const resolve = (rawUrl: string): string | null => {
+    const [pathname, query = ""] = rawUrl.split("?");
+    if (pathname === "/") {
+      const q = new URLSearchParams(query);
+      return q.has("org") || q.has("guest") ? "/app.html" : "/landing.html";
+    }
+    if (
+      !pathname.includes(".") &&
+      !pathname.startsWith("/@") &&
+      !pathname.startsWith("/src/") &&
+      !pathname.startsWith("/node_modules/") &&
+      !pathname.startsWith("/api/") &&
+      !pathname.startsWith("/sb-api/")
+    ) {
+      return "/app.html";
+    }
+    return null;
+  };
+  const middleware = (server: { middlewares: { use: (fn: (req: { url?: string }, res: unknown, next: () => void) => void) => void } }) => {
+    server.middlewares.use((req, _res, next) => {
+      if (req.url) {
+        const to = resolve(req.url);
+        if (to) req.url = to;
+      }
+      next();
+    });
+  };
+  return {
+    name: "dev-routing",
+    configureServer: middleware,
+    configurePreviewServer: middleware,
+  };
+}
+
 export default defineConfig({
   plugins: [
+    devRouting(),
     react(),
 
     VitePWA({
@@ -29,7 +71,9 @@ export default defineConfig({
           "Vote pour la pépite et le citron de chaque match — en quelques secondes, depuis le vestiaire.",
         lang: "fr",
         scope: "/",
-        start_url: "/",
+        // "/" now serves the static marketing page; the installed app opens
+        // its own SPA shell (which React Router redirects to /vote).
+        start_url: "/app.html",
         display: "standalone",
         // Dark app → black chrome & splash background
         theme_color: "#000000",
@@ -79,6 +123,9 @@ export default defineConfig({
 
   build: {
     rollupOptions: {
+      // SPA entry is app.html (not index.html) so that "/" is free for the
+      // static landing page — Vercel serves real files before applying rewrites.
+      input: { app: path.resolve(__dirname, "app.html") },
       output: {
         manualChunks: {
           // React core — almost never changes, longest cache life
