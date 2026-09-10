@@ -15,7 +15,13 @@ export function useAuth() {
   const setPasswordRecovery = useAppStore(s => s.setPasswordRecovery);
 
   const handleSignOut = useCallback(async () => {
-    await api.signOut();
+    try {
+      await api.signOut();
+    } catch (err) {
+      // Server-side signOut can fail (expired session, network blip) — still
+      // clear local state below so the user isn't stuck looking logged in.
+      console.error('signOut:', err);
+    }
     clearOrgsCache();   // else loadOrgs() restores the previous account's org
     setSession(null);
     setCurrentOrg(null);
