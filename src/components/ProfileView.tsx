@@ -1,15 +1,25 @@
 import { useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { DEMO_MODE } from '@/api';
 import { useAppStore } from '@/store/appStore';
+import { useAuth } from '@/hooks/useAuth';
+import { useOrg } from '@/hooks/useOrg';
 import { usePlayers } from '@/hooks/queries';
 import { useUpdatePlayer, useLinkPlayer } from '@/hooks/mutations';
 import { displayName, avatarColor, initials } from '@/utils/player';
-import type { Player } from '@/types';
+import { OrgCreateForm } from '@/components/OrgSetupView';
+import type { Player, Org } from '@/types';
 
 export function ProfileView() {
   const navigate     = useNavigate();
   const session      = useAppStore(s => s.session);
   const currentOrg   = useAppStore(s => s.currentOrg);
+  const myOrgs       = useAppStore(s => s.myOrgs);
+  const setMyOrgs    = useAppStore(s => s.setMyOrgs);
+
+  const { handleSignOut } = useAuth();
+  const { switchOrg }     = useOrg();
+  const [creatingOrg, setCreatingOrg] = useState(false);
 
   const { data: players = [] } = usePlayers(currentOrg?.id);
 
@@ -41,6 +51,16 @@ export function ProfileView() {
     } catch {
       setError('Ce joueur est déjà revendiqué ou une erreur est survenue.');
     }
+  }
+
+  // ── Create a new team (any signed-in user can become admin of a team of ──
+  //    their own, on top of whatever org they already belong to as a voter)
+  function handleOrgCreated(org: Org) {
+    const orgWithRole: Org = { ...org, role: 'admin' };
+    setMyOrgs([...myOrgs, orgWithRole]);
+    switchOrg(orgWithRole);
+    setCreatingOrg(false);
+    navigate('/admin');
   }
 
   // ── Save nickname ─────────────────────────────────────────────────────────
@@ -225,6 +245,52 @@ export function ProfileView() {
           )}
 
           {error && <p style={{ color: '#FF453A', fontSize: 13, marginTop: 12 }}>{error}</p>}
+        </div>
+      )}
+
+      {/* ── Compte ───────────────────────────────────────────────────────── */}
+      {!DEMO_MODE && (
+        <div style={{ marginTop: 32, borderTop: '1px solid var(--separator)', paddingTop: 24 }}>
+          <p style={{
+            fontSize: 13, fontWeight: 600, color: 'var(--label3)',
+            textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 12,
+          }}>
+            Compte
+          </p>
+
+          {creatingOrg ? (
+            <div style={{ background: 'var(--bg2)', borderRadius: 16, padding: '20px 16px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+                <span style={{ fontSize: 15, fontWeight: 700 }}>Créer une équipe</span>
+                <button
+                  onClick={() => setCreatingOrg(false)}
+                  style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 13, color: 'var(--label3)' }}
+                >
+                  Annuler
+                </button>
+              </div>
+              <p style={{ fontSize: 13, color: 'var(--label3)', marginBottom: 16, lineHeight: 1.5 }}>
+                Tu deviendras admin de cette nouvelle équipe, en plus de ton rôle actuel dans {currentOrg?.name || 'ton équipe'}.
+              </p>
+              <OrgCreateForm onOrgCreated={handleOrgCreated} submitLabel="Créer →" />
+            </div>
+          ) : (
+            <button
+              className="btn btn-secondary btn-full"
+              onClick={() => setCreatingOrg(true)}
+              style={{ fontSize: 14, marginBottom: 8 }}
+            >
+              ＋ Créer une nouvelle équipe
+            </button>
+          )}
+
+          <button
+            className="btn btn-secondary btn-full"
+            onClick={handleSignOut}
+            style={{ fontSize: 14, marginTop: 8 }}
+          >
+            Se déconnecter
+          </button>
         </div>
       )}
     </div>
