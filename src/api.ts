@@ -217,7 +217,11 @@ export const realAPI: API = {
     return data;
   },
   signOut: async () => {
-    await supabase.auth.signOut();
+    // Can hang forever (not just reject) if the request is silently swallowed —
+    // an ad/tracker blocker (Brave Shields, uBlock…) is the common case. Bound
+    // it so useAuth.handleSignOut's try/catch always gets a settled promise and
+    // can proceed with local cleanup.
+    await rpcWithTimeout(() => supabase.auth.signOut(), 5000);
   },
   getSession: async (): Promise<UserSession | null> => {
     const { data: { session } } = await supabase.auth.getSession();
@@ -251,8 +255,10 @@ export const realAPI: API = {
       const body = await res.json().catch(() => ({})) as { error?: string };
       throw new Error(body.error || `Erreur ${res.status}`);
     }
-    // Sign out locally after deletion
-    await supabase.auth.signOut();
+    // Sign out locally after deletion — bounded for the same reason as
+    // realAPI.signOut (a blocked request must not hang this indefinitely,
+    // the account is already deleted server-side at this point).
+    await rpcWithTimeout(() => supabase.auth.signOut(), 5000).catch(() => {});
   },
 
   // ── Organisations ─────────────────────────────────────────────────────────
