@@ -219,7 +219,11 @@ export const realAPI: API = {
     return data;
   },
   signOut: async () => {
-    await supabase.auth.signOut();
+    // Can hang forever (not just reject) if the request is silently swallowed —
+    // an ad/tracker blocker (Brave Shields, uBlock…) is the common case. Bound
+    // it so useAuth.handleSignOut's try/catch always gets a settled promise and
+    // can proceed with local cleanup.
+    await rpcWithTimeout(() => supabase.auth.signOut(), 5000);
   },
   getSession: async (): Promise<UserSession | null> => {
     const { data: { session } } = await supabase.auth.getSession();
@@ -253,8 +257,10 @@ export const realAPI: API = {
       const body = await res.json().catch(() => ({})) as { error?: string };
       throw new Error(body.error || `Erreur ${res.status}`);
     }
-    // Sign out locally after deletion
-    await supabase.auth.signOut();
+    // Sign out locally after deletion — bounded for the same reason as
+    // realAPI.signOut (a blocked request must not hang this indefinitely,
+    // the account is already deleted server-side at this point).
+    await rpcWithTimeout(() => supabase.auth.signOut(), 5000).catch(() => {});
   },
 
   // ── Organisations ─────────────────────────────────────────────────────────
@@ -582,12 +588,17 @@ export const realAPI: API = {
       supabase.from("guest_tokens").select("*").eq("match_id", matchId).order("created_at")
     )),
   validateGuestToken: async (token) => {
-    const { data, error } = await supabase.from("guest_tokens").select("*").eq("token", token);
+    // guest_tokens is no longer directly selectable by non-members (RLS) — a
+    // guest validating their own link isn't an org member, so this goes
+    // through a SECURITY DEFINER RPC scoped to the exact token they hold.
+    // See migration 20260011.
+    const { data, error } = await supabase.rpc("validate_guest_token", { p_token: token });
     if (error) throw new Error(error.message);
-    return (data?.[0] as GuestToken) ?? null;
+    return ((data as GuestToken[] | null)?.[0]) ?? null;
   },
   useGuestToken: async (token) => {
-    const { error } = await supabase.from("guest_tokens").update({ used: true }).eq("token", token);
+    // Same reasoning as above — no direct UPDATE policy for a non-member guest.
+    const { error } = await supabase.rpc("mark_guest_token_used", { p_token: token });
     if (error) throw new Error(error.message);
     return true;
   },

@@ -5,9 +5,9 @@ import { api } from '@/api';
 import { orgSetupSchema, type OrgSetupFormValues } from '@/schemas';
 import type { Org } from '@/types';
 
-interface OrgSetupViewProps {
+interface OrgCreateFormProps {
   onOrgCreated: (org: Org) => void;
-  userEmail?: string;
+  submitLabel?: string;
 }
 
 function toSlug(str: string): string {
@@ -22,7 +22,9 @@ function toSlug(str: string): string {
 const FieldError = ({ msg }: { msg?: string }) =>
   msg ? <p style={{ fontSize: 12, color: '#ff6b6b', marginTop: 4 }}>{msg}</p> : null;
 
-export function OrgSetupView({ onOrgCreated, userEmail }: OrgSetupViewProps) {
+/** The actual name/slug form — embeddable on its own (ProfileView) or inside
+ *  the full-screen OrgSetupView (first-time onboarding). */
+export function OrgCreateForm({ onOrgCreated, submitLabel = "Créer l'équipe →" }: OrgCreateFormProps) {
   const {
     register,
     handleSubmit,
@@ -64,6 +66,69 @@ export function OrgSetupView({ onOrgCreated, userEmail }: OrgSetupViewProps) {
   });
 
   return (
+    <form onSubmit={onSubmit} noValidate style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+      <div>
+        <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--label3)', display: 'block', marginBottom: 6 }}>
+          Nom de l'équipe
+        </label>
+        <input
+          placeholder="ex : HC Montréal Rive-Sud"
+          style={{ width: '100%', boxSizing: 'border-box', borderColor: errors.name ? '#ff6b6b' : undefined }}
+          {...register('name')}
+        />
+        <FieldError msg={errors.name?.message} />
+      </div>
+
+      {/* Slug is auto-generated from name — hidden from user */}
+      <input type="hidden" {...register('slug')} />
+
+      {slug && (
+        <div style={{
+          display: 'flex', alignItems: 'center', gap: 8,
+          background: 'var(--bg3)', borderRadius: 'var(--radius-sm)',
+          padding: '10px 12px',
+        }}>
+          <span style={{ fontSize: 16 }}>🔗</span>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--label3)', marginBottom: 2 }}>
+              Lien de vote de votre équipe
+            </div>
+            <div style={{ fontSize: 12, color: 'var(--label2)', wordBreak: 'break-all' }}>
+              {window.location.origin}/vote?org=<strong>{slug}</strong>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {errors.root && (
+        <div style={{
+          background: 'rgba(255,80,80,.12)', border: '1px solid rgba(255,80,80,.3)',
+          borderRadius: 'var(--radius-sm)', padding: '10px 12px',
+          fontSize: 13, color: '#ff6b6b',
+        }}>
+          {errors.root.message}
+        </div>
+      )}
+
+      <button
+        type="submit"
+        className="btn btn-primary"
+        disabled={isSubmitting}
+      >
+        {isSubmitting ? 'Création…' : submitLabel}
+      </button>
+    </form>
+  );
+}
+
+interface OrgSetupViewProps {
+  onOrgCreated: (org: Org) => void;
+  userEmail?: string;
+}
+
+/** Full-screen wrapper used for first-time onboarding (no org yet at all). */
+export function OrgSetupView({ onOrgCreated, userEmail }: OrgSetupViewProps) {
+  return (
     <div style={{
       minHeight: '100dvh', display: 'flex', flexDirection: 'column',
       alignItems: 'center', justifyContent: 'center',
@@ -87,58 +152,7 @@ export function OrgSetupView({ onOrgCreated, userEmail }: OrgSetupViewProps) {
           </div>
         </div>
 
-        <form onSubmit={onSubmit} noValidate style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-          <div>
-            <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--label3)', display: 'block', marginBottom: 6 }}>
-              Nom de l'équipe
-            </label>
-            <input
-              placeholder="ex : HC Montréal Rive-Sud"
-              style={{ width: '100%', boxSizing: 'border-box', borderColor: errors.name ? '#ff6b6b' : undefined }}
-              {...register('name')}
-            />
-            <FieldError msg={errors.name?.message} />
-          </div>
-
-          {/* Slug is auto-generated from name — hidden from user */}
-          <input type="hidden" {...register('slug')} />
-
-          {slug && (
-            <div style={{
-              display: 'flex', alignItems: 'center', gap: 8,
-              background: 'var(--bg3)', borderRadius: 'var(--radius-sm)',
-              padding: '10px 12px',
-            }}>
-              <span style={{ fontSize: 16 }}>🔗</span>
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--label3)', marginBottom: 2 }}>
-                  Lien de vote de votre équipe
-                </div>
-                <div style={{ fontSize: 12, color: 'var(--label2)', wordBreak: 'break-all' }}>
-                  {window.location.origin}/vote?org=<strong>{slug}</strong>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {errors.root && (
-            <div style={{
-              background: 'rgba(255,80,80,.12)', border: '1px solid rgba(255,80,80,.3)',
-              borderRadius: 'var(--radius-sm)', padding: '10px 12px',
-              fontSize: 13, color: '#ff6b6b',
-            }}>
-              {errors.root.message}
-            </div>
-          )}
-
-          <button
-            type="submit"
-            className="btn btn-primary"
-            disabled={isSubmitting}
-          >
-            {isSubmitting ? 'Création…' : "Créer l'équipe →"}
-          </button>
-        </form>
+        <OrgCreateForm onOrgCreated={onOrgCreated} />
       </div>
     </div>
   );

@@ -14,6 +14,17 @@
 --      plan = 'pro' (or the stripe_* columns) through PostgREST without paying.
 --  S14 none of the SECURITY DEFINER functions pinned search_path.
 --
+-- Overlaps 20260010/20260011 (written in parallel): this migration must run
+-- LAST. It supersedes their add_org_member / get_org_members — adds role
+-- validation, case-insensitive email, admin-only member list, pinned
+-- search_path, and a text cast (auth.users.email is varchar, which a plpgsql
+-- RETURN QUERY rejects against a text column). The organizations billing
+-- trigger from 20260010 stays; the column grants below are a second, louder
+-- layer (permission error instead of a silent discard).
+--
+-- Idempotent: safe to re-run after 20260010/20260011 — production applied this
+-- file first (as 20260010_hotfix_authz) and must re-apply it after those two.
+--
 -- DEPLOY ORDER: apply this migration, then deploy the frontend that passes
 -- p_org_slug to get_match_votes. Until then, anonymous ?org= voters cannot see
 -- closed results (members and admins are unaffected).
@@ -86,7 +97,7 @@ grant  execute on function get_org_members(uuid) to authenticated, service_role;
 -- so this is not a secret — but it stops enumeration by sequential match id.
 drop function if exists get_match_votes(bigint);
 
-create function get_match_votes(target_match_id bigint, p_org_slug text default null)
+create or replace function get_match_votes(target_match_id bigint, p_org_slug text default null)
 returns setof votes
 language plpgsql
 security definer
@@ -156,7 +167,8 @@ begin
       and  p.prosecdef
       and  p.proname in (
              'create_organization', 'get_my_orgs', 'is_org_admin', 'is_org_member',
-             'get_match_vote_count', 'has_voted', 'get_all_votes'
+             'get_match_vote_count', 'has_voted', 'get_all_votes',
+             'validate_guest_token', 'mark_guest_token_used'
            )
   loop
     execute format('alter function %s set search_path = public, pg_temp', f);
