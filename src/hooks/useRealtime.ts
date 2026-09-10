@@ -6,7 +6,11 @@ import { queryKeys } from '@/hooks/queries';
 import type { EntityId } from '@/types';
 
 /**
- * Supabase Realtime subscriptions for matches and votes.
+ * Supabase Realtime subscription on matches.
+ *
+ * votes is not published (no SELECT policy since 20260008). Every vote bumps
+ * matches.vote_count through a trigger (20260013), so a matches UPDATE event
+ * also means "the vote count changed".
  *
  * Replaces the 5-second polling loops that were on useActiveMatch / useVotes.
  * On any DB change the relevant TanStack Query cache keys are invalidated so
@@ -28,7 +32,7 @@ export function useRealtime(
     if (DEMO_MODE || !orgId) return;
 
     // Include activeMatchId in the channel name so React always creates a
-    // fresh channel (with the correct vote filter) when the match changes.
+    // fresh channel (its handler closes over activeMatchId) when the match changes.
     const channelName = `realtime:${orgId}:${activeMatchId ?? 'idle'}`;
 
     const channel = supabase
@@ -47,34 +51,15 @@ export function useRealtime(
         () => {
           void queryClient.invalidateQueries({ queryKey: queryKeys.activeMatch(orgId) });
           void queryClient.invalidateQueries({ queryKey: queryKeys.matches(orgId) });
-          // reveal_order / revealed_count changes during counting → non-admin
-          // watchers must refetch get_match_votes to see the next ballot.
           if (activeMatchId != null) {
+            // vote_count bumped by a new vote, or reveal_order / revealed_count
+            // changed during counting → refetch the counter and the ballots
+            // (non-admin watchers only get the revealed ones).
+            void queryClient.invalidateQueries({ queryKey: queryKeys.voteCount(activeMatchId) });
             void queryClient.invalidateQueries({ queryKey: queryKeys.votes(activeMatchId) });
           }
         },
       );
-
-    // ── Votes ───────────────────────────────────────────────────────────────
-    // Only subscribe while a match is open — this is exactly when vote
-    // counts need to update in real time.  Filtering by match_id keeps the
-    // traffic minimal and avoids receiving events for other orgs' matches.
-    if (activeMatchId != null) {
-      channel.on(
-        'postgres_changes',
-        {
-          event:  'INSERT',
-          schema: 'public',
-          table:  'votes',
-          filter: `match_id=eq.${activeMatchId}`,
-        },
-        () => {
-          void queryClient.invalidateQueries({ queryKey: queryKeys.votes(activeMatchId) });
-          void queryClient.invalidateQueries({ queryKey: queryKeys.voteCount(activeMatchId) });
-          void queryClient.invalidateQueries({ queryKey: queryKeys.allVotes(orgId) });
-        },
-      );
-    }
 
     // Track whether this is the initial subscribe or a re-subscribe after a drop.
     // On re-subscribe we invalidate to catch up on any DB changes that arrived

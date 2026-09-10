@@ -7,7 +7,7 @@ import { PodiumView } from './PodiumView';
 import { EmptyState } from './EmptyState';
 import { SharePodiumButton } from './SharePodiumButton';
 import { SeasonTeaser } from './SeasonTeaser';
-import { useVotes } from '@/hooks/queries';
+import { useVotes, useVoteCount } from '@/hooks/queries';
 import { useRevealNext, useCloseMatch, useUpdateMatch } from '@/hooks/mutations';
 import type { Player, Match, EntityId } from '@/types';
 
@@ -99,6 +99,9 @@ export function ResultsView({ players, match, isAdmin, isDark, orgId, isPro, onU
   useEffect(() => { setLocalRevealedCount(null); setPodiumRevealed(false); }, [match?.id]);
 
   const { data: votes = [], isLoading } = useVotes(match?.id);
+  // During the vote, non-admins get no ballot rows (get_match_votes) — only the
+  // count RPC tells them how many votes are in.
+  const { data: voteCount = 0 } = useVoteCount(match?.id);
   const revealNextMutation  = useRevealNext(orgId);
   const closeMatchMutation  = useCloseMatch(orgId);
   const updateMatchMutation = useUpdateMatch(orgId);
@@ -140,7 +143,7 @@ export function ResultsView({ players, match, isAdmin, isDark, orgId, isPro, onU
           <div style={{ fontSize: 17, fontWeight: 600, marginBottom: 6 }}>Résultats masqués</div>
           <div style={{ fontSize: 13, color: 'var(--label3)', lineHeight: 1.6 }}>
             Le classement sera révélé une fois le vote clôturé.<br />
-            <span style={{ color: 'var(--label2)', fontWeight: 500 }}>{votes.length}</span> vote{votes.length !== 1 ? 's' : ''} reçu{votes.length !== 1 ? 's' : ''} sur {present.length} joueur{present.length !== 1 ? 's' : ''}.
+            <span style={{ color: 'var(--label2)', fontWeight: 500 }}>{voteCount}</span> vote{voteCount !== 1 ? 's' : ''} reçu{voteCount !== 1 ? 's' : ''} sur {present.length} joueur{present.length !== 1 ? 's' : ''}.
           </div>
         </div>
       </div>
