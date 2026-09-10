@@ -1,5 +1,6 @@
 import { useQuery, useQueries } from '@tanstack/react-query';
 import { api, DEMO_MODE } from '@/api';
+import { useAppStore } from '@/store/appStore';
 import type { EntityId } from '@/types';
 
 export const queryKeys = {
@@ -50,9 +51,11 @@ export function useMatchById(id: EntityId | null | undefined) {
 }
 
 export function useVotes(matchId: EntityId | null | undefined) {
+  // Anonymous ?org= voters are authorised by the org slug (get_match_votes).
+  const orgSlug = useAppStore(s => s.currentOrg?.slug);
   return useQuery({
     queryKey: queryKeys.votes(matchId),
-    queryFn: () => api.getVotes(matchId!),
+    queryFn: () => api.getVotes(matchId!, orgSlug),
     enabled: matchId != null,
     // staleTime: 0 — must always be fresh; triggers refetch on window-focus
     // as backup when Realtime WebSocket is disconnected.

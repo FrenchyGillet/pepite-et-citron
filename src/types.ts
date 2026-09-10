@@ -158,7 +158,7 @@ export interface API {
   hasVoted(matchId: EntityId, voterName: string, voterPlayerId?: EntityId | null): Promise<boolean>;
   getVoteCount(matchId: EntityId): Promise<number>;
   submitVote(vote: Vote): Promise<void>;
-  getVotes(matchId: EntityId): Promise<Vote[]>;
+  getVotes(matchId: EntityId, orgSlug?: string | null): Promise<Vote[]>;
   getAllVotes(): Promise<Vote[]>;
 
   // Teams

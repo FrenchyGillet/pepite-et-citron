@@ -338,6 +338,13 @@ describe('realAPI', () => {
       const p = await realAPI.addPlayer('Alice');
       expect(p.name).toBe('Alice');
     });
+
+    it('does not retry the INSERT on a network error (would duplicate the player)', async () => {
+      let attempts = 0;
+      server.use(http.post(`${BASE}/players`, () => { attempts++; return HttpResponse.error(); }));
+      await expect(realAPI.addPlayer('Alice')).rejects.toThrow();
+      expect(attempts).toBe(1);
+    });
   });
 
   describe('removePlayer', () => {
@@ -404,6 +411,13 @@ describe('realAPI', () => {
       const m = await realAPI.createMatch('vs Bruxelles', ['p1', 'p2'], null, 1);
       expect(m.label).toBe('vs Bruxelles');
       expect(m.phase).toBe('voting');
+    });
+
+    it('does not retry the INSERT on a network error (would open a second match)', async () => {
+      let attempts = 0;
+      server.use(http.post(`${BASE}/matches`, () => { attempts++; return HttpResponse.error(); }));
+      await expect(realAPI.createMatch('vs Bruxelles', ['p1', 'p2'], null, 1)).rejects.toThrow();
+      expect(attempts).toBe(1);
     });
   });
 
@@ -488,6 +502,26 @@ describe('realAPI', () => {
       const votes = await realAPI.getVotes('m1');
       expect(votes).toHaveLength(1);
       expect(votes[0].voter_name).toBe('Alice');
+    });
+
+    it('sends the org slug so anonymous ?org= voters are authorised', async () => {
+      let body: unknown;
+      server.use(http.post(`${RPC}/get_match_votes`, async ({ request }) => {
+        body = await request.json();
+        return HttpResponse.json([]);
+      }));
+      await realAPI.getVotes('m1', 'team-a');
+      expect(body).toEqual({ target_match_id: 'm1', p_org_slug: 'team-a' });
+    });
+
+    it('sends p_org_slug null when no slug is known (members)', async () => {
+      let body: unknown;
+      server.use(http.post(`${RPC}/get_match_votes`, async ({ request }) => {
+        body = await request.json();
+        return HttpResponse.json([]);
+      }));
+      await realAPI.getVotes('m1');
+      expect(body).toEqual({ target_match_id: 'm1', p_org_slug: null });
     });
   });
 

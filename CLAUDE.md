@@ -171,6 +171,7 @@ const colors = {
 4. **Données serveur** : TanStack Query (`src/hooks/queries.ts`, `src/hooks/mutations.ts`)
 5. **État global client** : Zustand (`src/store/appStore.ts`) — ne pas y dupliquer des données serveur
 6. **Mode démo** : `DEMO_MODE = true` quand `VITE_SUPABASE_URL` contient `"VOTRE_PROJET"` — utiliser `demoAPI` en-mémoire
+7. **`withRetry` = lectures et UPDATE idempotents uniquement** — jamais sur un INSERT (un retry après timeout crée un doublon : match ouvert deux fois, joueur en double)
 
 ---
 

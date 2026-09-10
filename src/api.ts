@@ -20,6 +20,8 @@ function rpcWithTimeout<T>(fn: () => PromiseLike<T>, ms = 10000): Promise<T> {
 // Single retry authority for the whole API layer: the QueryClient is configured
 // with `retry: 0`, so every retry decision lives here. Retries network blips,
 // aborts/timeouts and 5xx; never retries 4xx (client errors are permanent).
+// Reads and idempotent UPDATEs only: an INSERT that times out after the server
+// committed it would be inserted twice.
 async function withRetry<T>(fn: () => Promise<T>, retries = 1): Promise<T> {
   for (let attempt = 0; attempt <= retries; attempt++) {
     try {
@@ -367,11 +369,11 @@ export const realAPI: API = {
     withRetry(async () => {
       return await run<Player[]>(supabase.from("players").select("*").eq("org_id", _orgId).order("name"));
     }),
-  addPlayer: (name) =>
-    withRetry(async () => {
-      const rows = await run<Player[]>(supabase.from("players").insert({ name, org_id: _orgId }).select());
-      return rows[0];
-    }),
+  // No withRetry: a retried INSERT after a timeout would duplicate the player.
+  addPlayer: async (name) => {
+    const rows = await run<Player[]>(supabase.from("players").insert({ name, org_id: _orgId }).select());
+    return rows[0];
+  },
   removePlayer: async (id) => {
     const { error } = await supabase.from("players").delete().eq("id", id);
     if (error) throw new Error(error.message);
@@ -408,17 +410,17 @@ export const realAPI: API = {
         supabase.from("matches").select("*").eq("org_id", _orgId).order("created_at", { ascending: false })
       );
     }),
-  createMatch: (label, presentIds, teamId, season, pepiteCount) =>
-    withRetry(async () => {
-      const rows = await run<Match[]>(
-        supabase.from("matches").insert({
-          label, present_ids: presentIds, is_open: true, phase: "voting",
-          team_id: teamId ?? null, season: season || 1, org_id: _orgId,
-          ...(pepiteCount === 3 ? { pepite_count: 3 } : {}),
-        }).select()
-      );
-      return rows[0];
-    }),
+  // No withRetry: a retried INSERT after a timeout would open a second match.
+  createMatch: async (label, presentIds, teamId, season, pepiteCount) => {
+    const rows = await run<Match[]>(
+      supabase.from("matches").insert({
+        label, present_ids: presentIds, is_open: true, phase: "voting",
+        team_id: teamId ?? null, season: season || 1, org_id: _orgId,
+        ...(pepiteCount === 3 ? { pepite_count: 3 } : {}),
+      }).select()
+    );
+    return rows[0];
+  },
   closeMatch: (id) =>
     withRetry(async () => {
       const { error } = await supabase.from("matches").update({ is_open: false, phase: "closed" }).eq("id", id);
@@ -535,9 +537,11 @@ export const realAPI: API = {
     }
     throw new Error(error.message);
   },
-  getVotes: (matchId) =>
+  // The org slug authorises anonymous ?org= voters (migration 20260010);
+  // members are authorised by their membership and may omit it.
+  getVotes: (matchId, orgSlug) =>
     withRetry(() => run<Vote[]>(
-      supabase.rpc("get_match_votes", { target_match_id: matchId }),
+      supabase.rpc("get_match_votes", { target_match_id: matchId, p_org_slug: orgSlug || null }),
     ).then(v => v ?? [])),
   getAllVotes: () =>
     withRetry(() => run<Vote[]>(
