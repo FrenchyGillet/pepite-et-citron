@@ -96,6 +96,8 @@ export default function App() {
   const setOrgsLoadError = useAppStore(s => s.setOrgsLoadError);
   const setShowOnboarding = useAppStore(s => s.setShowOnboarding);
   const loadOrgs         = useAppStore(s => s.loadOrgs);
+  const justSignedUp     = useAppStore(s => s.justSignedUp);
+  const setJustSignedUp  = useAppStore(s => s.setJustSignedUp);
   const pendingOrgId     = useAppStore(s => s.pendingOrgId);
   const pendingOrgName   = useAppStore(s => s.pendingOrgName);
 
@@ -171,7 +173,7 @@ export default function App() {
     if (location.pathname !== '/login') {
       return <Navigate to="/login" replace />;
     }
-    return <><GlobalStyle /><AuthView onAuth={setSession} /></>;
+    return <><GlobalStyle /><AuthView onAuth={(s, isSignup) => { setSession(s); if (isSignup) setJustSignedUp(true); }} /></>;
   }
 
   if (!DEMO_MODE && session && !orgsResolved && !isVoterLink) {
@@ -231,23 +233,55 @@ export default function App() {
     }
 
     // ── Brand-new user with no team: create one ───────────────────────────────
+    // Gated on justSignedUp (set only by AuthView's signup form) rather than
+    // inferring "new user" from an empty org list: a *login* can also land
+    // here with currentOrg still null if getMyOrgs() raced the fresh session
+    // and returned an empty list without throwing (no cache yet to mask it,
+    // typically first login on a new browser). Showing this form in that case
+    // would let an existing user spin up a second, empty org and "lose" their
+    // real one — never do that on a login, only ever right after signup.
+    if (justSignedUp) {
+      return (
+        <>
+          <GlobalStyle />
+          <OrgSetupView
+            userEmail={session.user?.email}
+            onOrgCreated={(org) => {
+              const orgWithRole: Org = { ...org, role: 'admin' };
+              setCurrentOrg(orgWithRole);
+              setCurrentOrgId(org.id);
+              setMyOrgs([orgWithRole]);
+              setOrgsResolved(true);
+              setOrgsLoadError(false);
+              setJustSignedUp(false);
+              if (!localStorage.getItem(`pepite_onboarded_${org.id}`)) {
+                setShowOnboarding(true);
+              }
+            }}
+          />
+        </>
+      );
+    }
+
+    // ── Login with no resolved org: retry rather than offer to create one ────
     return (
       <>
         <GlobalStyle />
-        <OrgSetupView
-          userEmail={session.user?.email}
-          onOrgCreated={(org) => {
-            const orgWithRole: Org = { ...org, role: 'admin' };
-            setCurrentOrg(orgWithRole);
-            setCurrentOrgId(org.id);
-            setMyOrgs([orgWithRole]);
-            setOrgsResolved(true);
-            setOrgsLoadError(false);
-            if (!localStorage.getItem(`pepite_onboarded_${org.id}`)) {
-              setShowOnboarding(true);
-            }
-          }}
-        />
+        <div style={{ minHeight: '100dvh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--bg)', padding: 24 }}>
+          <div style={{ background: 'var(--bg2)', borderRadius: 16, padding: '32px 24px', maxWidth: 360, width: '100%', textAlign: 'center' }}>
+            <div style={{ fontSize: 36, marginBottom: 12 }}>🔄</div>
+            <div style={{ fontSize: 17, fontWeight: 700, marginBottom: 8, color: 'var(--label)' }}>Aucune équipe trouvée</div>
+            <div style={{ fontSize: 14, color: 'var(--label3)', marginBottom: 24, lineHeight: 1.6 }}>
+              Ça peut être temporaire (connexion au serveur). Réessaie avant de contacter le support.
+            </div>
+            <button className="btn btn-primary btn-full" onClick={() => { setOrgsResolved(false); void loadOrgs(); }}>
+              Réessayer
+            </button>
+            <button className="btn btn-secondary btn-full" style={{ marginTop: 10 }} onClick={handleSignOut}>
+              Se déconnecter
+            </button>
+          </div>
+        </div>
       </>
     );
   }
@@ -307,7 +341,6 @@ export default function App() {
                     players={players}
                     activeMatch={activeMatch}
                     currentOrg={currentOrg}
-                    onSignOut={handleSignOut}
                     onShowGuide={() => setShowOnboarding(true)}
                     onGoToResults={() => navigate('/results')}
                     onUpgrade={() => setShowUpgradeModal(true)}

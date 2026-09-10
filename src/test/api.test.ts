@@ -625,12 +625,12 @@ describe('realAPI', () => {
   describe('validateGuestToken', () => {
     it('returns the GuestToken when found', async () => {
       const gt = { id: 'gt1', token: 'abc', name: 'Marc', match_id: 'm1', used: false, created_at: '' };
-      server.use(http.get(`${BASE}/guest_tokens`, () => HttpResponse.json([gt])));
+      server.use(http.post(`${RPC}/validate_guest_token`, () => HttpResponse.json([gt])));
       expect((await realAPI.validateGuestToken('abc'))?.name).toBe('Marc');
     });
 
     it('returns null when token is not found', async () => {
-      server.use(http.get(`${BASE}/guest_tokens`, () => HttpResponse.json([])));
+      server.use(http.post(`${RPC}/validate_guest_token`, () => HttpResponse.json([])));
       expect(await realAPI.validateGuestToken('nope')).toBeNull();
     });
   });
@@ -644,14 +644,14 @@ describe('realAPI', () => {
   });
 
   describe('useGuestToken', () => {
-    it('PATCHes the token with used=true', async () => {
+    it('calls mark_guest_token_used with the token', async () => {
       let captured: unknown;
-      server.use(http.patch(`${BASE}/guest_tokens`, async ({ request }) => {
+      server.use(http.post(`${RPC}/mark_guest_token_used`, async ({ request }) => {
         captured = await request.json();
-        return HttpResponse.json([]);
+        return HttpResponse.json(null);
       }));
       await realAPI.useGuestToken('abc');
-      expect(captured).toMatchObject({ used: true });
+      expect(captured).toMatchObject({ p_token: 'abc' });
     });
   });
 

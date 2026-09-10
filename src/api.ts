@@ -578,12 +578,17 @@ export const realAPI: API = {
       supabase.from("guest_tokens").select("*").eq("match_id", matchId).order("created_at")
     )),
   validateGuestToken: async (token) => {
-    const { data, error } = await supabase.from("guest_tokens").select("*").eq("token", token);
+    // guest_tokens is no longer directly selectable by non-members (RLS) — a
+    // guest validating their own link isn't an org member, so this goes
+    // through a SECURITY DEFINER RPC scoped to the exact token they hold.
+    // See migration 20260011.
+    const { data, error } = await supabase.rpc("validate_guest_token", { p_token: token });
     if (error) throw new Error(error.message);
-    return (data?.[0] as GuestToken) ?? null;
+    return ((data as GuestToken[] | null)?.[0]) ?? null;
   },
   useGuestToken: async (token) => {
-    const { error } = await supabase.from("guest_tokens").update({ used: true }).eq("token", token);
+    // Same reasoning as above — no direct UPDATE policy for a non-member guest.
+    const { error } = await supabase.rpc("mark_guest_token_used", { p_token: token });
     if (error) throw new Error(error.message);
     return true;
   },

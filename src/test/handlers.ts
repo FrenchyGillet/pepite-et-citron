@@ -80,4 +80,6 @@ export const handlers = [
   http.post(`${RPC}/get_all_votes`,          () => HttpResponse.json([])),
   http.post(`${RPC}/get_match_vote_count`,   () => HttpResponse.json(0)),
   http.post(`${RPC}/has_voted`,              () => HttpResponse.json(false)),
+  http.post(`${RPC}/validate_guest_token`,   () => HttpResponse.json([])),
+  http.post(`${RPC}/mark_guest_token_used`,  () => HttpResponse.json(null)),
 ];
