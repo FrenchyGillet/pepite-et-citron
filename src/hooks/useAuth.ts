@@ -13,6 +13,7 @@ export function useAuth() {
   const setCurrentOrg       = useAppStore(s => s.setCurrentOrg);
   const loadOrgs            = useAppStore(s => s.loadOrgs);
   const setPasswordRecovery = useAppStore(s => s.setPasswordRecovery);
+  const setJustSignedUp     = useAppStore(s => s.setJustSignedUp);
 
   const handleSignOut = useCallback(async () => {
     try {
@@ -26,9 +27,10 @@ export function useAuth() {
     setSession(null);
     setCurrentOrg(null);
     setCurrentOrgId(null);
+    setJustSignedUp(false);
     queryClient.clear();
     navigate('/vote');
-  }, [navigate, queryClient, setSession, setCurrentOrg]);
+  }, [navigate, queryClient, setSession, setCurrentOrg, setJustSignedUp]);
 
   useEffect(() => {
     if (DEMO_MODE) return;
@@ -78,6 +80,7 @@ export function useAuth() {
         clearOrgsCache();
         setCurrentOrg(null);
         setCurrentOrgId(null);
+        setJustSignedUp(false);
         queryClient.clear();
       } else if (event === 'SIGNED_IN') {
         // Explicit sign-in: reload orgs (bootstrap handles the initial load).

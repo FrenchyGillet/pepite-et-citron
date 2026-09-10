@@ -7,7 +7,7 @@ import { track, EVENTS } from '@/utils/analytics';
 import type { UserSession } from '@/types';
 
 interface AuthViewProps {
-  onAuth: (session: UserSession) => void;
+  onAuth: (session: UserSession, isSignup: boolean) => void;
 }
 
 type AuthMode = 'login' | 'signup' | 'forgot';
@@ -70,7 +70,7 @@ export function AuthView({ onAuth }: AuthViewProps) {
       const session = await api.getSession();
       if (session) {
         track(mode === 'signup' ? EVENTS.AUTH_SIGNUP : EVENTS.AUTH_LOGIN);
-        onAuth(session);
+        onAuth(session, mode === 'signup');
       }
     } catch (err) {
       setApiError(err instanceof Error ? err.message : 'Une erreur est survenue');

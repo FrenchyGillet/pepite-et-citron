@@ -50,6 +50,10 @@ interface AppStore {
   pendingPlayerId:   EntityId | null;   // player.id to auto-link after signup
   pendingOrgId:      string | null;     // org.id to auto-join after signup (?org= flow)
   pendingOrgName:    string | null;     // org.name — kept for display in JoinOrgView
+  justSignedUp:      boolean;           // true only right after AuthView's signup form — the
+                                         // only condition allowed to show "create your team".
+                                         // A login with a transiently/genuinely empty org list
+                                         // must NOT show it (see App.tsx).
   showOnboarding:    boolean;
   lastMatchId:       EntityId | null;
   passwordRecovery:  boolean;
@@ -72,6 +76,7 @@ interface AppStore {
   setPendingPlayerId:   (id: EntityId | null) => void;
   setPendingOrgId:      (id: string | null) => void;
   setPendingOrgName:    (name: string | null) => void;
+  setJustSignedUp:      (v: boolean) => void;
   setShowOnboarding:    (v: boolean) => void;
   setLastMatchId:       (id: EntityId | null) => void;
   setPasswordRecovery:  (v: boolean) => void;
@@ -101,6 +106,7 @@ export function resetAppStore() {
     pendingPlayerId: null,
     pendingOrgId: null,
     pendingOrgName: null,
+    justSignedUp: false,
     showOnboarding: false,
     lastMatchId: null,
     passwordRecovery: false,
@@ -130,6 +136,7 @@ export const useAppStore = create<AppStore>((set, get) => ({
   pendingPlayerId:  null,
   pendingOrgId:     null,
   pendingOrgName:   null,
+  justSignedUp:     false,
   showOnboarding:   false,
   lastMatchId:      null,
   passwordRecovery: false,
@@ -152,6 +159,7 @@ export const useAppStore = create<AppStore>((set, get) => ({
   setPendingPlayerId:  (id)  => set({ pendingPlayerId: id }),
   setPendingOrgId:     (id)   => set({ pendingOrgId: id }),
   setPendingOrgName:   (name) => set({ pendingOrgName: name }),
+  setJustSignedUp:     (v)   => set({ justSignedUp: v }),
   setShowOnboarding:   (v)   => set({ showOnboarding: v }),
   setLastMatchId:      (id)  => set({ lastMatchId: id }),
   setPasswordRecovery: (v)   => set({ passwordRecovery: v }),
