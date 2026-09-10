@@ -54,6 +54,12 @@ async function run<T>(
   return data as T;
 }
 
+// PostgREST answers PGRST202 (404) for an RPC that does not exist yet. Lets the
+// frontend ship before the migration that creates it, falling back meanwhile.
+function isMissingRpc(error: { code?: string; message?: string } | null): boolean {
+  return !!error && (error.code === 'PGRST202' || /could not find the function/i.test(error.message ?? ''));
+}
+
 // Org courante (défini au login ou via ?org=slug)
 let _orgId: string | null = null;
 export function setCurrentOrgId(id: string | null): void { _orgId = id; }
@@ -165,9 +171,22 @@ export const demoAPI: API = {
     ))
   ),
   getVoteCount:     (matchId) => Promise.resolve(demoState.votes.filter(v => v.match_id === matchId).length),
-  submitVote:       (vote) => { demoState.votes.push({ ...vote, id: demoState.nextId++ }); return Promise.resolve(); },
+  submitVote:       (vote) => {
+    // Mirrors submit_vote: the guest link is consumed with the vote.
+    const { guest_token, ...row } = vote;
+    if (guest_token) {
+      const t = demoState.guestTokens.find(t => t.token === guest_token);
+      if (t) t.used = true;
+    }
+    demoState.votes.push({ ...row, id: demoState.nextId++ });
+    return Promise.resolve();
+  },
   getVotes:         (matchId) => Promise.resolve(demoState.votes.filter(v => v.match_id === matchId)),
   getAllVotes:       () => Promise.resolve([...demoState.votes]),
+  deleteVote:        (voteId) => {
+    demoState.votes = demoState.votes.filter(v => v.id !== voteId);
+    return Promise.resolve();
+  },
   getTeams:         () => Promise.resolve([...demoState.teams]),
   createTeam:       (name, playerIds) => {
     const t: Team = { id: demoState.nextId++, name, player_ids: playerIds };
@@ -365,9 +384,15 @@ export const realAPI: API = {
     }
   },
   getOrgBySlug: async (slug) => {
-    const { data, error } = await supabase.from("organizations").select("*").eq("slug", slug);
-    if (error) throw new Error(error.message);
-    return (data?.[0] as Org) ?? null;
+    // organizations is members-only since 20260014: anonymous ?org= visitors
+    // resolve their link through get_org_public (id, name, slug, plan only).
+    const { data, error } = await supabase.rpc("get_org_public", { p_slug: slug });
+    if (!error) return ((data as Org[] | null)?.[0]) ?? null;
+    if (!isMissingRpc(error)) throw new Error(error.message);
+    // TODO: remove once 20260014 is applied in production (pre-migration fallback).
+    const { data: rows, error: fallbackErr } = await supabase.from("organizations").select("*").eq("slug", slug);
+    if (fallbackErr) throw new Error(fallbackErr.message);
+    return (rows?.[0] as Org) ?? null;
   },
 
   // ── Joueurs ───────────────────────────────────────────────────────────────
@@ -527,13 +552,40 @@ export const realAPI: API = {
       supabase.rpc("get_match_vote_count", { target_match_id: matchId }),
     )),
   submitVote: async (vote) => {
+    // submit_vote (20260014) validates phase, presence, identity and uniqueness
+    // server-side and consumes the guest link in the same transaction. Its
+    // errors are French, user-facing messages ("Tu as déjà voté pour ce match.").
+    const { error: rpcError } = await supabase.rpc("submit_vote", {
+      p_match_id:        vote.match_id,
+      p_voter_name:      vote.voter_name,
+      p_voter_player_id: vote.voter_player_id ?? null,
+      p_best1_id:        vote.best1_id ?? null,
+      p_best2_id:        vote.best2_id ?? null,
+      p_best3_id:        vote.best3_id ?? null,
+      p_lemon_id:        vote.lemon_id ?? null,
+      p_best1_comment:   vote.best1_comment ?? null,
+      p_best2_comment:   vote.best2_comment ?? null,
+      p_best3_comment:   vote.best3_comment ?? null,
+      p_lemon_comment:   vote.lemon_comment ?? null,
+      p_guest_token:     vote.guest_token ?? null,
+    });
+    if (!rpcError) return;
+    if (!isMissingRpc(rpcError)) {
+      throw Object.assign(new Error(rpcError.message), { code: (rpcError as { code?: string }).code });
+    }
+
+    // TODO: remove once 20260014 is applied in production (pre-migration fallback).
     // Strip undefined fields before insert — optional columns like best3_id /
     // best3_comment must not appear in the payload when they are absent, or
     // PostgREST returns "column not found in schema cache".
+    const { guest_token, ...row } = vote;
     const payload = Object.fromEntries(
-      Object.entries(vote as unknown as Record<string, unknown>).filter(([, v]) => v !== undefined),
+      Object.entries(row as unknown as Record<string, unknown>).filter(([, v]) => v !== undefined),
     );
     const { error } = await supabase.from("votes").insert(payload);
+    if (!error && guest_token) {
+      await supabase.rpc("mark_guest_token_used", { p_token: guest_token });
+    }
     if (!error) return;
     if ((error as { code?: string }).code === '23505'
       || error.message?.includes('409')
@@ -553,6 +605,12 @@ export const realAPI: API = {
     withRetry(() => run<Vote[]>(
       supabase.rpc("get_all_votes", { target_org_id: _orgId }),
     ).then(v => v ?? [])),
+  // Admin-only, voting phase only (delete_vote, 20260014): undo a vote cast
+  // under someone else's name so the real player can vote.
+  deleteVote: async (voteId) => {
+    const { error } = await supabase.rpc("delete_vote", { p_vote_id: voteId });
+    if (error) throw new Error(error.message);
+  },
 
   // ── Équipes ───────────────────────────────────────────────────────────────
   getTeams: () =>

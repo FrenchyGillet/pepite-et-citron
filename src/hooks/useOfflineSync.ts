@@ -8,9 +8,13 @@
 import { useEffect } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { api } from '@/api';
-import { getPendingOfflineVote, clearOfflineVote } from '@/utils/offlineVote';
+import { getPendingOfflineVote, clearOfflineVote, isNetworkError } from '@/utils/offlineVote';
 
-export function useOfflineSync(onSynced?: () => void, onFailed?: () => void) {
+export function useOfflineSync(
+  onSynced?: () => void,
+  onFailed?: () => void,
+  onDropped?: (message: string) => void,
+) {
   const queryClient = useQueryClient();
 
   useEffect(() => {
@@ -24,9 +28,16 @@ export function useOfflineSync(onSynced?: () => void, onFailed?: () => void) {
         // Invalidate votes so the count updates on any open screen
         await queryClient.invalidateQueries({ queryKey: ['votes'] });
         onSynced?.();
-      } catch {
-        // Still offline or match closed — leave it in the queue, try again next time
-        onFailed?.();
+      } catch (err) {
+        if (isNetworkError(err)) {
+          // Still offline — leave it in the queue, try again next time
+          onFailed?.();
+          return;
+        }
+        // Permanent refusal (vote closed, already voted…): retrying would never
+        // succeed, so drop it and tell the voter instead of losing it silently.
+        clearOfflineVote();
+        onDropped?.(err instanceof Error ? err.message : String(err));
       }
     };
 

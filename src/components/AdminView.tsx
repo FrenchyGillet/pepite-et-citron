@@ -14,7 +14,7 @@ import {
   useAddPlayer, useRemovePlayer,
   useCreateMatch, useCloseMatch, useStartCounting,
   useCreateTeam, useUpdateTeam, useDeleteTeam,
-  useCreateGuestToken, useDeleteGuestToken,
+  useCreateGuestToken, useDeleteGuestToken, useDeleteVote,
   useAddMember, useRemoveMember,
   useAdvanceSeason, useSetSeasonName,
 } from '@/hooks/mutations';
@@ -217,6 +217,23 @@ export function AdminView({ players, activeMatch, currentOrg, onShowGuide, onGoT
   const removeMemberMutation     = useRemoveMember(currentOrg?.id);
   const advanceSeasonMutation    = useAdvanceSeason(currentOrg?.id);
   const setSeasonNameMutation    = useSetSeasonName();
+  const deleteVoteMutation       = useDeleteVote(activeMatch?.id);
+
+  // Undo a vote cast under a player's name (someone tapped the wrong first
+  // name) so the real player can vote. Voting phase only (delete_vote).
+  const cancelVote = async (p: Player) => {
+    const vote = matchVotes.find(v => v.voter_player_id === p.id)
+      ?? matchVotes.find(v => v.voter_player_id == null && v.voter_name === p.name);
+    if (vote?.id == null) return;
+    if (!(await confirm({
+      message: `Annuler le vote de ${p.name} ? Il pourra voter à nouveau.`,
+      confirmLabel: 'Annuler le vote', danger: true,
+    }))) return;
+    deleteVoteMutation.mutate(vote.id, {
+      onSuccess: () => setToast(`Vote de ${p.name} annulé`),
+      onError: (err) => setToast(`Erreur : ${err instanceof Error ? err.message : String(err)}`),
+    });
+  };
 
   const handleAddMember = () => {
     if (!currentOrg?.id) return;
@@ -511,6 +528,18 @@ export function AdminView({ players, activeMatch, currentOrg, onShowGuide, onGoT
                               border: `1px solid ${hasVoted ? 'rgba(48,209,88,0.3)' : 'transparent'}`,
                             }}>
                               {hasVoted ? '✓' : '⏳'} {p.name}
+                              {hasVoted && (
+                                <button
+                                  onClick={() => void cancelVote(p)}
+                                  aria-label={`Annuler le vote de ${p.name}`}
+                                  title="Annuler ce vote"
+                                  style={{
+                                    background: 'none', border: 'none', cursor: 'pointer',
+                                    color: 'inherit', fontSize: 12, lineHeight: 1,
+                                    padding: '2px 2px 2px 6px', minHeight: 0,
+                                  }}
+                                >✕</button>
+                              )}
                             </span>
                           );
                         })}

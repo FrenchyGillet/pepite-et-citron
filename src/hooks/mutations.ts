@@ -11,6 +11,17 @@ export function useSubmitVote(matchId: EntityId | null | undefined) {
   });
 }
 
+export function useDeleteVote(matchId: EntityId | null | undefined) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (voteId: EntityId) => api.deleteVote(voteId),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: queryKeys.votes(matchId) });
+      qc.invalidateQueries({ queryKey: queryKeys.voteCount(matchId) });
+    },
+  });
+}
+
 export function useAddPlayer(orgId?: string | null) {
   const qc = useQueryClient();
   return useMutation({

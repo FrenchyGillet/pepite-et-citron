@@ -3,7 +3,11 @@ import { api } from '@/api';
 import { markVotedLocally, classifyVoteError, getStoredVoterIdentity, saveVoterIdentity, loadVoteDraft, saveVoteDraft, clearVoteDraft } from '@/utils/vote';
 import { saveOfflineVote, isNetworkError } from '@/utils/offlineVote';
 import { useVoteCount } from '@/hooks/queries';
+import { useAppStore } from '@/store/appStore';
 import type { Player, Match, EntityId } from '@/types';
+
+// Server-side cap in submit_vote (20260014).
+const COMMENT_MAX_LENGTH = 280;
 
 interface VoteViewProps {
   players: Player[];
@@ -17,6 +21,8 @@ export function VoteView({ players, match, onVoted, guestName = null, onGuestVot
   // ── Voter identity: restore from localStorage if the player is present ───
   const storedIdentity = !guestName ? getStoredVoterIdentity() : null;
   const presentIds = match.present_ids || [];
+  // Single-use invite link: travels with the vote and is consumed server-side.
+  const guestToken = useAppStore(s => s.guestToken);
 
   const storedPlayer = storedIdentity
     ? (players.find(p => p.id === storedIdentity.playerId && presentIds.includes(p.id))
@@ -129,6 +135,7 @@ export function VoteView({ players, match, onVoted, guestName = null, onGuestVot
       best2_id: best2?.id,   best2_comment: best2Comment,
       ...(pepiteCount === 3 ? { best3_id: best3?.id, best3_comment: best3Comment } : {}),
       lemon_id: lemon?.id,   lemon_comment: lemonComment,
+      ...(guestName && guestToken ? { guest_token: guestToken } : {}),
     };
 
     // ── Offline-first: if device is offline, queue locally and proceed ──────
@@ -312,7 +319,7 @@ export function VoteView({ players, match, onVoted, guestName = null, onGuestVot
                 {best1 && (
                   <>
                     <p className="section-label mt-12 mb-4">Commentaire (optionnel)</p>
-                    <input placeholder={`Pourquoi ${best1.name} ?`} value={best1Comment}
+                    <input placeholder={`Pourquoi ${best1.name} ?`} value={best1Comment} maxLength={COMMENT_MAX_LENGTH}
                       onChange={e => setBest1Comment(e.target.value)} />
                   </>
                 )}
@@ -345,7 +352,7 @@ export function VoteView({ players, match, onVoted, guestName = null, onGuestVot
                 {best2 && (
                   <>
                     <p className="section-label mt-12 mb-4">Commentaire (optionnel)</p>
-                    <input placeholder={`Pourquoi ${best2.name} ?`} value={best2Comment}
+                    <input placeholder={`Pourquoi ${best2.name} ?`} value={best2Comment} maxLength={COMMENT_MAX_LENGTH}
                       onChange={e => setBest2Comment(e.target.value)} />
                   </>
                 )}
@@ -379,7 +386,7 @@ export function VoteView({ players, match, onVoted, guestName = null, onGuestVot
                 {best3 && (
                   <>
                     <p className="section-label mt-12 mb-4">Commentaire (optionnel)</p>
-                    <input placeholder={`Pourquoi ${best3.name} ?`} value={best3Comment}
+                    <input placeholder={`Pourquoi ${best3.name} ?`} value={best3Comment} maxLength={COMMENT_MAX_LENGTH}
                       onChange={e => setBest3Comment(e.target.value)} />
                   </>
                 )}
@@ -446,7 +453,7 @@ export function VoteView({ players, match, onVoted, guestName = null, onGuestVot
                 {lemon && (
                   <>
                     <p className="section-label mt-12 mb-4">Commentaire (optionnel)</p>
-                    <input placeholder={`Pourquoi ${lemon.name} ?`} value={lemonComment}
+                    <input placeholder={`Pourquoi ${lemon.name} ?`} value={lemonComment} maxLength={COMMENT_MAX_LENGTH}
                       onChange={e => setLemonComment(e.target.value)} />
                   </>
                 )}

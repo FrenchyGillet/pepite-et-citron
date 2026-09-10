@@ -1,5 +1,5 @@
 import { useNavigate } from 'react-router-dom';
-import { api, DEMO_MODE } from '@/api';
+import { DEMO_MODE } from '@/api';
 import { useAppStore } from '@/store/appStore';
 import { track, EVENTS } from '@/utils/analytics';
 import { hasVotedLocally } from '@/utils/vote';
@@ -49,8 +49,9 @@ export function VoteTab({ isAdmin, activeMatch, lastMatch, players, isLoading = 
     // else: stay on VoteTab — GuestPromoView is rendered below
   };
 
+  // The invite link travels in the vote payload and is consumed server-side by
+  // submit_vote, so only the local state needs clearing here.
   const handleGuestVoted = async () => {
-    if (guestToken) await api.useGuestToken(guestToken);
     setGuestToken(null);
   };
 

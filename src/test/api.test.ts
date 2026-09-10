@@ -545,32 +545,96 @@ describe('realAPI', () => {
   });
 
   describe('submitVote', () => {
-    it('POSTs the vote payload', async () => {
+    const missingRpc = () => HttpResponse.json(
+      { code: 'PGRST202', message: 'Could not find the function public.submit_vote in the schema cache' },
+      { status: 404 },
+    );
+
+    it('calls the submit_vote RPC with the mapped vote and guest link', async () => {
       let captured: unknown;
-      server.use(http.post(`${BASE}/votes`, async ({ request }) => {
+      server.use(http.post(`${RPC}/submit_vote`, async ({ request }) => {
         captured = await request.json();
-        return HttpResponse.json([{}]);
+        return HttpResponse.json(null);
       }));
+      await realAPI.submitVote({
+        match_id: 'm1', voter_name: 'Alice', voter_player_id: 'p3',
+        best1_id: 'p1', best2_id: 'p2', lemon_id: 'p4', best1_comment: 'top',
+        guest_token: 'tok',
+      });
+      expect(captured).toMatchObject({
+        p_match_id: 'm1', p_voter_name: 'Alice', p_voter_player_id: 'p3',
+        p_best1_id: 'p1', p_best2_id: 'p2', p_best3_id: null, p_lemon_id: 'p4',
+        p_best1_comment: 'top', p_guest_token: 'tok',
+      });
+    });
+
+    it('surfaces "already voted" instead of pretending the vote went through', async () => {
+      server.use(http.post(`${RPC}/submit_vote`, () =>
+        HttpResponse.json({ code: '23505', message: 'Tu as déjà voté pour ce match.' }, { status: 409 }),
+      ));
+      await expect(
+        realAPI.submitVote({ match_id: 'm1', voter_name: 'Alice' }),
+      ).rejects.toThrow('Tu as déjà voté pour ce match.');
+    });
+
+    it('falls back to a direct insert while 20260014 is not applied', async () => {
+      let inserted: Record<string, unknown> | undefined;
+      server.use(
+        http.post(`${RPC}/submit_vote`, missingRpc),
+        http.post(`${BASE}/votes`, async ({ request }) => {
+          inserted = await request.json() as Record<string, unknown>;
+          return HttpResponse.json([{}]);
+        }),
+      );
       await realAPI.submitVote({ match_id: 'm1', voter_name: 'Alice', best1_id: 'p1', lemon_id: 'p2' });
-      expect(captured).toMatchObject({ voter_name: 'Alice', match_id: 'm1' });
+      expect(inserted).toMatchObject({ voter_name: 'Alice', match_id: 'm1' });
     });
 
-    it('silently swallows 409 duplicate-vote errors', async () => {
-      server.use(http.post(`${BASE}/votes`, () =>
-        HttpResponse.json({ message: '409 unique constraint' }, { status: 409 }),
+    it('fallback: never sends guest_token as a column, marks the link used instead', async () => {
+      let inserted: Record<string, unknown> | undefined;
+      let marked: unknown;
+      server.use(
+        http.post(`${RPC}/submit_vote`, missingRpc),
+        http.post(`${BASE}/votes`, async ({ request }) => {
+          inserted = await request.json() as Record<string, unknown>;
+          return HttpResponse.json([{}]);
+        }),
+        http.post(`${RPC}/mark_guest_token_used`, async ({ request }) => {
+          marked = await request.json();
+          return HttpResponse.json(null);
+        }),
+      );
+      await realAPI.submitVote({ match_id: 'm1', voter_name: 'Marc', guest_token: 'tok' });
+      expect(inserted).not.toHaveProperty('guest_token');
+      expect(marked).toMatchObject({ p_token: 'tok' });
+    });
+
+    it('rethrows other RPC errors', async () => {
+      server.use(http.post(`${RPC}/submit_vote`, () =>
+        HttpResponse.json({ code: 'P0001', message: 'Le vote est clôturé pour ce match.' }, { status: 400 }),
       ));
       await expect(
         realAPI.submitVote({ match_id: 'm1', voter_name: 'Alice' }),
-      ).resolves.toBeUndefined();
+      ).rejects.toThrow('Le vote est clôturé');
+    });
+  });
+
+  describe('deleteVote', () => {
+    it('calls the delete_vote RPC with the vote id', async () => {
+      let captured: unknown;
+      server.use(http.post(`${RPC}/delete_vote`, async ({ request }) => {
+        captured = await request.json();
+        return HttpResponse.json(null);
+      }));
+      await realAPI.deleteVote('v1');
+      expect(captured).toEqual({ p_vote_id: 'v1' });
     });
 
-    it('rethrows errors that are not duplicate violations', async () => {
-      server.use(http.post(`${BASE}/votes`, () =>
-        HttpResponse.json({ message: 'Erreur 500' }, { status: 500 }),
+    it('throws when the caller is not an admin', async () => {
+      server.use(http.post(`${RPC}/delete_vote`, () =>
+        HttpResponse.json({ code: '42501', message: 'Réservé aux administrateurs' }, { status: 403 }),
       ));
-      await expect(
-        realAPI.submitVote({ match_id: 'm1', voter_name: 'Alice' }),
-      ).rejects.toThrow();
+      await expect(realAPI.deleteVote('v1')).rejects.toThrow('Réservé aux administrateurs');
     });
   });
 
@@ -782,16 +846,33 @@ describe('realAPI', () => {
   // ── getOrgBySlug ──
 
   describe('getOrgBySlug', () => {
-    it('returns the org when found', async () => {
-      const org = { id: 'org-1', name: 'FC Test', slug: 'fc-test' };
-      server.use(http.get(`${BASE}/organizations`, () => HttpResponse.json([org])));
+    it('resolves the slug through the get_org_public RPC', async () => {
+      let captured: unknown;
+      const org = { id: 'org-1', name: 'FC Test', slug: 'fc-test', plan: 'free' };
+      server.use(http.post(`${RPC}/get_org_public`, async ({ request }) => {
+        captured = await request.json();
+        return HttpResponse.json([org]);
+      }));
       const result = await realAPI.getOrgBySlug('fc-test');
+      expect(captured).toEqual({ p_slug: 'fc-test' });
       expect(result?.name).toBe('FC Test');
     });
 
     it('returns null when not found', async () => {
-      server.use(http.get(`${BASE}/organizations`, () => HttpResponse.json([])));
+      server.use(http.post(`${RPC}/get_org_public`, () => HttpResponse.json([])));
       expect(await realAPI.getOrgBySlug('unknown')).toBeNull();
+    });
+
+    it('falls back to the organizations table while 20260014 is not applied', async () => {
+      const org = { id: 'org-1', name: 'FC Test', slug: 'fc-test' };
+      server.use(
+        http.post(`${RPC}/get_org_public`, () => HttpResponse.json(
+          { code: 'PGRST202', message: 'Could not find the function public.get_org_public' },
+          { status: 404 },
+        )),
+        http.get(`${BASE}/organizations`, () => HttpResponse.json([org])),
+      );
+      expect((await realAPI.getOrgBySlug('fc-test'))?.name).toBe('FC Test');
     });
   });
 

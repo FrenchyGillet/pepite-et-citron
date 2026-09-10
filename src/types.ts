@@ -43,6 +43,8 @@ export interface Vote {
   best2_comment?: string;
   best3_comment?: string;
   lemon_comment?: string;
+  /** Client-side only: single-use invite link, consumed by submit_vote. Not a column. */
+  guest_token?: string;
 }
 
 export interface GuestToken {
@@ -160,6 +162,7 @@ export interface API {
   submitVote(vote: Vote): Promise<void>;
   getVotes(matchId: EntityId, orgSlug?: string | null): Promise<Vote[]>;
   getAllVotes(): Promise<Vote[]>;
+  deleteVote(voteId: EntityId): Promise<void>;
 
   // Teams
   getTeams(): Promise<Team[]>;

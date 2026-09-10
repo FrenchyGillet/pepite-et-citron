@@ -116,6 +116,7 @@ export default function App() {
   useOfflineSync(
     () => { setOfflineToast('✅ Vote synchronisé !'); setTimeout(() => setOfflineToast(null), 3000); },
     () => { /* still offline — keep queued, no toast */ },
+    (msg) => { setOfflineToast(`⚠️ Vote non enregistré : ${msg}`); setTimeout(() => setOfflineToast(null), 6000); },
   );
 
   // ── Pull-to-refresh ─────────────────────────────────────────────────────
