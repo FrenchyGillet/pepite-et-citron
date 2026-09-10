@@ -341,7 +341,6 @@ export default function App() {
                     players={players}
                     activeMatch={activeMatch}
                     currentOrg={currentOrg}
-                    onSignOut={handleSignOut}
                     onShowGuide={() => setShowOnboarding(true)}
                     onGoToResults={() => navigate('/results')}
                     onUpgrade={() => setShowUpgradeModal(true)}
