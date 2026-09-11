@@ -51,6 +51,24 @@ function getInvoiceSubId(invoice: Stripe.Invoice): string | null {
   return typeof sub === 'string' ? sub : (sub?.id ?? null);
 }
 
+type OrgPatch = Record<string, string | boolean | null>;
+
+/**
+ * Updates the matching organizations and returns how many rows changed.
+ * Throws on a database error: the handler then answers 500 so Stripe retries
+ * the event (it retries for up to 3 days). Answering 200 would drop it and
+ * leave a paying team on the free plan.
+ */
+async function updateOrgs(label: string, patch: OrgPatch, column: 'id' | 'stripe_subscription_id', value: string): Promise<number> {
+  const { data, error } = await supabase
+    .from('organizations')
+    .update(patch)
+    .eq(column, value)
+    .select('id');
+  if (error) throw new Error(`DB update failed (${label}): ${error.message}`);
+  return (data as unknown[] | null)?.length ?? 0;
+}
+
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'POST') return res.status(405).end();
 
@@ -67,17 +85,29 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(400).json({ error: 'Invalid signature' });
   }
 
-  // ── Event handlers ──────────────────────────────────────────────────────────
+  try {
+    await handleEvent(event);
+  } catch (err) {
+    // Transient failure (database or Stripe API): let Stripe retry. Every
+    // handler below sets absolute state, so replaying an event is harmless.
+    console.error(`Stripe webhook ${event.type} failed, Stripe will retry:`, err);
+    return res.status(500).json({ error: 'Webhook processing failed' });
+  }
 
+  return res.status(200).json({ received: true });
+}
+
+async function handleEvent(event: Stripe.Event): Promise<void> {
   switch (event.type) {
 
     // ── New subscription ───────────────────────────────────────────────────────
     case 'checkout.session.completed': {
       const session = event.data.object as Stripe.Checkout.Session;
       const orgId   = session.metadata?.orgId;
-      if (!orgId) { console.warn('checkout.session.completed: no orgId in metadata'); break; }
+      if (!orgId) { console.warn('checkout.session.completed: no orgId in metadata'); return; }
 
-      // Retrieve subscription to get period details
+      // Period details are a nice-to-have here: invoice.paid fills them in too,
+      // so a failed lookup must not block the upgrade.
       let periodEnd: string | null = null;
       if (session.subscription) {
         try {
@@ -88,65 +118,64 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         }
       }
 
-      const { error } = await supabase
-        .from('organizations')
-        .update({
-          plan:                   'pro',
-          stripe_customer_id:     session.customer     as string,
-          stripe_subscription_id: session.subscription as string,
-          current_period_end:     periodEnd,
-          cancel_at_period_end:   false,
-          last_payment_failed_at: null,
-        })
-        .eq('id', orgId);
-
-      if (error) console.error('DB update failed (checkout.session.completed):', error);
-      break;
+      const n = await updateOrgs('checkout.session.completed', {
+        plan:                   'pro',
+        stripe_customer_id:     session.customer     as string,
+        stripe_subscription_id: session.subscription as string,
+        current_period_end:     periodEnd,
+        cancel_at_period_end:   false,
+        last_payment_failed_at: null,
+      }, 'id', orgId);
+      // The team was deleted in the meantime: retrying cannot help.
+      if (n === 0) console.error(`checkout.session.completed: organization ${orgId} not found`);
+      return;
     }
 
     // ── Subscription state change (renewal, cancellation request, payment failure) ─
     case 'customer.subscription.updated': {
-      const sub = event.data.object as SubscriptionWithPeriod;
-      const pro = isPlanPro(sub.status);
+      // Stripe does not guarantee delivery order, and a retried event can
+      // arrive after newer ones: read the subscription's current state rather
+      // than trusting the event snapshot.
+      const eventSub = event.data.object as Stripe.Subscription;
+      const sub = await stripe.subscriptions.retrieve(eventSub.id) as SubscriptionWithPeriod;
+      const patch: OrgPatch = {
+        plan:                 isPlanPro(sub.status) ? 'pro' : 'free',
+        current_period_end:   getPeriodEnd(sub),
+        cancel_at_period_end: sub.cancel_at_period_end,
+        // Clear payment failure flag if back to healthy
+        ...(sub.status === 'active' ? { last_payment_failed_at: null } : {}),
+      };
 
-      const { error } = await supabase
-        .from('organizations')
-        .update({
-          plan:                 pro ? 'pro' : 'free',
-          current_period_end:   getPeriodEnd(sub),
-          cancel_at_period_end: sub.cancel_at_period_end,
-          // Clear payment failure flag if back to healthy
-          ...(sub.status === 'active' ? { last_payment_failed_at: null } : {}),
-        })
-        .eq('stripe_subscription_id', sub.id);
-
-      if (error) console.error('DB update failed (customer.subscription.updated):', error);
+      const n = await updateOrgs('customer.subscription.updated', patch, 'stripe_subscription_id', sub.id);
+      // Arrived before checkout.session.completed linked the subscription:
+      // fall back on the team id stamped on the subscription at checkout.
+      const orgId = sub.metadata?.orgId;
+      if (n === 0 && orgId) {
+        await updateOrgs('customer.subscription.updated (by org)', {
+          ...patch,
+          stripe_subscription_id: sub.id,
+          stripe_customer_id:     typeof sub.customer === 'string' ? sub.customer : sub.customer.id,
+        }, 'id', orgId);
+      }
 
       // Log graceful cancellation requests (access retained until period end)
       if (sub.cancel_at_period_end) {
-        const end = getPeriodEnd(sub);
-        console.info(`Subscription ${sub.id} set to cancel at period end (${end})`);
+        console.info(`Subscription ${sub.id} set to cancel at period end (${getPeriodEnd(sub)})`);
       }
-      break;
+      return;
     }
 
     // ── Subscription fully cancelled (after period end or immediately) ─────────
     case 'customer.subscription.deleted': {
       const sub = event.data.object as Stripe.Subscription;
-
-      const { error } = await supabase
-        .from('organizations')
-        .update({
-          plan:                   'free',
-          stripe_subscription_id: null,
-          current_period_end:     null,
-          cancel_at_period_end:   false,
-          last_payment_failed_at: null,
-        })
-        .eq('stripe_subscription_id', sub.id);
-
-      if (error) console.error('DB update failed (customer.subscription.deleted):', error);
-      break;
+      await updateOrgs('customer.subscription.deleted', {
+        plan:                   'free',
+        stripe_subscription_id: null,
+        current_period_end:     null,
+        cancel_at_period_end:   false,
+        last_payment_failed_at: null,
+      }, 'stripe_subscription_id', sub.id);
+      return;
     }
 
     // ── Invoice paid (subscription renewal confirmation) ───────────────────────
@@ -155,24 +184,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     case 'invoice.paid': {
       const invoice = event.data.object as Stripe.Invoice;
       const subId   = getInvoiceSubId(invoice);
-      if (!subId) break;
+      if (!subId) return;
 
-      try {
-        const sub = await stripe.subscriptions.retrieve(subId) as SubscriptionWithPeriod;
-        const { error } = await supabase
-          .from('organizations')
-          .update({
-            plan:                   'pro',
-            current_period_end:     getPeriodEnd(sub),
-            last_payment_failed_at: null,
-          })
-          .eq('stripe_subscription_id', subId);
-
-        if (error) console.error('DB update failed (invoice.paid):', error);
-      } catch (e) {
-        console.error('Could not retrieve subscription for invoice.paid:', e);
-      }
-      break;
+      const sub = await stripe.subscriptions.retrieve(subId) as SubscriptionWithPeriod;
+      await updateOrgs('invoice.paid', {
+        plan:                   'pro',
+        current_period_end:     getPeriodEnd(sub),
+        last_payment_failed_at: null,
+      }, 'stripe_subscription_id', subId);
+      return;
     }
 
     // ── Payment failure ────────────────────────────────────────────────────────
@@ -193,20 +213,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       });
 
       if (subId) {
-        const { error } = await supabase
-          .from('organizations')
-          .update({ last_payment_failed_at: new Date().toISOString() })
-          .eq('stripe_subscription_id', subId);
-
-        if (error) console.error('DB update failed (invoice.payment_failed):', error);
+        await updateOrgs('invoice.payment_failed',
+          { last_payment_failed_at: new Date().toISOString() }, 'stripe_subscription_id', subId);
       }
-      break;
+      return;
     }
 
     default:
       // Unhandled event types — safely ignored
-      break;
+      return;
   }
-
-  return res.status(200).json({ received: true });
 }

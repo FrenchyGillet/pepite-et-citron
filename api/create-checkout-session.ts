@@ -28,7 +28,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   const { data: org, error } = await supabaseAdmin
     .from('organizations')
-    .select('id, name, stripe_customer_id')
+    .select('id, name, plan, stripe_customer_id')
     .eq('id', orgId)
     .single();
 
@@ -36,19 +36,35 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(404).json({ error: 'Organisation introuvable' });
   }
 
+  // A second checkout would start a second, parallel subscription: the team
+  // would be billed twice. Plan changes go through the billing portal.
+  if (org.plan === 'pro') {
+    return res.status(409).json({
+      error: 'Ton équipe est déjà en Pro. Gère ton abonnement dans Admin → Paramètres.',
+      code:  'already_pro',
+    });
+  }
+
   const appUrl = process.env.VITE_APP_URL || 'https://pepite-citron.com';
 
-  const session = await stripe.checkout.sessions.create({
-    mode:       'subscription',
-    line_items: [{ price: PRICE_IDS[plan], quantity: 1 }],
-    // Pre-fill customer if they already paid before (subscription change)
-    ...(org.stripe_customer_id ? { customer: org.stripe_customer_id } : {}),
-    success_url:            `${appUrl}/?upgrade=success`,
-    cancel_url:             `${appUrl}/`,
-    allow_promotion_codes:  true,
-    locale:                 'fr',
-    metadata:               { orgId },
-  });
-
-  return res.status(200).json({ url: session.url });
+  try {
+    const session = await stripe.checkout.sessions.create({
+      mode:       'subscription',
+      line_items: [{ price: PRICE_IDS[plan], quantity: 1 }],
+      // Pre-fill customer if they already paid before (subscription change)
+      ...(org.stripe_customer_id ? { customer: org.stripe_customer_id } : {}),
+      success_url:            `${appUrl}/?upgrade=success`,
+      cancel_url:             `${appUrl}/`,
+      allow_promotion_codes:  true,
+      locale:                 'fr',
+      metadata:               { orgId },
+      // Also on the subscription, so the webhook can find the team from
+      // subscription events that arrive before checkout.session.completed.
+      subscription_data:      { metadata: { orgId } },
+    });
+    return res.status(200).json({ url: session.url });
+  } catch (err) {
+    console.error('stripe.checkout.sessions.create failed:', err);
+    return res.status(502).json({ error: 'Le paiement est momentanément indisponible. Réessaie dans un instant.' });
+  }
 }

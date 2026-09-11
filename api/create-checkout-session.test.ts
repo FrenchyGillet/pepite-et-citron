@@ -62,7 +62,32 @@ describe('POST /api/create-checkout-session', () => {
     expect(res.statusCode).toBe(200);
     expect(res.body).toMatchObject({ url: 'https://checkout' });
     expect(mockStripe.checkout.sessions.create).toHaveBeenCalledWith(
-      expect.objectContaining({ line_items: [{ price: 'price_annual', quantity: 1 }], metadata: { orgId: 'org-1' } }),
+      expect.objectContaining({
+        line_items: [{ price: 'price_annual', quantity: 1 }],
+        metadata: { orgId: 'org-1' },
+        subscription_data: { metadata: { orgId: 'org-1' } },
+      }),
     );
+  });
+
+  // S8: a second checkout would bill the team twice.
+  it('returns 409 when the team is already Pro', async () => {
+    mockFrom.mockImplementation(makeFrom({
+      role: 'admin',
+      tables: { organizations: { data: { id: 'org-1', name: 'Les Lions', plan: 'pro', stripe_customer_id: 'cus-1' }, error: null } },
+    }));
+    const res = makeRes();
+    await handler(req() as any, res as any);
+    expect(res.statusCode).toBe(409);
+    expect(res.body).toMatchObject({ code: 'already_pro' });
+    expect(mockStripe.checkout.sessions.create).not.toHaveBeenCalled();
+  });
+
+  it('returns a readable 502 when Stripe is unavailable', async () => {
+    mockStripe.checkout.sessions.create.mockRejectedValue(new Error('api_connection_error'));
+    const res = makeRes();
+    await handler(req() as any, res as any);
+    expect(res.statusCode).toBe(502);
+    expect(res.body).toMatchObject({ error: expect.stringMatching(/momentanément indisponible/) });
   });
 });

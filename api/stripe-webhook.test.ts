@@ -153,6 +153,9 @@ describe('POST /api/stripe-webhook', () => {
   });
 
   it('customer.subscription.updated with canceled status downgrades to Free', async () => {
+    mockStripe.subscriptions.retrieve.mockResolvedValue({
+      id: 'sub-1', status: 'canceled', cancel_at_period_end: false, current_period_end: null,
+    });
     const event = {
       type: 'customer.subscription.updated',
       data: {
@@ -248,6 +251,91 @@ describe('POST /api/stripe-webhook', () => {
     // plan must NOT be changed — no plan key in the update call
     const updateArg = (chain.update as ReturnType<typeof vi.fn>).mock.calls[0][0];
     expect(updateArg).not.toHaveProperty('plan');
+  });
+
+  // ── S7: never acknowledge an event that was not recorded ──────────────────
+  async function deliver(event: unknown) {
+    mockStripe.webhooks.constructEvent.mockReturnValue(event);
+    const req = makeStreamReq();
+    const res = makeRes();
+    const p = handler(req as any, res as any);
+    req.deliver(Buffer.from(JSON.stringify(event)));
+    await p;
+    return res;
+  }
+  const checkoutCompleted = {
+    type: 'checkout.session.completed',
+    data: { object: { metadata: { orgId: 'org-1' }, customer: 'cus-1', subscription: 'sub-1' } },
+  };
+  const subscriptionUpdated = {
+    type: 'customer.subscription.updated',
+    data: { object: { id: 'sub-1', status: 'active', cancel_at_period_end: false } },
+  };
+
+  it('answers 500 when the database update fails, so Stripe retries the payment event', async () => {
+    mockFrom.mockReturnValue(makeChain({ data: null, error: { message: 'connection reset' } }));
+    const res = await deliver(checkoutCompleted);
+    expect(res.statusCode).toBe(500);
+  });
+
+  it('answers 500 for every event type whose database update fails', async () => {
+    mockFrom.mockReturnValue(makeChain({ data: null, error: { message: 'timeout' } }));
+    for (const event of [
+      subscriptionUpdated,
+      { type: 'customer.subscription.deleted', data: { object: { id: 'sub-1' } } },
+      { type: 'invoice.paid', data: { object: { parent: { subscription_details: { subscription: 'sub-1' } } } } },
+      { type: 'invoice.payment_failed', data: { object: { parent: { subscription_details: { subscription: 'sub-1' } } } } },
+    ]) {
+      expect((await deliver(event)).statusCode).toBe(500);
+    }
+  });
+
+  it('answers 500 when Stripe cannot be reached to confirm a renewal', async () => {
+    mockStripe.subscriptions.retrieve.mockRejectedValue(new Error('Stripe API down'));
+    const res = await deliver({
+      type: 'invoice.paid',
+      data: { object: { parent: { subscription_details: { subscription: 'sub-1' } } } },
+    });
+    expect(res.statusCode).toBe(500);
+    expect(mockFrom).not.toHaveBeenCalled();
+  });
+
+  it('still upgrades on checkout when only the period lookup fails', async () => {
+    mockStripe.subscriptions.retrieve.mockRejectedValue(new Error('Stripe API down'));
+    const res = await deliver(checkoutCompleted);
+    expect(res.statusCode).toBe(200);
+    const chain = mockFrom.mock.results[0].value;
+    expect(chain.update).toHaveBeenCalledWith(expect.objectContaining({ plan: 'pro', current_period_end: null }));
+  });
+
+  it('subscription.updated trusts the current Stripe state over a stale event', async () => {
+    // A late retry of an old "active" event arrives after the subscription ended.
+    mockStripe.subscriptions.retrieve.mockResolvedValue({
+      id: 'sub-1', status: 'canceled', cancel_at_period_end: false, current_period_end: null,
+    });
+    const res = await deliver(subscriptionUpdated);
+    expect(res.statusCode).toBe(200);
+    expect(mockStripe.subscriptions.retrieve).toHaveBeenCalledWith('sub-1');
+    const chain = mockFrom.mock.results[0].value;
+    expect(chain.update).toHaveBeenCalledWith(expect.objectContaining({ plan: 'free' }));
+  });
+
+  it('subscription.updated arriving before checkout links the team through the subscription metadata', async () => {
+    mockStripe.subscriptions.retrieve.mockResolvedValue({
+      id: 'sub-1', status: 'active', cancel_at_period_end: false, current_period_end: 1_800_000_000,
+      customer: 'cus-1', metadata: { orgId: 'org-1' },
+    });
+    // First update (by subscription id) matches no team yet.
+    const bySub = makeChain({ data: [], error: null });
+    const byOrg = makeChain({ data: [{ id: 'org-1' }], error: null });
+    mockFrom.mockReturnValueOnce(bySub).mockReturnValueOnce(byOrg);
+
+    const res = await deliver(subscriptionUpdated);
+    expect(res.statusCode).toBe(200);
+    expect(byOrg.eq).toHaveBeenCalledWith('id', 'org-1');
+    expect(byOrg.update).toHaveBeenCalledWith(expect.objectContaining({
+      plan: 'pro', stripe_subscription_id: 'sub-1', stripe_customer_id: 'cus-1',
+    }));
   });
 
   it('unknown event type returns 200 without touching the DB', async () => {
