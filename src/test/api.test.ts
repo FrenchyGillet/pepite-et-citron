@@ -34,6 +34,20 @@ describe('demoAPI', () => {
     expect((await demoAPI.getPlayers()).find(p => p.id === 1)).toBeUndefined();
   });
 
+  it('addPlayers adds a whole list at once', async () => {
+    const added = await demoAPI.addPlayers(['Zoé', 'Léo']);
+    expect(added.map(p => p.name)).toEqual(['Zoé', 'Léo']);
+    expect((await demoAPI.getPlayers())).toHaveLength(12);
+  });
+
+  it('setPlayerArchived archives and reactivates without deleting', async () => {
+    await demoAPI.setPlayerArchived(1, true);
+    expect((await demoAPI.getPlayers()).find(p => p.id === 1)?.archived_at).toBeTruthy();
+    await demoAPI.setPlayerArchived(1, false);
+    expect((await demoAPI.getPlayers()).find(p => p.id === 1)?.archived_at).toBeNull();
+    expect((await demoAPI.getPlayers())).toHaveLength(10);
+  });
+
   it('updatePlayer updates the nickname of an existing player', async () => {
     const added = await demoAPI.addPlayer('TestPlayer');
     await demoAPI.updatePlayer(added.id, { nickname: 'TP' });
@@ -352,6 +366,48 @@ describe('realAPI', () => {
     it('sends DELETE and resolves', async () => {
       server.use(http.delete(`${BASE}/players`, () => new HttpResponse(null, { status: 204 })));
       await expect(realAPI.removePlayer('p1')).resolves.toBe(true);
+    });
+  });
+
+  describe('addPlayers', () => {
+    it('inserts the whole list in one request, tagged with the org', async () => {
+      let body: unknown;
+      let calls = 0;
+      server.use(http.post(`${BASE}/players`, async ({ request }) => {
+        calls++;
+        body = await request.json();
+        return HttpResponse.json([{ id: 'a', name: 'Zoé' }, { id: 'b', name: 'Léo' }]);
+      }));
+      const added = await realAPI.addPlayers(['Zoé', 'Léo']);
+      expect(calls).toBe(1);
+      expect(body).toEqual([{ name: 'Zoé', org_id: 'org-123' }, { name: 'Léo', org_id: 'org-123' }]);
+      expect(added).toHaveLength(2);
+    });
+
+    it('does not retry the INSERT on a network error', async () => {
+      let calls = 0;
+      server.use(http.post(`${BASE}/players`, () => { calls++; return HttpResponse.error(); }));
+      await expect(realAPI.addPlayers(['Zoé'])).rejects.toThrow();
+      expect(calls).toBe(1);
+    });
+  });
+
+  describe('setPlayerArchived', () => {
+    it('calls the admin-checked set_player_archived RPC', async () => {
+      let body: unknown;
+      server.use(http.post(`${RPC}/set_player_archived`, async ({ request }) => {
+        body = await request.json();
+        return HttpResponse.json(null);
+      }));
+      await realAPI.setPlayerArchived('p1', true);
+      expect(body).toEqual({ p_player_id: 'p1', p_archived: true });
+    });
+
+    it('throws when the caller is not an admin', async () => {
+      server.use(http.post(`${RPC}/set_player_archived`, () =>
+        HttpResponse.json({ code: '42501', message: 'Réservé aux administrateurs' }, { status: 403 }),
+      ));
+      await expect(realAPI.setPlayerArchived('p1', true)).rejects.toThrow('Réservé aux administrateurs');
     });
   });
 

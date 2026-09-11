@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { displayName, initials, avatarColor } from './player';
+import { displayName, initials, avatarColor, isActive, parsePlayerNames } from './player';
 
 // ── displayName ───────────────────────────────────────────────────────────────
 
@@ -84,5 +84,59 @@ describe('avatarColor', () => {
     const hue = parseInt(color.match(/hsl\((\d+)/)?.[1] ?? '-1', 10);
     expect(hue).toBeGreaterThanOrEqual(0);
     expect(hue).toBeLessThan(360);
+  });
+});
+
+// ── isActive ──────────────────────────────────────────────────────────────────
+
+describe('isActive', () => {
+  it('is true unless the player is archived', () => {
+    expect(isActive({ archived_at: null })).toBe(true);
+    expect(isActive({})).toBe(true);
+    expect(isActive({ archived_at: '2026-09-11T10:00:00Z' })).toBe(false);
+  });
+});
+
+// ── parsePlayerNames ──────────────────────────────────────────────────────────
+
+describe('parsePlayerNames', () => {
+  const roster = [
+    { name: 'Clément', archived_at: null },
+    { name: 'Hugo',    archived_at: '2026-01-01T00:00:00Z' },
+  ];
+
+  it('splits on new lines, commas and semicolons, trimming blanks', () => {
+    expect(parsePlayerNames(' Zoé \n\nLéo, Max ;Noé ', []).toAdd).toEqual(['Zoé', 'Léo', 'Max', 'Noé']);
+  });
+
+  it('collapses inner spaces', () => {
+    expect(parsePlayerNames('Jean   Pierre', []).toAdd).toEqual(['Jean Pierre']);
+  });
+
+  it('drops repeats within the paste (case- and accent-insensitive), keeping the first spelling', () => {
+    expect(parsePlayerNames('Zoé\nzoe\nZOÉ', []).toAdd).toEqual(['Zoé']);
+  });
+
+  it('reports names already in the roster instead of re-adding them', () => {
+    const r = parsePlayerNames('clement\nZoé', roster);
+    expect(r.toAdd).toEqual(['Zoé']);
+    expect(r.existing).toEqual(['Clément']);
+  });
+
+  it('flags archived players so they get reactivated, not duplicated', () => {
+    const r = parsePlayerNames('Hugo', roster);
+    expect(r.toAdd).toEqual([]);
+    expect(r.archived).toEqual(['Hugo']);
+  });
+
+  it('skips names longer than 50 characters', () => {
+    const long = 'x'.repeat(51);
+    const r = parsePlayerNames(`${long}\nZoé`, []);
+    expect(r.toAdd).toEqual(['Zoé']);
+    expect(r.tooLong).toEqual([long]);
+  });
+
+  it('returns nothing for blank input', () => {
+    expect(parsePlayerNames(' \n , ', roster)).toEqual({ toAdd: [], existing: [], archived: [], tooLong: [] });
   });
 });

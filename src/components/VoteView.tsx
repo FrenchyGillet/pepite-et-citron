@@ -129,7 +129,8 @@ export function VoteView({ players, match, onVoted, guestName = null, onGuestVot
   useEffect(() => { if (step === lemonStep) setAbsentOpen(false); }, [step, lemonStep]);
 
   const present = players.filter(p =>  presentIds.includes(p.id));
-  const absent  = players.filter(p => !presentIds.includes(p.id));
+  // Absents can still get the citron — but not players archived from the roster.
+  const absent  = players.filter(p => !presentIds.includes(p.id) && !p.archived_at);
 
   // Real-time vote count — updated via Realtime subscription in useRealtime()
   const { data: voteCount = 0 } = useVoteCount(match.id);

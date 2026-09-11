@@ -103,9 +103,19 @@ export const demoAPI: API = {
     demoState.players.push(p);
     return Promise.resolve(p);
   },
+  addPlayers:     (names) => {
+    const added: Player[] = names.map(name => ({ id: demoState.nextId++, name }));
+    demoState.players.push(...added);
+    return Promise.resolve(added);
+  },
   removePlayer:   (id) => {
     demoState.players = demoState.players.filter(p => p.id !== id);
     return Promise.resolve(true);
+  },
+  setPlayerArchived: (id, archived) => {
+    demoState.players = demoState.players.map(p =>
+      p.id === id ? { ...p, archived_at: archived ? new Date().toISOString() : null } : p);
+    return Promise.resolve();
   },
   updatePlayer: (id, data) => {
     demoState.players = demoState.players.map(p => p.id === id ? { ...p, ...data } : p);
@@ -390,10 +400,21 @@ export const realAPI: API = {
     const rows = await run<Player[]>(supabase.from("players").insert({ name, org_id: _orgId }).select());
     return rows[0];
   },
+  // One INSERT for a pasted roster. No withRetry (INSERT — see addPlayer).
+  addPlayers: async (names) => {
+    return await run<Player[]>(
+      supabase.from("players").insert(names.map(name => ({ name, org_id: _orgId }))).select(),
+    );
+  },
   removePlayer: async (id) => {
     const { error } = await supabase.from("players").delete().eq("id", id);
     if (error) throw new Error(error.message);
     return true;
+  },
+  // Admin-checked RPC (20260016): players has no admin UPDATE policy.
+  setPlayerArchived: async (id, archived) => {
+    const { error } = await supabase.rpc("set_player_archived", { p_player_id: id, p_archived: archived });
+    if (error) throw new Error(error.message);
   },
   updatePlayer: (id, data) =>
     withRetry(async () => {

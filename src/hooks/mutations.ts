@@ -30,10 +30,26 @@ export function useAddPlayer(orgId?: string | null) {
   });
 }
 
+export function useAddPlayers(orgId?: string | null) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (names: string[]) => api.addPlayers(names),
+    onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.players(orgId) }),
+  });
+}
+
 export function useRemovePlayer(orgId?: string | null) {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (id: EntityId) => api.removePlayer(id),
+    onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.players(orgId) }),
+  });
+}
+
+export function useSetPlayerArchived(orgId?: string | null) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, archived }: { id: EntityId; archived: boolean }) => api.setPlayerArchived(id, archived),
     onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.players(orgId) }),
   });
 }

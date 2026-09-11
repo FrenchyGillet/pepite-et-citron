@@ -98,7 +98,7 @@ describe("Admin flow", () => {
 });
 
 describe("Destructive actions use the confirm modal (not window.confirm)", () => {
-  it("removing a player asks for confirmation, then deletes on confirm", async () => {
+  it("archiving a player asks for confirmation, then archives on confirm (never deletes)", async () => {
     renderApp();
     const user = userEvent.setup();
 
@@ -106,27 +106,30 @@ describe("Destructive actions use the confirm modal (not window.confirm)", () =>
     await user.click(await screen.findByRole("button", { name: /Effectif/i }));
 
     // Antoine is player #1 in the demo roster
-    const rows = await screen.findAllByText("Retirer");
-    await user.click(rows[0]);
+    await user.click(await screen.findByRole("button", { name: "Archiver Antoine" }));
 
     // Modal, not a native prompt
-    expect(await screen.findByText(/Supprimer Antoine \?/i)).toBeInTheDocument();
-    await user.click(screen.getByRole("button", { name: "Supprimer" }));
+    expect(await screen.findByText(/Archiver Antoine \?/i)).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Archiver" }));
 
-    expect(await __demoAPI.getPlayers()).toHaveLength(9);
+    await screen.findByText("Antoine archivé");
+    const players = await __demoAPI.getPlayers();
+    expect(players).toHaveLength(10); // kept, for the history
+    expect(players.find(p => p.id === 1)?.archived_at).toBeTruthy();
   });
 
-  it("cancelling the confirm modal keeps the player", async () => {
+  it("cancelling the confirm modal keeps the player active", async () => {
     renderApp();
     const user = userEvent.setup();
 
     await user.click(await screen.findByRole("button", { name: /admin/i }));
     await user.click(await screen.findByRole("button", { name: /Effectif/i }));
-    const rows = await screen.findAllByText("Retirer");
-    await user.click(rows[0]);
+    await user.click(await screen.findByRole("button", { name: "Archiver Antoine" }));
 
     await user.click(await screen.findByRole("button", { name: "Annuler" }));
-    expect(await __demoAPI.getPlayers()).toHaveLength(10);
+    const players = await __demoAPI.getPlayers();
+    expect(players).toHaveLength(10);
+    expect(players.find(p => p.id === 1)?.archived_at).toBeFalsy();
   });
 });
 

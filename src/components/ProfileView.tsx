@@ -157,7 +157,7 @@ export function ProfileView() {
           </p>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
             {players
-              .filter(p => !p.user_id) // only unclaimed
+              .filter(p => !p.user_id && !p.archived_at) // only unclaimed, still in the roster
               .map(p => (
                 <button
                   key={String(p.id)}
@@ -186,7 +186,7 @@ export function ProfileView() {
                   </div>
                 </button>
               ))}
-            {players.filter(p => !p.user_id).length === 0 && (
+            {players.filter(p => !p.user_id && !p.archived_at).length === 0 && (
               <p style={{ fontSize: 14, color: 'var(--label3)', textAlign: 'center', padding: 24 }}>
                 Tous les joueurs ont déjà revendiqué leur profil.
               </p>

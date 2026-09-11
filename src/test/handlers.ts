@@ -84,4 +84,5 @@ export const handlers = [
   http.post(`${RPC}/submit_vote`,            () => HttpResponse.json(null)),
   http.post(`${RPC}/delete_vote`,            () => HttpResponse.json(null)),
   http.post(`${RPC}/get_org_public`,         () => HttpResponse.json([])),
+  http.post(`${RPC}/set_player_archived`,    () => HttpResponse.json(null)),
 ];

@@ -9,6 +9,8 @@ export interface Player {
   nickname?:   string | null;
   user_id?:    string | null;
   avatar_url?: string | null;
+  /** Set when the admin archives the player: out of every picker, history kept. */
+  archived_at?: string | null;
 }
 
 export type MatchPhase = 'voting' | 'counting' | 'closed';
@@ -135,7 +137,9 @@ export interface API {
   // Players
   getPlayers(): Promise<Player[]>;
   addPlayer(name: string): Promise<Player>;
+  addPlayers(names: string[]): Promise<Player[]>;
   removePlayer(id: EntityId): Promise<unknown>;
+  setPlayerArchived(id: EntityId, archived: boolean): Promise<void>;
   updatePlayer(id: EntityId, data: Partial<Pick<Player, 'nickname' | 'avatar_url'>>): Promise<unknown>;
   linkPlayer(playerId: EntityId): Promise<unknown>;
 
