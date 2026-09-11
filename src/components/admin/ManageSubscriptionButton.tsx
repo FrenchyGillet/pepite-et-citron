@@ -5,10 +5,12 @@ import { humanizeError } from '@/utils/errors';
 export function ManageSubscriptionButton({ orgId }: { orgId: string }) {
   const [loading, setLoading] = useState(false);
   const [error,   setError]   = useState<string | null>(null);
+  const [detail,  setDetail]  = useState<string | null>(null);
 
   const openPortal = async () => {
     setLoading(true);
     setError(null);
+    setDetail(null);
     try {
       const { supabase } = await import('@/lib/supabase');
       const { data: { session } } = await supabase.auth.getSession();
@@ -19,8 +21,11 @@ export function ManageSubscriptionButton({ orgId }: { orgId: string }) {
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body:    JSON.stringify({ orgId }),
       });
-      const data = await res.json() as { url?: string; error?: string };
-      if (!res.ok || !data.url) throw new Error(data.error || 'Erreur inattendue');
+      const data = await res.json().catch(() => ({})) as { url?: string; error?: string; detail?: string };
+      if (!res.ok || !data.url) {
+        setDetail(data.detail ?? `HTTP ${res.status}`);
+        throw new Error(data.error || 'Erreur inattendue');
+      }
       window.location.href = data.url;
     } catch (err) {
       setError(humanizeError(err));
@@ -38,7 +43,12 @@ export function ManageSubscriptionButton({ orgId }: { orgId: string }) {
       >
         {loading ? 'Redirection…' : '💳 Gérer mon abonnement'}
       </button>
-      {error && <p style={{ fontSize: 12, color: 'var(--red)', marginTop: 4 }}>{error}</p>}
+      {error && (
+        <p role="alert" style={{ fontSize: 12, color: 'var(--red)', marginTop: 4 }}>
+          {error}
+          {detail && <span style={{ display: 'block', fontSize: 11, color: 'var(--label3)', marginTop: 2 }}>Détail : {detail}</span>}
+        </p>
+      )}
     </div>
   );
 }

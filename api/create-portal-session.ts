@@ -3,6 +3,7 @@ import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { supabaseAdmin } from './_lib/supabaseAdmin.js';
 import { requireOrgAdmin } from './_lib/auth.js';
 import { portalSessionSchema } from './_lib/validation.js';
+import { stripeErrorDetail } from './_lib/stripeError.js';
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!);
 
@@ -31,10 +32,17 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   const appUrl = process.env.VITE_APP_URL || 'https://pepite-citron.com';
 
-  const portalSession = await stripe.billingPortal.sessions.create({
-    customer:   org.stripe_customer_id,
-    return_url: `${appUrl}/`,
-  });
-
-  return res.status(200).json({ url: portalSession.url });
+  try {
+    const portalSession = await stripe.billingPortal.sessions.create({
+      customer:   org.stripe_customer_id,
+      return_url: `${appUrl}/admin`, // "/" is the marketing landing page
+    });
+    return res.status(200).json({ url: portalSession.url });
+  } catch (err) {
+    console.error('stripe.billingPortal.sessions.create failed:', err);
+    return res.status(502).json({
+      error:  "La gestion de l'abonnement est momentanément indisponible. Réessaie dans un instant.",
+      detail: stripeErrorDetail(err),
+    });
+  }
 }

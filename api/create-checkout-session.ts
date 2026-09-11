@@ -3,6 +3,7 @@ import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { supabaseAdmin } from './_lib/supabaseAdmin.js';
 import { requireOrgAdmin } from './_lib/auth.js';
 import { checkoutSessionSchema } from './_lib/validation.js';
+import { stripeErrorDetail } from './_lib/stripeError.js';
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!);
 
@@ -53,8 +54,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       line_items: [{ price: PRICE_IDS[plan], quantity: 1 }],
       // Pre-fill customer if they already paid before (subscription change)
       ...(org.stripe_customer_id ? { customer: org.stripe_customer_id } : {}),
-      success_url:            `${appUrl}/?upgrade=success`,
-      cancel_url:             `${appUrl}/`,
+      // Back into the app: "/" is the marketing landing page (vercel.json).
+      success_url:            `${appUrl}/vote?upgrade=success`,
+      cancel_url:             `${appUrl}/admin`,
       allow_promotion_codes:  true,
       locale:                 'fr',
       metadata:               { orgId },
@@ -65,6 +67,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(200).json({ url: session.url });
   } catch (err) {
     console.error('stripe.checkout.sessions.create failed:', err);
-    return res.status(502).json({ error: 'Le paiement est momentanément indisponible. Réessaie dans un instant.' });
+    return res.status(502).json({
+      error:  'Le paiement est momentanément indisponible. Réessaie dans un instant.',
+      detail: stripeErrorDetail(err),
+    });
   }
 }

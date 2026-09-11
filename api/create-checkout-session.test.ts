@@ -83,11 +83,26 @@ describe('POST /api/create-checkout-session', () => {
     expect(mockStripe.checkout.sessions.create).not.toHaveBeenCalled();
   });
 
-  it('returns a readable 502 when Stripe is unavailable', async () => {
-    mockStripe.checkout.sessions.create.mockRejectedValue(new Error('api_connection_error'));
+  it('returns a readable 502 with Stripe\'s own code when Stripe refuses', async () => {
+    mockStripe.checkout.sessions.create.mockRejectedValue(Object.assign(
+      new Error("No such price: 'price_annual'"), { code: 'resource_missing', param: 'line_items[0][price]' },
+    ));
+    vi.spyOn(console, 'error').mockImplementation(() => {});
     const res = makeRes();
     await handler(req() as any, res as any);
     expect(res.statusCode).toBe(502);
-    expect(res.body).toMatchObject({ error: expect.stringMatching(/momentanément indisponible/) });
+    expect(res.body).toMatchObject({
+      error:  expect.stringMatching(/momentanément indisponible/),
+      detail: "resource_missing · line_items[0][price]: No such price: 'price_annual'",
+    });
+  });
+
+  // "/" is the marketing landing page: Stripe must send people back into the app.
+  it('returns to the app, not the landing page, after paying or cancelling', async () => {
+    await handler(req() as any, makeRes() as any);
+    expect(mockStripe.checkout.sessions.create).toHaveBeenCalledWith(expect.objectContaining({
+      success_url: 'https://pepite-citron.com/vote?upgrade=success',
+      cancel_url:  'https://pepite-citron.com/admin',
+    }));
   });
 });

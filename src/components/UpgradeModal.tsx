@@ -26,11 +26,13 @@ export function UpgradeModal({ orgId, onClose, initialPlan = 'annual' }: Props) 
   const [plan,    setPlan]    = useState<Plan>(initialPlan);
   const [loading, setLoading] = useState(false);
   const [error,   setError]   = useState<string | null>(null);
+  const [detail,  setDetail]  = useState<string | null>(null);
   const dialogRef = useModalA11y(onClose);
 
   async function handleUpgrade() {
     setLoading(true);
     setError(null);
+    setDetail(null);
     try {
       const { supabase } = await import('@/lib/supabase');
       const { data: { session } } = await supabase.auth.getSession();
@@ -41,8 +43,11 @@ export function UpgradeModal({ orgId, onClose, initialPlan = 'annual' }: Props) 
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body:    JSON.stringify({ orgId, plan }),
       });
-      const data = await res.json() as { url?: string; error?: string };
-      if (!res.ok || !data.url) throw new Error(data.error || 'Erreur serveur');
+      const data = await res.json().catch(() => ({})) as { url?: string; error?: string; detail?: string };
+      if (!res.ok || !data.url) {
+        setDetail(data.detail ?? `HTTP ${res.status}`);
+        throw new Error(data.error || 'Erreur serveur');
+      }
       window.location.href = data.url;
     } catch (err) {
       setError(humanizeError(err));
@@ -140,8 +145,13 @@ export function UpgradeModal({ orgId, onClose, initialPlan = 'annual' }: Props) 
 
         {/* CTA */}
         {error && (
-          <div style={{ fontSize: 13, color: 'var(--red)', marginBottom: 12, textAlign: 'center' }}>
+          <div role="alert" style={{ fontSize: 13, color: 'var(--red)', marginBottom: 12, textAlign: 'center' }}>
             {error}
+            {detail && (
+              <div style={{ fontSize: 11, color: 'var(--label3)', marginTop: 4, wordBreak: 'break-word' }}>
+                Détail : {detail}
+              </div>
+            )}
           </div>
         )}
         <button

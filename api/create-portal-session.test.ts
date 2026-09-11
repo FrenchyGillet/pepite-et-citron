@@ -82,4 +82,22 @@ describe('POST /api/create-portal-session', () => {
     await handler(req() as any, res as any);
     expect(res.statusCode).toBe(404);
   });
+
+  it('returns to the app, not the landing page', async () => {
+    await handler(req() as any, makeRes() as any);
+    expect(mockStripe.billingPortal.sessions.create).toHaveBeenCalledWith(
+      expect.objectContaining({ return_url: 'https://pepite-citron.com/admin' }),
+    );
+  });
+
+  it('returns a readable 502 with Stripe\'s own code when Stripe refuses', async () => {
+    mockStripe.billingPortal.sessions.create.mockRejectedValue(Object.assign(
+      new Error('No configuration provided'), { code: 'invalid_request_error' },
+    ));
+    vi.spyOn(console, 'error').mockImplementation(() => {});
+    const res = makeRes();
+    await handler(req() as any, res as any);
+    expect(res.statusCode).toBe(502);
+    expect(res.body).toMatchObject({ detail: 'invalid_request_error: No configuration provided' });
+  });
 });
