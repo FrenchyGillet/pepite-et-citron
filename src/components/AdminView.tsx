@@ -295,6 +295,20 @@ export function AdminView({ players, activeMatch, currentOrg, onShowGuide, onGoT
     });
   };
 
+  // Co-admin (F6): lets an admin hand over the team before leaving or deleting
+  // their account. add_org_member upserts the role of an existing member.
+  const handlePromoteMember = async (email: string) => {
+    if (!currentOrg?.id) return;
+    if (!(await confirm({
+      message: `Nommer ${email} administrateur ? Il pourra gérer les matchs, l'effectif et les membres.`,
+      confirmLabel: 'Nommer admin',
+    }))) return;
+    addMemberMutation.mutate({ email, role: 'admin' }, {
+      onSuccess: () => setToast(`${email} est maintenant admin`),
+      onError: (err) => setToast(humanizeError(err)),
+    });
+  };
+
   const handleRemoveMember = async (userId: string, email: string) => {
     if (!currentOrg?.id) return;
     if (!(await confirm({ message: `Retirer ${email} ?`, confirmLabel: 'Retirer', danger: true }))) return;
@@ -1199,10 +1213,17 @@ export function AdminView({ players, activeMatch, currentOrg, onShowGuide, onGoT
                         </div>
                       </div>
                       {m.role !== 'admin' && (
-                        <button className="btn btn-danger" style={{ padding: '5px 12px', fontSize: 13 }}
-                          onClick={() => handleRemoveMember(m.user_id, m.email)}>
-                          Retirer
-                        </button>
+                        <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
+                          <button className="btn btn-secondary" style={{ padding: '5px 12px', fontSize: 13 }}
+                            disabled={addMemberMutation.isPending}
+                            onClick={() => void handlePromoteMember(m.email)}>
+                            Nommer admin
+                          </button>
+                          <button className="btn btn-danger" style={{ padding: '5px 12px', fontSize: 13 }}
+                            onClick={() => handleRemoveMember(m.user_id, m.email)}>
+                            Retirer
+                          </button>
+                        </div>
                       )}
                     </div>
                   </div>

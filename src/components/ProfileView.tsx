@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { DEMO_MODE, api } from '@/api';
 import { useAppStore } from '@/store/appStore';
 import { humanizeError } from '@/utils/errors';
+import { clearLocalPersonalData, unsubscribeDeviceFromPush } from '@/utils/localData';
 import { joinFrenchList } from '@/utils/reminder';
 import { useAuth } from '@/hooks/useAuth';
 import { useOrg } from '@/hooks/useOrg';
@@ -316,6 +317,8 @@ function DeleteAccountButton() {
     setError(null);
     try {
       await api.deleteAccount();
+      clearLocalPersonalData();
+      void unsubscribeDeviceFromPush();
       // After deletion the auth state change will redirect to AuthView
     } catch (err) {
       setError(humanizeError(err));
@@ -345,13 +348,15 @@ function DeleteAccountButton() {
         Confirmer la suppression
       </p>
       <p style={{ fontSize: 12, color: 'var(--label3)', lineHeight: 1.5 }}>
-        Ton compte et tes votes seront supprimés définitivement. Cette action est irréversible.
+        Ton compte est supprimé définitivement. Tes votes restent dans l&apos;historique de
+        l&apos;équipe, mais anonymisés : ton prénom et tes commentaires sont effacés.
+        Cette action est irréversible.
       </p>
       {adminTeams.length > 0 && (
         <p style={{ fontSize: 12, color: 'var(--red)', lineHeight: 1.5, fontWeight: 600 }}>
-          Si tu es le seul administrateur de {joinFrenchList(adminTeams)},{' '}
-          {adminTeams.length > 1 ? 'ces équipes seront supprimées' : "l'équipe sera supprimée"}{' '}
-          avec tous ses matchs et votes, pour tous les membres.
+          Tu es administrateur de {joinFrenchList(adminTeams)}. Si d&apos;autres membres y ont un
+          compte, nomme d&apos;abord un autre admin (Admin → Paramètres → Membres). Une équipe dont
+          tu es le seul membre est supprimée avec tout son historique.
         </p>
       )}
       {error && <p style={{ fontSize: 12, color: 'var(--red)' }}>{error}</p>}

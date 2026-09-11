@@ -2,6 +2,7 @@ import { useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
 import { api, setCurrentOrgId, DEMO_MODE } from '@/api';
+import { clearLocalPersonalData, unsubscribeDeviceFromPush } from '@/utils/localData';
 import { useAppStore, clearOrgsCache } from '@/store/appStore';
 
 export function useAuth() {
@@ -29,6 +30,10 @@ export function useAuth() {
     setCurrentOrgId(null);
     setJustSignedUp(false);
     queryClient.clear();
+    // Shared phones: leave nothing of this account behind (ballots in the
+    // persisted cache, voter identity, drafts, push notifications).
+    clearLocalPersonalData();
+    void unsubscribeDeviceFromPush();
     navigate('/vote');
   }, [navigate, queryClient, setSession, setCurrentOrg, setJustSignedUp]);
 
