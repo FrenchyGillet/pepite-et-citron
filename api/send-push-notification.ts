@@ -67,8 +67,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     body:  isVoteOpen
       ? `Désigne la pépite et le citron de ${matchLabel}`
       : `Les résultats de ${matchLabel} sont prêts`,
+    // Never the bare APP_URL: "/" is the marketing landing (vercel.json), not
+    // the app. Subscribers are always signed in (push_subscriptions.user_id),
+    // so the plain app routes are enough.
     url: isVoteOpen
-      ? APP_URL
+      ? `${APP_URL}/vote`
       : `${APP_URL}/results`,
     icon:  '/icon-192x192.png',
     badge: '/icon-192x192.png',

@@ -110,25 +110,30 @@ self.addEventListener('push', (event) => {
   );
 });
 
-// ── Notification click → focus app or open new tab ───────────────────────────
+// ── Notification click → bring the app to the notification's page ────────────
 
 self.addEventListener('notificationclick', (event) => {
   event.notification.close();
 
-  const targetUrl: string = (event.notification.data as { url?: string })?.url ?? '/';
+  const rawUrl    = (event.notification.data as { url?: string })?.url ?? '/vote';
+  const targetUrl = new URL(rawUrl, self.location.origin).href;
 
-  event.waitUntil(
-    self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((windowClients) => {
-      // Try to focus an existing window on the correct URL
-      for (const client of windowClients) {
-        if (client.url === targetUrl && 'focus' in client) {
-          return client.focus();
-        }
+  event.waitUntil((async () => {
+    const windowClients = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
+    // The app is already open (installed PWA or a tab, usually on another
+    // page): reuse it on the right page instead of stacking a second instance.
+    const existing = windowClients.find(c => new URL(c.url).origin === self.location.origin);
+    if (existing) {
+      const focused = await existing.focus();
+      if (focused.url === targetUrl) return;
+      // navigate() only works on clients this worker controls.
+      try {
+        await focused.navigate(targetUrl);
+        return;
+      } catch {
+        // uncontrolled client — fall through to a new window
       }
-      // No matching window — open a new one
-      if (self.clients.openWindow) {
-        return self.clients.openWindow(targetUrl);
-      }
-    }),
-  );
+    }
+    await self.clients.openWindow(targetUrl);
+  })());
 });

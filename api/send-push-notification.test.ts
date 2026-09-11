@@ -84,4 +84,17 @@ describe('POST /api/send-push-notification', () => {
     expect(res.body).toMatchObject({ sent: 1 });
     expect(sendNotification).toHaveBeenCalledTimes(1);
   });
+
+  // B4: "/" is the marketing landing page — the vote push must open the app.
+  it('"vote ouvert" opens the vote screen, not the landing page', async () => {
+    await handler(req() as any, makeRes() as any);
+    const payload = JSON.parse(sendNotification.mock.calls[0][1]);
+    expect(payload.url).toBe('https://pepite-citron.com/vote');
+  });
+
+  it('"résultats disponibles" opens the results screen', async () => {
+    await handler(req({ body: { orgId: 'org-1', type: 'results_ready', matchLabel: 'PSG vs OM' } }) as any, makeRes() as any);
+    const payload = JSON.parse(sendNotification.mock.calls[0][1]);
+    expect(payload.url).toBe('https://pepite-citron.com/results');
+  });
 });
