@@ -9,7 +9,7 @@
  * Auth: Bearer <user JWT>
  *
  * Requires env vars:
- *   VAPID_PUBLIC_KEY   — base64url VAPID public key
+ *   VAPID_PUBLIC_KEY   — base64url VAPID public key (or VITE_VAPID_PUBLIC_KEY)
  *   VAPID_PRIVATE_KEY  — base64url VAPID private key
  *   VAPID_SUBJECT      — mailto: or https: URI (contact for push servers)
  *   SUPABASE_SERVICE_ROLE_KEY
@@ -24,7 +24,9 @@ import { pushNotificationSchema } from './_lib/validation.js';
 
 const APP_URL = process.env.VITE_APP_URL || 'https://pepite-citron.com';
 
-const VAPID_PUBLIC_KEY  = process.env.VAPID_PUBLIC_KEY;
+// Same public key as the client's VITE_VAPID_PUBLIC_KEY (the name .env.example
+// documents): accept either, so one variable in Vercel is enough.
+const VAPID_PUBLIC_KEY  = process.env.VAPID_PUBLIC_KEY || process.env.VITE_VAPID_PUBLIC_KEY;
 const VAPID_PRIVATE_KEY = process.env.VAPID_PRIVATE_KEY;
 const VAPID_SUBJECT     = process.env.VAPID_SUBJECT || `mailto:francois@pepite-citron.com`;
 
