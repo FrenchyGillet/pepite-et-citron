@@ -74,9 +74,10 @@ export function useLinkPlayer(orgId?: string | null) {
 export function useCreateMatch(orgId?: string | null) {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: ({ label, presentIds, teamId, season, pepiteCount }: {
+    mutationFn: ({ label, presentIds, teamId, season, pepiteCount, voteDeadline }: {
       label: string; presentIds: EntityId[]; teamId: EntityId | null; season: number; pepiteCount?: 2 | 3;
-    }) => api.createMatch(label, presentIds, teamId, season, pepiteCount),
+      voteDeadline?: string | null;
+    }) => api.createMatch(label, presentIds, teamId, season, pepiteCount, voteDeadline),
     onSuccess: (_match, vars) => {
       qc.invalidateQueries({ queryKey: queryKeys.activeMatch(orgId) });
       // Fire-and-forget email + push notifications — failures are silently ignored
@@ -88,24 +89,38 @@ export function useCreateMatch(orgId?: string | null) {
   });
 }
 
+/** Number of devices notified, or null when the push could not be sent. */
 async function sendPushNotification(
   orgId: string,
-  type: 'vote_open' | 'results_ready',
+  type: 'vote_open' | 'results_ready' | 'vote_reminder',
   matchLabel: string,
-): Promise<void> {
+  matchId?: EntityId,
+): Promise<number | null> {
   try {
     const { supabase } = await import('@/lib/supabase');
     const { data: { session } } = await supabase.auth.getSession();
     const token = session?.access_token;
-    if (!token) return;
-    await fetch('/api/send-push-notification', {
+    if (!token) return null;
+    const res = await fetch('/api/send-push-notification', {
       method:  'POST',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-      body:    JSON.stringify({ orgId, type, matchLabel }),
+      body:    JSON.stringify({ orgId, type, matchLabel, ...(matchId != null ? { matchId: String(matchId) } : {}) }),
     });
+    if (!res.ok) return null;
+    const body = await res.json() as { sent?: number };
+    return body.sent ?? null;
   } catch {
     // Best-effort — never throw
+    return null;
   }
+}
+
+/** Push "il manque ton vote" to present players who have not voted (F1). */
+export function useSendVoteReminder(orgId?: string | null) {
+  return useMutation({
+    mutationFn: ({ matchId, matchLabel }: { matchId: EntityId; matchLabel: string }) =>
+      orgId ? sendPushNotification(orgId, 'vote_reminder', matchLabel, matchId) : Promise.resolve(null),
+  });
 }
 
 async function sendMatchNotification(orgId: string, matchLabel: string): Promise<void> {

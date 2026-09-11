@@ -4,6 +4,8 @@ import { markVotedLocally, classifyVoteError, getStoredVoterIdentity, saveVoterI
 import type { VoteDraft } from '@/utils/vote';
 import { saveOfflineVote, isNetworkError } from '@/utils/offlineVote';
 import { useVoteCount } from '@/hooks/queries';
+import { useNow } from '@/hooks/useNow';
+import { formatClockTime, formatDeadline, isDeadlinePassed } from '@/utils/deadline';
 import { useAppStore } from '@/store/appStore';
 import type { Player, Match, EntityId } from '@/types';
 
@@ -134,6 +136,7 @@ export function VoteView({ players, match, onVoted, guestName = null, onGuestVot
 
   // Real-time vote count — updated via Realtime subscription in useRealtime()
   const { data: voteCount = 0 } = useVoteCount(match.id);
+  const now = useNow(15_000, !!match.vote_deadline);
   const presentCount = present.length;
 
   // Tapping your first name checks you haven't voted yet, then starts the vote.
@@ -222,6 +225,13 @@ export function VoteView({ players, match, onVoted, guestName = null, onGuestVot
     <div className="content"><div className="empty">🔒 Vote clôturé.<br />Consulte les résultats.</div></div>
   );
 
+  // submit_vote refuses ballots after the deadline; say so before they start.
+  if (match.vote_deadline && isDeadlinePassed(match.vote_deadline, now)) return (
+    <div className="content"><div className="empty">
+      ⏰ Le vote a fermé à {formatClockTime(match.vote_deadline)}.<br />Les résultats arrivent au dépouillement.
+    </div></div>
+  );
+
   const summaryRows = [
     { key: 'best1', player: best1, comment: best1Comment, setComment: setBest1Comment,
       icon: '⭐', iconClass: 'row-icon gold', iconStyle: undefined,
@@ -239,6 +249,15 @@ export function VoteView({ players, match, onVoted, guestName = null, onGuestVot
 
   return (
     <div className="content" ref={topRef}>
+      {match.vote_deadline && (
+        <div style={{
+          display: 'inline-flex', alignItems: 'center', gap: 6, marginTop: 8, marginBottom: 12,
+          padding: '6px 12px', borderRadius: 20, background: 'var(--bg3)',
+          fontSize: 13, fontWeight: 600, color: 'var(--label2)',
+        }}>
+          ⏱ {formatDeadline(match.vote_deadline, now)}
+        </div>
+      )}
       {guestName && (
         <div style={{ background: 'var(--gold-subtle)', border: '1px solid var(--gold-dim)', borderRadius: 'var(--radius-lg)', padding: '12px 16px', marginBottom: 16, display: 'flex', alignItems: 'center', gap: 12 }}>
           <span style={{ fontSize: 22 }}>👋</span>

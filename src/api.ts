@@ -1,5 +1,6 @@
 import { SUPABASE_URL } from '@/config';
 import { supabase } from '@/lib/supabase';
+import { isDeadlinePassed } from '@/utils/deadline';
 import type {
   API, Player, Match, Vote, GuestToken, Org, OrgMember, Team, UserSession,
 } from '@/types';
@@ -130,13 +131,14 @@ export const demoAPI: API = {
     demoState.matches.find(m => m.is_open || m.phase === "counting") ?? null
   ),
   getMatches:     () => Promise.resolve([...demoState.matches].reverse()),
-  createMatch: (label, presentIds, teamId, season, pepiteCount) => {
+  createMatch: (label, presentIds, teamId, season, pepiteCount, voteDeadline) => {
     const m: Match = {
       id: demoState.nextId++, label, present_ids: presentIds,
       is_open: true, phase: "voting", reveal_order: [], revealed_count: 0,
       season: season || demoState.currentSeason, team_id: teamId ?? null,
       created_at: new Date().toISOString(),
       pepite_count: pepiteCount ?? 2,
+      vote_deadline: voteDeadline ?? null,
     };
     demoState.matches.push(m);
     return Promise.resolve(m);
@@ -180,8 +182,13 @@ export const demoAPI: API = {
   ),
   getVoteCount:     (matchId) => Promise.resolve(demoState.votes.filter(v => v.match_id === matchId).length),
   submitVote:       (vote) => {
-    // Mirrors submit_vote: the guest link is consumed with the vote.
+    // Mirrors submit_vote: refused after the deadline; the guest link is
+    // consumed with the vote.
     const { guest_token, ...row } = vote;
+    const match = demoState.matches.find(m => m.id === row.match_id);
+    if (isDeadlinePassed(match?.vote_deadline)) {
+      return Promise.reject(new Error("Le vote est clôturé : l'heure limite est passée."));
+    }
     if (guest_token) {
       const t = demoState.guestTokens.find(t => t.token === guest_token);
       if (t) t.used = true;
@@ -452,12 +459,13 @@ export const realAPI: API = {
       );
     }),
   // No withRetry: a retried INSERT after a timeout would open a second match.
-  createMatch: async (label, presentIds, teamId, season, pepiteCount) => {
+  createMatch: async (label, presentIds, teamId, season, pepiteCount, voteDeadline) => {
     const rows = await run<Match[]>(
       supabase.from("matches").insert({
         label, present_ids: presentIds, is_open: true, phase: "voting",
         team_id: teamId ?? null, season: season || 1, org_id: _orgId,
         ...(pepiteCount === 3 ? { pepite_count: 3 } : {}),
+        ...(voteDeadline ? { vote_deadline: voteDeadline } : {}),
       }).select()
     );
     return rows[0];

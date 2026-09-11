@@ -29,6 +29,8 @@ export interface Match {
   org_id?: string;
   tiebreakers?: Record<string, EntityId>;
   pepite_count?: 2 | 3;
+  /** After this time submit_vote refuses ballots (null = no deadline). */
+  vote_deadline?: string | null;
 }
 
 export interface Vote {
@@ -147,7 +149,7 @@ export interface API {
   getActiveMatch(): Promise<Match | null>;
   getMatches(): Promise<Match[]>;
   getMatchById(id: EntityId): Promise<Match | null>;
-  createMatch(label: string, presentIds: EntityId[], teamId: EntityId | null, season: number, pepiteCount?: 2 | 3): Promise<Match>;
+  createMatch(label: string, presentIds: EntityId[], teamId: EntityId | null, season: number, pepiteCount?: 2 | 3, voteDeadline?: string | null): Promise<Match>;
   closeMatch(id: EntityId): Promise<unknown>;
   startCounting(id: EntityId, order: EntityId[]): Promise<unknown>;
   revealNext(id: EntityId, count: number): Promise<unknown>;

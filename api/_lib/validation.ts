@@ -17,10 +17,10 @@ export const matchNotificationSchema = z.object({
 
 export const pushNotificationSchema = z.object({
   orgId,
-  type: z.enum(['vote_open', 'results_ready']),
+  type: z.enum(['vote_open', 'results_ready', 'vote_reminder']),
   matchLabel,
   matchId: z.string().trim().max(100).optional(),
-});
+}).refine(b => b.type !== 'vote_reminder' || !!b.matchId, { message: 'matchId requis', path: ['matchId'] });
 
 export const checkoutSessionSchema = z.object({
   orgId,

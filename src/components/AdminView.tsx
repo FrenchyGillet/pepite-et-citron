@@ -8,12 +8,15 @@ import {
 import { isActive, parsePlayerNames } from '@/utils/player';
 import { shuffleRevealOrder } from '@/utils/vote';
 import { copyToClipboard } from '@/utils/clipboard';
+import { VOTE_DURATIONS, deadlineFrom, extendDeadline, formatDeadline, isDeadlinePassed, DEADLINE_EXTENSION_MINUTES } from '@/utils/deadline';
+import { buildReminderMessage } from '@/utils/reminder';
+import { useNow } from '@/hooks/useNow';
 import { Toast } from './Toast';
 import { SetupChecklist } from './SetupChecklist';
 import { useTeams, useGuestTokens, useOrgMembers, useVotes, useCurrentSeason, useSeasonNames } from '@/hooks/queries';
 import {
   useAddPlayers, useRemovePlayer, useSetPlayerArchived,
-  useCreateMatch, useCloseMatch, useStartCounting,
+  useCreateMatch, useCloseMatch, useStartCounting, useUpdateMatch, useSendVoteReminder,
   useCreateTeam, useUpdateTeam, useDeleteTeam,
   useCreateGuestToken, useDeleteGuestToken, useDeleteVote,
   useAddMember, useRemoveMember,
@@ -159,6 +162,7 @@ export function AdminView({ players, activeMatch, currentOrg, onShowGuide, onGoT
   const [copiedToken,     setCopiedToken]     = useState<string | null>(null);
   const [memberEmail,     setMemberEmail]     = useState('');
   const [pepiteCount,     setPepiteCount]     = useState<2 | 3>(2);
+  const [voteDuration,    setVoteDuration]    = useState<number | null>(null);
   // Inline close-match confirmation (replaces window.confirm, which is
   // unreliable in iOS PWA standalone mode)
   const [confirmClose,    setConfirmClose]    = useState(false);
@@ -230,6 +234,45 @@ export function AdminView({ players, activeMatch, currentOrg, onShowGuide, onGoT
   const advanceSeasonMutation    = useAdvanceSeason(currentOrg?.id);
   const setSeasonNameMutation    = useSetSeasonName();
   const deleteVoteMutation       = useDeleteVote(activeMatch?.id);
+  const updateMatchMutation      = useUpdateMatch(currentOrg?.id);
+  const sendReminderMutation     = useSendVoteReminder(currentOrg?.id);
+
+  const voteDeadline = activeMatch?.phase === 'voting' ? activeMatch.vote_deadline ?? null : null;
+  const now = useNow(30_000, !!voteDeadline);
+  const voteUrl = currentOrg?.slug ? `${window.location.origin}/vote?org=${currentOrg.slug}` : null;
+
+  const extendVoteDeadline = () => {
+    if (!activeMatch || !voteDeadline) return;
+    updateMatchMutation.mutate(
+      { id: activeMatch.id, data: { vote_deadline: extendDeadline(voteDeadline, Date.now()) } },
+      {
+        onSuccess: () => setToast(`Vote prolongé de ${DEADLINE_EXTENSION_MINUTES} min`),
+        onError: (err) => setToast(`Erreur : ${err instanceof Error ? err.message : String(err)}`),
+      },
+    );
+  };
+
+  // F1: nudge the players who have not voted — a message for the team chat
+  // (reaches everyone, account or not) plus a push to those with the app.
+  const remindPendingPlayers = async () => {
+    if (!activeMatch || !voteUrl || pendingPlayers.length === 0) return;
+    sendReminderMutation.mutate(
+      { matchId: activeMatch.id, matchLabel: activeMatch.label },
+      { onSuccess: (sent) => { if (sent) setToast(`🔔 Notification envoyée à ${sent} joueur${sent > 1 ? 's' : ''}`); } },
+    );
+    const text = buildReminderMessage({
+      matchLabel: activeMatch.label,
+      pendingNames: pendingPlayers.map(p => p.name),
+      voteUrl,
+      deadline: voteDeadline,
+    });
+    if (navigator.share) {
+      try { await navigator.share({ text }); } catch { /* user cancelled */ }
+    } else {
+      await copyToClipboard(text);
+      setToast('Message copié — colle-le dans le groupe de l\'équipe');
+    }
+  };
 
   // Undo a vote cast under a player's name (someone tapped the wrong first
   // name) so the real player can vote. Voting phase only (delete_vote).
@@ -383,10 +426,13 @@ export function AdminView({ players, activeMatch, currentOrg, onShowGuide, onGoT
     if (presentIds.length < minPlayersForVote) return;
     setMatchError(null);
     createMatchMutation.mutate(
-      { label: result.data.label, presentIds, teamId: selectedTeamId, season: currentSeason, pepiteCount },
+      {
+        label: result.data.label, presentIds, teamId: selectedTeamId, season: currentSeason, pepiteCount,
+        voteDeadline: deadlineFrom(Date.now(), voteDuration),
+      },
       {
         onSuccess: () => {
-          track(EVENTS.MATCH_CREATED, { playerCount: presentIds.length, pepiteCount });
+          track(EVENTS.MATCH_CREATED, { playerCount: presentIds.length, pepiteCount, voteDuration: voteDuration ?? 0 });
           setMatchLabel(''); setPresentIds([]); setSelectedTeamId(null);
           setToast('Match ouvert !');
           if (currentOrg?.id) { localStorage.setItem(`pepite_match_launched_${currentOrg.id}`, '1'); setMatchEverLaunched(true); }
@@ -499,6 +545,26 @@ export function AdminView({ players, activeMatch, currentOrg, onShowGuide, onGoT
             </div>
             {phase === 'voting' && (
               <div style={{ padding: '12px 16px', display: 'flex', flexDirection: 'column', gap: 8 }}>
+                {voteDeadline && (
+                  <div style={{
+                    display: 'flex', alignItems: 'center', gap: 10,
+                    background: 'var(--bg3)', borderRadius: 'var(--radius-sm)', padding: '8px 12px',
+                  }}>
+                    <span style={{
+                      flex: 1, fontSize: 13, fontWeight: 600,
+                      color: isDeadlinePassed(voteDeadline, now) ? 'var(--red)' : 'var(--label2)',
+                    }}>
+                      ⏱ {formatDeadline(voteDeadline, now)}
+                    </span>
+                    <button
+                      className="btn btn-secondary"
+                      style={{ padding: '6px 12px', fontSize: 13, whiteSpace: 'nowrap', flexShrink: 0 }}
+                      disabled={updateMatchMutation.isPending}
+                      onClick={extendVoteDeadline}>
+                      +{DEADLINE_EXTENSION_MINUTES} min
+                    </button>
+                  </div>
+                )}
                 {currentOrg?.slug && (
                   <>
                     <div style={{
@@ -554,6 +620,14 @@ export function AdminView({ players, activeMatch, currentOrg, onShowGuide, onGoT
                         <polyline points="5 3 11 8 5 13" />
                       </svg>
                     </button>
+                    {voteUrl && pendingPlayers.length > 0 && (
+                      <button
+                        className="btn btn-secondary btn-full"
+                        style={{ marginBottom: 8, fontSize: 14 }}
+                        onClick={() => void remindPendingPlayers()}>
+                        ⏰ Relancer les retardataires ({pendingPlayers.length})
+                      </button>
+                    )}
                     {voterTrackingOpen && (
                       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, paddingBottom: 8 }}>
                         {[...pendingPlayers, ...votedPlayers].map(p => {
@@ -698,6 +772,19 @@ export function AdminView({ players, activeMatch, currentOrg, onShowGuide, onGoT
                 Classement 3-2-1 pts · Recommandé pour les grandes équipes
               </p>
             )}
+            <p id="vote-duration-label" style={{ fontSize: 13, color: 'var(--label3)', marginBottom: 8 }}>Fermeture du vote</p>
+            <div role="group" aria-labelledby="vote-duration-label" style={{ display: 'flex', gap: 6, marginBottom: 16 }}>
+              {VOTE_DURATIONS.map(d => (
+                <button key={d.label} onClick={() => setVoteDuration(d.minutes)} aria-pressed={voteDuration === d.minutes} style={{
+                  flex: 1, padding: '10px 4px', borderRadius: 'var(--radius-sm)',
+                  fontSize: 13, fontWeight: 600, border: 'none', cursor: 'pointer',
+                  background: voteDuration === d.minutes ? 'var(--gold-fill)' : 'var(--bg3)',
+                  color: voteDuration === d.minutes ? '#000' : 'var(--label2)',
+                }}>
+                  {d.label}
+                </button>
+              ))}
+            </div>
             <button className="btn btn-primary btn-full"
               disabled={presentIds.length < minPlayersForVote || createMatchMutation.isPending}
               onClick={createMatch}>
