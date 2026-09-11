@@ -53,7 +53,10 @@ describe("Guest token flow", () => {
   it("used/consumed token shows error", async () => {
     const match = await __demoAPI.createMatch("Match test", [1, 2, 3, 4, 5], null, 1);
     const token = await __demoAPI.createGuestToken("Tonton", match.id);
-    await __demoAPI.useGuestToken(token);
+    // Consumed the way the app does it: by a vote cast with the link.
+    await __demoAPI.submitVote({
+      match_id: match.id, voter_name: "Tonton", best1_id: 1, best2_id: 2, lemon_id: 3, guest_token: token,
+    });
 
     renderApp({ initialPath: `/vote?guest=${token}` });
 

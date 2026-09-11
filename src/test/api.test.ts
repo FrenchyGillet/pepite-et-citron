@@ -252,11 +252,12 @@ describe('demoAPI', () => {
     expect(await demoAPI.validateGuestToken('nope')).toBeNull();
   });
 
-  it('useGuestToken marks the token as used', async () => {
-    const m = await demoAPI.createMatch('test', [1, 2], null, 1);
+  it('submitVote with a guest link consumes the token', async () => {
+    const m = await demoAPI.createMatch('test', [1, 2, 3], null, 1);
     const token = await demoAPI.createGuestToken('Marc', m.id);
-    await demoAPI.useGuestToken(token);
+    await demoAPI.submitVote({ match_id: m.id, voter_name: 'Marc', best1_id: 1, best2_id: 2, lemon_id: 3, guest_token: token });
     expect((await demoAPI.validateGuestToken(token))?.used).toBe(true);
+    expect(demoState.votes[0]).not.toHaveProperty('guest_token');
   });
 
   it('getGuestTokens returns tokens for the match', async () => {
@@ -545,11 +546,6 @@ describe('realAPI', () => {
   });
 
   describe('submitVote', () => {
-    const missingRpc = () => HttpResponse.json(
-      { code: 'PGRST202', message: 'Could not find the function public.submit_vote in the schema cache' },
-      { status: 404 },
-    );
-
     it('calls the submit_vote RPC with the mapped vote and guest link', async () => {
       let captured: unknown;
       server.use(http.post(`${RPC}/submit_vote`, async ({ request }) => {
@@ -575,38 +571,6 @@ describe('realAPI', () => {
       await expect(
         realAPI.submitVote({ match_id: 'm1', voter_name: 'Alice' }),
       ).rejects.toThrow('Tu as déjà voté pour ce match.');
-    });
-
-    it('falls back to a direct insert while 20260014 is not applied', async () => {
-      let inserted: Record<string, unknown> | undefined;
-      server.use(
-        http.post(`${RPC}/submit_vote`, missingRpc),
-        http.post(`${BASE}/votes`, async ({ request }) => {
-          inserted = await request.json() as Record<string, unknown>;
-          return HttpResponse.json([{}]);
-        }),
-      );
-      await realAPI.submitVote({ match_id: 'm1', voter_name: 'Alice', best1_id: 'p1', lemon_id: 'p2' });
-      expect(inserted).toMatchObject({ voter_name: 'Alice', match_id: 'm1' });
-    });
-
-    it('fallback: never sends guest_token as a column, marks the link used instead', async () => {
-      let inserted: Record<string, unknown> | undefined;
-      let marked: unknown;
-      server.use(
-        http.post(`${RPC}/submit_vote`, missingRpc),
-        http.post(`${BASE}/votes`, async ({ request }) => {
-          inserted = await request.json() as Record<string, unknown>;
-          return HttpResponse.json([{}]);
-        }),
-        http.post(`${RPC}/mark_guest_token_used`, async ({ request }) => {
-          marked = await request.json();
-          return HttpResponse.json(null);
-        }),
-      );
-      await realAPI.submitVote({ match_id: 'm1', voter_name: 'Marc', guest_token: 'tok' });
-      expect(inserted).not.toHaveProperty('guest_token');
-      expect(marked).toMatchObject({ p_token: 'tok' });
     });
 
     it('rethrows other RPC errors', async () => {
@@ -741,18 +705,6 @@ describe('realAPI', () => {
     });
   });
 
-  describe('useGuestToken', () => {
-    it('calls mark_guest_token_used with the token', async () => {
-      let captured: unknown;
-      server.use(http.post(`${RPC}/mark_guest_token_used`, async ({ request }) => {
-        captured = await request.json();
-        return HttpResponse.json(null);
-      }));
-      await realAPI.useGuestToken('abc');
-      expect(captured).toMatchObject({ p_token: 'abc' });
-    });
-  });
-
   describe('deleteGuestToken', () => {
     it('sends DELETE and resolves', async () => {
       server.use(http.delete(`${BASE}/guest_tokens`, () => new HttpResponse(null, { status: 204 })));
@@ -861,18 +813,6 @@ describe('realAPI', () => {
     it('returns null when not found', async () => {
       server.use(http.post(`${RPC}/get_org_public`, () => HttpResponse.json([])));
       expect(await realAPI.getOrgBySlug('unknown')).toBeNull();
-    });
-
-    it('falls back to the organizations table while 20260014 is not applied', async () => {
-      const org = { id: 'org-1', name: 'FC Test', slug: 'fc-test' };
-      server.use(
-        http.post(`${RPC}/get_org_public`, () => HttpResponse.json(
-          { code: 'PGRST202', message: 'Could not find the function public.get_org_public' },
-          { status: 404 },
-        )),
-        http.get(`${BASE}/organizations`, () => HttpResponse.json([org])),
-      );
-      expect((await realAPI.getOrgBySlug('fc-test'))?.name).toBe('FC Test');
     });
   });
 

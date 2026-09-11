@@ -54,12 +54,6 @@ async function run<T>(
   return data as T;
 }
 
-// PostgREST answers PGRST202 (404) for an RPC that does not exist yet. Lets the
-// frontend ship before the migration that creates it, falling back meanwhile.
-function isMissingRpc(error: { code?: string; message?: string } | null): boolean {
-  return !!error && (error.code === 'PGRST202' || /could not find the function/i.test(error.message ?? ''));
-}
-
 // Org courante (défini au login ou via ?org=slug)
 let _orgId: string | null = null;
 export function setCurrentOrgId(id: string | null): void { _orgId = id; }
@@ -208,11 +202,6 @@ export const demoAPI: API = {
   },
   getGuestTokens:     (matchId) => Promise.resolve(demoState.guestTokens.filter(t => t.match_id === matchId)),
   validateGuestToken: (token)   => Promise.resolve(demoState.guestTokens.find(t => t.token === token) ?? null),
-  useGuestToken:      (token)   => {
-    const t = demoState.guestTokens.find(t => t.token === token);
-    if (t) t.used = true;
-    return Promise.resolve(true);
-  },
   deleteGuestToken:   (id) => {
     demoState.guestTokens = demoState.guestTokens.filter(t => t.id !== id);
     return Promise.resolve(true);
@@ -387,12 +376,8 @@ export const realAPI: API = {
     // organizations is members-only since 20260014: anonymous ?org= visitors
     // resolve their link through get_org_public (id, name, slug, plan only).
     const { data, error } = await supabase.rpc("get_org_public", { p_slug: slug });
-    if (!error) return ((data as Org[] | null)?.[0]) ?? null;
-    if (!isMissingRpc(error)) throw new Error(error.message);
-    // TODO: remove once 20260014 is applied in production (pre-migration fallback).
-    const { data: rows, error: fallbackErr } = await supabase.from("organizations").select("*").eq("slug", slug);
-    if (fallbackErr) throw new Error(fallbackErr.message);
-    return (rows?.[0] as Org) ?? null;
+    if (error) throw new Error(error.message);
+    return ((data as Org[] | null)?.[0]) ?? null;
   },
 
   // ── Joueurs ───────────────────────────────────────────────────────────────
@@ -555,7 +540,7 @@ export const realAPI: API = {
     // submit_vote (20260014) validates phase, presence, identity and uniqueness
     // server-side and consumes the guest link in the same transaction. Its
     // errors are French, user-facing messages ("Tu as déjà voté pour ce match.").
-    const { error: rpcError } = await supabase.rpc("submit_vote", {
+    const { error } = await supabase.rpc("submit_vote", {
       p_match_id:        vote.match_id,
       p_voter_name:      vote.voter_name,
       p_voter_player_id: vote.voter_player_id ?? null,
@@ -569,31 +554,9 @@ export const realAPI: API = {
       p_lemon_comment:   vote.lemon_comment ?? null,
       p_guest_token:     vote.guest_token ?? null,
     });
-    if (!rpcError) return;
-    if (!isMissingRpc(rpcError)) {
-      throw Object.assign(new Error(rpcError.message), { code: (rpcError as { code?: string }).code });
+    if (error) {
+      throw Object.assign(new Error(error.message), { code: (error as { code?: string }).code });
     }
-
-    // TODO: remove once 20260014 is applied in production (pre-migration fallback).
-    // Strip undefined fields before insert — optional columns like best3_id /
-    // best3_comment must not appear in the payload when they are absent, or
-    // PostgREST returns "column not found in schema cache".
-    const { guest_token, ...row } = vote;
-    const payload = Object.fromEntries(
-      Object.entries(row as unknown as Record<string, unknown>).filter(([, v]) => v !== undefined),
-    );
-    const { error } = await supabase.from("votes").insert(payload);
-    if (!error && guest_token) {
-      await supabase.rpc("mark_guest_token_used", { p_token: guest_token });
-    }
-    if (!error) return;
-    if ((error as { code?: string }).code === '23505'
-      || error.message?.includes('409')
-      || error.message?.includes('duplicate')
-      || error.message?.includes('unique')) {
-      return;
-    }
-    throw new Error(error.message);
   },
   // The org slug authorises anonymous ?org= voters (migration 20260010);
   // members are authorised by their membership and may omit it.
@@ -653,12 +616,6 @@ export const realAPI: API = {
     const { data, error } = await supabase.rpc("validate_guest_token", { p_token: token });
     if (error) throw new Error(error.message);
     return ((data as GuestToken[] | null)?.[0]) ?? null;
-  },
-  useGuestToken: async (token) => {
-    // Same reasoning as above — no direct UPDATE policy for a non-member guest.
-    const { error } = await supabase.rpc("mark_guest_token_used", { p_token: token });
-    if (error) throw new Error(error.message);
-    return true;
   },
   deleteGuestToken: async (id) => {
     const { error } = await supabase.from("guest_tokens").delete().eq("id", id);

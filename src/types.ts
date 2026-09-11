@@ -174,7 +174,6 @@ export interface API {
   createGuestToken(name: string, matchId: EntityId): Promise<string>;
   getGuestTokens(matchId: EntityId): Promise<GuestToken[]>;
   validateGuestToken(token: string): Promise<GuestToken | null>;
-  useGuestToken(token: string): Promise<unknown>;
   deleteGuestToken(id: EntityId): Promise<unknown>;
 
   // Push notifications
