@@ -203,10 +203,11 @@ export function ProfileView() {
             background: 'var(--bg2)', borderRadius: 16,
             padding: '20px 16px', marginBottom: 20,
           }}>
-            <label style={{ fontSize: 13, fontWeight: 600, color: 'var(--label3)', display: 'block', marginBottom: 8 }}>
+            <label htmlFor="profile-nickname" style={{ fontSize: 13, fontWeight: 600, color: 'var(--label3)', display: 'block', marginBottom: 8 }}>
               SURNOM (affiché sur le podium)
             </label>
             <input
+              id="profile-nickname"
               ref={inputRef}
               type="text"
               value={nickname}

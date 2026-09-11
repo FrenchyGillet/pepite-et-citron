@@ -11,9 +11,11 @@ export function GlobalStyle() {
       --separator:    rgba(255,255,255,0.08);
       --separator2:   rgba(255,255,255,0.12);
       --label:        #ffffff;
-      --label2:       rgba(235,235,245,0.6);
-      --label3:       rgba(235,235,245,0.3);
-      --label4:       rgba(235,235,245,0.18);
+      /* Secondary text: every level reaches WCAG AA (4.5:1) on --bg and --bg2 —
+         guarded by src/utils/contrast.test.ts. */
+      --label2:       rgba(235,235,245,0.75);
+      --label3:       rgba(235,235,245,0.6);
+      --label4:       rgba(235,235,245,0.5);
       --gold:         #ffd60a;
       --gold-dim:     rgba(255,214,10,0.15);
       --gold-subtle:  rgba(255,214,10,0.08);
@@ -71,9 +73,16 @@ export function GlobalStyle() {
       padding-bottom: calc(var(--tab-bar-height) + env(safe-area-inset-bottom, 0px) + 16px);
     }
 
+    /* Keyboard focus: always visible, on dark and light grounds. */
+    button:focus-visible, a:focus-visible {
+      outline: 2px solid var(--gold);
+      outline-offset: 2px;
+    }
+
     /* HEADER */
     .header {
-      padding: 14px 20px 10px;
+      /* installed iOS app (black-translucent status bar): stay below the notch */
+      padding: calc(14px + env(safe-area-inset-top, 0px)) 20px 10px;
       position: sticky;
       top: 0;
       z-index: 100;
@@ -130,27 +139,6 @@ export function GlobalStyle() {
     .tab-bar-item:active {
       opacity: 0.75;
     }
-
-    /* NAV (legacy) */
-    .nav {
-      display: flex;
-      background: rgba(0,0,0,0.85);
-      backdrop-filter: blur(20px);
-      -webkit-backdrop-filter: blur(20px);
-      border-bottom: 0.5px solid var(--separator);
-      position: sticky;
-      top: 65px;
-      z-index: 99;
-    }
-    .nav-btn {
-      flex: 1; padding: 11px 4px;
-      background: transparent;
-      color: var(--label3);
-      font-size: 11px; font-weight: 500;
-      letter-spacing: 0.03em;
-      border-bottom: 1.5px solid transparent;
-    }
-    .nav-btn.active { color: var(--label); border-bottom-color: var(--label2); }
 
     /* CONTENT */
     .content { padding: 16px; }
@@ -259,7 +247,9 @@ export function GlobalStyle() {
       background: var(--bg3); color: var(--label);
       padding: 11px 22px; border-radius: 24px;
       font-weight: 500; font-size: 14px; z-index: 999;
-      border: 1px solid var(--separator2); white-space: nowrap;
+      border: 1px solid var(--separator2);
+      /* long error messages wrap instead of running off a 320px screen */
+      width: max-content; max-width: calc(100% - 32px); text-align: center;
       animation: toastIn 0.25s ease;
     }
     @keyframes toastIn {
@@ -292,7 +282,17 @@ export function GlobalStyle() {
       background: rgba(255,214,10,0.06);
       border-bottom: 1px solid rgba(255,214,10,0.1);
       padding: 7px 16px; font-size: 12px;
-      color: rgba(255,214,10,0.5); text-align: center;
+      color: rgba(255,214,10,0.8); text-align: center;
+    }
+
+    /* Honour the OS "reduce motion" setting (pulsing dots, chip bounce, podium). */
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+        scroll-behavior: auto !important;
+      }
     }
 
     .flex         { display: flex; }
@@ -316,18 +316,19 @@ export function GlobalStyle() {
       --separator:    rgba(0,0,0,0.08);
       --separator2:   rgba(0,0,0,0.12);
       --label:        #000000;
-      --label2:       rgba(60,60,67,0.6);
-      --label3:       rgba(60,60,67,0.35);
-      --label4:       rgba(60,60,67,0.18);
-      /* Darker brand colours — contrast-safe on white/light backgrounds */
-      --gold:         #b8860b;
-      --gold-dim:     rgba(184,134,11,0.15);
-      --gold-subtle:  rgba(184,134,11,0.08);
-      --lemon:        #5a8a00;
-      --lemon-dim:    rgba(90,138,0,0.15);
-      --lemon-subtle: rgba(90,138,0,0.08);
-      --green:        #248a3d;
-      --green-dim:    rgba(36,138,61,0.12);
+      --label2:       rgba(60,60,67,0.88);
+      --label3:       rgba(60,60,67,0.78);
+      --label4:       rgba(60,60,67,0.74);
+      /* Darker brand colours — AA as text on white/light backgrounds
+         (guarded by src/utils/contrast.test.ts) */
+      --gold:         #8a6500;
+      --gold-dim:     rgba(138,101,0,0.15);
+      --gold-subtle:  rgba(138,101,0,0.08);
+      --lemon:        #4a7200;
+      --lemon-dim:    rgba(74,114,0,0.15);
+      --lemon-subtle: rgba(74,114,0,0.08);
+      --green:        #1e7a34;
+      --green-dim:    rgba(30,122,52,0.12);
       --red:          #d70015;
       --red-dim:      rgba(215,0,21,0.10);
       color-scheme: light;
@@ -337,8 +338,10 @@ export function GlobalStyle() {
     [data-theme="light"] .tab-bar { background: rgba(242,242,247,0.92); border-top-color: rgba(0,0,0,0.08); }
     [data-theme="light"] input,
     [data-theme="light"] textarea { background: var(--bg3); color: var(--label); }
-    [data-theme="light"] .demo-banner { background: rgba(255,180,0,0.08); color: rgba(160,100,0,0.7); border-color: rgba(255,180,0,0.15); }
+    [data-theme="light"] .demo-banner { background: rgba(255,180,0,0.08); color: #7a5400; border-color: rgba(255,180,0,0.15); }
     [data-theme="light"] .btn-primary { background: var(--gold); color: #ffffff; }
+    /* the translucent dark-theme yellow is unreadable on white */
+    [data-theme="light"] .player-chip.sel-2nd { color: var(--gold); }
   `}</style>
   );
 }

@@ -25,8 +25,13 @@ export function AppHeader() {
     const close = (e: MouseEvent) => {
       if (!(e.target as Element).closest('[data-org-picker]')) setOrgPickerOpen(false);
     };
+    const closeOnEscape = (e: KeyboardEvent) => { if (e.key === 'Escape') setOrgPickerOpen(false); };
     document.addEventListener('mousedown', close);
-    return () => document.removeEventListener('mousedown', close);
+    document.addEventListener('keydown', closeOnEscape);
+    return () => {
+      document.removeEventListener('mousedown', close);
+      document.removeEventListener('keydown', closeOnEscape);
+    };
   }, [orgPickerOpen]);
 
   return (
@@ -77,13 +82,14 @@ function OrgPicker({ currentOrg, myOrgs, open, setOpen, onSwitch }: OrgPickerPro
   return (
     <div style={{ position: 'relative' }} data-org-picker="">
       {myOrgs.length > 1 ? (
-        <button onClick={() => setOpen(!open)} style={{
+        <button onClick={() => setOpen(!open)} aria-expanded={open} aria-haspopup="menu"
+          aria-label={`Équipe : ${currentOrg.name}. Changer d'équipe`} style={{
           background: 'none', border: 'none', padding: 0,
           cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 5,
         }}>
           <span className="header-sub" style={{ color: 'var(--gold)', fontWeight: 600 }}>{currentOrg.name}</span>
           {currentOrg.plan === 'pro' && <ProCrown />}
-          <span style={{ fontSize: 9, color: 'var(--gold)', opacity: 0.7, marginTop: 1 }}>▼</span>
+          <span aria-hidden="true" style={{ fontSize: 9, color: 'var(--gold)', opacity: 0.7, marginTop: 1 }}>▼</span>
           {currentOrg.role === 'voter' && <RoleBadge />}
         </button>
       ) : (
@@ -139,6 +145,8 @@ function ProCrown() {
   return (
     <span
       title="Plan Pro"
+      role="img"
+      aria-label="Plan Pro"
       style={{
         fontSize: 12,
         lineHeight: 1,
@@ -163,7 +171,7 @@ function FeedbackButton() {
         boxSizing: 'border-box',
       }}
     >
-      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
+      <svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
         <path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/>
       </svg>
     </a>
@@ -190,19 +198,20 @@ function ProfileButton({ email, onNavigate }: { email: string; onNavigate: () =>
 }
 
 function ThemeToggle({ theme, onToggle }: { theme: string; onToggle: () => void }) {
+  const label = theme === 'dark' ? 'Passer en thème clair' : 'Passer en thème sombre';
   return (
-    <button onClick={onToggle} style={{
+    <button onClick={onToggle} aria-label={label} title={label} style={{
       background: 'var(--bg3)', border: 'none', borderRadius: '10px', padding: '8px',
       cursor: 'pointer', color: 'var(--label2)', display: 'flex', alignItems: 'center',
       width: 36, height: 36, justifyContent: 'center',
     }}>
       {theme === 'dark' ? (
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
+        <svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
           <circle cx="12" cy="12" r="5"/>
           <path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/>
         </svg>
       ) : (
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
+        <svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
           <path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/>
         </svg>
       )}

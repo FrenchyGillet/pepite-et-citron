@@ -46,6 +46,7 @@ function CollapsibleSection({
     <div style={{ borderTop: '0.5px solid var(--separator)', marginTop: 8, paddingTop: 4 }}>
       <button
         onClick={onToggle}
+        aria-expanded={isOpen}
         style={{
           width: '100%', background: 'none', border: 'none',
           padding: '14px 0', display: 'flex', alignItems: 'center',
@@ -592,11 +593,11 @@ export function AdminView({ players, activeMatch, currentOrg, onShowGuide, onGoT
           </div>
         ) : (
           <div className="group" style={{ padding: '14px 16px' }}>
-            <p style={{ fontSize: 13, color: 'var(--label3)', marginBottom: 8 }}>Nom du match ou de l'adversaire</p>
-            <input ref={labelInputRef} placeholder="ex : vs Dragons, Entraînement…" value={matchLabel}
+            <label htmlFor="admin-match-label" style={{ display: 'block', fontSize: 13, color: 'var(--label3)', marginBottom: 8 }}>Nom du match ou de l'adversaire</label>
+            <input id="admin-match-label" ref={labelInputRef} placeholder="ex : vs Dragons, Entraînement…" value={matchLabel}
               onChange={e => { setMatchLabel(e.target.value); setMatchError(null); }}
-              style={{ marginBottom: matchError ? 4 : 16, borderColor: matchError ? '#ff6b6b' : undefined }} />
-            {matchError && <p style={{ fontSize: 12, color: '#ff6b6b', marginBottom: 12 }}>{matchError}</p>}
+              style={{ marginBottom: matchError ? 4 : 16, borderColor: matchError ? 'var(--red)' : undefined }} />
+            {matchError && <p style={{ fontSize: 12, color: 'var(--red)', marginBottom: 12 }}>{matchError}</p>}
 
             {teams.length > 0 && (
               <>
@@ -695,6 +696,7 @@ export function AdminView({ players, activeMatch, currentOrg, onShowGuide, onGoT
                       </button>
                     )}
                     <button onClick={() => revokeGuest(gt.id)}
+                      aria-label={`Révoquer le lien de ${gt.name}`} title="Révoquer le lien"
                       style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 16, color: 'var(--label4)', padding: '4px 8px' }}>✕</button>
                   </div>
                 </div>
@@ -702,14 +704,14 @@ export function AdminView({ players, activeMatch, currentOrg, onShowGuide, onGoT
             </div>
           )}
           <div className="flex gap-8" style={{ marginBottom: guestError ? 4 : 0 }}>
-            <input placeholder="Prénom du supporter" value={guestInput}
+            <input aria-label="Prénom du supporter" placeholder="Prénom du supporter" value={guestInput}
               onChange={e => { setGuestInput(e.target.value); setGuestError(null); }}
               onKeyDown={e => e.key === 'Enter' && createGuestLink()}
-              style={{ borderColor: guestError ? '#ff6b6b' : undefined }} />
+              style={{ borderColor: guestError ? 'var(--red)' : undefined }} />
             <button className="btn btn-primary" style={{ whiteSpace: 'nowrap', padding: '12px 16px' }}
               onClick={createGuestLink}>Créer</button>
           </div>
-          {guestError && <p style={{ fontSize: 12, color: '#ff6b6b', marginTop: 4 }}>{guestError}</p>}
+          {guestError && <p style={{ fontSize: 12, color: 'var(--red)', marginTop: 4 }}>{guestError}</p>}
         </div>
       )}
 
@@ -727,14 +729,14 @@ export function AdminView({ players, activeMatch, currentOrg, onShowGuide, onGoT
             Joueurs · {players.length}
           </p>
           <div className="flex gap-8" style={{ marginBottom: playerError ? 4 : 12 }}>
-            <input placeholder="Prénom du joueur" value={newPlayer}
+            <input aria-label="Prénom du joueur" placeholder="Prénom du joueur" value={newPlayer}
               onChange={e => { setNewPlayer(e.target.value); setPlayerError(null); }}
               onKeyDown={e => e.key === 'Enter' && addPlayer()}
-              style={{ borderColor: playerError ? '#ff6b6b' : undefined }} />
+              style={{ borderColor: playerError ? 'var(--red)' : undefined }} />
             <button className="btn btn-primary" style={{ whiteSpace: 'nowrap', padding: '12px 16px' }}
               onClick={addPlayer}>Ajouter</button>
           </div>
-          {playerError && <p style={{ fontSize: 12, color: '#ff6b6b', marginBottom: 12 }}>{playerError}</p>}
+          {playerError && <p style={{ fontSize: 12, color: 'var(--red)', marginBottom: 12 }}>{playerError}</p>}
           <div className="group">
             {players.length === 0
               ? <div className="row"><span style={{ color: 'var(--label3)', fontSize: 14 }}>Aucun joueur. Commence par en ajouter un ci-dessus.</span></div>
@@ -848,11 +850,11 @@ export function AdminView({ players, activeMatch, currentOrg, onShowGuide, onGoT
           </div>
           {showNewTeam && (
             <div className="group" style={{ padding: '14px 16px' }}>
-              <p style={{ fontSize: 13, color: 'var(--label3)', marginBottom: 8 }}>Nom de l'équipe</p>
-              <input placeholder="ex : Équipe championnat, Coupe, Tournoi…" value={teamName}
+              <label htmlFor="admin-team-name" style={{ display: 'block', fontSize: 13, color: 'var(--label3)', marginBottom: 8 }}>Nom de l'équipe</label>
+              <input id="admin-team-name" placeholder="ex : Équipe championnat, Coupe, Tournoi…" value={teamName}
                 onChange={e => { setTeamName(e.target.value); setTeamError(null); }}
-                style={{ marginBottom: teamError ? 4 : 16, borderColor: teamError ? '#ff6b6b' : undefined }} />
-              {teamError && <p style={{ fontSize: 12, color: '#ff6b6b', marginBottom: 12 }}>{teamError}</p>}
+                style={{ marginBottom: teamError ? 4 : 16, borderColor: teamError ? 'var(--red)' : undefined }} />
+              {teamError && <p style={{ fontSize: 12, color: 'var(--red)', marginBottom: 12 }}>{teamError}</p>}
               <div className="flex-between" style={{ marginBottom: 8 }}>
                 <p style={{ fontSize: 13, color: 'var(--label3)' }}>
                   Joueurs à inclure
@@ -967,6 +969,7 @@ export function AdminView({ players, activeMatch, currentOrg, onShowGuide, onGoT
             {editingSeason && (
               <div style={{ padding: '0 16px 14px' }}>
                 <input
+                  aria-label="Nom de la saison"
                   placeholder={`ex : Hiver 2025, Saison ${currentSeason}…`}
                   value={seasonNameDraft}
                   onChange={e => setSeasonNameDraft(e.target.value)}
@@ -1023,12 +1026,13 @@ export function AdminView({ players, activeMatch, currentOrg, onShowGuide, onGoT
             )}
             <div className="flex gap-8" style={{ marginBottom: memberError ? 4 : 0 }}>
               <input
+                aria-label="Email du votant"
                 placeholder="Email du votant"
                 value={memberEmail}
                 type="email"
                 onChange={e => { setMemberEmail(e.target.value); setMemberError(null); }}
                 onKeyDown={e => e.key === 'Enter' && handleAddMember()}
-                style={{ borderColor: memberError ? '#ff6b6b' : undefined }}
+                style={{ borderColor: memberError ? 'var(--red)' : undefined }}
               />
               <button className="btn btn-primary" style={{ whiteSpace: 'nowrap', padding: '12px 16px' }}
                 disabled={addMemberMutation.isPending}
@@ -1036,7 +1040,7 @@ export function AdminView({ players, activeMatch, currentOrg, onShowGuide, onGoT
                 {addMemberMutation.isPending ? '…' : 'Inviter'}
               </button>
             </div>
-            {memberError && <p style={{ fontSize: 12, color: '#ff6b6b', marginTop: 4 }}>{memberError}</p>}
+            {memberError && <p style={{ fontSize: 12, color: 'var(--red)', marginTop: 4 }}>{memberError}</p>}
           </div>
         )}
       </CollapsibleSection>

@@ -13,7 +13,7 @@ interface AuthViewProps {
 type AuthMode = 'login' | 'signup' | 'forgot';
 
 const FieldError = ({ msg }: { msg?: string }) =>
-  msg ? <p style={{ fontSize: 12, color: '#ff6b6b', marginTop: 4 }}>{msg}</p> : null;
+  msg ? <p style={{ fontSize: 12, color: 'var(--red)', marginTop: 4 }}>{msg}</p> : null;
 
 export function AuthView({ onAuth }: AuthViewProps) {
   const [mode,      setMode]      = useState<AuthMode>('login');
@@ -163,14 +163,15 @@ export function AuthView({ onAuth }: AuthViewProps) {
         ) : (
           <form onSubmit={onSubmit} noValidate style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
             <div>
-              <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--label3)', display: 'block', marginBottom: 6 }}>
+              <label htmlFor="auth-email" style={{ fontSize: 12, fontWeight: 600, color: 'var(--label3)', display: 'block', marginBottom: 6 }}>
                 Adresse email
               </label>
               <input
+                id="auth-email"
                 type="email"
                 autoComplete="email"
                 placeholder="vous@exemple.com"
-                style={{ width: '100%', boxSizing: 'border-box', borderColor: errors.email ? '#ff6b6b' : undefined }}
+                style={{ width: '100%', boxSizing: 'border-box', borderColor: errors.email ? 'var(--red)' : undefined }}
                 {...register('email')}
               />
               <FieldError msg={errors.email?.message} />
@@ -178,14 +179,15 @@ export function AuthView({ onAuth }: AuthViewProps) {
 
             {mode !== 'forgot' && (
               <div>
-                <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--label3)', display: 'block', marginBottom: 6 }}>
+                <label htmlFor="auth-password" style={{ fontSize: 12, fontWeight: 600, color: 'var(--label3)', display: 'block', marginBottom: 6 }}>
                   Mot de passe
                 </label>
                 <input
+                  id="auth-password"
                   type="password"
                   placeholder={mode === 'signup' ? '8 caractères minimum' : 'Votre mot de passe'}
                   autoComplete={mode === 'signup' ? 'new-password' : 'current-password'}
-                  style={{ width: '100%', boxSizing: 'border-box', borderColor: errors.password ? '#ff6b6b' : undefined }}
+                  style={{ width: '100%', boxSizing: 'border-box', borderColor: errors.password ? 'var(--red)' : undefined }}
                   {...register('password')}
                 />
                 <FieldError msg={errors.password?.message} />
@@ -213,7 +215,7 @@ export function AuthView({ onAuth }: AuthViewProps) {
               <div style={{
                 background: 'rgba(255,80,80,.12)', border: '1px solid rgba(255,80,80,.3)',
                 borderRadius: 'var(--radius-sm)', padding: '10px 12px',
-                fontSize: 13, color: '#ff6b6b',
+                fontSize: 13, color: 'var(--red)',
               }}>
                 {apiError}
               </div>

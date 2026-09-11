@@ -20,7 +20,7 @@ function toSlug(str: string): string {
 }
 
 const FieldError = ({ msg }: { msg?: string }) =>
-  msg ? <p style={{ fontSize: 12, color: '#ff6b6b', marginTop: 4 }}>{msg}</p> : null;
+  msg ? <p style={{ fontSize: 12, color: 'var(--red)', marginTop: 4 }}>{msg}</p> : null;
 
 /** The actual name/slug form — embeddable on its own (ProfileView) or inside
  *  the full-screen OrgSetupView (first-time onboarding). */
@@ -68,12 +68,13 @@ export function OrgCreateForm({ onOrgCreated, submitLabel = "Créer l'équipe �
   return (
     <form onSubmit={onSubmit} noValidate style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
       <div>
-        <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--label3)', display: 'block', marginBottom: 6 }}>
+        <label htmlFor="org-create-name" style={{ fontSize: 12, fontWeight: 600, color: 'var(--label3)', display: 'block', marginBottom: 6 }}>
           Nom de l'équipe
         </label>
         <input
+          id="org-create-name"
           placeholder="ex : HC Montréal Rive-Sud"
-          style={{ width: '100%', boxSizing: 'border-box', borderColor: errors.name ? '#ff6b6b' : undefined }}
+          style={{ width: '100%', boxSizing: 'border-box', borderColor: errors.name ? 'var(--red)' : undefined }}
           {...register('name')}
         />
         <FieldError msg={errors.name?.message} />
@@ -104,7 +105,7 @@ export function OrgCreateForm({ onOrgCreated, submitLabel = "Créer l'équipe �
         <div style={{
           background: 'rgba(255,80,80,.12)', border: '1px solid rgba(255,80,80,.3)',
           borderRadius: 'var(--radius-sm)', padding: '10px 12px',
-          fontSize: 13, color: '#ff6b6b',
+          fontSize: 13, color: 'var(--red)',
         }}>
           {errors.root.message}
         </div>

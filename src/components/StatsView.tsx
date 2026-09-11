@@ -294,7 +294,7 @@ export function StatsView({ players, activeMatch, isAdmin, orgId }: StatsViewPro
 
                       {isAdmin && (isEditing && editingMatch ? (
                         <div style={{ marginTop: 12, display: 'flex', flexDirection: 'column', gap: 8 }}>
-                          <input value={editingMatch.label}
+                          <input aria-label="Nom du match" value={editingMatch.label}
                             onChange={e => setEditingMatch(em => em ? { ...em, label: e.target.value } : em)}
                             placeholder="Nom du match" />
                           {allTeams.length > 0 && (

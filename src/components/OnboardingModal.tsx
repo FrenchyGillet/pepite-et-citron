@@ -112,7 +112,7 @@ export function OnboardingModal({ onClose }: OnboardingModalProps) {
         </div>
 
         <div style={{ textAlign: 'center', marginBottom: 32 }}>
-          <div style={{ fontSize: 22, fontWeight: 800, color: 'var(--label1)', letterSpacing: '-0.02em', marginBottom: 10 }}>
+          <div style={{ fontSize: 22, fontWeight: 800, color: 'var(--label)', letterSpacing: '-0.02em', marginBottom: 10 }}>
             {s.title}
           </div>
           <div style={{ fontSize: 15, color: 'var(--label3)', lineHeight: 1.6, maxWidth: 320, margin: '0 auto' }}>

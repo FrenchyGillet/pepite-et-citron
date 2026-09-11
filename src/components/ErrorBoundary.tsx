@@ -48,7 +48,7 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
             </svg>
           </div>
           <div>
-            <div style={{ fontSize: 16, fontWeight: 700, color: 'var(--label1)', marginBottom: 6 }}>
+            <div style={{ fontSize: 16, fontWeight: 700, color: 'var(--label)', marginBottom: 6 }}>
               Quelque chose a planté
             </div>
             <div style={{ fontSize: 13, color: 'var(--label3)', lineHeight: 1.5, maxWidth: 260 }}>

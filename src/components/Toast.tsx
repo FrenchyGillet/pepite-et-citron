@@ -10,5 +10,5 @@ export function Toast({ msg, onDone }: ToastProps) {
     const t = setTimeout(onDone, 2500);
     return () => clearTimeout(t);
   }, [onDone]);
-  return <div className="toast">{msg}</div>;
+  return <div className="toast" role="status" aria-live="polite">{msg}</div>;
 }

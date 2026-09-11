@@ -76,10 +76,11 @@ export function ResetPasswordView() {
 
             <form onSubmit={handleSubmit} noValidate style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
               <div>
-                <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--label3)', display: 'block', marginBottom: 6 }}>
+                <label htmlFor="reset-password" style={{ fontSize: 12, fontWeight: 600, color: 'var(--label3)', display: 'block', marginBottom: 6 }}>
                   Nouveau mot de passe
                 </label>
                 <input
+                  id="reset-password"
                   type="password"
                   placeholder="8 caractères minimum"
                   autoComplete="new-password"
@@ -90,10 +91,11 @@ export function ResetPasswordView() {
               </div>
 
               <div>
-                <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--label3)', display: 'block', marginBottom: 6 }}>
+                <label htmlFor="reset-confirm" style={{ fontSize: 12, fontWeight: 600, color: 'var(--label3)', display: 'block', marginBottom: 6 }}>
                   Confirmer le mot de passe
                 </label>
                 <input
+                  id="reset-confirm"
                   type="password"
                   placeholder="Répète ton nouveau mot de passe"
                   autoComplete="new-password"
@@ -107,7 +109,7 @@ export function ResetPasswordView() {
                 <div style={{
                   background: 'rgba(255,80,80,.12)', border: '1px solid rgba(255,80,80,.3)',
                   borderRadius: 'var(--radius-sm)', padding: '10px 12px',
-                  fontSize: 13, color: '#ff6b6b',
+                  fontSize: 13, color: 'var(--red)',
                 }}>
                   {error}
                 </div>

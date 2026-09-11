@@ -31,7 +31,7 @@ export function EmptyState({ icon, title, subtitle, action }: EmptyStateProps) {
       </div>
 
       <div style={{ display: "flex", flexDirection: "column", gap: "6px", maxWidth: 280 }}>
-        <div style={{ fontSize: 17, fontWeight: 600, color: "var(--label1)", letterSpacing: "-0.01em", lineHeight: 1.3 }}>
+        <div style={{ fontSize: 17, fontWeight: 600, color: "var(--label)", letterSpacing: "-0.01em", lineHeight: 1.3 }}>
           {title}
         </div>
         {subtitle && (

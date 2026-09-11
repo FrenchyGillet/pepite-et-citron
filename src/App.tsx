@@ -367,19 +367,21 @@ export default function App() {
           <UpgradeModal orgId={currentOrg.id} onClose={() => setShowUpgradeModal(false)} />
         )}
         {offlineToast && (
-          <div className="toast">{offlineToast}</div>
+          <div className="toast" role="status" aria-live="polite">{offlineToast}</div>
         )}
       </div>
 
-      <nav className="tab-bar">
+      <nav className="tab-bar" aria-label="Navigation principale">
         {tabs.map(t => (
           <button
             key={t.id}
             className={`tab-bar-item ${location.pathname === `/${t.id}` ? 'active' : ''}`}
+            aria-current={location.pathname === `/${t.id}` ? 'page' : undefined}
+            aria-label={t.locked ? `${t.label} (réservé à Pro)` : undefined}
             onClick={() => t.locked ? setShowUpgradeModal(true) : navigate(`/${t.id}`)}
             style={t.locked ? { opacity: 0.6 } : undefined}
           >
-            <div style={{ position: 'relative', display: 'inline-flex' }}>
+            <div aria-hidden="true" style={{ position: 'relative', display: 'inline-flex' }}>
               <svg width="24" height="24" viewBox="0 0 24 24" fill="none" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" stroke="currentColor">
                 {t.icon}
               </svg>
