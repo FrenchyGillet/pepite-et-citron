@@ -189,6 +189,21 @@ describe('POST /api/send-match-notification', () => {
     expect(global.fetch).not.toHaveBeenCalled();
   });
 
+  it('uses Resend (one batch for the team) when RESEND_API_KEY is set', async () => {
+    vi.stubEnv('RESEND_API_KEY', 're_test');
+    const res = makeRes();
+    await handler(req() as any, res as any);
+    vi.unstubAllEnvs();
+    expect(res.body).toMatchObject({ sent: 2 });
+    const calls = (global.fetch as ReturnType<typeof vi.fn>).mock.calls;
+    expect(calls).toHaveLength(1);
+    expect(calls[0][0]).toBe('https://api.resend.com/emails/batch');
+    const batch = JSON.parse(calls[0][1].body);
+    expect(batch.map((e: { to: string[] }) => e.to[0])).toEqual(['alice@example.com', 'bob@example.com']);
+    expect(batch[0].from).toBe('Pépite & Citron <noreply@pepite-citron.com>');
+    expect(batch[0].headers['List-Unsubscribe']).toContain('/api/unsubscribe?');
+  });
+
   it('does not echo the Brevo error body to the client', async () => {
     (global.fetch as ReturnType<typeof vi.fn>).mockResolvedValue({
       ok: false, status: 401, text: vi.fn().mockResolvedValue('{"code":"unauthorized","message":"Key not found"}'),

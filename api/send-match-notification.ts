@@ -9,8 +9,7 @@
  * Body: { orgId: string; matchLabel: string; matchId: string }
  * Auth: Bearer <user JWT>
  *
- * Env: BREVO_API_KEY, EMAIL_FROM (défaut noreply@pepite-citron.com — le
- * domaine doit être authentifié dans Brevo), EMAIL_REPLY_TO (optionnel).
+ * Envoi : api/_lib/email.ts (Resend si RESEND_API_KEY, sinon Brevo).
  */
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { supabaseAdmin as supabase } from './_lib/supabaseAdmin';
@@ -18,19 +17,16 @@ import { requireOrgAdmin } from './_lib/auth';
 import { matchNotificationSchema } from './_lib/validation';
 import { escapeHtml } from './_lib/http';
 import { unsubscribeUrl } from './_lib/unsubscribe';
+import { emailProvider, sendEmails } from './_lib/email';
 
-const BREVO_API_KEY = process.env.BREVO_API_KEY;
-const APP_URL       = process.env.VITE_APP_URL || 'https://pepite-citron.com';
-const FROM_NAME     = 'Pépite & Citron';
-const FROM_EMAIL    = process.env.EMAIL_FROM || 'noreply@pepite-citron.com';
-const REPLY_TO      = process.env.EMAIL_REPLY_TO;
+const APP_URL = process.env.VITE_APP_URL || 'https://pepite-citron.com';
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'POST') return res.status(405).end();
 
-  // Require BREVO_API_KEY — fail silently if not configured
-  if (!BREVO_API_KEY) {
-    console.warn('send-match-notification: BREVO_API_KEY not set, skipping');
+  // No email provider configured — fail silently
+  if (!emailProvider()) {
+    console.warn('send-match-notification: no RESEND_API_KEY / BREVO_API_KEY, skipping');
     return res.status(200).json({ skipped: true });
   }
 
@@ -93,37 +89,21 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     ? `${APP_URL}/vote?org=${encodeURIComponent(org.slug)}`
     : `${APP_URL}/vote`;
 
-  const results = await Promise.allSettled(recipients.map(async ({ user_id, email }) => {
+  const { sent } = await sendEmails(recipients.map(({ user_id, email }) => {
     const unsubscribe = unsubscribeUrl(APP_URL, user_id, orgId);
-    const emailRes = await fetch('https://api.brevo.com/v3/smtp/email', {
-      method:  'POST',
+    return {
+      to:      email,
+      subject: `⭐ Vote ouvert — ${matchLabel}`,
+      html:    renderEmail({ safeLabel, safeOrgName, voteUrl, unsubscribe }),
+      // One-click unsubscribe in Gmail / Apple Mail (RFC 8058).
       headers: {
-        'api-key':      BREVO_API_KEY,
-        'Content-Type': 'application/json',
+        'List-Unsubscribe':      `<${unsubscribe}>`,
+        'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click',
       },
-      body: JSON.stringify({
-        sender:      { name: FROM_NAME, email: FROM_EMAIL },
-        ...(REPLY_TO ? { replyTo: { email: REPLY_TO } } : {}),
-        to:          [{ email }],
-        subject:     `⭐ Vote ouvert — ${matchLabel}`,
-        htmlContent: renderEmail({ safeLabel, safeOrgName, voteUrl, unsubscribe }),
-        // One-click unsubscribe in Gmail / Apple Mail (RFC 8058).
-        headers: {
-          'List-Unsubscribe':      `<${unsubscribe}>`,
-          'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click',
-        },
-      }),
-    });
-    if (!emailRes.ok) {
-      // Logged server-side only — never echoed to the client.
-      throw new Error(`Brevo ${emailRes.status}: ${await emailRes.text()}`);
-    }
+    };
   }));
 
-  const failures = results.filter((r): r is PromiseRejectedResult => r.status === 'rejected');
-  if (failures.length > 0) console.error('send-match-notification failures:', failures.map(f => String(f.reason)));
-
-  return res.status(200).json({ sent: results.length - failures.length });
+  return res.status(200).json({ sent });
 }
 
 function renderEmail({ safeLabel, safeOrgName, voteUrl, unsubscribe }: {
