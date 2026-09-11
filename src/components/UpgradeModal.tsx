@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useModalA11y } from '@/hooks/useModalA11y';
 import { humanizeError } from '@/utils/errors';
+import { postToApi } from '@/lib/serverApi';
 
 interface Props {
   orgId: string;
@@ -34,15 +35,7 @@ export function UpgradeModal({ orgId, onClose, initialPlan = 'annual' }: Props) 
     setError(null);
     setDetail(null);
     try {
-      const { supabase } = await import('@/lib/supabase');
-      const { data: { session } } = await supabase.auth.getSession();
-      const token = session?.access_token;
-      if (!token) throw new Error('Session expirée, reconnecte-toi');
-      const res = await fetch('/api/create-checkout-session', {
-        method:  'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body:    JSON.stringify({ orgId, plan }),
-      });
+      const res = await postToApi('/api/create-checkout-session', { orgId, plan });
       const data = await res.json().catch(() => ({})) as { url?: string; error?: string; detail?: string };
       if (!res.ok || !data.url) {
         setDetail(data.detail ?? `HTTP ${res.status}`);

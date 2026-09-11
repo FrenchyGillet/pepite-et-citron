@@ -97,15 +97,9 @@ async function sendPushNotification(
   matchId?: EntityId,
 ): Promise<number | null> {
   try {
-    const { supabase } = await import('@/lib/supabase');
-    const { data: { session } } = await supabase.auth.getSession();
-    const token = session?.access_token;
-    if (!token) return null;
-    const res = await fetch('/api/send-push-notification', {
-      method:  'POST',
-      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-      body:    JSON.stringify({ orgId, type, matchLabel, ...(matchId != null ? { matchId: String(matchId) } : {}) }),
-    });
+    const { postToApi } = await import('@/lib/serverApi');
+    const res = await postToApi('/api/send-push-notification',
+      { orgId, type, matchLabel, ...(matchId != null ? { matchId: String(matchId) } : {}) });
     if (!res.ok) return null;
     const body = await res.json() as { sent?: number };
     return body.sent ?? null;
@@ -134,15 +128,8 @@ export function useSendVoteReminder(orgId?: string | null) {
 
 async function sendMatchNotification(orgId: string, matchLabel: string): Promise<void> {
   try {
-    const { supabase } = await import('@/lib/supabase');
-    const { data: { session } } = await supabase.auth.getSession();
-    const token = session?.access_token;
-    if (!token) return;
-    await fetch('/api/send-match-notification', {
-      method:  'POST',
-      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-      body:    JSON.stringify({ orgId, matchLabel }),
-    });
+    const { postToApi } = await import('@/lib/serverApi');
+    await postToApi('/api/send-match-notification', { orgId, matchLabel });
   } catch {
     // Best-effort — never throw
   }
