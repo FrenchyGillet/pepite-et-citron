@@ -5,10 +5,13 @@ export function NotifyTeamButton({
   voteUrl,
   matchLabel,
   onFallback,
+  onShared,
 }: {
   voteUrl: string;
   matchLabel: string;
   onFallback: () => void;
+  /** Called once the link was shared (share sheet) — ticks the setup checklist. */
+  onShared?: () => void;
 }) {
   const [sent, setSent] = useState(false);
 
@@ -17,6 +20,7 @@ export function NotifyTeamButton({
     if (navigator.share) {
       try {
         await navigator.share({ text });
+        onShared?.();
         setSent(true);
         setTimeout(() => setSent(false), 3000);
       } catch {

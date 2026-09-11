@@ -70,10 +70,8 @@
   }
   </script>
 
-  <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
-  <!-- Umami Analytics — remplacez WEBSITE_ID par votre ID Umami -->
+  <!-- No web font: system fonts load instantly and send nothing to a third party. -->
+  <!-- Umami Analytics (sans cookies) -->
   <script defer src="https://cloud.umami.is/script.js" data-website-id="49c8f860-14d7-49c4-897b-9c547febd823"></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -84,10 +82,10 @@
       --bg-tertiary:  #2C2C2E;
       --label-primary:   #FFFFFF;
       --label-secondary: rgba(235,235,245,0.6);
-      --label-tertiary:  rgba(235,235,245,0.3);
+      --label-tertiary:  rgba(235,235,245,0.55); /* ≥ 4.5:1 on every background (was 2.3:1) */
       --separator: rgba(84,84,88,0.65);
       --pepite: #FFD700;
-      --citron: #32D74B;
+      --citron: #aadd00; /* same lime as the app's --lemon */
       --blue:   #0A84FF;
       --red:    #FF453A;
     }
@@ -95,7 +93,7 @@
     html { scroll-behavior: smooth; }
 
     body {
-      font-family: 'Inter', system-ui, sans-serif;
+      font-family: system-ui, -apple-system, 'Segoe UI', sans-serif;
       background: var(--bg-primary);
       color: var(--label-primary);
       line-height: 1.6;
@@ -379,8 +377,8 @@
       color: var(--pepite);
     }
     .phone-player.selected-citron {
-      background: rgba(50,215,75,0.1);
-      border: 1px solid rgba(50,215,75,0.3);
+      background: rgba(170,221,0,0.1);
+      border: 1px solid rgba(170,221,0,0.3);
       color: var(--citron);
     }
     .phone-confirm {
@@ -781,7 +779,7 @@
     Pendant le match ou juste après, certains se sont clairement mis en évidence. Fini les bics et les sous-verres en carton — l'équipe vote depuis son téléphone, en 30 secondes.
   </p>
   <div class="hero-cta-group">
-    <a href="/login" class="btn-primary" data-umami-event="landing_hero_cta">Commencer à voter</a>
+    <a href="/login?mode=signup" class="btn-primary" data-umami-event="landing_hero_cta">Commencer à voter</a>
     <a href="#tarifs" class="btn-secondary" data-umami-event="landing_hero_tarifs">Voir les tarifs</a>
   </div>
 </section>
@@ -872,7 +870,7 @@
           <div class="phone-confirm">Valider →</div>
         </div>
         <div class="how-title">Chacun choisit sa ⭐ Pépite</div>
-        <div class="how-desc">Le joueur ouvre le lien, tape son prénom, puis désigne jusqu'à 3 coéquipiers qui ont brillé. Un classement par les pairs, en un geste — pas de compte à créer.</div>
+        <div class="how-desc">Le joueur ouvre le lien, choisit son prénom, puis désigne les 2 ou 3 coéquipiers qui ont brillé (selon le mode choisi par le capitaine). Un classement par les pairs, en un geste — pas de compte à créer.</div>
       </div>
 
       <!-- Card 3 — vote citron -->
@@ -1004,13 +1002,13 @@
         <div class="pricing-divider"></div>
         <div class="pricing-feature"><span class="check">✓</span><span class="pricing-feature-text">Vote illimité après chaque match</span></div>
         <div class="pricing-feature"><span class="check">✓</span><span class="pricing-feature-text">Résultats en temps réel</span></div>
-        <div class="pricing-feature"><span class="check">✓</span><span class="pricing-feature-text">Liens invité pour les coéquipiers</span></div>
+        <div class="pricing-feature"><span class="check">✓</span><span class="pricing-feature-text">Liens invités pour les supporters</span></div>
         <div class="pricing-feature"><span class="check">✓</span><span class="pricing-feature-text">Vote rapide &amp; sécurisé</span></div>
         <div class="pricing-divider"></div>
         <div class="pricing-feature"><span class="cross">✕</span><span class="pricing-feature-text muted">Statistiques de saison</span></div>
         <div class="pricing-feature"><span class="cross">✕</span><span class="pricing-feature-text muted">Historique complet des matchs</span></div>
         <div class="pricing-feature"><span class="cross">✕</span><span class="pricing-feature-text muted">Support prioritaire</span></div>
-        <a href="/login" class="pricing-cta free" data-umami-event="landing_pricing_free_cta">Commencer gratuitement</a>
+        <a href="/login?mode=signup" class="pricing-cta free" data-umami-event="landing_pricing_free_cta">Commencer gratuitement</a>
       </div>
 
       <!-- PRO -->
@@ -1023,7 +1021,7 @@
         <div class="pricing-feature"><span class="star">⭐</span><span class="pricing-feature-text"><strong>Statistiques de saison complètes</strong></span></div>
         <div class="pricing-feature"><span class="star">⭐</span><span class="pricing-feature-text"><strong>Historique de tous vos matchs</strong></span></div>
         <div class="pricing-feature"><span class="star">⭐</span><span class="pricing-feature-text">Support prioritaire</span></div>
-        <a href="/login" class="pricing-cta pro" id="pro-cta" data-umami-event="landing_pricing_pro_cta">Passer Pro — 12,99 €/an →</a>
+        <a href="/login?mode=signup&amp;plan=annual" class="pricing-cta pro" id="pro-cta" data-umami-event="landing_pricing_pro_cta">Passer Pro — 12,99 €/an →</a>
         <div style="text-align:center;font-size:11px;color:var(--label-tertiary);margin-top:10px">Résiliation en un clic · Paiement sécurisé Stripe</div>
       </div>
 
@@ -1031,7 +1029,7 @@
   </div>
 </section>
 
-<script src="landing.js?v=2" defer></script>
+<script src="landing.js?v=3" defer></script>
 
 <!-- PWA INSTALL -->
 <section id="installer">

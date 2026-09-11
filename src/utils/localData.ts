@@ -10,6 +10,7 @@ const PERSONAL_KEYS = [
   'pepite_query_cache',     // persisted TanStack cache: ballots, comments, rosters
   'pepite_voter_identity',  // "who am I" on the vote screen
   'pepite_voted',           // matches already voted from this device
+  'pepite_pending_org',     // team to join after signup (?org= link)
 ];
 const PERSONAL_PREFIXES = [
   'pepite_vote_draft_',     // unfinished ballots (picks + comments)

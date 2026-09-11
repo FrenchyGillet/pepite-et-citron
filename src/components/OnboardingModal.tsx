@@ -17,7 +17,7 @@ const STEPS: Step[] = [
       <path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2M9 11a4 4 0 100-8 4 4 0 000 8zM23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75"/>
     ),
     title: 'Ajoute tes joueurs',
-    desc: "Dans Admin → Mes joueurs, saisis le prénom de chaque membre de l'équipe. Tu n'auras à le faire qu'une seule fois.",
+    desc: "Dans Admin → Effectif, saisis le prénom de chaque membre de l'équipe. Tu n'auras à le faire qu'une seule fois.",
   },
   {
     color: '#34C759',

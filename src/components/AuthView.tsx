@@ -1,10 +1,12 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { api } from '@/api';
 import { loginSchema, signupSchema, type AuthFormValues } from '@/schemas';
 import { OnboardingModal } from '@/components/OnboardingModal';
 import { track, EVENTS } from '@/utils/analytics';
 import { humanizeError } from '@/utils/errors';
+import { parseUpgradePlan, saveUpgradeIntent } from '@/utils/signupIntent';
 import type { UserSession } from '@/types';
 
 interface AuthViewProps {
@@ -17,7 +19,10 @@ const FieldError = ({ msg }: { msg?: string }) =>
   msg ? <p style={{ fontSize: 12, color: 'var(--red)', marginTop: 4 }}>{msg}</p> : null;
 
 export function AuthView({ onAuth }: AuthViewProps) {
-  const [mode,      setMode]      = useState<AuthMode>('login');
+  // The landing's "create" buttons link to /login?mode=signup: open straight
+  // on the signup form instead of making new visitors look for it.
+  const [searchParams] = useSearchParams();
+  const [mode,      setMode]      = useState<AuthMode>(() => searchParams.get('mode') === 'signup' ? 'signup' : 'login');
   const [apiError,  setApiError]  = useState<string | null>(null);
   const [resetSent, setResetSent] = useState(false);
   const [showGuide, setShowGuide] = useState(false);
@@ -30,6 +35,12 @@ export function AuthView({ onAuth }: AuthViewProps) {
     reset,
     formState: { errors, isSubmitting },
   } = useForm<AuthFormValues>();
+
+  // "Passer Pro" on the landing: offer the upgrade once the team exists (App).
+  useEffect(() => {
+    const plan = parseUpgradePlan(searchParams.get('plan'));
+    if (plan) saveUpgradeIntent(plan);
+  }, [searchParams]);
 
   const switchMode = (next: AuthMode) => {
     setMode(next);

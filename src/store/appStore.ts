@@ -23,6 +23,33 @@ export function clearOrgsCache() {
   try { localStorage.removeItem(ORGS_CACHE_KEY); } catch { /* ignore */ }
 }
 
+// ── Team to join after signup (?org= link) ────────────────────────────────────
+// Persisted so a voter who reloads, or comes back later, between voting and
+// creating their account still joins that team instead of landing nowhere.
+const PENDING_ORG_KEY    = 'pepite_pending_org';
+const PENDING_ORG_TTL_MS = 7 * 24 * 60 * 60 * 1000;
+interface PendingOrg { id: string; name: string | null; at: number }
+
+export function readPendingOrg(now: number = Date.now()): PendingOrg | null {
+  try {
+    const raw = localStorage.getItem(PENDING_ORG_KEY);
+    if (!raw) return null;
+    const pending = JSON.parse(raw) as PendingOrg;
+    if (!pending?.id || now - pending.at > PENDING_ORG_TTL_MS) {
+      localStorage.removeItem(PENDING_ORG_KEY);
+      return null;
+    }
+    return pending;
+  } catch { return null; }
+}
+function writePendingOrg(id: string | null, name: string | null) {
+  try {
+    if (id) localStorage.setItem(PENDING_ORG_KEY, JSON.stringify({ id, name, at: Date.now() }));
+    else localStorage.removeItem(PENDING_ORG_KEY);
+  } catch { /* storage unavailable — ignore */ }
+}
+const initialPendingOrg = readPendingOrg();
+
 export type GuestStatus = 'checking' | 'valid' | 'invalid' | null;
 
 interface AppStore {
@@ -134,8 +161,8 @@ export const useAppStore = create<AppStore>((set, get) => ({
   votedThisSession: false,
   voterName:        null,
   pendingPlayerId:  null,
-  pendingOrgId:     null,
-  pendingOrgName:   null,
+  pendingOrgId:     initialPendingOrg?.id ?? null,
+  pendingOrgName:   initialPendingOrg?.name ?? null,
   justSignedUp:     false,
   showOnboarding:   false,
   lastMatchId:      null,
@@ -157,8 +184,8 @@ export const useAppStore = create<AppStore>((set, get) => ({
   setVotedThisSession: (v)   => set({ votedThisSession: v }),
   setVoterName:        (v)   => set({ voterName: v }),
   setPendingPlayerId:  (id)  => set({ pendingPlayerId: id }),
-  setPendingOrgId:     (id)   => set({ pendingOrgId: id }),
-  setPendingOrgName:   (name) => set({ pendingOrgName: name }),
+  setPendingOrgId:     (id)   => { set({ pendingOrgId: id }); writePendingOrg(id, id ? get().pendingOrgName : null); },
+  setPendingOrgName:   (name) => { set({ pendingOrgName: name }); const id = get().pendingOrgId; if (id) writePendingOrg(id, name); },
   setJustSignedUp:     (v)   => set({ justSignedUp: v }),
   setShowOnboarding:   (v)   => set({ showOnboarding: v }),
   setLastMatchId:      (id)  => set({ lastMatchId: id }),

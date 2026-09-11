@@ -30,7 +30,7 @@ export function GuestPromoView({ canSeeResults, voterName, orgName }: GuestPromo
     setGuestToken(null);
     setCurrentOrg(null);
     setCurrentOrgId(null);
-    navigate('/vote', { replace: true });
+    navigate('/login?mode=signup', { replace: true });
   }
 
   return (

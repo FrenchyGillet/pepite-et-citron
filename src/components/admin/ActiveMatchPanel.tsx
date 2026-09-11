@@ -18,6 +18,7 @@ interface ActiveMatchPanelProps {
   notify: Notify;
   confirm: ConfirmFn;
   onCopyOrgLink: () => void;
+  onLinkShared?: () => void;
   onGoToResults?: () => void;
 }
 
@@ -25,7 +26,7 @@ interface ActiveMatchPanelProps {
  * The match being voted on: live count, deadline, vote link, reveal button,
  * who voted (with reminders and vote cancelling) and the discreet close link.
  */
-export function ActiveMatchPanel({ activeMatch, players, currentOrg, notify, confirm, onCopyOrgLink, onGoToResults }: ActiveMatchPanelProps) {
+export function ActiveMatchPanel({ activeMatch, players, currentOrg, notify, confirm, onCopyOrgLink, onLinkShared, onGoToResults }: ActiveMatchPanelProps) {
   const [voterTrackingOpen, setVoterTrackingOpen] = useState(false);
 
   const { data: matchVotes = [] } = useVotes(activeMatch.id);
@@ -181,7 +182,7 @@ export function ActiveMatchPanel({ activeMatch, players, currentOrg, notify, con
                   Copier
                 </button>
               </div>
-              <NotifyTeamButton voteUrl={voteUrl} matchLabel={activeMatch.label} onFallback={onCopyOrgLink} />
+              <NotifyTeamButton voteUrl={voteUrl} matchLabel={activeMatch.label} onFallback={onCopyOrgLink} onShared={onLinkShared} />
             </>
           )}
           <button className="btn btn-primary btn-full" onClick={startCounting} disabled={startCountingMutation.isPending || voteCount === 0}>

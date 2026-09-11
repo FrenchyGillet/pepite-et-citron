@@ -4,6 +4,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { api } from '@/api';
 import { orgSetupSchema, type OrgSetupFormValues } from '@/schemas';
 import { humanizeError } from '@/utils/errors';
+import { track, EVENTS } from '@/utils/analytics';
 import type { Org } from '@/types';
 
 interface OrgCreateFormProps {
@@ -55,6 +56,7 @@ export function OrgCreateForm({ onOrgCreated, submitLabel = "Créer l'équipe �
   const onSubmit = handleSubmit(async (data) => {
     try {
       const org = await api.createOrg(data.name.trim(), data.slug.trim());
+      track(EVENTS.ORG_CREATED);
       onOrgCreated(org);
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Erreur lors de la création';
@@ -126,10 +128,12 @@ export function OrgCreateForm({ onOrgCreated, submitLabel = "Créer l'équipe �
 interface OrgSetupViewProps {
   onOrgCreated: (org: Org) => void;
   userEmail?: string;
+  /** Back to the previous screen (shown when creating the team was optional). */
+  onBack?: () => void;
 }
 
 /** Full-screen wrapper used for first-time onboarding (no org yet at all). */
-export function OrgSetupView({ onOrgCreated, userEmail }: OrgSetupViewProps) {
+export function OrgSetupView({ onOrgCreated, userEmail, onBack }: OrgSetupViewProps) {
   return (
     <div style={{
       minHeight: '100dvh', display: 'flex', flexDirection: 'column',
@@ -156,6 +160,17 @@ export function OrgSetupView({ onOrgCreated, userEmail }: OrgSetupViewProps) {
 
         <OrgCreateForm onOrgCreated={onOrgCreated} />
       </div>
+      {onBack && (
+        <button
+          onClick={onBack}
+          style={{
+            marginTop: 16, background: 'none', border: 'none', cursor: 'pointer',
+            fontSize: 13, color: 'var(--label3)', textDecoration: 'underline',
+          }}
+        >
+          ← Retour
+        </button>
+      )}
     </div>
   );
 }

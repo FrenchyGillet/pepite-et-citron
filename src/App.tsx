@@ -13,6 +13,8 @@ import { ErrorBoundary }     from '@/components/ErrorBoundary';
 import { PullToRefreshIndicator }   from '@/components/PullToRefreshIndicator';
 import { usePullToRefresh }         from '@/hooks/usePullToRefresh';
 import { JoinOrgView }       from '@/components/JoinOrgView';
+import { NoTeamView }        from '@/components/NoTeamView';
+import { takeUpgradeIntent, type UpgradePlan } from '@/utils/signupIntent';
 import { useAuth }           from '@/hooks/useAuth';
 import { useGuest }          from '@/hooks/useGuest';
 import { useTheme }          from '@/hooks/useTheme';
@@ -76,6 +78,9 @@ export default function App() {
   const [searchParams] = useSearchParams();
 
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
+  const [upgradePlan,      setUpgradePlan]      = useState<UpgradePlan>('annual');
+  // Set from NoTeamView ("Créer mon équipe") — see the no-team branch below.
+  const [creatingTeam,     setCreatingTeam]     = useState(false);
   const [offlineToast,     setOfflineToast]     = useState<string | null>(null);
 
   // ── Bootstrap side-effects ──────────────────────────────────────────────
@@ -155,6 +160,14 @@ export default function App() {
 
   // Show a one-time success toast after Stripe redirect
   const upgradeSuccess = searchParams.get('upgrade') === 'success';
+
+  // "Passer Pro" clicked on the landing page: offer it once the visitor is the
+  // admin of a free team (after the onboarding guide, not on top of it).
+  useEffect(() => {
+    if (DEMO_MODE || showOnboarding || currentOrg?.role !== 'admin' || currentOrg.plan === 'pro') return;
+    const plan = takeUpgradeIntent();
+    if (plan) { setUpgradePlan(plan); setShowUpgradeModal(true); }
+  }, [currentOrg, showOnboarding]);
 
   // ── Auth gates ──────────────────────────────────────────────────────────
   if (passwordRecovery) {
@@ -240,12 +253,14 @@ export default function App() {
     // typically first login on a new browser). Showing this form in that case
     // would let an existing user spin up a second, empty org and "lose" their
     // real one — never do that on a login, only ever right after signup.
-    if (justSignedUp) {
+    // Or when the user explicitly chose "Créer mon équipe" on NoTeamView.
+    if (justSignedUp || creatingTeam) {
       return (
         <>
           <GlobalStyle />
           <OrgSetupView
             userEmail={session.user?.email}
+            onBack={creatingTeam && !justSignedUp ? () => setCreatingTeam(false) : undefined}
             onOrgCreated={(org) => {
               const orgWithRole: Org = { ...org, role: 'admin' };
               setCurrentOrg(orgWithRole);
@@ -254,6 +269,7 @@ export default function App() {
               setOrgsResolved(true);
               setOrgsLoadError(false);
               setJustSignedUp(false);
+              setCreatingTeam(false);
               if (!localStorage.getItem(`pepite_onboarded_${org.id}`)) {
                 setShowOnboarding(true);
               }
@@ -263,25 +279,19 @@ export default function App() {
       );
     }
 
-    // ── Login with no resolved org: retry rather than offer to create one ────
+    // ── Signed in, no team, nothing to join ─────────────────────────────────
+    // Usually a new captain who left before creating their team (justSignedUp
+    // lives in memory only) — this used to be a dead end. Rarely, an existing
+    // member whose team list came back empty: creating a team is therefore an
+    // explicit choice, next to "Réessayer", never automatic.
     return (
       <>
         <GlobalStyle />
-        <div style={{ minHeight: '100dvh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--bg)', padding: 24 }}>
-          <div style={{ background: 'var(--bg2)', borderRadius: 16, padding: '32px 24px', maxWidth: 360, width: '100%', textAlign: 'center' }}>
-            <div style={{ fontSize: 36, marginBottom: 12 }}>🔄</div>
-            <div style={{ fontSize: 17, fontWeight: 700, marginBottom: 8, color: 'var(--label)' }}>Aucune équipe trouvée</div>
-            <div style={{ fontSize: 14, color: 'var(--label3)', marginBottom: 24, lineHeight: 1.6 }}>
-              Ça peut être temporaire (connexion au serveur). Réessaie avant de contacter le support.
-            </div>
-            <button className="btn btn-primary btn-full" onClick={() => { setOrgsResolved(false); void loadOrgs(); }}>
-              Réessayer
-            </button>
-            <button className="btn btn-secondary btn-full" style={{ marginTop: 10 }} onClick={handleSignOut}>
-              Se déconnecter
-            </button>
-          </div>
-        </div>
+        <NoTeamView
+          onCreate={() => setCreatingTeam(true)}
+          onRetry={() => { setOrgsResolved(false); void loadOrgs(); }}
+          onSignOut={handleSignOut}
+        />
       </>
     );
   }
@@ -366,7 +376,7 @@ export default function App() {
           }} />
         )}
         {showUpgradeModal && currentOrg && (
-          <UpgradeModal orgId={currentOrg.id} onClose={() => setShowUpgradeModal(false)} />
+          <UpgradeModal orgId={currentOrg.id} initialPlan={upgradePlan} onClose={() => setShowUpgradeModal(false)} />
         )}
         </Suspense>
         {offlineToast && (

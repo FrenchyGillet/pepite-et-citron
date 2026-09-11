@@ -5,6 +5,8 @@ import { humanizeError } from '@/utils/errors';
 interface Props {
   orgId: string;
   onClose: () => void;
+  /** Plan chosen on the landing page, if any. */
+  initialPlan?: Plan;
 }
 
 type Plan = 'monthly' | 'annual';
@@ -21,8 +23,8 @@ const FEATURES_PRO = [
   'Support prioritaire',
 ];
 
-export function UpgradeModal({ orgId, onClose }: Props) {
-  const [plan,    setPlan]    = useState<Plan>('annual');
+export function UpgradeModal({ orgId, onClose, initialPlan = 'annual' }: Props) {
+  const [plan,    setPlan]    = useState<Plan>(initialPlan);
   const [loading, setLoading] = useState(false);
   const [error,   setError]   = useState<string | null>(null);
   const dialogRef = useModalA11y(onClose);

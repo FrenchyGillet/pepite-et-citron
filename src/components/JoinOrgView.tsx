@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { api } from '@/api';
 import { useAppStore } from '@/store/appStore';
+import { track, EVENTS } from '@/utils/analytics';
 
 interface JoinOrgViewProps {
   orgId:   string;
@@ -26,6 +27,7 @@ export function JoinOrgView({ orgId, orgName }: JoinOrgViewProps) {
     void (async () => {
       try {
         await api.selfJoinOrg(orgId);
+        track(EVENTS.ORG_JOINED);
         if (cancelled) return;
         setPendingOrgId(null);
         await loadOrgs();

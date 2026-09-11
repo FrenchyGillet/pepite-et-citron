@@ -13,6 +13,7 @@ function toggleBilling() {
     price.textContent = '12,99 €';
     sub.textContent   = 'par an · soit 1,08 €/mois';
     cta.textContent   = 'Passer Pro — 12,99 €/an →';
+    cta.href          = '/login?mode=signup&plan=annual';
     lAnnual.style.color  = 'var(--label-primary)';
     lMonthly.style.color = 'var(--label-secondary)';
   } else {
@@ -20,6 +21,7 @@ function toggleBilling() {
     price.textContent = '2,99 €';
     sub.textContent   = 'par mois';
     cta.textContent   = 'Passer Pro — 2,99 €/mois →';
+    cta.href          = '/login?mode=signup&plan=monthly';
     lAnnual.style.color  = 'var(--label-secondary)';
     lMonthly.style.color = 'var(--label-primary)';
   }

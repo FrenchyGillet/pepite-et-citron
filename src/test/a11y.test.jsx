@@ -1,4 +1,5 @@
 import { render, screen } from "@testing-library/react";
+import { MemoryRouter } from "react-router-dom";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { __resetDemoState, __demoAPI } from "@/App.jsx";
@@ -13,7 +14,7 @@ beforeEach(() => {
 
 describe("Accessibility — names and labels", () => {
   it("login fields are labelled", () => {
-    render(<AuthView onAuth={vi.fn()} />);
+    render(<MemoryRouter><AuthView onAuth={vi.fn()} /></MemoryRouter>);
     expect(screen.getByLabelText("Adresse email")).toHaveAttribute("type", "email");
     expect(screen.getByLabelText("Mot de passe")).toHaveAttribute("type", "password");
   });

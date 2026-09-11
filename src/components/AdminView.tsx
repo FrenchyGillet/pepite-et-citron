@@ -51,16 +51,19 @@ export function AdminView({ players, activeMatch, currentOrg, onShowGuide, onGoT
   // Archived players keep their history but leave every picker.
   const activePlayers = players.filter(isActive);
 
-  // ── Copies the org vote link, shows feedback and marks the checklist step ──
+  // ── The vote link was copied or shared: ticks the checklist step ──
+  const markLinkShared = () => {
+    if (!currentOrg?.id) return;
+    localStorage.setItem(`pepite_link_copied_${currentOrg.id}`, '1');
+    setLinkCopied(true);
+  };
+
   const copyOrgLink = async () => {
     if (!currentOrg) return;
     await copyToClipboard(`${window.location.origin}/vote?org=${currentOrg.slug}`);
     track(EVENTS.ORG_LINK_COPIED);
     setToast('Lien copié !');
-    if (currentOrg.id) {
-      localStorage.setItem(`pepite_link_copied_${currentOrg.id}`, '1');
-      setLinkCopied(true);
-    }
+    markLinkShared();
   };
 
   const markMatchLaunched = () => {
@@ -110,6 +113,7 @@ export function AdminView({ players, activeMatch, currentOrg, onShowGuide, onGoT
             players={players}
             currentOrg={currentOrg}
             onCopyOrgLink={() => void copyOrgLink()}
+            onLinkShared={markLinkShared}
             onGoToResults={onGoToResults}
           />
         ) : activePlayers.length === 0 ? (

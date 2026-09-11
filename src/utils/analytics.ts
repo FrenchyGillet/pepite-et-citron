@@ -28,6 +28,10 @@ export const EVENTS = {
   AUTH_LOGIN:           'auth_login',
   AUTH_SIGNUP:          'auth_signup',
 
+  // Onboarding funnel: landing → signup → team created / joined → first match
+  ORG_CREATED:          'org_created',
+  ORG_JOINED:           'org_joined',
+
   // Voting
   VOTE_COMPLETED:       'vote_completed',
 

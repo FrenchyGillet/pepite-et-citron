@@ -16,9 +16,10 @@ interface Props {
 }
 
 interface Step {
-  id:    string;
-  label: string;
-  done:  boolean;
+  id:        string;
+  label:     string;
+  done:      boolean;
+  optional?: boolean;   // shown, but not needed to finish the checklist
 }
 
 const DISMISSED_KEY = (orgId: string) => `pepite_checklist_dismissed_${orgId}`;
@@ -28,15 +29,18 @@ export function SetupChecklist({ orgId, playerCount, teamCount, matchCount, onCo
     !!localStorage.getItem(DISMISSED_KEY(orgId))
   );
 
+  // A vote needs at least 3 present players (2-pépite mode). Saved line-ups
+  // only speed up later matches, so they never block the first vote.
   const steps: Step[] = [
-    { id: 'players', label: 'Ajouter au moins 2 joueurs à l\'effectif',     done: playerCount >= 2 },
-    { id: 'team',    label: 'Sauvegarder une composition d\'équipe',         done: teamCount   >= 1 },
-    { id: 'link',    label: 'Copier le lien de vote et le partager',         done: onCopiedLink },
-    { id: 'match',   label: 'Lancer le premier vote !',                      done: matchCount  >= 1 },
+    { id: 'players', label: 'Ajouter au moins 3 joueurs à l\'effectif',     done: playerCount >= 3 },
+    { id: 'match',   label: 'Lancer le premier vote',                        done: matchCount  >= 1 },
+    { id: 'link',    label: 'Partager le lien de vote avec l\'équipe',       done: onCopiedLink },
+    { id: 'team',    label: 'Enregistrer une composition d\'équipe',         done: teamCount   >= 1, optional: true },
   ];
 
-  const completedCount = steps.filter(s => s.done).length;
-  const allDone        = completedCount === steps.length;
+  const required       = steps.filter(s => !s.optional);
+  const completedCount = required.filter(s => s.done).length;
+  const allDone        = completedCount === required.length;
 
   // Auto-dismiss when all steps are done
   useEffect(() => {
@@ -72,7 +76,7 @@ export function SetupChecklist({ orgId, playerCount, teamCount, matchCount, onCo
             {allDone ? '🎉 C\'est parti !' : '🚀 Première mise en route'}
           </span>
           <span style={{ fontSize: 12, color: 'var(--label3)', marginLeft: 8 }}>
-            {completedCount}/{steps.length}
+            {completedCount}/{required.length}
           </span>
         </div>
         <button
@@ -88,7 +92,7 @@ export function SetupChecklist({ orgId, playerCount, teamCount, matchCount, onCo
       <div style={{ height: 4, background: 'var(--bg3)', borderRadius: 2, marginBottom: 14, overflow: 'hidden' }}>
         <div style={{
           height: '100%',
-          width: `${(completedCount / steps.length) * 100}%`,
+          width: `${(completedCount / required.length) * 100}%`,
           background: allDone ? '#32D74B' : 'var(--gold)',
           borderRadius: 2,
           transition: 'width 0.4s ease',
@@ -117,6 +121,7 @@ export function SetupChecklist({ orgId, playerCount, teamCount, matchCount, onCo
               transition: 'color 0.3s',
             }}>
               {step.label}
+              {step.optional && <span style={{ color: 'var(--label3)' }}> (facultatif)</span>}
             </span>
           </div>
         ))}
