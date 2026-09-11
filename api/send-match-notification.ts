@@ -1,22 +1,29 @@
 /**
  * POST /api/send-match-notification
  *
- * Envoie un email à tous les membres de l'organisation quand un match est ouvert.
+ * Envoie un email aux membres de l'organisation quand un match est ouvert.
  * Appelé côté client après createMatch, échec silencieux (ne bloque pas le vote).
+ * Un email par membre, avec son lien de désinscription (en-tête
+ * List-Unsubscribe compris) ; les membres désinscrits sont ignorés.
  *
  * Body: { orgId: string; matchLabel: string; matchId: string }
  * Auth: Bearer <user JWT>
+ *
+ * Env: BREVO_API_KEY, EMAIL_FROM (défaut noreply@pepite-citron.com — le
+ * domaine doit être authentifié dans Brevo), EMAIL_REPLY_TO (optionnel).
  */
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { supabaseAdmin as supabase } from './_lib/supabaseAdmin';
 import { requireOrgAdmin } from './_lib/auth';
 import { matchNotificationSchema } from './_lib/validation';
 import { escapeHtml } from './_lib/http';
+import { unsubscribeUrl } from './_lib/unsubscribe';
 
 const BREVO_API_KEY = process.env.BREVO_API_KEY;
 const APP_URL       = process.env.VITE_APP_URL || 'https://pepite-citron.com';
 const FROM_NAME     = 'Pépite & Citron';
-const FROM_EMAIL    = 'francois@pepite-citron.com';
+const FROM_EMAIL    = process.env.EMAIL_FROM || 'noreply@pepite-citron.com';
+const REPLY_TO      = process.env.EMAIL_REPLY_TO;
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'POST') return res.status(405).end();
@@ -42,7 +49,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     .eq('id', orgId)
     .single();
 
-  if (!org) return res.status(404).json({ error: 'Org not found' });
+  if (!org) return res.status(404).json({ error: 'Équipe introuvable' });
 
   // Member emails live on auth.users, not org_members — go through the
   // SECURITY DEFINER RPC that joins them (get_org_members returns
@@ -55,11 +62,24 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(200).json({ sent: 0 });
   }
 
+  // Members who unsubscribed (20260018). Fail closed: when the preferences
+  // cannot be read, send nothing rather than email people who opted out.
+  const { data: optedOut, error: prefsErr } = await supabase
+    .from('org_members')
+    .select('user_id')
+    .eq('org_id', orgId)
+    .eq('email_notifications', false);
+
+  if (prefsErr) {
+    console.error('email preferences error:', prefsErr);
+    return res.status(200).json({ sent: 0 });
+  }
+  const optedOutIds = new Set(((optedOut ?? []) as Array<{ user_id: string }>).map(m => m.user_id));
+
   type OrgMemberRow = { user_id: string; email: string | null };
   const recipients = ((members ?? []) as OrgMemberRow[])
-    .filter(m => m.user_id !== auth.userId)
-    .map(m => m.email)
-    .filter((email): email is string => Boolean(email));
+    .filter((m): m is { user_id: string; email: string } =>
+      m.user_id !== auth.userId && Boolean(m.email) && !optedOutIds.has(m.user_id));
 
   if (recipients.length === 0) {
     return res.status(200).json({ sent: 0 });
@@ -68,11 +88,48 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   // All interpolated values are escaped — matchLabel comes from the request body.
   const safeLabel   = escapeHtml(matchLabel);
   const safeOrgName = escapeHtml(org.name ?? '');
+  // "/" is the marketing landing page (vercel.json): link the vote screen.
   const voteUrl = org.slug
-    ? `${APP_URL}/?org=${encodeURIComponent(org.slug)}`
-    : APP_URL;
+    ? `${APP_URL}/vote?org=${encodeURIComponent(org.slug)}`
+    : `${APP_URL}/vote`;
 
-  const html = `
+  const results = await Promise.allSettled(recipients.map(async ({ user_id, email }) => {
+    const unsubscribe = unsubscribeUrl(APP_URL, user_id, orgId);
+    const emailRes = await fetch('https://api.brevo.com/v3/smtp/email', {
+      method:  'POST',
+      headers: {
+        'api-key':      BREVO_API_KEY,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        sender:      { name: FROM_NAME, email: FROM_EMAIL },
+        ...(REPLY_TO ? { replyTo: { email: REPLY_TO } } : {}),
+        to:          [{ email }],
+        subject:     `⭐ Vote ouvert — ${matchLabel}`,
+        htmlContent: renderEmail({ safeLabel, safeOrgName, voteUrl, unsubscribe }),
+        // One-click unsubscribe in Gmail / Apple Mail (RFC 8058).
+        headers: {
+          'List-Unsubscribe':      `<${unsubscribe}>`,
+          'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click',
+        },
+      }),
+    });
+    if (!emailRes.ok) {
+      // Logged server-side only — never echoed to the client.
+      throw new Error(`Brevo ${emailRes.status}: ${await emailRes.text()}`);
+    }
+  }));
+
+  const failures = results.filter((r): r is PromiseRejectedResult => r.status === 'rejected');
+  if (failures.length > 0) console.error('send-match-notification failures:', failures.map(f => String(f.reason)));
+
+  return res.status(200).json({ sent: results.length - failures.length });
+}
+
+function renderEmail({ safeLabel, safeOrgName, voteUrl, unsubscribe }: {
+  safeLabel: string; safeOrgName: string; voteUrl: string; unsubscribe: string;
+}): string {
+  return `
 <!DOCTYPE html>
 <html lang="fr">
 <head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
@@ -80,12 +137,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   <table width="100%" cellpadding="0" cellspacing="0" style="max-width:480px;margin:0 auto;padding:32px 24px">
     <tr><td>
       <p style="font-size:22px;font-weight:800;letter-spacing:-0.5px;margin:0 0 4px">
-        <span style="color:#FFD700">Pépite</span> &amp; <span style="color:#32D74B">Citron</span>
+        <span style="color:#FFD700">Pépite</span> &amp; <span style="color:#aadd00">Citron</span>
       </p>
-      <p style="font-size:13px;color:rgba(235,235,245,0.4);margin:0 0 32px">${safeOrgName}</p>
+      <p style="font-size:13px;color:rgba(235,235,245,0.6);margin:0 0 32px">${safeOrgName}</p>
 
       <p style="font-size:18px;font-weight:700;margin:0 0 8px">⭐ Vote ouvert !</p>
-      <p style="font-size:15px;color:rgba(235,235,245,0.7);margin:0 0 24px;line-height:1.5">
+      <p style="font-size:15px;color:rgba(235,235,245,0.75);margin:0 0 24px;line-height:1.5">
         Un vote a été lancé pour <strong style="color:#fff">${safeLabel}</strong>.
         Désigne la pépite et le citron de ce match !
       </p>
@@ -96,40 +153,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         Voter maintenant →
       </a>
 
-      <p style="font-size:11px;color:rgba(235,235,245,0.25);margin:24px 0 0;line-height:1.6">
+      <p style="font-size:12px;color:rgba(235,235,245,0.5);margin:24px 0 0;line-height:1.6">
         Tu reçois cet email parce que tu es membre de l'équipe ${safeOrgName} sur Pépite &amp; Citron.<br>
-        <a href="${APP_URL}/admin" style="color:rgba(235,235,245,0.4)">Gérer les notifications</a>
+        <a href="${unsubscribe}" style="color:rgba(235,235,245,0.7)">Ne plus recevoir ces emails</a>
+        · <a href="${APP_URL}/profile" style="color:rgba(235,235,245,0.7)">Gérer mes emails</a>
       </p>
     </td></tr>
   </table>
 </body>
 </html>`;
-
-  try {
-    const emailRes = await fetch('https://api.brevo.com/v3/smtp/email', {
-      method:  'POST',
-      headers: {
-        'api-key':      BREVO_API_KEY,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        sender:      { name: FROM_NAME, email: FROM_EMAIL },
-        to:          recipients.map(email => ({ email })),
-        subject:     `⭐ Vote ouvert — ${matchLabel}`,
-        htmlContent: html,
-      }),
-    });
-
-    if (!emailRes.ok) {
-      const err = await emailRes.text();
-      console.error('Resend error:', err);
-      return res.status(200).json({ sent: 0, error: err });
-    }
-
-    return res.status(200).json({ sent: recipients.length });
-  } catch (err) {
-    console.error('send-match-notification failed:', err);
-    // Fail silently — email is best-effort, should not block the vote
-    return res.status(200).json({ sent: 0 });
-  }
 }

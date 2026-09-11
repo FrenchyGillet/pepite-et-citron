@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { DEMO_MODE, api } from '@/api';
 import { useAppStore } from '@/store/appStore';
 import { humanizeError } from '@/utils/errors';
+import { EmailPreferences } from './EmailPreferences';
 import { clearLocalPersonalData, unsubscribeDeviceFromPush } from '@/utils/localData';
 import { joinFrenchList } from '@/utils/reminder';
 import { useAuth } from '@/hooks/useAuth';
@@ -287,6 +288,8 @@ export function ProfileView() {
               ＋ Créer une nouvelle équipe
             </button>
           )}
+
+          {currentOrg?.id && <EmailPreferences orgId={currentOrg.id} orgName={currentOrg.name} />}
 
           <button
             className="btn btn-secondary btn-full"

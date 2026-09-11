@@ -134,6 +134,9 @@ export interface API {
   getOrgMembers(orgId: string): Promise<OrgMember[]>;
   addMember(email: string, orgId: string, role?: 'admin' | 'voter'): Promise<void>;
   removeMember(userId: string, orgId: string): Promise<unknown>;
+  /** The caller's "vote ouvert" email preference for this team (F10). */
+  getEmailNotifications(orgId: string): Promise<boolean>;
+  setEmailNotifications(orgId: string, enabled: boolean): Promise<void>;
   selfJoinOrg(orgId: string): Promise<void>;
 
   // Players

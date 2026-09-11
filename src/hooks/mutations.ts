@@ -115,6 +115,15 @@ async function sendPushNotification(
   }
 }
 
+/** Turn the "vote ouvert" emails of a team on or off for the caller (F10). */
+export function useSetEmailNotifications(orgId: string | null | undefined) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (enabled: boolean) => api.setEmailNotifications(orgId!, enabled),
+    onSuccess: (_data, enabled) => qc.setQueryData(queryKeys.emailNotifications(orgId), enabled),
+  });
+}
+
 /** Push "il manque ton vote" to present players who have not voted (F1). */
 export function useSendVoteReminder(orgId?: string | null) {
   return useMutation({

@@ -16,6 +16,7 @@ export const queryKeys = {
   currentSeason: (orgId?: string | null)               => ['currentSeason', orgId]    as const,
   seasonName:    (season: number)                      => ['seasonName',    season]   as const,
   orgMembers:    (orgId: string | null | undefined)    => ['orgMembers',    orgId]    as const,
+  emailNotifications: (orgId: string | null | undefined) => ['emailNotifications', orgId] as const,
 } as const;
 
 const orgEnabled = (orgId?: string | null) => DEMO_MODE || !!orgId;
@@ -115,6 +116,15 @@ export function useCurrentSeason(orgId?: string | null) {
     queryKey: queryKeys.currentSeason(orgId),
     queryFn: () => api.getCurrentSeason(),
     enabled: orgEnabled(orgId),
+    staleTime: 60_000,
+  });
+}
+
+export function useEmailNotifications(orgId: string | null | undefined) {
+  return useQuery({
+    queryKey: queryKeys.emailNotifications(orgId),
+    queryFn: () => api.getEmailNotifications(orgId!),
+    enabled: !!orgId,
     staleTime: 60_000,
   });
 }

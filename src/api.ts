@@ -59,6 +59,9 @@ async function run<T>(
   return data as T;
 }
 
+// Demo: email preference per team (real API: org_members.email_notifications)
+const demoEmailPrefs = new Map<string, boolean>();
+
 // Org courante (défini au login ou via ?org=slug)
 let _orgId: string | null = null;
 export function setCurrentOrgId(id: string | null): void { _orgId = id; }
@@ -99,6 +102,8 @@ export const demoAPI: API = {
   getOrgMembers: () => Promise.resolve([] as OrgMember[]),
   addMember:    () => Promise.resolve(),
   removeMember: () => Promise.resolve(),
+  getEmailNotifications: (orgId) => Promise.resolve(demoEmailPrefs.get(orgId) ?? true),
+  setEmailNotifications: (orgId, enabled) => { demoEmailPrefs.set(orgId, enabled); return Promise.resolve(); },
   selfJoinOrg:  () => Promise.resolve(),
 
   // Données
@@ -372,6 +377,18 @@ export const realAPI: API = {
     );
     if (error) throw new Error(error.message);
   },
+  getEmailNotifications: (orgId) =>
+    withRetry(async () => {
+      const { data, error } = await supabase.rpc("get_email_notifications", { p_org_id: orgId });
+      if (error) throw new Error(error.message);
+      return data !== false;
+    }),
+  // Idempotent UPDATE (sets the value): safe to retry.
+  setEmailNotifications: (orgId, enabled) =>
+    withRetry(async () => {
+      const { error } = await supabase.rpc("set_email_notifications", { p_org_id: orgId, p_enabled: enabled });
+      if (error) throw new Error(error.message);
+    }),
   removeMember: async (userId, orgId) => {
     const { error } = await supabase.from("org_members").delete().eq("user_id", userId).eq("org_id", orgId);
     if (error) throw new Error(error.message);
