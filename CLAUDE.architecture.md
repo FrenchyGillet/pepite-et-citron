@@ -16,7 +16,7 @@
 ```
 Supabase (source de vérité)
     ↓
-src/api.ts  (realAPI — client REST custom + authClient SDK)
+src/api.ts  (realAPI — client supabase-js de src/lib/supabase.ts)
     ↓
 src/hooks/queries.ts|mutations.ts  (TanStack Query — cache + mutations)
     ↓
@@ -36,17 +36,23 @@ Le fichier exporte deux objets conformes à l'interface `API` :
 | Export | Usage |
 |---|---|
 | `demoAPI` | Données en-mémoire (`demoState`), aucun réseau — actif quand `DEMO_MODE = true` |
-| `realAPI` | Appels REST vers Supabase via `supabaseClient.ts` — production |
+| `realAPI` | Appels Supabase via le client `supabase` de `src/lib/supabase.ts` — production |
 
 `DEMO_MODE` est automatiquement `true` quand `VITE_SUPABASE_URL` contient `"VOTRE_PROJET"`.
 
-### `src/supabaseClient.ts`
-- `authClient` : instance Supabase JS SDK (`createClient`) — gère auth + token refresh
-- `supabase` : client REST custom avec timeout, retry, et `buildHeaders()` synchrone (token JWT en cache)
+### `src/lib/supabase.ts`
+- `supabase` : instance supabase-js (`createClient`) — auth, refresh du token, REST, RPC, Realtime
+- `fetch` personnalisé : abandon après 6 s pour le REST et 15 s pour `/auth/v1/` (un refresh de token bloqué ne doit pas laisser un écran sur « Chargement… »)
 
-### Retry et timeout
-- `withRetry` : 3 tentatives max, réessaie uniquement les erreurs réseau (`TypeError`, `AbortError`)
-- `rpcWithTimeout` : wrape les appels `authClient.rpc()` avec `Promise.race` (timeout 10 s par défaut)
+### Retry et timeout (`src/api.ts`)
+- `withRetry(fn, retries = 1)` : 2 tentatives max, chacune plafonnée à 12 s ; réessaie les erreurs réseau, les timeouts et les 5xx, jamais les 4xx
+- **Uniquement pour les lectures et les UPDATE idempotents** — un INSERT réessayé après un timeout serait créé deux fois
+- `rpcWithTimeout` : `Promise.race` autour d'un appel (10 s par défaut)
+
+### Fonctions serverless — `api/`
+- Chaque endpoint revalide son corps avec zod (`api/_lib/validation.ts`) et vérifie les droits (`requireOrgAdmin`, `api/_lib/auth.ts`) avant d'utiliser la clé service
+- Messages d'erreur renvoyés au client : génériques et en français ; le détail reste dans les logs Vercel
+- Emails : `api/_lib/email.ts` (Resend si `RESEND_API_KEY`, sinon Brevo), lien de désinscription signé (`api/_lib/unsubscribe.ts`)
 
 ---
 
@@ -69,12 +75,14 @@ Le store gère uniquement l'état client qui n'appartient pas au serveur :
 interface AppStore {
   session: UserSession | null;
   currentOrg: Org | null;
-  tab: string;
+  myOrgs: Org[];
   theme: 'dark' | 'light';
   showOnboarding: boolean;
+  guestToken / guestStatus / pendingOrgId…  // liens de vote et invités
   // ... setters correspondants
 }
 ```
+L'onglet actif n'est pas dans le store : c'est l'URL (React Router).
 
 ---
 
@@ -84,8 +92,8 @@ interface AppStore {
 ```tsx
 // 1. Imports (externes → locaux)
 import { useState, useCallback } from 'react';
-import type { Player } from '../types';
-import { useSubmitVote } from '../hooks/mutations';
+import type { EntityId, Player } from '@/types';
+import { useSubmitVote } from '@/hooks/mutations';
 
 // 2. Types locaux
 interface Props {
@@ -121,7 +129,15 @@ useEffect(() => { fetch('/api/players').then(...) }, []);
 
 // ✅ Hook TanStack Query
 const { data: players } = usePlayers(org?.id);
+
+// ❌ Composant défini dans le rendu d'un autre (nouveau type à chaque rendu → remonté)
+function Parent() { const Row = () => <div />; return <Row />; }
+
+// ✅ Composant au niveau du module, données passées en props
+function Row({ label }: { label: string }) { return <div>{label}</div>; }
 ```
+
+Un composant qui dépasse quelques centaines de lignes se découpe en sections qui portent leur propre état et leurs mutations (voir `components/admin/`).
 
 ---
 
@@ -141,7 +157,9 @@ L'app utilise **React Router v7** (`BrowserRouter` dans `main.tsx`, `<Routes>/<R
 
 - Tout élément interactif utilise un élément HTML sémantique (`button`, `a`, etc.)
 - Les boutons de vote ont `aria-pressed` et `aria-label` explicite
-- Contraste minimum : 4.5:1 pour le texte normal (vérifié avec nos tokens dark mode)
+- Chaque champ a un `<label>` associé (ou un `aria-label`) ; les toasts ont `role="status"`
+- Contraste minimum : 4.5:1 pour le texte normal, vérifié automatiquement par `src/utils/contrast.test.ts` sur les deux thèmes
+- `prefers-reduced-motion` est respecté (animations coupées)
 
 ---
 
@@ -149,7 +167,8 @@ L'app utilise **React Router v7** (`BrowserRouter` dans `main.tsx`, `<Routes>/<R
 
 ### Règles Supabase RLS (obligatoires en production)
 - RLS activé sur toutes les tables
-- Un joueur ne peut voter qu'une fois par match (contrainte unique + RLS)
+- Les votes ne s'insèrent que via la RPC `submit_vote` (phase, présence, heure limite, lien invité consommé) ; un joueur ne vote qu'une fois par match (index unique `votes_one_per_player`)
+- Les colonnes sensibles d'`organizations` (`plan`, `stripe_*`) ne sont modifiables que par le webhook Stripe (droits par colonne)
 - Ne jamais exposer la `service_role` key côté client
 
 ### Ne jamais
@@ -180,7 +199,7 @@ test(scoring): ajouter les cas limites du calcul de pépites
 
 ```bash
 # Vérifier avant commit
-npm test && npx tsc --noEmit
+npm run typecheck && npm run lint && npm test && npm run build
 ```
 
 Règles TypeScript clés :

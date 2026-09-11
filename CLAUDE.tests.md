@@ -29,21 +29,21 @@ Pyramide adaptée à ce projet :
 
 ```
 src/
-├── utils/
-│   ├── scoring.test.ts       ← computeResultsSummary (10 cas)
-│   ├── season.test.ts        ← computeSeasonStats (11 cas)
-│   ├── vote.test.ts          ← hasVotedLocally, markVotedLocally, classifyVoteError (19 cas)
-│   └── utils.test.ts         ← computeScores, formatDate (18 cas)
+├── utils/*.test.ts           ← logique pure : scoring (égalités), season, vote, player,
+│                               deadline/reminder, errors, localData, contrast (WCAG)…
 └── test/
     ├── setup.js              ← jest-dom + MSW lifecycle + localStorage + appStore reset
-    ├── server.ts             ← setupServer() MSW (handlers ajoutés par test via server.use())
-    ├── renderApp.jsx         ← helper : wrape avec QueryClientProvider + appStore frais
-    ├── api.test.ts           ← demoAPI (30 cas) + realAPI via MSW (67 cas)
-    ├── admin.test.jsx        ← AdminView : gestion match, joueurs, tokens invités
-    ├── guest.test.jsx        ← flux invité : ?guest=token, vote anonyme
-    ├── player.test.jsx       ← ajout / suppression de joueurs
-    └── results.test.jsx      ← vue résultats : phases voting / counting / closed
+    ├── server.ts, handlers.ts← setupServer() MSW (handlers ajoutés par test via server.use())
+    ├── renderApp.jsx         ← helper : QueryClientProvider + MemoryRouter + appStore frais
+    ├── api.test.ts           ← demoAPI + realAPI via MSW
+    └── *.test.jsx            ← parcours par écran : admin, vote, guest, results, podium,
+                                roster, stats, a11y, voteDeadline, flows…
+api/
+├── *.test.ts                 ← chaque endpoint serverless (auth, validation, cas d'erreur)
+└── _lib/*.test.ts            ← helpers serveur (email, unsubscribe, auth)
 ```
+
+**Les tests de composants tournent en `DEMO_MODE`** (forcé dans `vite.config.ts`) : ils passent par `demoAPI`, qui doit donc reproduire les règles du serveur. Les règles SQL (RLS, RPC) ne sont pas couvertes par Vitest : les valider sur une base Postgres jetable avant de livrer une migration.
 
 ---
 
@@ -196,7 +196,9 @@ npm test -- --coverage --coverage.include='src/api.ts' --coverage.reporter=text
 1. **Nommage** : `describe` = le sujet, `it` = comportement attendu en phrase complète
 2. **Arrange / Act / Assert** : toujours structurer les tests en 3 phases
 3. **Un seul `expect` principal** par test (les assertions secondaires sont ok)
-4. **Pas de `sleep()`** — utiliser `waitFor`, `findBy*`
+4. **Pas de `sleep()`** — utiliser `waitFor`, `findBy*` (obligatoire après un changement d'écran : Admin, Saison et Profil sont chargés à la demande)
 5. **Tests déterministes** : pas de dépendance à l'heure ou à des données aléatoires non seedées
 6. **Chaque bug corrigé = un test de non-régression ajouté**
 7. **Ne pas mocker ce qu'on teste** : tester `realAPI` avec MSW, pas avec `vi.mock('../api')`
+8. **`vi.spyOn` renvoie l'espion existant** d'un test précédent : appeler `mockClear()` avant de compter les appels
+9. **`userEvent.setup()` installe son propre presse-papiers** : lire le texte copié avec `navigator.clipboard.readText()` plutôt qu'espionner `writeText`
