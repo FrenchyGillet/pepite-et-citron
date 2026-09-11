@@ -20,7 +20,6 @@ const FEATURES_PRO = [
   'Statistiques et classement de la saison',
   'Historique complet de tous vos matchs',
   'Tendances par joueur & assiduité',
-  'Support prioritaire',
 ];
 
 export function UpgradeModal({ orgId, onClose, initialPlan = 'annual' }: Props) {

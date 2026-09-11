@@ -745,6 +745,26 @@
       margin-bottom: 8px;
     }
 
+    /* ─── HERO PLAYER NOTE ─── */
+    .hero-player-note {
+      margin-top: 20px; font-size: 14px; color: var(--label-secondary);
+    }
+    .hero-player-note strong { color: var(--label-primary); font-weight: 600; }
+
+    /* ─── KEY FEATURES ─── */
+    .features { padding: 8px 24px 56px; }
+    .features-grid {
+      max-width: 900px; margin: 0 auto;
+      display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px;
+    }
+    .feature-card {
+      background: var(--bg-secondary); border: 1px solid var(--separator);
+      border-radius: 18px; padding: 22px 20px;
+    }
+    .feature-emoji { font-size: 26px; margin-bottom: 10px; }
+    .feature-title { font-size: 16px; font-weight: 700; margin-bottom: 6px; }
+    .feature-desc  { font-size: 14px; color: var(--label-secondary); line-height: 1.5; }
+
     /* ─── RESPONSIVE ─── */
     @media (max-width: 600px) {
       .hero { padding: 72px 20px 60px; }
@@ -779,8 +799,35 @@
     Pendant le match ou juste après, certains se sont clairement mis en évidence. Fini les bics et les sous-verres en carton — l'équipe vote depuis son téléphone, en 30 secondes.
   </p>
   <div class="hero-cta-group">
-    <a href="/login?mode=signup" class="btn-primary" data-umami-event="landing_hero_cta">Commencer à voter</a>
+    <a href="/login?mode=signup" class="btn-primary" data-umami-event="landing_hero_cta">Créer mon équipe — gratuit</a>
     <a href="#tarifs" class="btn-secondary" data-umami-event="landing_hero_tarifs">Voir les tarifs</a>
+  </div>
+  <p class="hero-player-note">Tu as reçu un lien de ton capitaine ? <strong>Ouvre-le, pas besoin de compte.</strong></p>
+</section>
+
+<!-- KEY FEATURES -->
+<section class="features" aria-label="Points forts">
+  <div class="features-grid">
+    <div class="feature-card">
+      <div class="feature-emoji" aria-hidden="true">🕶️</div>
+      <div class="feature-title">Vote anonyme</div>
+      <div class="feature-desc">Chacun vote librement : l'équipe voit les choix, seuls les admins savent qui a voté quoi.</div>
+    </div>
+    <div class="feature-card">
+      <div class="feature-emoji" aria-hidden="true">⏰</div>
+      <div class="feature-title">Heure limite &amp; relances</div>
+      <div class="feature-desc">Fixe une heure de fermeture et relance les retardataires en un clic, par message ou notification.</div>
+    </div>
+    <div class="feature-card">
+      <div class="feature-emoji" aria-hidden="true">🏆</div>
+      <div class="feature-title">Dépouillement façon podium</div>
+      <div class="feature-desc">Les bulletins se révèlent un par un, puis le podium se partage en image dans le groupe.</div>
+    </div>
+    <div class="feature-card">
+      <div class="feature-emoji" aria-hidden="true">📱</div>
+      <div class="feature-title">Zéro compte pour les joueurs</div>
+      <div class="feature-desc">Un lien suffit pour voter. Seul le capitaine crée un compte.</div>
+    </div>
   </div>
 </section>
 <div class="tagline-strip">"Aucun joueur n'a été blessé lors de la création de cette app. (Sauf leur ego.)"</div>
@@ -1007,7 +1054,7 @@
         <div class="pricing-divider"></div>
         <div class="pricing-feature"><span class="cross">✕</span><span class="pricing-feature-text muted">Statistiques de saison</span></div>
         <div class="pricing-feature"><span class="cross">✕</span><span class="pricing-feature-text muted">Historique complet des matchs</span></div>
-        <div class="pricing-feature"><span class="cross">✕</span><span class="pricing-feature-text muted">Support prioritaire</span></div>
+        <div class="pricing-feature"><span class="cross">✕</span><span class="pricing-feature-text muted">Tendances par joueur &amp; assiduité</span></div>
         <a href="/login?mode=signup" class="pricing-cta free" data-umami-event="landing_pricing_free_cta">Commencer gratuitement</a>
       </div>
 
@@ -1020,7 +1067,7 @@
         <div class="pricing-feature"><span class="check">✓</span><span class="pricing-feature-text">Tout du plan gratuit</span></div>
         <div class="pricing-feature"><span class="star">⭐</span><span class="pricing-feature-text"><strong>Statistiques de saison complètes</strong></span></div>
         <div class="pricing-feature"><span class="star">⭐</span><span class="pricing-feature-text"><strong>Historique de tous vos matchs</strong></span></div>
-        <div class="pricing-feature"><span class="star">⭐</span><span class="pricing-feature-text">Support prioritaire</span></div>
+        <div class="pricing-feature"><span class="star">⭐</span><span class="pricing-feature-text">Tendances par joueur &amp; assiduité</span></div>
         <a href="/login?mode=signup&amp;plan=annual" class="pricing-cta pro" id="pro-cta" data-umami-event="landing_pricing_pro_cta">Passer Pro — 12,99 €/an →</a>
         <div style="text-align:center;font-size:11px;color:var(--label-tertiary);margin-top:10px">Résiliation en un clic · Paiement sécurisé Stripe</div>
       </div>
