@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { computeResultsSummary } from './scoring';
+import { computeResultsSummary, rankWithTies, resolveWinners } from './scoring';
 import type { Player, Vote } from '@/types';
 
 // ── Fixtures ──────────────────────────────────────────────────────────────────
@@ -118,5 +118,67 @@ describe('computeResultsSummary', () => {
     const votes = [makeVote(1, { lemon_id: 1 })];
     const { bestTied } = computeResultsSummary(votes, allPlayers, allPlayers);
     expect(bestTied).toBe(false);
+  });
+
+  // ── B10: one winner rule for every screen ──
+  const tiedVotes = [
+    makeVote(1, { best1_id: 1, best2_id: 2, lemon_id: 3 }), // alice 2, bob 1
+    makeVote(2, { best1_id: 2, best2_id: 1, lemon_id: 4 }), // bob 2, alice 1 → 3–3
+  ];
+
+  it('an open tie gives several winners sharing rank 1 — never an arbitrary one', () => {
+    const { pepiteWinners, lemonWinners, pepiteRanked } = computeResultsSummary(tiedVotes, allPlayers, allPlayers);
+    expect(pepiteWinners.map(w => w.id).sort()).toEqual([1, 2]);
+    expect(lemonWinners.map(w => w.id).sort()).toEqual([3, 4]);
+    expect(pepiteRanked.map(r => r.rank)).toEqual([1, 1]);
+  });
+
+  it("the admin's tiebreaker decides the order and the single winner", () => {
+    const { pepiteRanked, pepiteWinners, lemonWinners, bestTied } = computeResultsSummary(
+      tiedVotes, allPlayers, allPlayers, 2, { best_id: 2, lemon_id: 4 },
+    );
+    expect(pepiteRanked.map(r => [r.id, r.rank])).toEqual([[2, 1], [1, 2]]);
+    expect(pepiteWinners.map(w => w.id)).toEqual([2]);
+    expect(lemonWinners.map(w => w.id)).toEqual([4]);
+    // the tie itself is still reported (drives the admin's tiebreaker card)
+    expect(bestTied).toBe(true);
+  });
+});
+
+describe('rankWithTies', () => {
+  const e = (id: number | string, pts: number) => ({ id, pts });
+  const shape = (groups: ReturnType<typeof rankWithTies<{ id: number | string; pts: number }>>) =>
+    groups.map(g => [g.rank, g.players.map(p => p.id)]);
+
+  it('gives ex-aequo the same rank and skips the next ones (1, 1, 3)', () => {
+    expect(shape(rankWithTies([e(1, 3), e(2, 3), e(3, 1)]))).toEqual([[1, [1, 2]], [3, [3]]]);
+  });
+
+  it('leaves out players with 0 pts', () => {
+    expect(shape(rankWithTies([e(1, 0), e(2, 2)]))).toEqual([[1, [2]]]);
+  });
+
+  it('lets the tiebreaker win the top group alone; the others take rank 2', () => {
+    expect(shape(rankWithTies([e(1, 3), e(2, 3), e(3, 1)], 2))).toEqual([[1, [2]], [2, [1]], [3, [3]]]);
+  });
+
+  it('ignores a tiebreaker that is not in a tied top group', () => {
+    expect(shape(rankWithTies([e(1, 3), e(2, 1), e(3, 1)], 3))).toEqual([[1, [1]], [2, [2, 3]]]);
+  });
+
+  it('matches the tiebreaker id whether stored as string or number', () => {
+    expect(shape(rankWithTies([e(1, 3), e(2, 3)], '2'))).toEqual([[1, [2]], [2, [1]]]);
+  });
+});
+
+describe('resolveWinners', () => {
+  it('returns every ex-aequo while the tie is open, one player once broken', () => {
+    const entries = [{ id: 1, pts: 2 }, { id: 2, pts: 2 }, { id: 3, pts: 1 }];
+    expect(resolveWinners(entries).map(w => w.id)).toEqual([1, 2]);
+    expect(resolveWinners(entries, 1).map(w => w.id)).toEqual([1]);
+  });
+
+  it('returns nobody when nobody scored', () => {
+    expect(resolveWinners([{ id: 1, pts: 0 }])).toEqual([]);
   });
 });

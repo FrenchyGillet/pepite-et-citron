@@ -21,6 +21,8 @@ interface RankedEntry {
   nickname?: string | null;
   pts: number;
   absent?: boolean;
+  /** Competition rank from rankWithTies — ex-aequo share rank 1. */
+  rank?: number;
 }
 
 interface GeneratePodiumImageOptions {
@@ -148,7 +150,10 @@ export async function generatePodiumImage({
 
   slots.forEach(({ rank, player, barH, x }) => {
     if (!player) return;
-    const isFirst  = rank === 1;
+    // The step follows the position; the rank shown, the crown and the gold
+    // follow the score, so ex-aequo winners all read "1" with a crown.
+    const shownRank = player.rank ?? rank;
+    const isFirst  = shownRank === 1;
     const barColor = isFirst ? c.gold : c.bg3;
     const barTop   = BOTTOM - barH;
     const cx       = x + BAR_W / 2;
@@ -161,7 +166,7 @@ export async function generatePodiumImage({
     ctx.textBaseline = 'middle';
     ctx.font = `800 ${isFirst ? 60 : 48}px ${FONT}`;
     ctx.fillStyle = isFirst ? '#000' : c.t4;
-    ctx.fillText(String(rank), cx, barTop + barH / 2 + 4);
+    ctx.fillText(String(shownRank), cx, barTop + barH / 2 + 4);
 
     if (isFirst) {
       ctx.font = `52px serif`;
@@ -208,7 +213,11 @@ export async function generatePodiumImage({
   ctx.lineWidth = 1;
   ctx.stroke();
 
-  const lemonWinner = lemonRanked[0];
+  // Every ex-aequo citron while the tie is open — never an arbitrary one.
+  const lemonWinners = lemonRanked.some(p => p.rank != null)
+    ? lemonRanked.filter(p => p.rank === 1)
+    : lemonRanked.slice(0, 1);
+  const lemonWinner = lemonWinners[0];
   if (lemonWinner) {
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
@@ -218,10 +227,12 @@ export async function generatePodiumImage({
     ctx.textAlign = 'left';
     ctx.font = `600 26px ${FONT}`;
     ctx.fillStyle = c.t3;
-    ctx.fillText('Le Citron', PAD + 112, CITRON_Y + 38);
+    ctx.fillText(lemonWinners.length > 1 ? 'Citrons ex-aequo' : 'Le Citron', PAD + 112, CITRON_Y + 38);
 
     const lName = fitText(
-      (lemonWinner.nickname?.trim() || lemonWinner.name) + (lemonWinner.absent ? ' (absent)' : ''),
+      lemonWinners.length > 1
+        ? lemonWinners.map(p => p.nickname?.trim() || p.name).join(' & ')
+        : (lemonWinner.nickname?.trim() || lemonWinner.name) + (lemonWinner.absent ? ' (absent)' : ''),
       W - PAD * 2 - 200,
       `700 40px ${FONT}`,
     );

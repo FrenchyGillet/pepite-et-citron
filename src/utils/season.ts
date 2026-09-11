@@ -1,5 +1,6 @@
-import type { Player, Match, Vote, Team, EntityId } from '@/types';
+import type { Player, Match, Vote, Team } from '@/types';
 import { computeScores } from '@/utils';
+import { resolveWinners } from '@/utils/scoring';
 
 export interface PlayerStat {
   name: string;
@@ -87,21 +88,13 @@ export function computeSeasonStats(
       }
     });
 
-    // Match winner(s): honour an admin tiebreaker if set, otherwise credit
-    // every player tied at the top score (a `>` comparison silently dropped
-    // all but the first tied player).
+    // Match winner(s): same rule as the podium (resolveWinners) — the admin's
+    // tiebreaker if set, otherwise every player tied at the top score.
     const tb = match.tiebreakers || {};
-    const creditWin = (id: EntityId) => { const s = stats[String(id)]; if (s) s.wins++; };
-    const creditLemon = (id: EntityId) => { const s = stats[String(id)]; if (s) s.lemons++; };
-
-    if (maxB > 0) {
-      if (tb.best_id != null) creditWin(tb.best_id);
-      else pp.filter(p => (best[p.id]?.pts || 0) === maxB).forEach(p => creditWin(p.id));
-    }
-    if (maxL > 0) {
-      if (tb.lemon_id != null) creditLemon(tb.lemon_id);
-      else players.filter(p => (lemon[p.id]?.pts || 0) === maxL).forEach(p => creditLemon(p.id));
-    }
+    resolveWinners(pp.map(p => ({ id: p.id, pts: best[p.id]?.pts || 0 })), tb.best_id)
+      .forEach(w => { const s = stats[String(w.id)]; if (s) s.wins++; });
+    resolveWinners(players.map(p => ({ id: p.id, pts: lemon[p.id]?.pts || 0 })), tb.lemon_id)
+      .forEach(w => { const s = stats[String(w.id)]; if (s) s.lemons++; });
   });
 
   // Players who scored, played, or were absent from at least one team match.

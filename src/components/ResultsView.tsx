@@ -32,17 +32,19 @@ interface TiebreakerCardProps {
 function ShareResultsButton({
   match,
   pepiteRanked,
-  lemonRanked,
+  lemonWinners,
 }: {
   match: Match;
+  /** Tiebreaker-aware order (computeResultsSummary). */
   pepiteRanked: Array<{ name: string }>;
-  lemonRanked:  Array<{ name: string }>;
+  /** Every citron while a tie is open — never an arbitrary one. */
+  lemonWinners: Array<{ name: string }>;
 }) {
   const [shared, setShared] = useState(false);
 
   const buildText = () => {
     const pepiteNames = pepiteRanked.slice(0, 2).map(p => p.name).join(' & ');
-    const lemonName   = lemonRanked[0]?.name ?? '';
+    const lemonName   = lemonWinners.map(p => p.name).join(' & ');
     const lines = [
       `🏆 ${match.label}`,
       pepiteNames ? `⭐ Pépite : ${pepiteNames}` : '',
@@ -305,9 +307,9 @@ export function ResultsView({ players, match, isAdmin, isDark, orgId, isPro, onU
   const tiebreakers = match.tiebreakers || {};
 
   const {
-    pepiteRanked, lemonRanked, ghosts,
+    pepiteRanked, lemonRanked, lemonWinners, ghosts,
     bestTied, lemonTied, bestTiedPlayers, lemonTiedPlayers,
-  } = computeResultsSummary(votes, present, players, pepiteCount);
+  } = computeResultsSummary(votes, present, players, pepiteCount, tiebreakers);
 
   const setTiebreaker = (field: string, playerId: EntityId) => {
     updateMatchMutation.mutate({ id: match.id, data: { tiebreakers: { ...tiebreakers, [field]: playerId } } });
@@ -411,7 +413,7 @@ export function ResultsView({ players, match, isAdmin, isDark, orgId, isPro, onU
                 lemonRanked={lemonRanked}
                 isDark={isDark !== false}
               />
-              <ShareResultsButton match={match} pepiteRanked={pepiteRanked} lemonRanked={lemonRanked} />
+              <ShareResultsButton match={match} pepiteRanked={pepiteRanked} lemonWinners={lemonWinners} />
             </div>
           )}
         </div>
