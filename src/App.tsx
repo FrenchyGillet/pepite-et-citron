@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, lazy, Suspense } from 'react';
 import { Routes, Route, Navigate, useNavigate, useLocation } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
 import { DEMO_MODE, setCurrentOrgId } from '@/api';
@@ -9,16 +9,10 @@ import { OrgSetupView }      from '@/components/OrgSetupView';
 import { AppHeader }         from '@/components/AppHeader';
 import { VoteTab }           from '@/components/VoteTab';
 import { ResultsView }       from '@/components/ResultsView';
-import { StatsView }         from '@/components/StatsView';
-import { AdminView }         from '@/components/AdminView';
 import { ErrorBoundary }     from '@/components/ErrorBoundary';
-import { OnboardingModal }          from '@/components/OnboardingModal';
-import { UpgradeModal }             from '@/components/UpgradeModal';
 import { PullToRefreshIndicator }   from '@/components/PullToRefreshIndicator';
 import { usePullToRefresh }         from '@/hooks/usePullToRefresh';
-import { StatsLockedView }   from '@/components/StatsLockedView';
 import { JoinOrgView }       from '@/components/JoinOrgView';
-import { ProfileView }       from '@/components/ProfileView';
 import { useAuth }           from '@/hooks/useAuth';
 import { useGuest }          from '@/hooks/useGuest';
 import { useTheme }          from '@/hooks/useTheme';
@@ -31,6 +25,19 @@ import { usePlayers }        from '@/hooks/queries';
 import { useAppStore }       from '@/store/appStore';
 import { useSearchParams }   from 'react-router-dom';
 import type { Org } from '@/types';
+
+// Screens most voters never open are loaded on demand: someone arriving from
+// a vote link downloads the vote screen, not Admin, Saison or Profil.
+const AdminView       = lazy(() => import('@/components/AdminView').then(m => ({ default: m.AdminView })));
+const StatsView       = lazy(() => import('@/components/StatsView').then(m => ({ default: m.StatsView })));
+const StatsLockedView = lazy(() => import('@/components/StatsLockedView').then(m => ({ default: m.StatsLockedView })));
+const ProfileView     = lazy(() => import('@/components/ProfileView').then(m => ({ default: m.ProfileView })));
+const OnboardingModal = lazy(() => import('@/components/OnboardingModal').then(m => ({ default: m.OnboardingModal })));
+const UpgradeModal    = lazy(() => import('@/components/UpgradeModal').then(m => ({ default: m.UpgradeModal })));
+
+const screenFallback = (
+  <div className="content"><div className="empty" role="status">Chargement…</div></div>
+);
 
 function FakeProgressBar({ loading }: { loading: boolean }) {
   const [progress, setProgress] = useState(0);
@@ -302,6 +309,7 @@ export default function App() {
           </div>
         )}
 
+        <Suspense fallback={screenFallback}>
         <Routes>
           <Route index element={<Navigate to={`/vote${location.search}`} replace />} />
           {/* Reached after a successful sign-in (URL is still /login) or by an
@@ -348,7 +356,9 @@ export default function App() {
           } />
           <Route path="*" element={<Navigate to="/vote" replace />} />
         </Routes>
+        </Suspense>
 
+        <Suspense fallback={null}>
         {showOnboarding && (
           <OnboardingModal onClose={() => {
             setShowOnboarding(false);
@@ -358,6 +368,7 @@ export default function App() {
         {showUpgradeModal && currentOrg && (
           <UpgradeModal orgId={currentOrg.id} onClose={() => setShowUpgradeModal(false)} />
         )}
+        </Suspense>
         {offlineToast && (
           <div className="toast" role="status" aria-live="polite">{offlineToast}</div>
         )}

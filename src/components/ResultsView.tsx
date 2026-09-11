@@ -26,6 +26,9 @@ interface TiebreakerCardProps {
   color: 'gold' | 'lemon';
   field: string;
   tiedPlayers: Player[];
+  step?: string;
+  disabled: boolean;
+  onPick: (field: string, playerId: EntityId) => void;
 }
 
 // ── Share results via Web Share API (iMessage, WhatsApp, etc.) ────────────────
@@ -93,6 +96,59 @@ function ShareResultsButton({
   );
 }
 
+// Module-level so React keeps their DOM between renders (a component defined
+// inside ResultsView is a new type on every render and remounts).
+function MatchHeader({ match, badge }: { match: Match; badge: ReactNode }) {
+  return (
+    <div className="flex-between mt-4 mb-12">
+      <div>
+        <div style={{ fontSize: 18, fontWeight: 700 }}>{match.label}</div>
+        <div style={{ fontSize: 12, color: 'var(--label3)', marginTop: 2 }}>{formatDate(match.created_at)}</div>
+      </div>
+      {badge}
+    </div>
+  );
+}
+
+function TiebreakerCard({ title, color, field, tiedPlayers, step, disabled, onPick }: TiebreakerCardProps) {
+  return (
+    <div style={{
+      background: color === 'gold' ? 'rgba(255,214,10,0.06)' : 'rgba(170,221,0,0.06)',
+      border: `1px solid ${color === 'gold' ? 'var(--gold-dim)' : 'var(--lemon-dim)'}`,
+      borderRadius: 'var(--radius-lg)', padding: '16px', marginBottom: 12,
+    }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+        <div style={{ fontSize: 15, fontWeight: 700 }}>🍺 Égalité — {title}</div>
+        {step && (
+          <span style={{
+            fontSize: 11, fontWeight: 700, color: 'var(--label3)',
+            background: 'var(--bg3)', borderRadius: 20,
+            padding: '2px 8px', letterSpacing: '0.05em',
+          }}>{step}</span>
+        )}
+      </div>
+      <div style={{ fontSize: 13, color: 'var(--label3)', marginBottom: 12 }}>
+        {tiedPlayers.map(p => p.name).join(' et ')} sont à égalité.<br />
+        {color === 'lemon'
+          ? 'Qui a perdu le concours de bière ?'
+          : 'Qui a gagné le concours de bière ?'}
+      </div>
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+        {tiedPlayers.map(p => (
+          <button
+            key={String(p.id)}
+            className="btn btn-secondary"
+            disabled={disabled}
+            onClick={() => onPick(field, p.id)}
+          >
+            {color === 'lemon' ? '🍋' : '🍺'} {p.name}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 export function ResultsView({ players, match, isAdmin, isDark, orgId, isPro, onUpgrade }: ResultsViewProps) {
   const navigate = useNavigate();
   const [localRevealedCount, setLocalRevealedCount] = useState<number | null>(null);
@@ -123,20 +179,10 @@ export function ResultsView({ players, match, isAdmin, isDark, orgId, isPro, onU
   const phase = match.phase || 'voting';
   const pepiteCount = match.pepite_count ?? 2;
 
-  const MatchHeader = ({ badge }: { badge: ReactNode }) => (
-    <div className="flex-between mt-4 mb-12">
-      <div>
-        <div style={{ fontSize: 18, fontWeight: 700 }}>{match.label}</div>
-        <div style={{ fontSize: 12, color: 'var(--label3)', marginTop: 2 }}>{formatDate(match.created_at)}</div>
-      </div>
-      {badge}
-    </div>
-  );
-
   if (phase === 'voting') {
     return (
       <div className="content">
-        <MatchHeader badge={<span className="badge badge-open">Vote en cours</span>} />
+        <MatchHeader match={match} badge={<span className="badge badge-open">Vote en cours</span>} />
         <div style={{
           background: 'var(--bg2)', borderRadius: 'var(--radius-lg)',
           padding: '40px 20px', textAlign: 'center',
@@ -187,7 +233,7 @@ export function ResultsView({ players, match, isAdmin, isDark, orgId, isPro, onU
 
     return (
       <div className="content">
-        <MatchHeader badge={<span className="badge" style={{ background: 'rgba(170,221,0,0.15)', color: 'var(--lemon)' }}>Dépouillement</span>} />
+        <MatchHeader match={match} badge={<span className="badge" style={{ background: 'rgba(170,221,0,0.15)', color: 'var(--lemon)' }}>Dépouillement</span>} />
 
         {!isAdmin ? (
           // Non-admins watch the reveal — they only receive the ballots the
@@ -329,50 +375,13 @@ export function ResultsView({ players, match, isAdmin, isDark, orgId, isPro, onU
   const showLemonCard = pendingLemon && !pendingBest;
   const hasPendingTie = pendingBest || pendingLemon;
 
-  const TiebreakerCard = ({ title, color, field, tiedPlayers, step }: TiebreakerCardProps & { step?: string }) => (
-    <div style={{
-      background: color === 'gold' ? 'rgba(255,214,10,0.06)' : 'rgba(170,221,0,0.06)',
-      border: `1px solid ${color === 'gold' ? 'var(--gold-dim)' : 'var(--lemon-dim)'}`,
-      borderRadius: 'var(--radius-lg)', padding: '16px', marginBottom: 12,
-    }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
-        <div style={{ fontSize: 15, fontWeight: 700 }}>🍺 Égalité — {title}</div>
-        {step && (
-          <span style={{
-            fontSize: 11, fontWeight: 700, color: 'var(--label3)',
-            background: 'var(--bg3)', borderRadius: 20,
-            padding: '2px 8px', letterSpacing: '0.05em',
-          }}>{step}</span>
-        )}
-      </div>
-      <div style={{ fontSize: 13, color: 'var(--label3)', marginBottom: 12 }}>
-        {tiedPlayers.map(p => p.name).join(' et ')} sont à égalité.<br />
-        {color === 'lemon'
-          ? 'Qui a perdu le concours de bière ?'
-          : 'Qui a gagné le concours de bière ?'}
-      </div>
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-        {tiedPlayers.map(p => (
-          <button
-            key={String(p.id)}
-            className="btn btn-secondary"
-            disabled={updateMatchMutation.isPending}
-            onClick={() => setTiebreaker(field, p.id)}
-          >
-            {color === 'lemon' ? '🍋' : '🍺'} {p.name}
-          </button>
-        ))}
-      </div>
-    </div>
-  );
-
   const stepLabel = (n: number) => totalTies > 1 ? `${n}/${totalTies}` : undefined;
 
   return (
     <div className="content">
-      <MatchHeader badge={<span className="badge badge-closed">Clôturé</span>} />
-      {showBestCard  && <TiebreakerCard title="Pépite" color="gold"  field="best_id"  tiedPlayers={bestTiedPlayers}  step={stepLabel(resolvedTies + 1)} />}
-      {showLemonCard && <TiebreakerCard title="Citron" color="lemon" field="lemon_id" tiedPlayers={lemonTiedPlayers} step={stepLabel(resolvedTies + 1)} />}
+      <MatchHeader match={match} badge={<span className="badge badge-closed">Clôturé</span>} />
+      {showBestCard  && <TiebreakerCard disabled={updateMatchMutation.isPending} onPick={setTiebreaker} title="Pépite" color="gold"  field="best_id"  tiedPlayers={bestTiedPlayers}  step={stepLabel(resolvedTies + 1)} />}
+      {showLemonCard && <TiebreakerCard disabled={updateMatchMutation.isPending} onPick={setTiebreaker} title="Citron" color="lemon" field="lemon_id" tiedPlayers={lemonTiedPlayers} step={stepLabel(resolvedTies + 1)} />}
       {/* Podium is hidden until all tiebreakers are resolved AND the reveal button is pressed */}
       {hasPendingTie ? (
         <div style={{

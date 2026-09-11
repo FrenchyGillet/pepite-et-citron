@@ -128,7 +128,6 @@ export interface API {
 
   // Orgs
   createOrg(name: string, slug: string): Promise<Org>;
-  getMyOrg(): Promise<Org | null>;
   getMyOrgs(): Promise<Org[]>;
   getOrgBySlug(slug: string): Promise<Org | null>;
   getOrgMembers(orgId: string): Promise<OrgMember[]>;

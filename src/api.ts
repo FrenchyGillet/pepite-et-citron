@@ -96,7 +96,6 @@ export const demoAPI: API = {
   updatePassword:  () => Promise.resolve(),
   deleteAccount:   () => Promise.resolve(),
   createOrg:    (name, slug) => Promise.resolve({ id: "demo-org", name, slug }),
-  getMyOrg:     () => Promise.resolve({ id: "demo-org", name: "Demo", slug: "demo", role: "admin" }),
   getMyOrgs:    () => Promise.resolve([{ id: "demo-org", name: "Demo", slug: "demo", role: "admin" }]),
   getOrgBySlug: () => Promise.resolve({ id: "demo-org", name: "Demo", slug: "demo" }),
   getOrgMembers: () => Promise.resolve([] as OrgMember[]),
@@ -358,10 +357,6 @@ export const realAPI: API = {
         return org ? { ...org, role: (m.role || "admin") as 'admin' | 'voter' } as Org : null;
       }).filter((o): o is Org => o != null);
     }, 1);   // 1 retry = 2 attempts max
-  },
-  getMyOrg: async () => {
-    const orgs = await realAPI.getMyOrgs();
-    return orgs.find(o => o.role === "admin") || orgs[0] || null;
   },
   getOrgMembers: (orgId) =>
     withRetry(async () => {

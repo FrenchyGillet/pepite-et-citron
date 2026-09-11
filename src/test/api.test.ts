@@ -306,7 +306,6 @@ describe('demoAPI', () => {
 
   it('org stubs all resolve without throwing', async () => {
     await expect(demoAPI.createOrg('Test', 'test')).resolves.toMatchObject({ id: 'demo-org' });
-    await expect(demoAPI.getMyOrg()).resolves.toMatchObject({ id: 'demo-org' });
     await expect(demoAPI.getMyOrgs()).resolves.toHaveLength(1);
     await expect(demoAPI.getOrgBySlug('test')).resolves.toMatchObject({ id: 'demo-org' });
     await expect(demoAPI.getOrgMembers('org-123')).resolves.toEqual([]);
@@ -1003,18 +1002,6 @@ describe('realAPI', () => {
       );
       const result = await realAPI.getMyOrgs();
       expect(result).toHaveLength(1);
-    });
-  });
-
-  describe('getMyOrg', () => {
-    it('returns the admin org from getMyOrgs', async () => {
-      server.use(
-        http.post(`${RPC}/get_my_orgs`, () =>
-          HttpResponse.json([{ id: 'org-1', name: 'Test', slug: 'test', role: 'admin' }]),
-        ),
-      );
-      const org = await realAPI.getMyOrg();
-      expect(org?.name).toBe('Test');
     });
   });
 

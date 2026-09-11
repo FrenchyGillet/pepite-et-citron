@@ -5,7 +5,7 @@ import { __resetDemoState, __demoAPI } from "@/App.jsx";
 import { useAppStore } from "@/store/appStore";
 import { renderApp } from "./renderApp";
 
-// Demo org fixture — matches the demoAPI.getMyOrg() return value
+// Demo org fixture — matches the demoAPI.getMyOrgs() entry
 const DEMO_ORG = { id: "demo-org", name: "Demo", slug: "demo", role: "admin" };
 
 beforeEach(() => {

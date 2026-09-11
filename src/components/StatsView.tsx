@@ -23,6 +23,22 @@ interface EditingMatch {
   team_id: EntityId | null;
 }
 
+// Module-level so the buttons are not remounted on every StatsView render.
+function TabBar({ items, active, onChange }: { items: { id: number; label: string }[]; active: number; onChange: (id: number) => void }) {
+  return (
+    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginBottom: 4 }}>
+      {items.map(({ id, label }) => (
+        <button key={id} onClick={() => onChange(id)} style={{
+          padding: '7px 14px', borderRadius: 'var(--radius-sm)', fontSize: 13, fontWeight: 600,
+          background: active === id ? 'var(--label)' : 'var(--bg3)',
+          color: active === id ? 'var(--bg)' : 'var(--label3)',
+          border: 'none', cursor: 'pointer',
+        }}>{label}</button>
+      ))}
+    </div>
+  );
+}
+
 export function StatsView({ players, activeMatch, isAdmin, orgId }: StatsViewProps) {
   const [selectedSeason, setSelectedSeason] = useState<number | null>(null);
   const [selectedTeamId, setSelectedTeamId] = useState<EntityId | null>(null);
@@ -94,19 +110,6 @@ export function StatsView({ players, activeMatch, isAdmin, orgId }: StatsViewPro
       { onSuccess: () => setEditingMatch(null) }
     );
   };
-
-  const TabBar = ({ items, active, onChange }: { items: { id: number; label: string }[]; active: number; onChange: (id: number) => void }) => (
-    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginBottom: 4 }}>
-      {items.map(({ id, label }) => (
-        <button key={id} onClick={() => onChange(id)} style={{
-          padding: '7px 14px', borderRadius: 'var(--radius-sm)', fontSize: 13, fontWeight: 600,
-          background: active === id ? 'var(--label)' : 'var(--bg3)',
-          color: active === id ? 'var(--bg)' : 'var(--label3)',
-          border: 'none', cursor: 'pointer',
-        }}>{label}</button>
-      ))}
-    </div>
-  );
 
   return (
     <div className="content">
