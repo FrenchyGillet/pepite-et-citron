@@ -19,6 +19,9 @@ export function GlobalStyle() {
       --gold:         #ffd60a;
       --gold-dim:     rgba(255,214,10,0.15);
       --gold-subtle:  rgba(255,214,10,0.08);
+      /* Fill for primary buttons / pills, always with black text. Distinct from
+         --gold, which is tuned for TEXT and is too dark as a fill in light mode. */
+      --gold-fill:    #ffd60a;
       --lemon:        #aadd00;
       --lemon-dim:    rgba(170,221,0,0.15);
       --lemon-subtle: rgba(170,221,0,0.08);
@@ -42,6 +45,16 @@ export function GlobalStyle() {
       /* Désactive le pull-to-refresh natif du navigateur (Android Chrome)
          pour laisser place à notre implémentation custom */
       overscroll-behavior-y: none;
+    }
+
+    /* Installed iOS app: the status bar is "black-translucent" (white icons drawn
+       over the page). Paint a black strip under it in both themes so the clock
+       stays readable and no light band shows in dark mode. Zero height in a
+       normal browser tab (no safe-area inset). */
+    body::before {
+      content: ''; position: fixed; top: 0; left: 0; right: 0;
+      height: env(safe-area-inset-top, 0px);
+      background: #000; z-index: 1000; pointer-events: none;
     }
 
     button { font-family: inherit; cursor: pointer; border: none; transition: all 0.15s ease; }
@@ -189,7 +202,7 @@ export function GlobalStyle() {
       padding: 13px 20px;
       min-height: 50px;
     }
-    .btn-primary   { background: var(--gold); color: #000000; }
+    .btn-primary   { background: var(--gold-fill); color: #000000; }
     .btn-secondary { background: var(--bg3); color: var(--label); }
     .btn-danger    { background: var(--red-dim); color: var(--red); }
     .btn-full { width: 100%; }
@@ -324,6 +337,7 @@ export function GlobalStyle() {
       --gold:         #8a6500;
       --gold-dim:     rgba(138,101,0,0.15);
       --gold-subtle:  rgba(138,101,0,0.08);
+      --gold-fill:    #ffcc00;
       --lemon:        #4a7200;
       --lemon-dim:    rgba(74,114,0,0.15);
       --lemon-subtle: rgba(74,114,0,0.08);
@@ -339,7 +353,6 @@ export function GlobalStyle() {
     [data-theme="light"] input,
     [data-theme="light"] textarea { background: var(--bg3); color: var(--label); }
     [data-theme="light"] .demo-banner { background: rgba(255,180,0,0.08); color: #7a5400; border-color: rgba(255,180,0,0.15); }
-    [data-theme="light"] .btn-primary { background: var(--gold); color: #ffffff; }
     /* the translucent dark-theme yellow is unreadable on white */
     [data-theme="light"] .player-chip.sel-2nd { color: var(--gold); }
   `}</style>

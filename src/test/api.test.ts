@@ -4,7 +4,7 @@ import { server } from './server';
 import { BASE, AUTH, RPC } from './handlers';
 import {
   realAPI, demoAPI, demoState,
-  setCurrentOrgId, __resetDemoState as resetDemo,
+  setCurrentOrgId, __resetDemoState as resetDemo, __withRetry,
 } from '@/api';
 import type { Match } from '@/types';
 
@@ -1100,6 +1100,13 @@ describe('realAPI', () => {
       );
       await expect(realAPI.getPlayers()).rejects.toThrow();
       expect(attempts).toBe(1);
+    });
+
+    it('gives up on an attempt that never settles (e.g. a stuck auth lock) instead of hanging', async () => {
+      let calls = 0;
+      const never = () => { calls++; return new Promise<never>(() => {}); };
+      await expect(__withRetry(never, 1, 30)).rejects.toThrow(/Délai dépassé/);
+      expect(calls).toBe(2); // a timeout counts as transient → one retry
     });
   });
 });

@@ -486,7 +486,7 @@ export function ResultsView({ players, match, isAdmin, isDark, orgId, isPro, onU
                 <button
                   onClick={onUpgrade}
                   style={{
-                    background: '#FFD700', color: '#000', border: 'none',
+                    background: 'var(--gold-fill)', color: '#000', border: 'none',
                     borderRadius: 10, padding: '9px 14px',
                     fontSize: 12, fontWeight: 800, cursor: 'pointer',
                     whiteSpace: 'nowrap', flexShrink: 0,

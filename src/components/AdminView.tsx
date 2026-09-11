@@ -686,7 +686,7 @@ export function AdminView({ players, activeMatch, currentOrg, onShowGuide, onGoT
                 <button key={n} onClick={() => setPepiteCount(n)} style={{
                   flex: 1, padding: '10px', borderRadius: 'var(--radius-sm)',
                   fontSize: 13, fontWeight: 600, border: 'none', cursor: 'pointer',
-                  background: pepiteCount === n ? 'var(--gold)' : 'var(--bg3)',
+                  background: pepiteCount === n ? 'var(--gold-fill)' : 'var(--bg3)',
                   color: pepiteCount === n ? '#000' : 'var(--label2)',
                 }}>
                   {n === 2 ? '⭐ ⭐  2 pépites' : '⭐ ⭐ ⭐  3 pépites'}
@@ -1037,7 +1037,7 @@ export function AdminView({ players, activeMatch, currentOrg, onShowGuide, onGoT
                 <button
                   className="btn btn-full"
                   style={{
-                    background: '#FFD700', color: '#000', border: 'none',
+                    background: 'var(--gold-fill)', color: '#000', border: 'none',
                     borderRadius: 'var(--radius-sm)', padding: '11px',
                     fontSize: 13, fontWeight: 800, cursor: 'pointer',
                   }}

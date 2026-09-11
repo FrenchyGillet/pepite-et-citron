@@ -4,6 +4,16 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <script src="/pwa-guard.js"></script>
+
+  <!-- Installed app: "/" is where most people tap "Add to Home Screen", and iOS
+       takes the status-bar style and icon from THIS page. Keep in sync with app.html. -->
+  <link rel="manifest" href="/manifest.webmanifest" />
+  <link rel="apple-touch-icon" href="/icon-192x192.png" />
+  <meta name="theme-color" content="#000000" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="Pépite &amp; Citron" />
   <title>Pépite & Citron — Votez le meilleur et le moins bon joueur</title>
   <meta name="description" content="Après chaque match, désignez la pépite et le citron de l'équipe. Vote en un geste, résultats en temps réel, stats de saison." />
   <link rel="canonical" href="https://pepite-citron.com/" />

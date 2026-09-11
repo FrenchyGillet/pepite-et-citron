@@ -46,7 +46,7 @@ export function EmptyState({ icon, title, subtitle, action }: EmptyStateProps) {
           onClick={action.onClick}
           style={{
             marginTop: 4, padding: "10px 24px",
-            background: "var(--gold)", color: "#000",
+            background: "var(--gold-fill)", color: "#000",
             border: "none", borderRadius: 12,
             fontSize: 15, fontWeight: 600, cursor: "pointer", minHeight: 44,
           }}

@@ -73,7 +73,7 @@ export function UpgradeModal({ orgId, onClose }: Props) {
         {/* Header */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 24 }}>
           <div>
-            <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: 1, textTransform: 'uppercase', color: '#FFD700', marginBottom: 6 }}>
+            <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: 1, textTransform: 'uppercase', color: 'var(--gold)', marginBottom: 6 }}>
               Pépite &amp; Citron Pro
             </div>
             <div style={{ fontSize: 22, fontWeight: 800, letterSpacing: -0.5 }}>
@@ -96,7 +96,7 @@ export function UpgradeModal({ orgId, onClose }: Props) {
               key={p}
               onClick={() => setPlan(p)}
               style={{
-                background: plan === p ? '#FFD700' : 'var(--bg3)',
+                background: plan === p ? 'var(--gold-fill)' : 'var(--bg3)',
                 color:      plan === p ? '#000'    : 'var(--label)',
                 border:     plan === p ? 'none'    : '1px solid var(--separator)',
                 borderRadius: 14, padding: '14px 12px', cursor: 'pointer',
@@ -113,7 +113,7 @@ export function UpgradeModal({ orgId, onClose }: Props) {
                 {p === 'monthly' ? 'par mois' : 'par an · économisez 63 %'}
               </div>
               {p === 'annual' && (
-                <div style={{ marginTop: 6, fontSize: 10, fontWeight: 700, background: plan === 'annual' ? 'rgba(0,0,0,0.12)' : 'rgba(255,215,0,0.15)', color: plan === 'annual' ? '#000' : '#FFD700', borderRadius: 6, padding: '2px 6px', display: 'inline-block' }}>
+                <div style={{ marginTop: 6, fontSize: 10, fontWeight: 700, background: plan === 'annual' ? 'rgba(0,0,0,0.12)' : 'rgba(255,215,0,0.15)', color: plan === 'annual' ? '#000' : 'var(--gold)', borderRadius: 6, padding: '2px 6px', display: 'inline-block' }}>
                   MEILLEURE OFFRE
                 </div>
               )}
@@ -125,13 +125,13 @@ export function UpgradeModal({ orgId, onClose }: Props) {
         <div style={{ marginBottom: 24 }}>
           {FEATURES_FREE.map(f => (
             <div key={f} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '6px 0', fontSize: 14, color: 'var(--label2)' }}>
-              <span style={{ color: '#32D74B', fontSize: 16 }}>✓</span> {f}
+              <span style={{ color: 'var(--green)', fontSize: 16 }}>✓</span> {f}
             </div>
           ))}
           <div style={{ margin: '8px 0', height: 1, background: 'var(--separator)' }} />
           {FEATURES_PRO.map(f => (
             <div key={f} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '6px 0', fontSize: 14, color: 'var(--label)', fontWeight: 500 }}>
-              <span style={{ color: '#FFD700', fontSize: 16 }}>⭐</span> {f}
+              <span style={{ color: 'var(--gold)', fontSize: 16 }}>⭐</span> {f}
             </div>
           ))}
         </div>
@@ -147,7 +147,7 @@ export function UpgradeModal({ orgId, onClose }: Props) {
           disabled={loading}
           style={{
             width: '100%', padding: '17px', borderRadius: 16,
-            background: '#FFD700', color: '#000', border: 'none',
+            background: 'var(--gold-fill)', color: '#000', border: 'none',
             fontSize: 16, fontWeight: 800, cursor: loading ? 'wait' : 'pointer',
             opacity: loading ? 0.7 : 1, transition: 'opacity 0.15s',
           }}

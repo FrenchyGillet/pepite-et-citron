@@ -33,12 +33,17 @@ describe.each([
   });
 });
 
-describe('primary button', () => {
-  it('dark: black text on --gold reaches AA', () => {
-    expect(contrastRatio('#000000', dark.gold)).toBeGreaterThanOrEqual(AA);
+describe('gold fills (primary buttons, pills) carry black text', () => {
+  it.each([
+    ['dark',  dark],
+    ['light', light],
+  ])('%s: black on --gold-fill reaches AA', (_theme, t) => {
+    expect(contrastRatio('#000000', t['gold-fill'])).toBeGreaterThanOrEqual(AA);
   });
-  it('light: white text on --gold reaches AA', () => {
-    expect(contrastRatio('#ffffff', light.gold)).toBeGreaterThanOrEqual(AA);
+
+  it('the text gold must not be used as a fill in light mode (black on it fails)', () => {
+    // why --gold-fill exists: the earlier light button was black/white on #8a6500
+    expect(contrastRatio('#000000', light.gold)).toBeLessThan(AA);
   });
 });
 

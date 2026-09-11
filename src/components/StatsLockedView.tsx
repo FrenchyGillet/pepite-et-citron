@@ -83,7 +83,7 @@ export function StatsLockedView({ onUpgrade, players }: Props) {
       <button
         onClick={() => { track(EVENTS.UPGRADE_CLICKED, { source: 'stats' }); onUpgrade(); }}
         style={{
-          background: '#FFD700',
+          background: 'var(--gold-fill)',
           color: '#000',
           border: 'none',
           borderRadius: 14,

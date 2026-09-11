@@ -44,7 +44,10 @@ try {
         const key = query.queryKey[0] as string;
         // Persist: players, activeMatch, matches, votes, currentSeason
         // Skip: orgMembers (sensitive), allVotes (heavy), guestTokens (short-lived)
-        return ['players', 'activeMatch', 'match', 'votes', 'matches', 'currentSeason'].includes(key);
+        // Only successful results (TanStack's default rule, which a custom
+        // filter replaces): never snapshot a query mid-flight or in error.
+        return query.state.status === 'success'
+          && ['players', 'activeMatch', 'match', 'votes', 'matches', 'currentSeason'].includes(key);
       },
     },
   });

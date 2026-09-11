@@ -22,10 +22,14 @@ function rpcWithTimeout<T>(fn: () => PromiseLike<T>, ms = 10000): Promise<T> {
 // aborts/timeouts and 5xx; never retries 4xx (client errors are permanent).
 // Reads and idempotent UPDATEs only: an INSERT that times out after the server
 // committed it would be inserted twice.
-async function withRetry<T>(fn: () => Promise<T>, retries = 1): Promise<T> {
+// Each attempt is also capped. supabase-js awaits the auth session (a lock held
+// while a token refresh runs) BEFORE it sends the request, so the fetch-level
+// abort in lib/supabase.ts cannot fire if a refresh hangs — which can leave a
+// screen on « Chargement… » forever instead of erroring.
+async function withRetry<T>(fn: () => Promise<T>, retries = 1, attemptTimeoutMs = 12_000): Promise<T> {
   for (let attempt = 0; attempt <= retries; attempt++) {
     try {
-      return await fn();
+      return await rpcWithTimeout(fn, attemptTimeoutMs);
     } catch (err) {
       const error  = err instanceof Error ? err : new Error(String(err));
       const status = (err as { status?: number })?.status;
@@ -690,3 +694,4 @@ export function __resetDemoState(): void {
 }
 
 export { demoAPI as __demoAPI };
+export { withRetry as __withRetry };

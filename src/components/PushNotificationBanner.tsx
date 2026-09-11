@@ -79,7 +79,7 @@ export function PushNotificationBanner({ orgId }: Props) {
           onClick={handleSubscribe}
           disabled={status === 'loading'}
           style={{
-            background: '#FFD700',
+            background: 'var(--gold-fill)',
             color: '#000',
             border: 'none',
             borderRadius: 10,

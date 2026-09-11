@@ -367,7 +367,7 @@ export function VoteView({ players, match, onVoted, guestName = null, onGuestVot
                   <div style={{ fontSize: 20, fontWeight: 800, color: 'var(--gold)', letterSpacing: '-0.3px', lineHeight: 1.1 }}>La Pépite</div>
                   <div style={{ fontSize: 12, color: 'var(--label3)', marginTop: 3 }}>Qui a tout déchiré aujourd'hui ?</div>
                 </div>
-                <div style={{ background: 'var(--gold)', color: '#000', borderRadius: 20, padding: '4px 11px', fontSize: 13, fontWeight: 800, flexShrink: 0 }}>
+                <div style={{ background: 'var(--gold-fill)', color: '#000', borderRadius: 20, padding: '4px 11px', fontSize: 13, fontWeight: 800, flexShrink: 0 }}>
                   {pepiteCount === 3 ? '3 pts' : '2 pts'}
                 </div>
               </div>

@@ -29,8 +29,8 @@ export function StatsView({ players, activeMatch, isAdmin, orgId }: StatsViewPro
   const [expandedId,     setExpandedId]     = useState<EntityId | null>(null);
   const [editingMatch,   setEditingMatch]   = useState<EditingMatch | null>(null);
 
-  const { data: allVotes   = [] }              = useAllVotes(orgId);
-  const { data: allMatches = [], isLoading }   = useMatches(orgId);
+  const { data: allVotes   = [], isError: votesError,   refetch: refetchVotes }   = useAllVotes(orgId);
+  const { data: allMatches = [], isLoading, isError: matchesError, refetch: refetchMatches } = useMatches(orgId);
   const { data: allTeams   = [] }              = useTeams(orgId);
   const { data: currentSeason = 1 }            = useCurrentSeason(orgId);
 
@@ -42,6 +42,18 @@ export function StatsView({ players, activeMatch, isAdmin, orgId }: StatsViewPro
   const { confirm, confirmDialog } = useConfirm();
 
   if (isLoading) return <div className="content"><div className="empty">Chargement…</div></div>;
+
+  // A failed load must not look like an empty season.
+  if (matchesError || votesError) return (
+    <div className="content">
+      <EmptyState
+        icon={<><circle cx="12" cy="12" r="9"/><path d="M12 8v5M12 16h.01"/></>}
+        title="Impossible de charger la saison"
+        subtitle="La connexion a échoué. Vérifie ton réseau et réessaie."
+        action={{ label: 'Réessayer', onClick: () => { void refetchMatches(); void refetchVotes(); } }}
+      />
+    </div>
+  );
 
   const votingInProgress = activeMatch?.is_open && (activeMatch.phase || 'voting') === 'voting';
   if (votingInProgress) return (

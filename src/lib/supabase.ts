@@ -19,12 +19,22 @@ function proxyUrl(url: string): string {
 // 2. Add a 6 s abort timeout to PostgREST/RPC calls to prevent indefinite
 //    hangs on cold-start or bad connections. withRetry() in api.ts owns the
 //    retry budget on top (1 retry), so worst case ≈ 2 × 6 s per query.
-// 3. Auth paths use native fetch (no extra timeout) so GoTrue's internal
-//    session management (refresh, lock, SIGNED_OUT events) is not disrupted.
+// 3. Auth paths get a longer 15 s abort. They used to have none, but every
+//    data request awaits GoTrue's session lock BEFORE it is sent, so a token
+//    refresh hanging on a dead socket (iOS PWA back from the background) held
+//    the lock — and every screen — forever. An aborted refresh surfaces as a
+//    retryable network error to GoTrue, which releases the lock and retries.
 function wrappedFetch(url: RequestInfo | URL, options: RequestInit = {}): Promise<Response> {
   const urlStr = proxyUrl(String(url));
 
-  // Auth, storage, realtime handshake — native fetch, just rewrite the URL.
+  if (urlStr.includes('/auth/v1/')) {
+    if (options.signal) return fetch(urlStr, options); // caller manages its own abort
+    const ctrl  = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), 15000);
+    return fetch(urlStr, { ...options, signal: ctrl.signal }).finally(() => clearTimeout(timer));
+  }
+
+  // Storage, realtime handshake — native fetch, just rewrite the URL.
   if (!urlStr.includes('/rest/v1/')) {
     return fetch(urlStr, options);
   }
