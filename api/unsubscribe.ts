@@ -7,9 +7,9 @@
  * a mail client's one-click List-Unsubscribe) records the choice.
  */
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { supabaseAdmin as supabase } from './_lib/supabaseAdmin';
-import { verifyUnsubscribeToken } from './_lib/unsubscribe';
-import { escapeHtml } from './_lib/http';
+import { supabaseAdmin as supabase } from './_lib/supabaseAdmin.js';
+import { verifyUnsubscribeToken } from './_lib/unsubscribe.js';
+import { escapeHtml } from './_lib/http.js';
 
 const APP_URL = process.env.VITE_APP_URL || 'https://pepite-citron.com';
 

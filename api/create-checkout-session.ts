@@ -1,8 +1,8 @@
 import Stripe from 'stripe';
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { supabaseAdmin } from './_lib/supabaseAdmin';
-import { requireOrgAdmin } from './_lib/auth';
-import { checkoutSessionSchema } from './_lib/validation';
+import { supabaseAdmin } from './_lib/supabaseAdmin.js';
+import { requireOrgAdmin } from './_lib/auth.js';
+import { checkoutSessionSchema } from './_lib/validation.js';
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!);
 

@@ -18,9 +18,9 @@
  */
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import webpush from 'web-push';
-import { supabaseAdmin as supabase } from './_lib/supabaseAdmin';
-import { requireOrgAdmin } from './_lib/auth';
-import { pushNotificationSchema } from './_lib/validation';
+import { supabaseAdmin as supabase } from './_lib/supabaseAdmin.js';
+import { requireOrgAdmin } from './_lib/auth.js';
+import { pushNotificationSchema } from './_lib/validation.js';
 
 const APP_URL = process.env.VITE_APP_URL || 'https://pepite-citron.com';
 

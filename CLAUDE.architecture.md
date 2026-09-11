@@ -50,6 +50,7 @@ Le fichier exporte deux objets conformes à l'interface `API` :
 - `rpcWithTimeout` : `Promise.race` autour d'un appel (10 s par défaut)
 
 ### Fonctions serverless — `api/`
+- **Imports relatifs avec l'extension `.js`** (`import { requireOrgAdmin } from './_lib/auth.js'`) : le projet est `"type": "module"`, Vercel exécute les fonctions en ESM natif et un import sans extension fait planter la fonction au chargement (`FUNCTION_INVOCATION_FAILED`). Vitest et tsc ne le voient pas ; `api/_lib/esmImports.test.ts` le vérifie
 - Chaque endpoint revalide son corps avec zod (`api/_lib/validation.ts`) et vérifie les droits (`requireOrgAdmin`, `api/_lib/auth.ts`) avant d'utiliser la clé service
 - Messages d'erreur renvoyés au client : génériques et en français ; le détail reste dans les logs Vercel
 - Emails : `api/_lib/email.ts` (Resend si `RESEND_API_KEY`, sinon Brevo), lien de désinscription signé (`api/_lib/unsubscribe.ts`)

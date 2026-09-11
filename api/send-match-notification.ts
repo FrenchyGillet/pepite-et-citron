@@ -12,12 +12,12 @@
  * Envoi : api/_lib/email.ts (Resend si RESEND_API_KEY, sinon Brevo).
  */
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { supabaseAdmin as supabase } from './_lib/supabaseAdmin';
-import { requireOrgAdmin } from './_lib/auth';
-import { matchNotificationSchema } from './_lib/validation';
-import { escapeHtml } from './_lib/http';
-import { unsubscribeUrl } from './_lib/unsubscribe';
-import { emailProvider, sendEmails } from './_lib/email';
+import { supabaseAdmin as supabase } from './_lib/supabaseAdmin.js';
+import { requireOrgAdmin } from './_lib/auth.js';
+import { matchNotificationSchema } from './_lib/validation.js';
+import { escapeHtml } from './_lib/http.js';
+import { unsubscribeUrl } from './_lib/unsubscribe.js';
+import { emailProvider, sendEmails } from './_lib/email.js';
 
 const APP_URL = process.env.VITE_APP_URL || 'https://pepite-citron.com';
 
