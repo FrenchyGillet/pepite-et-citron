@@ -105,4 +105,29 @@ describe('POST /api/create-checkout-session', () => {
       cancel_url:  'https://pepite-citron.com/admin',
     }));
   });
+
+  // EU consumer law: immediate access requires an explicit withdrawal waiver.
+  it('asks for explicit consent and the withdrawal-right waiver', async () => {
+    await handler(req() as any, makeRes() as any);
+    expect(mockStripe.checkout.sessions.create).toHaveBeenCalledWith(expect.objectContaining({
+      consent_collection: { terms_of_service: 'required' },
+      custom_text: {
+        terms_of_service_acceptance: { message: expect.stringMatching(/droit de rétractation de 14 jours/) },
+        submit: { message: expect.stringMatching(/sans engagement/) },
+      },
+    }));
+  });
+
+  it('still opens checkout, with the notice only, when no Terms URL is set in Stripe', async () => {
+    mockStripe.checkout.sessions.create
+      .mockRejectedValueOnce(new Error('You cannot collect consent to your terms of service unless a URL is set in the Stripe Dashboard.'))
+      .mockResolvedValueOnce({ url: 'https://checkout' });
+    vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const res = makeRes();
+    await handler(req() as any, res as any);
+    expect(res.statusCode).toBe(200);
+    const retry = mockStripe.checkout.sessions.create.mock.calls[1][0];
+    expect(retry).not.toHaveProperty('consent_collection');
+    expect(retry.custom_text.submit.message).toMatch(/renoncez au délai de rétractation/);
+  });
 });
