@@ -2,6 +2,8 @@ import { useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { DEMO_MODE, api } from '@/api';
 import { useAppStore } from '@/store/appStore';
+import { humanizeError } from '@/utils/errors';
+import { joinFrenchList } from '@/utils/reminder';
 import { useAuth } from '@/hooks/useAuth';
 import { useOrg } from '@/hooks/useOrg';
 import { usePlayers } from '@/hooks/queries';
@@ -303,6 +305,8 @@ export function ProfileView() {
 // ── Delete account ────────────────────────────────────────────────────────────
 
 function DeleteAccountButton() {
+  const myOrgs = useAppStore(s => s.myOrgs);
+  const adminTeams = myOrgs.filter(o => o.role === 'admin').map(o => o.name);
   const [confirm1, setConfirm1] = useState(false);
   const [loading,  setLoading]  = useState(false);
   const [error,    setError]    = useState<string | null>(null);
@@ -314,7 +318,7 @@ function DeleteAccountButton() {
       await api.deleteAccount();
       // After deletion the auth state change will redirect to AuthView
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Erreur inconnue');
+      setError(humanizeError(err));
       setLoading(false);
       setConfirm1(false);
     }
@@ -341,8 +345,15 @@ function DeleteAccountButton() {
         Confirmer la suppression
       </p>
       <p style={{ fontSize: 12, color: 'var(--label3)', lineHeight: 1.5 }}>
-        Ton compte, tes votes et les équipes dont tu es le seul administrateur (avec leurs matchs) seront supprimés définitivement. Cette action est irréversible.
+        Ton compte et tes votes seront supprimés définitivement. Cette action est irréversible.
       </p>
+      {adminTeams.length > 0 && (
+        <p style={{ fontSize: 12, color: 'var(--red)', lineHeight: 1.5, fontWeight: 600 }}>
+          Si tu es le seul administrateur de {joinFrenchList(adminTeams)},{' '}
+          {adminTeams.length > 1 ? 'ces équipes seront supprimées' : "l'équipe sera supprimée"}{' '}
+          avec tous ses matchs et votes, pour tous les membres.
+        </p>
+      )}
       {error && <p style={{ fontSize: 12, color: 'var(--red)' }}>{error}</p>}
       <div className="flex gap-8">
         <button className="btn btn-secondary" style={{ flex: 1 }} onClick={() => setConfirm1(false)} disabled={loading}>

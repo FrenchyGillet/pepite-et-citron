@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useModalA11y } from '@/hooks/useModalA11y';
+import { humanizeError } from '@/utils/errors';
 
 interface Props {
   orgId: string;
@@ -43,7 +44,7 @@ export function UpgradeModal({ orgId, onClose }: Props) {
       if (!res.ok || !data.url) throw new Error(data.error || 'Erreur serveur');
       window.location.href = data.url;
     } catch (err) {
-      setError((err as Error).message);
+      setError(humanizeError(err));
       setLoading(false);
     }
   }

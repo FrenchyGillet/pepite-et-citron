@@ -4,6 +4,7 @@ import { api } from '@/api';
 import { loginSchema, signupSchema, type AuthFormValues } from '@/schemas';
 import { OnboardingModal } from '@/components/OnboardingModal';
 import { track, EVENTS } from '@/utils/analytics';
+import { humanizeError } from '@/utils/errors';
 import type { UserSession } from '@/types';
 
 interface AuthViewProps {
@@ -45,7 +46,7 @@ export function AuthView({ onAuth }: AuthViewProps) {
         await api.resetPassword(data.email);
         setResetSent(true);
       } catch (err) {
-        setApiError(err instanceof Error ? err.message : 'Une erreur est survenue');
+        setApiError(humanizeError(err));
       }
       return;
     }
@@ -73,7 +74,7 @@ export function AuthView({ onAuth }: AuthViewProps) {
         onAuth(session, mode === 'signup');
       }
     } catch (err) {
-      setApiError(err instanceof Error ? err.message : 'Une erreur est survenue');
+      setApiError(humanizeError(err));
     }
   });
 

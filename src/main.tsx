@@ -116,7 +116,7 @@ if (IS_PROD && !SENTRY_DSN) {
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <Sentry.ErrorBoundary
-      fallback={({ resetError }) => (
+      fallback={() => (
         <div style={{
           minHeight: '100dvh', display: 'flex', alignItems: 'center',
           justifyContent: 'center', background: '#111', padding: 24,
@@ -134,7 +134,8 @@ createRoot(document.getElementById('root')!).render(
               Recharge la page pour continuer.
             </div>
             <button
-              onClick={resetError}
+              // A full reload: resetError alone re-renders the same broken tree.
+              onClick={() => window.location.reload()}
               style={{
                 width: '100%', padding: '14px', borderRadius: 12,
                 background: '#ffd60a', color: '#000', fontWeight: 700,

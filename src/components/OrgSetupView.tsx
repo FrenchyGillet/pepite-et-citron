@@ -3,6 +3,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { api } from '@/api';
 import { orgSetupSchema, type OrgSetupFormValues } from '@/schemas';
+import { humanizeError } from '@/utils/errors';
 import type { Org } from '@/types';
 
 interface OrgCreateFormProps {
@@ -60,7 +61,7 @@ export function OrgCreateForm({ onOrgCreated, submitLabel = "Créer l'équipe �
       if (msg.includes('unique') || msg.includes('duplicate')) {
         setError('name', { message: 'Ce nom d\'équipe est déjà utilisé. Essayez un autre nom.' });
       } else {
-        setError('root', { message: msg });
+        setError('root', { message: humanizeError(err, "Impossible de créer l'équipe. Réessaie.") });
       }
     }
   });

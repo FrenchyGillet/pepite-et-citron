@@ -51,20 +51,33 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
             <div style={{ fontSize: 16, fontWeight: 700, color: 'var(--label)', marginBottom: 6 }}>
               Quelque chose a planté
             </div>
+            {/* The technical detail stays in the console (componentDidCatch). */}
             <div style={{ fontSize: 13, color: 'var(--label3)', lineHeight: 1.5, maxWidth: 260 }}>
-              {this.state.error.message || 'Erreur inattendue'}
+              Réessaie. Si ça recommence, recharge la page.
             </div>
           </div>
-          <button
-            onClick={this.reset}
-            style={{
-              marginTop: 4, padding: '10px 24px',
-              background: 'var(--bg3)', border: 'none',
-              borderRadius: 12, fontSize: 14, fontWeight: 600,
-              cursor: 'pointer', color: 'var(--label)',
-            }}>
-            Réessayer
-          </button>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <button
+              onClick={this.reset}
+              style={{
+                marginTop: 4, padding: '10px 24px',
+                background: 'var(--bg3)', border: 'none',
+                borderRadius: 12, fontSize: 14, fontWeight: 600,
+                cursor: 'pointer', color: 'var(--label)',
+              }}>
+              Réessayer
+            </button>
+            <button
+              onClick={() => window.location.reload()}
+              style={{
+                marginTop: 4, padding: '10px 24px',
+                background: 'none', border: '1px solid var(--separator)',
+                borderRadius: 12, fontSize: 14, fontWeight: 600,
+                cursor: 'pointer', color: 'var(--label2)',
+              }}>
+              Recharger
+            </button>
+          </div>
         </div>
       );
     }

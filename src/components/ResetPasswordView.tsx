@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { api } from '@/api';
 import { useAppStore } from '@/store/appStore';
+import { humanizeError } from '@/utils/errors';
 
 export function ResetPasswordView() {
   const setPasswordRecovery = useAppStore(s => s.setPasswordRecovery);
@@ -32,7 +33,7 @@ export function ResetPasswordView() {
       // so the app continues as a normal authenticated session.
       setTimeout(() => setPasswordRecovery(false), 2000);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Une erreur est survenue');
+      setError(humanizeError(err));
     } finally {
       setSubmitting(false);
     }

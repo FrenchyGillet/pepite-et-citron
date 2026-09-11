@@ -75,15 +75,40 @@ describe('JoinOrgView', () => {
     expect(screen.getByText(/Les Lions/i)).toBeInTheDocument();
   });
 
-  it('clears pendingOrgId even when selfJoinOrg fails', async () => {
+  // U9: the error screen used to be unreachable (pendingOrgId was cleared at
+  // once, so App unmounted it) — it now waits for the voter's choice.
+  it('keeps the error screen until the voter chooses to continue without the team', async () => {
     useAppStore.setState({ pendingOrgId: 'org-1' });
     vi.spyOn(__demoAPI, 'selfJoinOrg').mockRejectedValueOnce(new Error('RLS'));
+    const user = userEvent.setup();
 
     render(withProviders(<JoinOrgView orgId="org-1" orgName="Les Lions" />));
 
-    await waitFor(() => {
-      expect(useAppStore.getState().pendingOrgId).toBeNull();
-    });
+    await user.click(await screen.findByRole('button', { name: 'Continuer sans équipe' }));
+    expect(useAppStore.getState().pendingOrgId).toBeNull();
+  });
+
+  it('"Réessayer" retries the join', async () => {
+    useAppStore.setState({ pendingOrgId: 'org-1' });
+    // spyOn returns the spy earlier tests created: start from a clean count.
+    const join = vi.spyOn(__demoAPI, 'selfJoinOrg');
+    join.mockClear();
+    join.mockRejectedValueOnce(new Error('timeout'));
+    const user = userEvent.setup();
+
+    render(withProviders(<JoinOrgView orgId="org-1" orgName="Les Lions" />));
+    await user.click(await screen.findByRole('button', { name: 'Réessayer' }));
+
+    expect(await screen.findByText(/Bienvenue dans Les Lions/i)).toBeInTheDocument();
+    expect(join).toHaveBeenCalledTimes(2);
+    expect(useAppStore.getState().pendingOrgId).toBeNull();
+  });
+
+  it('never shows the raw technical error', async () => {
+    vi.spyOn(__demoAPI, 'selfJoinOrg').mockRejectedValueOnce(new Error('new row violates row-level security policy'));
+    render(withProviders(<JoinOrgView orgId="org-1" orgName="Les Lions" />));
+    await screen.findByText(/Compte créé/i);
+    expect(screen.queryByText(/row-level security/)).not.toBeInTheDocument();
   });
 
   it('shows "Compte créé !" heading in error fallback', async () => {

@@ -82,7 +82,6 @@ export default function App() {
   const currentOrg       = useAppStore(s => s.currentOrg);
   const orgsResolved     = useAppStore(s => s.orgsResolved);
   const orgsLoadError       = useAppStore(s => s.orgsLoadError);
-  const orgsLoadErrorDetail = useAppStore(s => s.orgsLoadErrorDetail);
   const showOnboarding     = useAppStore(s => s.showOnboarding);
   const passwordRecovery   = useAppStore(s => s.passwordRecovery);
   const theme              = useAppStore(s => s.theme);
@@ -200,13 +199,6 @@ export default function App() {
             <div style={{ fontSize: 14, color: 'var(--label3)', marginBottom: 24, lineHeight: 1.6 }}>
               Erreur de connexion au serveur.<br />Vérifie ta connexion et réessaie.
             </div>
-            {orgsLoadErrorDetail && (
-              <div style={{ fontSize: 11, color: 'var(--label3)', marginBottom: 16, lineHeight: 1.5,
-                fontFamily: 'monospace', background: 'rgba(0,0,0,0.3)', borderRadius: 8,
-                padding: '8px 10px', textAlign: 'left', wordBreak: 'break-all' }}>
-                {orgsLoadErrorDetail}
-              </div>
-            )}
             <button className="btn btn-primary btn-full" onClick={() => { setOrgsResolved(false); void loadOrgs(); }}>
               Réessayer
             </button>

@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, type ReactNode } from 'react';
+import { useState, useRef, type ReactNode } from 'react';
 import { DEMO_MODE } from '@/api';
 import { track, EVENTS } from '@/utils/analytics';
 import {
@@ -8,6 +8,7 @@ import {
 import { isActive, parsePlayerNames } from '@/utils/player';
 import { shuffleRevealOrder } from '@/utils/vote';
 import { copyToClipboard } from '@/utils/clipboard';
+import { humanizeError } from '@/utils/errors';
 import { VOTE_DURATIONS, deadlineFrom, extendDeadline, formatDeadline, isDeadlinePassed, DEADLINE_EXTENSION_MINUTES } from '@/utils/deadline';
 import { buildReminderMessage } from '@/utils/reminder';
 import { useNow } from '@/hooks/useNow';
@@ -163,14 +164,6 @@ export function AdminView({ players, activeMatch, currentOrg, onShowGuide, onGoT
   const [memberEmail,     setMemberEmail]     = useState('');
   const [pepiteCount,     setPepiteCount]     = useState<2 | 3>(2);
   const [voteDuration,    setVoteDuration]    = useState<number | null>(null);
-  // Inline close-match confirmation (replaces window.confirm, which is
-  // unreliable in iOS PWA standalone mode)
-  const [confirmClose,    setConfirmClose]    = useState(false);
-
-  // Reset the close-confirmation when the active match changes (e.g. already
-  // closed by someone else) so the button always starts in its default state.
-  useEffect(() => { setConfirmClose(false); }, [activeMatch?.id]);
-
   // Minimum players present for a valid vote:
   // each voter picks pepiteCount winners (all different from each other and
   // from the voter themselves), so the squad must contain at least pepiteCount + 1.
@@ -247,7 +240,7 @@ export function AdminView({ players, activeMatch, currentOrg, onShowGuide, onGoT
       { id: activeMatch.id, data: { vote_deadline: extendDeadline(voteDeadline, Date.now()) } },
       {
         onSuccess: () => setToast(`Vote prolongé de ${DEADLINE_EXTENSION_MINUTES} min`),
-        onError: (err) => setToast(`Erreur : ${err instanceof Error ? err.message : String(err)}`),
+        onError: (err) => setToast(humanizeError(err)),
       },
     );
   };
@@ -286,7 +279,7 @@ export function AdminView({ players, activeMatch, currentOrg, onShowGuide, onGoT
     }))) return;
     deleteVoteMutation.mutate(vote.id, {
       onSuccess: () => setToast(`Vote de ${p.name} annulé`),
-      onError: (err) => setToast(`Erreur : ${err instanceof Error ? err.message : String(err)}`),
+      onError: (err) => setToast(humanizeError(err)),
     });
   };
 
@@ -298,7 +291,7 @@ export function AdminView({ players, activeMatch, currentOrg, onShowGuide, onGoT
     const { email } = result.data;
     addMemberMutation.mutate({ email, role: 'voter' }, {
       onSuccess: () => { setMemberEmail(''); setToast(`${email} ajouté comme votant`); },
-      onError: (err) => setToast(`Erreur : ${err instanceof Error ? err.message : String(err)}`),
+      onError: (err) => setToast(humanizeError(err)),
     });
   };
 
@@ -307,7 +300,7 @@ export function AdminView({ players, activeMatch, currentOrg, onShowGuide, onGoT
     if (!(await confirm({ message: `Retirer ${email} ?`, confirmLabel: 'Retirer', danger: true }))) return;
     removeMemberMutation.mutate(userId, {
       onSuccess: () => setToast(`${email} retiré`),
-      onError: (err) => setToast(`Erreur : ${err instanceof Error ? err.message : String(err)}`),
+      onError: (err) => setToast(humanizeError(err)),
     });
   };
 
@@ -342,7 +335,15 @@ export function AdminView({ players, activeMatch, currentOrg, onShowGuide, onGoT
     }
   };
 
-  const revokeGuest = (id: EntityId) => deleteGuestTokenMutation.mutate(id);
+  const revokeGuest = async (gt: { id: EntityId; name: string; used?: boolean }) => {
+    if (!(await confirm({
+      message: gt.used
+        ? `Retirer ${gt.name} de la liste ? Son vote reste compté.`
+        : `Révoquer le lien de ${gt.name} ? Il ne pourra plus voter avec ce lien.`,
+      confirmLabel: gt.used ? 'Retirer' : 'Révoquer', danger: true,
+    }))) return;
+    deleteGuestTokenMutation.mutate(gt.id, { onError: (err) => setToast(humanizeError(err)) });
+  };
 
   // The single field and the pasted list go through the same parser: names
   // are split on new lines / commas, and repeats are reported, not re-added.
@@ -362,11 +363,11 @@ export function AdminView({ players, activeMatch, currentOrg, onShowGuide, onGoT
         setToast(skipped ? `${added} · ${skipped}` : added);
         onDone();
       },
-      onError: (err) => { setToast(`Erreur : ${err instanceof Error ? err.message : String(err)}`); console.error('addPlayers:', err); },
+      onError: (err) => { setToast(humanizeError(err)); console.error('addPlayers:', err); },
     });
   };
 
-  const onPlayerError = (err: unknown) => setToast(`Erreur : ${err instanceof Error ? err.message : String(err)}`);
+  const onPlayerError = (err: unknown) => setToast(humanizeError(err));
 
   const archivePlayer = async (p: Player) => {
     if (!(await confirm({
@@ -398,7 +399,7 @@ export function AdminView({ players, activeMatch, currentOrg, onShowGuide, onGoT
   const saveSeasonName = () => {
     setSeasonNameMutation.mutate({ season: currentSeason, name: seasonNameDraft.trim() }, {
       onSuccess: () => { setEditingSeason(false); setToast('Nom de saison sauvegardé !'); },
-      onError: (err) => setToast(`Erreur : ${err instanceof Error ? err.message : String(err)}`),
+      onError: (err) => setToast(humanizeError(err)),
     });
   };
 
@@ -410,7 +411,7 @@ export function AdminView({ players, activeMatch, currentOrg, onShowGuide, onGoT
     }))) return;
     advanceSeasonMutation.mutate(undefined, {
       onSuccess: (next) => { setSeasonNameDraft(''); setToast(`Saison ${next} démarrée !`); },
-      onError: (err) => setToast(`Erreur : ${err instanceof Error ? err.message : String(err)}`),
+      onError: (err) => setToast(humanizeError(err)),
     });
   };
 
@@ -441,11 +442,16 @@ export function AdminView({ players, activeMatch, currentOrg, onShowGuide, onGoT
     );
   };
 
-  const closeMatch = () => {
+  const closeMatch = async () => {
     if (!activeMatch) return;
+    const votes = `${voteCount} vote${voteCount !== 1 ? 's' : ''} reçu${voteCount !== 1 ? 's' : ''}`;
+    if (!(await confirm({
+      message: `Clore « ${activeMatch.label} » sans dépouiller ? Le vote sera fermé définitivement : les ${votes} ne seront jamais révélés et le match ne comptera pas dans la saison.`,
+      confirmLabel: 'Clore sans dépouiller', danger: true,
+    }))) return;
     closeMatchMutation.mutate(activeMatch.id, {
-      onSuccess: () => { setToast('Vote clôturé'); setConfirmClose(false); },
-      onError:   (err) => setToast(`Erreur : ${err instanceof Error ? err.message : String(err)}`),
+      onSuccess: () => setToast('Vote clôturé'),
+      onError:   (err) => setToast(humanizeError(err)),
     });
   };
 
@@ -661,29 +667,18 @@ export function AdminView({ players, activeMatch, currentOrg, onShowGuide, onGoT
                   </div>
                 )}
 
-                {!confirmClose ? (
-                  <button className="btn btn-danger btn-full" style={{ fontSize: 13 }}
-                    onClick={() => setConfirmClose(true)}>
-                    Clore sans dépouiller
-                  </button>
-                ) : (
-                  <>
-                    <p style={{ fontSize: 12, color: 'var(--red)', textAlign: 'center', margin: '0 0 8px' }}>
-                      Le vote sera définitivement fermé sans dépouillement. Cette action est irréversible.
-                    </p>
-                    <div className="flex gap-8">
-                      <button className="btn btn-secondary" style={{ flex: 1 }}
-                        onClick={() => setConfirmClose(false)}>
-                        Annuler
-                      </button>
-                      <button className="btn btn-danger" style={{ flex: 1 }}
-                        disabled={closeMatchMutation.isPending}
-                        onClick={closeMatch}>
-                        {closeMatchMutation.isPending ? 'Clôture…' : 'Confirmer'}
-                      </button>
-                    </div>
-                  </>
-                )}
+                {/* Kept discreet, away from the main action: closing skips the
+                    reveal for good (confirmation dialog). */}
+                <button
+                  onClick={() => void closeMatch()}
+                  disabled={closeMatchMutation.isPending}
+                  style={{
+                    alignSelf: 'center', marginTop: 12, padding: '8px 12px',
+                    background: 'none', border: 'none', cursor: 'pointer',
+                    fontSize: 13, color: 'var(--label3)', textDecoration: 'underline',
+                  }}>
+                  {closeMatchMutation.isPending ? 'Clôture…' : 'Clore sans dépouiller…'}
+                </button>
               </div>
             )}
             {phase === 'counting' && (
@@ -822,7 +817,7 @@ export function AdminView({ players, activeMatch, currentOrg, onShowGuide, onGoT
                         {copiedToken === gt.token ? 'Copié !' : 'Copier le lien'}
                       </button>
                     )}
-                    <button onClick={() => revokeGuest(gt.id)}
+                    <button onClick={() => void revokeGuest(gt)}
                       aria-label={`Révoquer le lien de ${gt.name}`} title="Révoquer le lien"
                       style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 16, color: 'var(--label4)', padding: '4px 8px' }}>✕</button>
                   </div>
@@ -1285,7 +1280,7 @@ function ManageSubscriptionButton({ orgId }: { orgId: string }) {
       if (!res.ok || !data.url) throw new Error(data.error || 'Erreur inattendue');
       window.location.href = data.url;
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Erreur inconnue');
+      setError(humanizeError(err));
       setLoading(false);
     }
   };

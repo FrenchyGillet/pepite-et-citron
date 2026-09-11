@@ -1,4 +1,4 @@
-import { screen } from "@testing-library/react";
+import { screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { __resetDemoState, __demoAPI } from "@/App.jsx";
@@ -133,61 +133,46 @@ describe("Destructive actions use the confirm modal (not window.confirm)", () =>
   });
 });
 
-describe("Close match (inline confirmation)", () => {
-  it("shows inline confirmation after clicking 'Clore sans dépouiller'", async () => {
-    await __demoAPI.createMatch("Match actif", [1, 2, 3, 4, 5], null, 1);
-
+describe("Close match without reveal (confirmation dialog)", () => {
+  async function openAdmin() {
     renderApp();
     const user = userEvent.setup();
+    await user.click(await screen.findByRole("button", { name: /admin/i }));
+    return user;
+  }
 
-    const adminBtn = await screen.findByRole("button", { name: /admin/i });
-    await user.click(adminBtn);
-
-    // First click — must NOT close immediately; must show confirmation UI
-    const cloreBtn = await screen.findByRole("button", { name: /clore sans dépouiller/i });
-    await user.click(cloreBtn);
-
-    // Confirmation prompt appears
-    expect(await screen.findByRole("button", { name: /confirmer/i })).toBeInTheDocument();
-    expect(await screen.findByRole("button", { name: /annuler/i })).toBeInTheDocument();
-    // Original button is gone
-    expect(screen.queryByRole("button", { name: /clore sans dépouiller/i })).not.toBeInTheDocument();
-  });
-
-  it("cancels and restores the original button when 'Annuler' is clicked", async () => {
+  it("asks for confirmation before closing, naming the match", async () => {
     await __demoAPI.createMatch("Match actif", [1, 2, 3, 4, 5], null, 1);
-
-    renderApp();
-    const user = userEvent.setup();
-
-    const adminBtn = await screen.findByRole("button", { name: /admin/i });
-    await user.click(adminBtn);
+    const user = await openAdmin();
 
     await user.click(await screen.findByRole("button", { name: /clore sans dépouiller/i }));
-    await user.click(await screen.findByRole("button", { name: /annuler/i }));
 
-    // Original button is back, confirmation is gone
-    expect(await screen.findByRole("button", { name: /clore sans dépouiller/i })).toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: /confirmer/i })).not.toBeInTheDocument();
+    const dialog = await screen.findByRole("alertdialog");
+    expect(within(dialog).getByText(/Match actif/)).toBeInTheDocument();
+    expect(within(dialog).getByText(/ne seront jamais révélés/)).toBeInTheDocument();
+    expect(await __demoAPI.getActiveMatch()).not.toBeNull();
   });
 
-  it("closes the match and shows toast when 'Confirmer' is clicked", async () => {
+  it("keeps the vote open when the admin cancels", async () => {
     await __demoAPI.createMatch("Match actif", [1, 2, 3, 4, 5], null, 1);
-
-    renderApp();
-    const user = userEvent.setup();
-
-    const adminBtn = await screen.findByRole("button", { name: /admin/i });
-    await user.click(adminBtn);
+    const user = await openAdmin();
 
     await user.click(await screen.findByRole("button", { name: /clore sans dépouiller/i }));
-    await user.click(await screen.findByRole("button", { name: /confirmer/i }));
+    await user.click(within(await screen.findByRole("alertdialog")).getByRole("button", { name: "Annuler" }));
 
-    // Toast confirms the action
+    expect(screen.queryByRole("alertdialog")).not.toBeInTheDocument();
+    expect(await __demoAPI.getActiveMatch()).not.toBeNull();
+  });
+
+  it("closes the match and shows a toast once confirmed", async () => {
+    await __demoAPI.createMatch("Match actif", [1, 2, 3, 4, 5], null, 1);
+    const user = await openAdmin();
+
+    await user.click(await screen.findByRole("button", { name: /clore sans dépouiller/i }));
+    await user.click(within(await screen.findByRole("alertdialog")).getByRole("button", { name: "Clore sans dépouiller" }));
+
     expect(await screen.findByText("Vote clôturé")).toBeInTheDocument();
-    // The active-match section is gone — match is closed
     expect(screen.queryByRole("button", { name: /clore sans dépouiller/i })).not.toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: /confirmer/i })).not.toBeInTheDocument();
   });
 });
 

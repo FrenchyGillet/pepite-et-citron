@@ -10,16 +10,19 @@ interface JoinOrgViewProps {
 /**
  * Shown instead of OrgSetupView when a voter signed up via the ?org= link.
  * Auto-joins the org as 'voter', then reloads orgs so the main app can open.
+ * On failure the voter can retry or carry on without the team — App keeps
+ * rendering this view until pendingOrgId is cleared.
  */
 export function JoinOrgView({ orgId, orgName }: JoinOrgViewProps) {
-  const [status, setStatus] = useState<'joining' | 'done' | 'error'>('joining');
-  const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [status,  setStatus]  = useState<'joining' | 'done' | 'error'>('joining');
+  const [attempt, setAttempt] = useState(0);
 
   const loadOrgs         = useAppStore(s => s.loadOrgs);
   const setPendingOrgId  = useAppStore(s => s.setPendingOrgId);
 
   useEffect(() => {
     let cancelled = false;
+    setStatus('joining');
     void (async () => {
       try {
         await api.selfJoinOrg(orgId);
@@ -30,17 +33,27 @@ export function JoinOrgView({ orgId, orgName }: JoinOrgViewProps) {
       } catch (err) {
         if (cancelled) return;
         console.warn('selfJoinOrg failed:', err);
-        // Even if auto-join fails (RLS), clear pending so app doesn't loop
-        setPendingOrgId(null);
-        setErrorMsg(err instanceof Error ? err.message : 'Erreur inconnue');
         setStatus('error');
-        // Force orgs reload so the app can continue (user just won't be a member)
-        await loadOrgs().catch(() => {});
       }
     })();
     return () => { cancelled = true; };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [orgId]);
+  }, [orgId, attempt]);
+
+  const continueWithoutTeam = () => {
+    setPendingOrgId(null);
+    void loadOrgs().catch(() => {});
+  };
+
+  const logo = (
+    <div style={{ textAlign: 'center', marginBottom: 32 }}>
+      <div className="header-logo" style={{ fontSize: 28 }}>
+        <span className="header-pepite">Pépite</span>
+        <span className="header-amp"> & </span>
+        <span className="header-citron">Citron</span>
+      </div>
+    </div>
+  );
 
   if (status === 'joining' || status === 'done') {
     return (
@@ -49,13 +62,7 @@ export function JoinOrgView({ orgId, orgName }: JoinOrgViewProps) {
         alignItems: 'center', justifyContent: 'center',
         padding: '24px 16px', background: 'var(--bg)',
       }}>
-        <div style={{ textAlign: 'center', marginBottom: 32 }}>
-          <div className="header-logo" style={{ fontSize: 28 }}>
-            <span className="header-pepite">Pépite</span>
-            <span className="header-amp"> & </span>
-            <span className="header-citron">Citron</span>
-          </div>
-        </div>
+        {logo}
         <div style={{
           width: 64, height: 64, borderRadius: '50%',
           background: 'rgba(255,215,0,0.12)',
@@ -88,20 +95,14 @@ export function JoinOrgView({ orgId, orgName }: JoinOrgViewProps) {
     );
   }
 
-  // error — RLS blocked the insert (missing policy); show a graceful fallback
+  // error — the account exists, only the link to the team failed
   return (
     <div style={{
       minHeight: '100dvh', display: 'flex', flexDirection: 'column',
       alignItems: 'center', justifyContent: 'center',
       padding: '24px 16px', background: 'var(--bg)',
     }}>
-      <div style={{ textAlign: 'center', marginBottom: 32 }}>
-        <div className="header-logo" style={{ fontSize: 28 }}>
-          <span className="header-pepite">Pépite</span>
-          <span className="header-amp"> & </span>
-          <span className="header-citron">Citron</span>
-        </div>
-      </div>
+      {logo}
       <div style={{
         width: '100%', maxWidth: 380,
         background: 'var(--bg2)', borderRadius: 'var(--radius-lg)',
@@ -112,14 +113,16 @@ export function JoinOrgView({ orgId, orgName }: JoinOrgViewProps) {
           Compte créé !
         </div>
         <p style={{ fontSize: 14, color: 'var(--label3)', lineHeight: 1.6, marginBottom: 20 }}>
-          Ton compte est prêt. Demande à ton capitaine de t&apos;ajouter dans l&apos;équipe{' '}
-          <strong style={{ color: 'var(--label)' }}>{orgName}</strong> pour accéder aux stats de saison.
+          On n&apos;a pas réussi à te relier à l&apos;équipe{' '}
+          <strong style={{ color: 'var(--label)' }}>{orgName}</strong>. Réessaie, ou demande à ton
+          capitaine de t&apos;ajouter pour accéder aux stats de saison.
         </p>
-        {errorMsg && (
-          <p style={{ fontSize: 11, color: 'var(--label4)', fontFamily: 'monospace', marginBottom: 12 }}>
-            {errorMsg}
-          </p>
-        )}
+        <button className="btn btn-primary btn-full" onClick={() => setAttempt(a => a + 1)}>
+          Réessayer
+        </button>
+        <button className="btn btn-secondary btn-full" style={{ marginTop: 10 }} onClick={continueWithoutTeam}>
+          Continuer sans équipe
+        </button>
       </div>
     </div>
   );
