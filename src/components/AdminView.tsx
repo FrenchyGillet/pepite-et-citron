@@ -1,31 +1,21 @@
-import { useState, useRef, type ReactNode } from 'react';
+import { useState } from 'react';
 import { DEMO_MODE } from '@/api';
 import { track, EVENTS } from '@/utils/analytics';
-import {
-  matchLabelSchema, teamNameSchema,
-  guestNameSchema, memberEmailSchema,
-} from '@/schemas';
-import { isActive, parsePlayerNames } from '@/utils/player';
-import { shuffleRevealOrder } from '@/utils/vote';
+import { isActive } from '@/utils/player';
 import { copyToClipboard } from '@/utils/clipboard';
-import { humanizeError } from '@/utils/errors';
-import { VOTE_DURATIONS, deadlineFrom, extendDeadline, formatDeadline, isDeadlinePassed, DEADLINE_EXTENSION_MINUTES } from '@/utils/deadline';
-import { buildReminderMessage } from '@/utils/reminder';
-import { useNow } from '@/hooks/useNow';
+import { useTeams, useCurrentSeason } from '@/hooks/queries';
+import { useConfirm } from '@/hooks/useConfirm';
+import { CollapsibleSection } from '@/components/admin/CollapsibleSection';
+import { ActiveMatchPanel } from '@/components/admin/ActiveMatchPanel';
+import { MatchLauncher } from '@/components/admin/MatchLauncher';
+import { GuestLinksSection } from '@/components/admin/GuestLinksSection';
+import { PlayersSection } from '@/components/admin/PlayersSection';
+import { TeamsSection } from '@/components/admin/TeamsSection';
+import { SettingsSection } from '@/components/admin/SettingsSection';
+import type { Player, Match, Org } from '@/types';
 import { Toast } from './Toast';
 import { SetupChecklist } from './SetupChecklist';
-import { useTeams, useGuestTokens, useOrgMembers, useVotes, useCurrentSeason, useSeasonNames } from '@/hooks/queries';
-import {
-  useAddPlayers, useRemovePlayer, useSetPlayerArchived,
-  useCreateMatch, useCloseMatch, useStartCounting, useUpdateMatch, useSendVoteReminder,
-  useCreateTeam, useUpdateTeam, useDeleteTeam,
-  useCreateGuestToken, useDeleteGuestToken, useDeleteVote,
-  useAddMember, useRemoveMember,
-  useAdvanceSeason, useSetSeasonName,
-} from '@/hooks/mutations';
-import type { Player, Match, Org, EntityId } from '@/types';
 import { PushNotificationBanner } from './PushNotificationBanner';
-import { useConfirm } from '@/hooks/useConfirm';
 
 interface AdminViewProps {
   players: Player[];
@@ -36,306 +26,30 @@ interface AdminViewProps {
   onUpgrade?: () => void;
 }
 
-// ── Collapsible section wrapper ───────────────────────────────────────────────
-function CollapsibleSection({
-  title, badge, subtitle, isOpen, onToggle, children,
-}: {
-  title: string;
-  badge?: string | number;
-  subtitle?: string;
-  isOpen: boolean;
-  onToggle: () => void;
-  children: ReactNode;
-}) {
-  return (
-    <div style={{ borderTop: '0.5px solid var(--separator)', marginTop: 8, paddingTop: 4 }}>
-      <button
-        onClick={onToggle}
-        aria-expanded={isOpen}
-        style={{
-          width: '100%', background: 'none', border: 'none',
-          padding: '14px 0', display: 'flex', alignItems: 'center',
-          justifyContent: 'space-between', cursor: 'pointer', textAlign: 'left',
-        }}
-      >
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <span style={{ fontSize: 17, fontWeight: 700, color: 'var(--label)', letterSpacing: '-0.02em' }}>{title}</span>
-          {badge !== undefined && (
-            <span style={{
-              fontSize: 12, fontWeight: 600, color: 'var(--label3)',
-              background: 'var(--bg2)', borderRadius: 20, padding: '2px 8px',
-            }}>{badge}</span>
-          )}
-        </div>
-        <svg width="16" height="16" viewBox="0 0 16 16" fill="none"
-          stroke="var(--label3)" strokeWidth="2" strokeLinecap="round"
-          style={{ transition: 'transform 0.2s', transform: isOpen ? 'rotate(90deg)' : 'rotate(0deg)', flexShrink: 0 }}
-        >
-          <polyline points="5 3 11 8 5 13" />
-        </svg>
-      </button>
-      {!isOpen && subtitle && (
-        <p style={{ fontSize: 12, color: 'var(--label4)', paddingBottom: 12 }}>{subtitle}</p>
-      )}
-      {isOpen && <div style={{ paddingBottom: 20 }}>{children}</div>}
-    </div>
-  );
-}
-
-// ── Notify team button ────────────────────────────────────────────────────────
-function NotifyTeamButton({
-  voteUrl,
-  matchLabel,
-  onFallback,
-}: {
-  voteUrl: string;
-  matchLabel: string;
-  onFallback: () => void;
-}) {
-  const [sent, setSent] = useState(false);
-
-  const handleNotify = async () => {
-    const text = `🗳️ Vote ouvert — ${matchLabel}\nVotez maintenant : ${voteUrl}`;
-    if (navigator.share) {
-      try {
-        await navigator.share({ text });
-        setSent(true);
-        setTimeout(() => setSent(false), 3000);
-      } catch {
-        // user cancelled
-      }
-    } else {
-      onFallback();
-      setSent(true);
-      setTimeout(() => setSent(false), 3000);
-    }
-  };
-
-  return (
-    <button
-      onClick={() => void handleNotify()}
-      style={{
-        width: '100%',
-        display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
-        background: sent
-          ? 'rgba(48,209,88,0.12)'
-          : 'linear-gradient(135deg, rgba(255,214,10,0.12) 0%, rgba(255,214,10,0.06) 100%)',
-        border: `1px solid ${sent ? 'var(--green)' : 'var(--gold-dim)'}`,
-        borderRadius: 'var(--radius)',
-        padding: '13px 20px',
-        fontSize: 15, fontWeight: 700,
-        color: sent ? 'var(--green)' : 'var(--gold)',
-        cursor: 'pointer',
-        transition: 'all 0.2s ease',
-      }}
-    >
-      <span style={{ fontSize: 18 }}>{sent ? '✅' : '📣'}</span>
-      {sent ? 'Envoyé !' : 'Prévenir l\'équipe'}
-    </button>
-  );
-}
-
-// ── Main component ────────────────────────────────────────────────────────────
+/**
+ * Admin tab: layout and what the sections share (toast, confirmation dialog,
+ * vote link, open/closed zones). Each section in ./admin owns its own form
+ * state and mutations.
+ */
 export function AdminView({ players, activeMatch, currentOrg, onShowGuide, onGoToResults, onUpgrade }: AdminViewProps) {
-  const [newPlayer,       setNewPlayer]       = useState('');
-  const [bulkOpen,        setBulkOpen]        = useState(false);
-  const [bulkText,        setBulkText]        = useState('');
-  const [archivedOpen,    setArchivedOpen]    = useState(false);
-  const [matchLabel,      setMatchLabel]      = useState('');
-  const labelInputRef = useRef<HTMLInputElement>(null);
-  const [presentIds,      setPresentIds]      = useState<EntityId[]>([]);
-  const [toast,           setToast]           = useState<string | null>(null);
-  const [linkCopied,      setLinkCopied]      = useState(() =>
+  const [toast, setToast] = useState<string | null>(null);
+  const [linkCopied, setLinkCopied] = useState(() =>
     currentOrg?.id ? !!localStorage.getItem(`pepite_link_copied_${currentOrg.id}`) : false
   );
   const [matchEverLaunched, setMatchEverLaunched] = useState(() =>
     currentOrg?.id ? !!localStorage.getItem(`pepite_match_launched_${currentOrg.id}`) : false
   );
-  const [teamName,        setTeamName]        = useState('');
-  const [teamIds,         setTeamIds]         = useState<EntityId[]>([]);
-  const [showNewTeam,     setShowNewTeam]     = useState(false);
-  const [selectedTeamId,  setSelectedTeamId]  = useState<EntityId | null>(null);
-  const [editingTeamId,   setEditingTeamId]   = useState<EntityId | null>(null);
-  const [editingPlayerIds, setEditingPlayerIds] = useState<EntityId[]>([]);
-  const [seasonNameDraft, setSeasonNameDraft] = useState('');
-  const [editingSeason,   setEditingSeason]   = useState(false);
-  const [guestInput,      setGuestInput]      = useState('');
-  const [copiedToken,     setCopiedToken]     = useState<string | null>(null);
-  const [memberEmail,     setMemberEmail]     = useState('');
-  const [pepiteCount,     setPepiteCount]     = useState<2 | 3>(2);
-  const [voteDuration,    setVoteDuration]    = useState<number | null>(null);
-  // Minimum players present for a valid vote:
-  // each voter picks pepiteCount winners (all different from each other and
-  // from the voter themselves), so the squad must contain at least pepiteCount + 1.
-  const minPlayersForVote = pepiteCount + 1; // 3 for 2-pépite mode, 4 for 3-pépite
 
   // Collapsible zones
-  const [effectifOpen,      setEffectifOpen]      = useState(players.length === 0);
-  const [settingsOpen,      setSettingsOpen]       = useState(false);
-  const [voterTrackingOpen, setVoterTrackingOpen] = useState(false);
+  const [effectifOpen, setEffectifOpen] = useState(players.length === 0);
+  const [settingsOpen, setSettingsOpen] = useState(false);
 
   const { confirm, confirmDialog } = useConfirm();
-
-  // Validation errors (Zod safeParse)
-  const [playerError,  setPlayerError]  = useState<string | null>(null);
-  const [matchError,   setMatchError]   = useState<string | null>(null);
-  const [teamError,    setTeamError]    = useState<string | null>(null);
-  const [guestError,   setGuestError]   = useState<string | null>(null);
-  const [memberError,  setMemberError]  = useState<string | null>(null);
-
   const { data: teams         = [] } = useTeams(currentOrg?.id);
-  const { data: guestTokens   = [] } = useGuestTokens(activeMatch?.id);
-  const { data: members       = [] } = useOrgMembers(currentOrg?.id);
-  const { data: matchVotes    = [] } = useVotes(activeMatch?.id);
   const { data: currentSeason = 1  } = useCurrentSeason(currentOrg?.id);
-  const seasonNamesMap               = useSeasonNames([currentSeason]);
-  const seasonName                   = seasonNamesMap[currentSeason] ?? '';
-  const voteCount                    = matchVotes.length;
 
-  // Voter tracking: match each present player against cast votes — by
-  // voter_player_id (reliable, no first-name collisions), falling back to the
-  // name for legacy / guest votes. Guest votes are still excluded because a
-  // guest has no player id and their name isn't in the present roster.
-  // Archived players keep their history but leave every picker below.
-  const activePlayers   = players.filter(isActive);
-  const archivedPlayers = players.filter(p => !isActive(p));
-  const activeIds       = new Set(activePlayers.map(p => p.id));
-  const activeTeamIds   = (t: { player_ids: EntityId[] }) => t.player_ids.filter(id => activeIds.has(id));
-
-  const presentPlayers = activeMatch
-    ? players.filter(p => activeMatch.present_ids.includes(p.id))
-    : [];
-  const votedPlayerIds = new Set(matchVotes.map(v => v.voter_player_id).filter(id => id != null));
-  const voterNameSet   = new Set(matchVotes.map(v => v.voter_name));
-  const hasPlayerVoted = (p: Player) => votedPlayerIds.has(p.id) || voterNameSet.has(p.name);
-  const votedPlayers    = presentPlayers.filter(hasPlayerVoted);
-  const pendingPlayers  = presentPlayers.filter(p => !hasPlayerVoted(p));
-
-  const addPlayersMutation       = useAddPlayers(currentOrg?.id);
-  const removePlayerMutation     = useRemovePlayer(currentOrg?.id);
-  const setArchivedMutation      = useSetPlayerArchived(currentOrg?.id);
-  const createMatchMutation      = useCreateMatch(currentOrg?.id);
-  const closeMatchMutation       = useCloseMatch(currentOrg?.id);
-  const startCountingMutation    = useStartCounting(currentOrg?.id, activeMatch?.label);
-  const createTeamMutation       = useCreateTeam(currentOrg?.id);
-  const updateTeamMutation       = useUpdateTeam(currentOrg?.id);
-  const deleteTeamMutation       = useDeleteTeam(currentOrg?.id);
-  const createGuestTokenMutation = useCreateGuestToken(activeMatch?.id);
-  const deleteGuestTokenMutation = useDeleteGuestToken(activeMatch?.id);
-  const addMemberMutation        = useAddMember(currentOrg?.id);
-  const removeMemberMutation     = useRemoveMember(currentOrg?.id);
-  const advanceSeasonMutation    = useAdvanceSeason(currentOrg?.id);
-  const setSeasonNameMutation    = useSetSeasonName();
-  const deleteVoteMutation       = useDeleteVote(activeMatch?.id);
-  const updateMatchMutation      = useUpdateMatch(currentOrg?.id);
-  const sendReminderMutation     = useSendVoteReminder(currentOrg?.id);
-
-  const voteDeadline = activeMatch?.phase === 'voting' ? activeMatch.vote_deadline ?? null : null;
-  const now = useNow(30_000, !!voteDeadline);
-  const voteUrl = currentOrg?.slug ? `${window.location.origin}/vote?org=${currentOrg.slug}` : null;
-
-  const extendVoteDeadline = () => {
-    if (!activeMatch || !voteDeadline) return;
-    updateMatchMutation.mutate(
-      { id: activeMatch.id, data: { vote_deadline: extendDeadline(voteDeadline, Date.now()) } },
-      {
-        onSuccess: () => setToast(`Vote prolongé de ${DEADLINE_EXTENSION_MINUTES} min`),
-        onError: (err) => setToast(humanizeError(err)),
-      },
-    );
-  };
-
-  // F1: nudge the players who have not voted — a message for the team chat
-  // (reaches everyone, account or not) plus a push to those with the app.
-  const remindPendingPlayers = async () => {
-    if (!activeMatch || !voteUrl || pendingPlayers.length === 0) return;
-    sendReminderMutation.mutate(
-      { matchId: activeMatch.id, matchLabel: activeMatch.label },
-      { onSuccess: (sent) => { if (sent) setToast(`🔔 Notification envoyée à ${sent} joueur${sent > 1 ? 's' : ''}`); } },
-    );
-    const text = buildReminderMessage({
-      matchLabel: activeMatch.label,
-      pendingNames: pendingPlayers.map(p => p.name),
-      voteUrl,
-      deadline: voteDeadline,
-    });
-    if (navigator.share) {
-      try { await navigator.share({ text }); } catch { /* user cancelled */ }
-    } else {
-      await copyToClipboard(text);
-      setToast('Message copié — colle-le dans le groupe de l\'équipe');
-    }
-  };
-
-  // Undo a vote cast under a player's name (someone tapped the wrong first
-  // name) so the real player can vote. Voting phase only (delete_vote).
-  const cancelVote = async (p: Player) => {
-    const vote = matchVotes.find(v => v.voter_player_id === p.id)
-      ?? matchVotes.find(v => v.voter_player_id == null && v.voter_name === p.name);
-    if (vote?.id == null) return;
-    if (!(await confirm({
-      message: `Annuler le vote de ${p.name} ? Il pourra voter à nouveau.`,
-      confirmLabel: 'Annuler le vote', danger: true,
-    }))) return;
-    deleteVoteMutation.mutate(vote.id, {
-      onSuccess: () => setToast(`Vote de ${p.name} annulé`),
-      onError: (err) => setToast(humanizeError(err)),
-    });
-  };
-
-  const handleAddMember = () => {
-    if (!currentOrg?.id) return;
-    const result = memberEmailSchema.safeParse({ email: memberEmail });
-    if (!result.success) { setMemberError(result.error.issues[0].message); return; }
-    setMemberError(null);
-    const { email } = result.data;
-    addMemberMutation.mutate({ email, role: 'voter' }, {
-      onSuccess: () => { setMemberEmail(''); setToast(`${email} ajouté comme votant`); },
-      onError: (err) => setToast(humanizeError(err)),
-    });
-  };
-
-  // Co-admin (F6): lets an admin hand over the team before leaving or deleting
-  // their account. add_org_member upserts the role of an existing member.
-  const handlePromoteMember = async (email: string) => {
-    if (!currentOrg?.id) return;
-    if (!(await confirm({
-      message: `Nommer ${email} administrateur ? Il pourra gérer les matchs, l'effectif et les membres.`,
-      confirmLabel: 'Nommer admin',
-    }))) return;
-    addMemberMutation.mutate({ email, role: 'admin' }, {
-      onSuccess: () => setToast(`${email} est maintenant admin`),
-      onError: (err) => setToast(humanizeError(err)),
-    });
-  };
-
-  const handleRemoveMember = async (userId: string, email: string) => {
-    if (!currentOrg?.id) return;
-    if (!(await confirm({ message: `Retirer ${email} ?`, confirmLabel: 'Retirer', danger: true }))) return;
-    removeMemberMutation.mutate(userId, {
-      onSuccess: () => setToast(`${email} retiré`),
-      onError: (err) => setToast(humanizeError(err)),
-    });
-  };
-
-  const createGuestLink = () => {
-    if (!activeMatch) return;
-    const result = guestNameSchema.safeParse({ name: guestInput });
-    if (!result.success) { setGuestError(result.error.issues[0].message); return; }
-    setGuestError(null);
-    const { name } = result.data;
-    createGuestTokenMutation.mutate({ name, id: activeMatch.id }, {
-      onSuccess: () => { setGuestInput(''); setToast(`Lien créé pour ${name}`); },
-    });
-  };
-
-  const copyGuestLink = async (token: string) => {
-    await copyToClipboard(`${window.location.origin}/vote?guest=${token}`);
-    track(EVENTS.GUEST_LINK_COPIED);
-    setCopiedToken(token);
-    setToast('Lien copié !');
-    setTimeout(() => setCopiedToken(null), 2000);
-  };
+  // Archived players keep their history but leave every picker.
+  const activePlayers = players.filter(isActive);
 
   // ── Copies the org vote link, shows feedback and marks the checklist step ──
   const copyOrgLink = async () => {
@@ -349,169 +63,13 @@ export function AdminView({ players, activeMatch, currentOrg, onShowGuide, onGoT
     }
   };
 
-  const revokeGuest = async (gt: { id: EntityId; name: string; used?: boolean }) => {
-    if (!(await confirm({
-      message: gt.used
-        ? `Retirer ${gt.name} de la liste ? Son vote reste compté.`
-        : `Révoquer le lien de ${gt.name} ? Il ne pourra plus voter avec ce lien.`,
-      confirmLabel: gt.used ? 'Retirer' : 'Révoquer', danger: true,
-    }))) return;
-    deleteGuestTokenMutation.mutate(gt.id, { onError: (err) => setToast(humanizeError(err)) });
+  const markMatchLaunched = () => {
+    if (!currentOrg?.id) return;
+    localStorage.setItem(`pepite_match_launched_${currentOrg.id}`, '1');
+    setMatchEverLaunched(true);
   };
 
-  // The single field and the pasted list go through the same parser: names
-  // are split on new lines / commas, and repeats are reported, not re-added.
-  const addPlayers = (text: string, onDone: () => void) => {
-    const { toAdd, existing, archived, tooLong } = parsePlayerNames(text, players);
-    const skipped = [
-      existing.length ? `déjà dans l'effectif : ${existing.join(', ')}` : '',
-      archived.length ? `archivé, à réactiver : ${archived.join(', ')}` : '',
-      tooLong.length  ? `trop long (50 caractères max) : ${tooLong.join(', ')}` : '',
-    ].filter(Boolean).join(' · ');
-    if (toAdd.length === 0) { setPlayerError(skipped ? `Rien à ajouter — ${skipped}` : 'Le prénom est requis'); return; }
-    setPlayerError(null);
-    addPlayersMutation.mutate(toAdd, {
-      onSuccess: () => {
-        track(EVENTS.PLAYER_ADDED, { count: toAdd.length });
-        const added = toAdd.length === 1 ? `${toAdd[0]} ajouté` : `${toAdd.length} joueurs ajoutés`;
-        setToast(skipped ? `${added} · ${skipped}` : added);
-        onDone();
-      },
-      onError: (err) => { setToast(humanizeError(err)); console.error('addPlayers:', err); },
-    });
-  };
-
-  const onPlayerError = (err: unknown) => setToast(humanizeError(err));
-
-  const archivePlayer = async (p: Player) => {
-    if (!(await confirm({
-      message: `Archiver ${p.name} ? Il n'apparaîtra plus dans les votes ni dans les équipes. Son historique et ses stats sont conservés.`,
-      confirmLabel: 'Archiver',
-    }))) return;
-    setArchivedMutation.mutate({ id: p.id, archived: true }, { onSuccess: () => setToast(`${p.name} archivé`), onError: onPlayerError });
-  };
-
-  const reactivatePlayer = (p: Player) =>
-    setArchivedMutation.mutate({ id: p.id, archived: false }, { onSuccess: () => setToast(`${p.name} réactivé`), onError: onPlayerError });
-
-  const deletePlayer = async (p: Player) => {
-    if (!(await confirm({
-      message: `Supprimer définitivement ${p.name} ? Son nom disparaîtra des matchs passés et des stats. Pour garder son historique, laisse-le archivé.`,
-      confirmLabel: 'Supprimer', danger: true,
-    }))) return;
-    removePlayerMutation.mutate(p.id, { onSuccess: () => setToast(`${p.name} supprimé`), onError: onPlayerError });
-  };
-
-  const togglePresent = (id: EntityId) => setPresentIds(p => p.includes(id) ? p.filter(x => x !== id) : [...p, id]);
-  const toggleTeamId  = (id: EntityId) => setTeamIds(p  => p.includes(id) ? p.filter(x => x !== id) : [...p, id]);
-
-  const loadTeamIntoMatch = (team: { id: EntityId; player_ids: EntityId[] }) => {
-    setPresentIds(activeTeamIds(team)); // archived teammates stay home
-    setSelectedTeamId(team.id);
-  };
-
-  const saveSeasonName = () => {
-    setSeasonNameMutation.mutate({ season: currentSeason, name: seasonNameDraft.trim() }, {
-      onSuccess: () => { setEditingSeason(false); setToast('Nom de saison sauvegardé !'); },
-      onError: (err) => setToast(humanizeError(err)),
-    });
-  };
-
-  const advanceSeason = async () => {
-    const label = seasonName ? `"${seasonName}"` : `Saison ${currentSeason}`;
-    if (!(await confirm({
-      message: `Démarrer la saison ${currentSeason + 1} ? L'historique de ${label} est conservé.`,
-      confirmLabel: 'Démarrer',
-    }))) return;
-    advanceSeasonMutation.mutate(undefined, {
-      onSuccess: (next) => { setSeasonNameDraft(''); setToast(`Saison ${next} démarrée !`); },
-      onError: (err) => setToast(humanizeError(err)),
-    });
-  };
-
-  const createMatch = () => {
-    const result = matchLabelSchema.safeParse({ label: matchLabel });
-    if (!result.success) {
-      setMatchError(result.error.issues[0].message);
-      // Guide the user straight to the problematic field
-      labelInputRef.current?.focus();
-      labelInputRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      return;
-    }
-    if (presentIds.length < minPlayersForVote) return;
-    setMatchError(null);
-    createMatchMutation.mutate(
-      {
-        label: result.data.label, presentIds, teamId: selectedTeamId, season: currentSeason, pepiteCount,
-        voteDeadline: deadlineFrom(Date.now(), voteDuration),
-      },
-      {
-        onSuccess: () => {
-          track(EVENTS.MATCH_CREATED, { playerCount: presentIds.length, pepiteCount, voteDuration: voteDuration ?? 0 });
-          setMatchLabel(''); setPresentIds([]); setSelectedTeamId(null);
-          setToast('Match ouvert !');
-          if (currentOrg?.id) { localStorage.setItem(`pepite_match_launched_${currentOrg.id}`, '1'); setMatchEverLaunched(true); }
-        },
-      }
-    );
-  };
-
-  const closeMatch = async () => {
-    if (!activeMatch) return;
-    const votes = `${voteCount} vote${voteCount !== 1 ? 's' : ''} reçu${voteCount !== 1 ? 's' : ''}`;
-    if (!(await confirm({
-      message: `Clore « ${activeMatch.label} » sans dépouiller ? Le vote sera fermé définitivement : les ${votes} ne seront jamais révélés et le match ne comptera pas dans la saison.`,
-      confirmLabel: 'Clore sans dépouiller', danger: true,
-    }))) return;
-    closeMatchMutation.mutate(activeMatch.id, {
-      onSuccess: () => setToast('Vote clôturé'),
-      onError:   (err) => setToast(humanizeError(err)),
-    });
-  };
-
-  const startCounting = () => {
-    if (!activeMatch) return;
-    startCountingMutation.mutate({ id: activeMatch.id, order: shuffleRevealOrder(matchVotes) }, {
-      onSuccess: () => onGoToResults?.(),
-    });
-  };
-
-  const saveTeam = () => {
-    const result = teamNameSchema.safeParse({ name: teamName });
-    if (!result.success) { setTeamError(result.error.issues[0].message); return; }
-    if (teamIds.length < 2) return;
-    setTeamError(null);
-    createTeamMutation.mutate(
-      { name: result.data.name, playerIds: teamIds },
-      {
-        onSuccess: () => { setTeamName(''); setTeamIds([]); setToast('Équipe sauvegardée !'); },
-      }
-    );
-  };
-
-  const deleteTeam = async (id: EntityId, name: string) => {
-    if (!(await confirm({ message: `Supprimer l'équipe "${name}" ?`, confirmLabel: 'Supprimer', danger: true }))) return;
-    deleteTeamMutation.mutate(id);
-  };
-
-  const startEditTeam = (t: { id: EntityId; player_ids: EntityId[] }) => {
-    if (editingTeamId === t.id) { setEditingTeamId(null); return; } // toggle off
-    setEditingTeamId(t.id);
-    setEditingPlayerIds(activeTeamIds(t));
-  };
-
-  const toggleEditingPlayerId = (id: EntityId) =>
-    setEditingPlayerIds(p => p.includes(id) ? p.filter(x => x !== id) : [...p, id]);
-
-  const saveTeamEdit = () => {
-    if (!editingTeamId || editingPlayerIds.length < 2) return;
-    updateTeamMutation.mutate(
-      { id: editingTeamId, playerIds: editingPlayerIds },
-      { onSuccess: () => { setEditingTeamId(null); setToast('Équipe mise à jour !'); } },
-    );
-  };
-
-  const phase = activeMatch?.phase || 'voting';
+  const shared = { notify: setToast, confirm };
 
   return (
     <div className="content">
@@ -546,163 +104,14 @@ export function AdminView({ players, activeMatch, currentOrg, onShowGuide, onGoT
         </div>
 
         {activeMatch ? (
-          <div className="group">
-            <div className="row">
-              <div className="row-icon green" style={{ position: 'relative' }}>
-                <div style={{
-                  width: 8, height: 8, borderRadius: '50%',
-                  background: 'var(--green)',
-                  animation: 'livePulse 1.8s ease-in-out infinite',
-                }} />
-              </div>
-              <div className="row-body">
-                <div className="row-title">{activeMatch.label}</div>
-                <div className="row-sub" aria-live="polite" aria-atomic="true">
-                  {phase === 'voting'   && `${voteCount} vote${voteCount !== 1 ? 's' : ''} reçu${voteCount !== 1 ? 's' : ''} sur ${activeMatch.present_ids.length} joueurs`}
-                  {phase === 'counting' && `Dépouillement — ${activeMatch.revealed_count || 0}/${(activeMatch.reveal_order || []).length} votes révélés`}
-                </div>
-              </div>
-            </div>
-            {phase === 'voting' && (
-              <div style={{ padding: '12px 16px', display: 'flex', flexDirection: 'column', gap: 8 }}>
-                {voteDeadline && (
-                  <div style={{
-                    display: 'flex', alignItems: 'center', gap: 10,
-                    background: 'var(--bg3)', borderRadius: 'var(--radius-sm)', padding: '8px 12px',
-                  }}>
-                    <span style={{
-                      flex: 1, fontSize: 13, fontWeight: 600,
-                      color: isDeadlinePassed(voteDeadline, now) ? 'var(--red)' : 'var(--label2)',
-                    }}>
-                      ⏱ {formatDeadline(voteDeadline, now)}
-                    </span>
-                    <button
-                      className="btn btn-secondary"
-                      style={{ padding: '6px 12px', fontSize: 13, whiteSpace: 'nowrap', flexShrink: 0 }}
-                      disabled={updateMatchMutation.isPending}
-                      onClick={extendVoteDeadline}>
-                      +{DEADLINE_EXTENSION_MINUTES} min
-                    </button>
-                  </div>
-                )}
-                {currentOrg?.slug && (
-                  <>
-                    <div style={{
-                      background: 'var(--bg3)', borderRadius: 'var(--radius-sm)',
-                      padding: '10px 12px', display: 'flex', alignItems: 'center', gap: 10,
-                    }}>
-                      <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--label3)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 2 }}>
-                          🔗 Lien de vote
-                        </div>
-                        <div style={{ fontSize: 12, color: 'var(--label2)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                          {window.location.origin}/vote?org={currentOrg.slug}
-                        </div>
-                      </div>
-                      <button
-                        className="btn btn-secondary"
-                        style={{ padding: '6px 12px', fontSize: 13, whiteSpace: 'nowrap', flexShrink: 0 }}
-                        onClick={() => void copyOrgLink()}>
-                        Copier
-                      </button>
-                    </div>
-                    <NotifyTeamButton
-                      voteUrl={`${window.location.origin}/vote?org=${currentOrg.slug}`}
-                      matchLabel={activeMatch?.label ?? ''}
-                      onFallback={() => void copyOrgLink()}
-                    />
-                  </>
-                )}
-                <button className="btn btn-primary btn-full" onClick={startCounting} disabled={startCountingMutation.isPending || voteCount === 0}>
-                  {startCountingMutation.isPending ? 'Préparation…' : `Lancer le dépouillement · ${voteCount} vote${voteCount !== 1 ? 's' : ''}`}
-                </button>
-                {/* ── Voter tracking toggle ───────────────────────── */}
-                {presentPlayers.length > 0 && (
-                  <div>
-                    <button
-                      onClick={() => setVoterTrackingOpen(o => !o)}
-                      style={{
-                        width: '100%', background: 'none', border: 'none',
-                        padding: '6px 0', display: 'flex', alignItems: 'center',
-                        justifyContent: 'space-between', cursor: 'pointer',
-                      }}
-                    >
-                      <span style={{ fontSize: 13, color: 'var(--label3)' }}>
-                        Qui a voté ?{' '}
-                        <span style={{ color: pendingPlayers.length === 0 ? 'var(--green)' : 'var(--label2)', fontWeight: 600 }}>
-                          {votedPlayers.length}/{presentPlayers.length}
-                        </span>
-                      </span>
-                      <svg width="14" height="14" viewBox="0 0 16 16" fill="none"
-                        stroke="var(--label3)" strokeWidth="2" strokeLinecap="round"
-                        style={{ transition: 'transform 0.2s', transform: voterTrackingOpen ? 'rotate(90deg)' : 'rotate(0deg)', flexShrink: 0 }}
-                      >
-                        <polyline points="5 3 11 8 5 13" />
-                      </svg>
-                    </button>
-                    {voteUrl && pendingPlayers.length > 0 && (
-                      <button
-                        className="btn btn-secondary btn-full"
-                        style={{ marginBottom: 8, fontSize: 14 }}
-                        onClick={() => void remindPendingPlayers()}>
-                        ⏰ Relancer les retardataires ({pendingPlayers.length})
-                      </button>
-                    )}
-                    {voterTrackingOpen && (
-                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, paddingBottom: 8 }}>
-                        {[...pendingPlayers, ...votedPlayers].map(p => {
-                          const hasVoted = hasPlayerVoted(p);
-                          return (
-                            <span key={String(p.id)} style={{
-                              display: 'inline-flex', alignItems: 'center', gap: 5,
-                              padding: '5px 10px', borderRadius: 20, fontSize: 13,
-                              background: hasVoted ? 'rgba(48,209,88,0.12)' : 'var(--bg3)',
-                              color: hasVoted ? 'var(--green)' : 'var(--label2)',
-                              border: `1px solid ${hasVoted ? 'rgba(48,209,88,0.3)' : 'transparent'}`,
-                            }}>
-                              {hasVoted ? '✓' : '⏳'} {p.name}
-                              {hasVoted && (
-                                <button
-                                  onClick={() => void cancelVote(p)}
-                                  aria-label={`Annuler le vote de ${p.name}`}
-                                  title="Annuler ce vote"
-                                  style={{
-                                    background: 'none', border: 'none', cursor: 'pointer',
-                                    color: 'inherit', fontSize: 12, lineHeight: 1,
-                                    padding: '2px 2px 2px 6px', minHeight: 0,
-                                  }}
-                                >✕</button>
-                              )}
-                            </span>
-                          );
-                        })}
-                      </div>
-                    )}
-                  </div>
-                )}
-
-                {/* Kept discreet, away from the main action: closing skips the
-                    reveal for good (confirmation dialog). */}
-                <button
-                  onClick={() => void closeMatch()}
-                  disabled={closeMatchMutation.isPending}
-                  style={{
-                    alignSelf: 'center', marginTop: 12, padding: '8px 12px',
-                    background: 'none', border: 'none', cursor: 'pointer',
-                    fontSize: 13, color: 'var(--label3)', textDecoration: 'underline',
-                  }}>
-                  {closeMatchMutation.isPending ? 'Clôture…' : 'Clore sans dépouiller…'}
-                </button>
-              </div>
-            )}
-            {phase === 'counting' && (
-              <div style={{ padding: '12px 16px' }}>
-                <p style={{ fontSize: 13, color: 'var(--label3)', textAlign: 'center' }}>
-                  Le dépouillement est en cours dans l'onglet Résultats.
-                </p>
-              </div>
-            )}
-          </div>
+          <ActiveMatchPanel
+            {...shared}
+            activeMatch={activeMatch}
+            players={players}
+            currentOrg={currentOrg}
+            onCopyOrgLink={() => void copyOrgLink()}
+            onGoToResults={onGoToResults}
+          />
         ) : activePlayers.length === 0 ? (
           <div className="group">
             <div className="row">
@@ -713,142 +122,20 @@ export function AdminView({ players, activeMatch, currentOrg, onShowGuide, onGoT
             </div>
           </div>
         ) : (
-          <div className="group" style={{ padding: '14px 16px' }}>
-            <label htmlFor="admin-match-label" style={{ display: 'block', fontSize: 13, color: 'var(--label3)', marginBottom: 8 }}>Nom du match ou de l'adversaire</label>
-            <input id="admin-match-label" ref={labelInputRef} placeholder="ex : vs Dragons, Entraînement…" value={matchLabel}
-              onChange={e => { setMatchLabel(e.target.value); setMatchError(null); }}
-              style={{ marginBottom: matchError ? 4 : 16, borderColor: matchError ? 'var(--red)' : undefined }} />
-            {matchError && <p style={{ fontSize: 12, color: 'var(--red)', marginBottom: 12 }}>{matchError}</p>}
-
-            {teams.length > 0 && (
-              <>
-                <p style={{ fontSize: 13, color: 'var(--label3)', marginBottom: 8 }}>Charger une équipe</p>
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 16 }}>
-                  {teams.map(t => {
-                    const ids      = activeTeamIds(t);
-                    const selected = presentIds.length > 0 && ids.every(id => presentIds.includes(id)) && presentIds.length === ids.length;
-                    return (
-                      <button key={String(t.id)} onClick={() => loadTeamIntoMatch(t)} aria-pressed={selected} style={{
-                        padding: '8px 14px', borderRadius: 'var(--radius-sm)', fontSize: 14, fontWeight: 600,
-                        background: selected ? 'var(--gold-dim)' : 'var(--bg3)',
-                        color: selected ? 'var(--gold)' : 'var(--label2)',
-                        border: 'none', cursor: 'pointer',
-                      }}>
-                        {t.name} · {ids.length} joueurs
-                      </button>
-                    );
-                  })}
-                </div>
-              </>
-            )}
-
-            <div className="flex-between" style={{ marginBottom: 8 }}>
-              <p style={{ fontSize: 13, color: 'var(--label3)' }}>
-                Qui est présent ce soir ?
-                {presentIds.length > 0 && <span style={{ color: 'var(--label2)', marginLeft: 6 }}>{presentIds.length} sélectionné{presentIds.length > 1 ? 's' : ''}</span>}
-              </p>
-              <div className="flex gap-8">
-                <button className="tag tag-dim" onClick={() => setPresentIds(activePlayers.map(p => p.id))}>Tous</button>
-                <button className="tag tag-dim" onClick={() => setPresentIds([])}>Aucun</button>
-              </div>
-            </div>
-            <div className="player-grid" style={{ marginBottom: 16 }}>
-              {activePlayers.map(p => (
-                <button key={String(p.id)} className={`player-chip ${presentIds.includes(p.id) ? 'sel-1st' : ''}`}
-                  onClick={() => togglePresent(p.id)}>{p.name}</button>
-              ))}
-            </div>
-            {presentIds.length > 0 && presentIds.length < minPlayersForVote && (
-              <p style={{ fontSize: 12, color: 'var(--label3)', marginBottom: 10 }}>
-                Sélectionne au moins {minPlayersForVote} joueurs pour ce mode.
-              </p>
-            )}
-            <p style={{ fontSize: 13, color: 'var(--label3)', marginBottom: 8 }}>Mode pépite</p>
-            <div style={{ display: 'flex', gap: 8, marginBottom: pepiteCount === 3 ? 6 : 16 }}>
-              {([2, 3] as const).map(n => (
-                <button key={n} onClick={() => setPepiteCount(n)} style={{
-                  flex: 1, padding: '10px', borderRadius: 'var(--radius-sm)',
-                  fontSize: 13, fontWeight: 600, border: 'none', cursor: 'pointer',
-                  background: pepiteCount === n ? 'var(--gold-fill)' : 'var(--bg3)',
-                  color: pepiteCount === n ? '#000' : 'var(--label2)',
-                }}>
-                  {n === 2 ? '⭐ ⭐  2 pépites' : '⭐ ⭐ ⭐  3 pépites'}
-                </button>
-              ))}
-            </div>
-            {pepiteCount === 3 && (
-              <p style={{ fontSize: 11, color: 'var(--label3)', marginBottom: 16 }}>
-                Classement 3-2-1 pts · Recommandé pour les grandes équipes
-              </p>
-            )}
-            <p id="vote-duration-label" style={{ fontSize: 13, color: 'var(--label3)', marginBottom: 8 }}>Fermeture du vote</p>
-            <div role="group" aria-labelledby="vote-duration-label" style={{ display: 'flex', gap: 6, marginBottom: 16 }}>
-              {VOTE_DURATIONS.map(d => (
-                <button key={d.label} onClick={() => setVoteDuration(d.minutes)} aria-pressed={voteDuration === d.minutes} style={{
-                  flex: 1, padding: '10px 4px', borderRadius: 'var(--radius-sm)',
-                  fontSize: 13, fontWeight: 600, border: 'none', cursor: 'pointer',
-                  background: voteDuration === d.minutes ? 'var(--gold-fill)' : 'var(--bg3)',
-                  color: voteDuration === d.minutes ? '#000' : 'var(--label2)',
-                }}>
-                  {d.label}
-                </button>
-              ))}
-            </div>
-            <button className="btn btn-primary btn-full"
-              disabled={presentIds.length < minPlayersForVote || createMatchMutation.isPending}
-              onClick={createMatch}>
-              {createMatchMutation.isPending ? 'Lancement…' : `Lancer le vote · ${presentIds.length} joueur${presentIds.length !== 1 ? 's' : ''}`}
-            </button>
-          </div>
+          <MatchLauncher
+            activePlayers={activePlayers}
+            teams={teams}
+            currentSeason={currentSeason}
+            orgId={currentOrg?.id}
+            notify={setToast}
+            onLaunched={markMatchLaunched}
+          />
         )}
       </div>
 
       {/* Supporters invités — only during voting phase */}
-      {activeMatch && phase === 'voting' && (
-        <div style={{ marginTop: 20 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 4 }}>
-            <span style={{ fontSize: 15 }}>🔗</span>
-            <span style={{ fontSize: 15, fontWeight: 700, color: 'var(--label)' }}>Supporters invités</span>
-          </div>
-          <p style={{ fontSize: 12, color: 'var(--label3)', marginBottom: 12 }}>
-            Crée un lien unique par invité pour qu'il puisse voter depuis son téléphone.
-          </p>
-          {guestTokens.length > 0 && (
-            <div className="group" style={{ marginBottom: 12 }}>
-              {guestTokens.map((gt, i) => (
-                <div key={String(gt.id)}>
-                  {i > 0 && <div style={{ height: 1, background: 'var(--separator)', margin: '0 16px' }} />}
-                  <div className="row">
-                    <div className="row-body">
-                      <div className="row-title" style={{ color: gt.used ? 'var(--label3)' : 'var(--label)' }}>{gt.name}</div>
-                      <div className="row-sub" style={{ color: gt.used ? 'var(--green)' : 'var(--label3)' }}>
-                        {gt.used ? '✓ A voté' : 'En attente'}
-                      </div>
-                    </div>
-                    {!gt.used && (
-                      <button className="btn btn-secondary" style={{ padding: '6px 12px', fontSize: 13, whiteSpace: 'nowrap' }}
-                        onClick={() => copyGuestLink(gt.token)}>
-                        {copiedToken === gt.token ? 'Copié !' : 'Copier le lien'}
-                      </button>
-                    )}
-                    <button onClick={() => void revokeGuest(gt)}
-                      aria-label={`Révoquer le lien de ${gt.name}`} title="Révoquer le lien"
-                      style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 16, color: 'var(--label4)', padding: '4px 8px' }}>✕</button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-          <div className="flex gap-8" style={{ marginBottom: guestError ? 4 : 0 }}>
-            <input aria-label="Prénom du supporter" placeholder="Prénom du supporter" value={guestInput}
-              onChange={e => { setGuestInput(e.target.value); setGuestError(null); }}
-              onKeyDown={e => e.key === 'Enter' && createGuestLink()}
-              style={{ borderColor: guestError ? 'var(--red)' : undefined }} />
-            <button className="btn btn-primary" style={{ whiteSpace: 'nowrap', padding: '12px 16px' }}
-              onClick={createGuestLink}>Créer</button>
-          </div>
-          {guestError && <p style={{ fontSize: 12, color: 'var(--red)', marginTop: 4 }}>{guestError}</p>}
-        </div>
+      {activeMatch && (activeMatch.phase || 'voting') === 'voting' && (
+        <GuestLinksSection {...shared} matchId={activeMatch.id} />
       )}
 
       {/* ── ZONE 2 : Effectif ──────────────────────────────────────────── */}
@@ -859,225 +146,8 @@ export function AdminView({ players, activeMatch, currentOrg, onShowGuide, onGoT
         isOpen={effectifOpen}
         onToggle={() => setEffectifOpen(v => !v)}
       >
-        {/* Mes joueurs */}
-        <div style={{ marginBottom: 16 }}>
-          <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--label3)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 10 }}>
-            Joueurs · {activePlayers.length}
-          </p>
-          <div className="flex gap-8" style={{ marginBottom: 8 }}>
-            <input aria-label="Prénom du joueur" placeholder="Prénom du joueur" value={newPlayer}
-              onChange={e => { setNewPlayer(e.target.value); setPlayerError(null); }}
-              onKeyDown={e => e.key === 'Enter' && addPlayers(newPlayer, () => setNewPlayer(''))}
-              style={{ borderColor: playerError ? 'var(--red)' : undefined }} />
-            <button className="btn btn-primary" style={{ whiteSpace: 'nowrap', padding: '12px 16px' }}
-              disabled={addPlayersMutation.isPending}
-              onClick={() => addPlayers(newPlayer, () => setNewPlayer(''))}>Ajouter</button>
-          </div>
-          <button className="tag tag-dim" style={{ fontSize: 13, padding: '7px 12px', marginBottom: 12 }}
-            aria-expanded={bulkOpen} onClick={() => setBulkOpen(v => !v)}>
-            {bulkOpen ? '▲ Masquer' : '＋ Ajouter plusieurs joueurs'}
-          </button>
-          {bulkOpen && (() => {
-            const preview = parsePlayerNames(bulkText, players).toAdd.length;
-            return (
-              <div style={{ marginBottom: 12 }}>
-                <textarea
-                  aria-label="Prénoms à ajouter, un par ligne ou séparés par des virgules"
-                  placeholder={'Colle ta liste : un prénom par ligne\nou séparés par des virgules'}
-                  value={bulkText} rows={5}
-                  onChange={e => { setBulkText(e.target.value); setPlayerError(null); }}
-                  style={{ marginBottom: 8 }}
-                />
-                <button className="btn btn-primary btn-full"
-                  disabled={preview === 0 || addPlayersMutation.isPending}
-                  onClick={() => addPlayers(bulkText, () => { setBulkText(''); setBulkOpen(false); })}>
-                  {addPlayersMutation.isPending ? 'Ajout…' : `Ajouter ${preview} joueur${preview > 1 ? 's' : ''}`}
-                </button>
-              </div>
-            );
-          })()}
-          {playerError && <p role="alert" style={{ fontSize: 12, color: 'var(--red)', marginBottom: 12 }}>{playerError}</p>}
-          <div className="group">
-            {activePlayers.length === 0
-              ? <div className="row"><span style={{ color: 'var(--label3)', fontSize: 14 }}>Aucun joueur. Commence par en ajouter un ci-dessus.</span></div>
-              : activePlayers.map(p => (
-                <div key={String(p.id)} className="row">
-                  <div className="row-body">
-                    <div className="row-title">{p.name}</div>
-                    {teams.filter(t => t.player_ids.includes(p.id)).length > 0 && (
-                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginTop: 4 }}>
-                        {teams.filter(t => t.player_ids.includes(p.id)).map(t => (
-                          <span key={String(t.id)} style={{
-                            fontSize: 11, fontWeight: 600,
-                            color: 'var(--gold)', background: 'var(--gold-subtle)',
-                            border: '1px solid var(--gold-dim)',
-                            borderRadius: 20, padding: '1px 7px',
-                          }}>{t.name}</span>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                  <button className="btn btn-secondary" style={{ padding: '5px 12px', fontSize: 13 }}
-                    aria-label={`Archiver ${p.name}`}
-                    onClick={() => void archivePlayer(p)}>Archiver</button>
-                </div>
-              ))
-            }
-          </div>
-
-          {archivedPlayers.length > 0 && (
-            <div style={{ marginTop: 12 }}>
-              <button
-                onClick={() => setArchivedOpen(o => !o)}
-                aria-expanded={archivedOpen}
-                style={{
-                  background: 'none', border: 'none', padding: '6px 0', cursor: 'pointer',
-                  fontSize: 12, fontWeight: 600, color: 'var(--label3)',
-                  textTransform: 'uppercase', letterSpacing: '0.05em',
-                }}
-              >
-                {archivedOpen ? '▾' : '▸'} Archivés · {archivedPlayers.length}
-              </button>
-              {archivedOpen && (
-                <>
-                  <p style={{ fontSize: 12, color: 'var(--label3)', margin: '4px 0 8px' }}>
-                    Ils n'apparaissent plus dans les votes ni les équipes. Leur historique et leurs stats sont conservés.
-                  </p>
-                  <div className="group">
-                    {archivedPlayers.map(p => (
-                      <div key={String(p.id)} className="row">
-                        <div className="row-body">
-                          <div className="row-title" style={{ color: 'var(--label2)' }}>{p.name}</div>
-                        </div>
-                        <button className="btn btn-secondary" style={{ padding: '5px 12px', fontSize: 13 }}
-                          aria-label={`Réactiver ${p.name}`}
-                          onClick={() => reactivatePlayer(p)}>Réactiver</button>
-                        <button className="btn btn-danger" style={{ padding: '5px 12px', fontSize: 13 }}
-                          aria-label={`Supprimer définitivement ${p.name}`}
-                          onClick={() => void deletePlayer(p)}>Supprimer</button>
-                      </div>
-                    ))}
-                  </div>
-                </>
-              )}
-            </div>
-          )}
-        </div>
-
-        {/* Mes équipes */}
-        <div>
-          <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--label3)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 10 }}>
-            Équipes · {teams.length}
-          </p>
-          {teams.length > 0 && (
-            <div className="group" style={{ marginBottom: 12 }}>
-              {teams.map((t, i) => {
-                const isEditing = editingTeamId === t.id;
-                return (
-                  <div key={String(t.id)}>
-                    {i > 0 && <div style={{ height: 1, background: 'var(--separator)', margin: '0 16px' }} />}
-                    <div className="row">
-                      <div className="row-body">
-                        <div className="row-title">{t.name}</div>
-                        <div className="row-sub" style={{ marginTop: 3 }}>
-                          {activePlayers.filter(p => t.player_ids.includes(p.id)).map(p => p.name).join(' · ')}
-                        </div>
-                      </div>
-                      <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
-                        <button
-                          className={`btn ${isEditing ? 'btn-secondary' : 'btn-secondary'}`}
-                          style={{ padding: '5px 12px', fontSize: 13, color: isEditing ? 'var(--gold)' : undefined }}
-                          onClick={() => startEditTeam(t)}
-                        >
-                          {isEditing ? 'Annuler' : 'Modifier'}
-                        </button>
-                        <button className="btn btn-danger" style={{ padding: '5px 12px', fontSize: 13 }}
-                          onClick={() => deleteTeam(t.id, t.name)}>Supprimer</button>
-                      </div>
-                    </div>
-
-                    {/* Inline edit panel */}
-                    {isEditing && (
-                      <div style={{ padding: '14px 16px', borderTop: '1px solid var(--separator)', background: 'var(--bg3)' }}>
-                        <div className="flex-between" style={{ marginBottom: 8 }}>
-                          <p style={{ fontSize: 13, color: 'var(--label3)' }}>
-                            Joueurs
-                            <span style={{ color: 'var(--label2)', marginLeft: 6 }}>
-                              {editingPlayerIds.length} sélectionné{editingPlayerIds.length !== 1 ? 's' : ''}
-                            </span>
-                          </p>
-                          <div className="flex gap-8">
-                            <button className="tag tag-dim" onClick={() => setEditingPlayerIds(activePlayers.map(p => p.id))}>Tous</button>
-                            <button className="tag tag-dim" onClick={() => setEditingPlayerIds([])}>Aucun</button>
-                          </div>
-                        </div>
-                        <div className="player-grid" style={{ marginBottom: 12 }}>
-                          {activePlayers.map(p => (
-                            <button
-                              key={String(p.id)}
-                              className={`player-chip ${editingPlayerIds.includes(p.id) ? 'sel-1st' : ''}`}
-                              onClick={() => toggleEditingPlayerId(p.id)}
-                            >
-                              {p.name}
-                            </button>
-                          ))}
-                        </div>
-                        {editingPlayerIds.length < 2 && (
-                          <p style={{ fontSize: 12, color: 'var(--label3)', marginBottom: 8 }}>
-                            Sélectionne au moins 2 joueurs.
-                          </p>
-                        )}
-                        <button
-                          className="btn btn-primary btn-full"
-                          disabled={editingPlayerIds.length < 2 || updateTeamMutation.isPending}
-                          onClick={saveTeamEdit}
-                        >
-                          {updateTeamMutation.isPending ? 'Sauvegarde…' : `Enregistrer · ${editingPlayerIds.length} joueur${editingPlayerIds.length !== 1 ? 's' : ''}`}
-                        </button>
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-          )}
-          <div style={{ marginBottom: 8 }}>
-            <button className="tag tag-dim" style={{ fontSize: 13, padding: '7px 12px' }}
-              onClick={() => setShowNewTeam(v => !v)}>
-              {showNewTeam ? '▲ Masquer' : '＋ Créer une équipe'}
-            </button>
-          </div>
-          {showNewTeam && (
-            <div className="group" style={{ padding: '14px 16px' }}>
-              <label htmlFor="admin-team-name" style={{ display: 'block', fontSize: 13, color: 'var(--label3)', marginBottom: 8 }}>Nom de l'équipe</label>
-              <input id="admin-team-name" placeholder="ex : Équipe championnat, Coupe, Tournoi…" value={teamName}
-                onChange={e => { setTeamName(e.target.value); setTeamError(null); }}
-                style={{ marginBottom: teamError ? 4 : 16, borderColor: teamError ? 'var(--red)' : undefined }} />
-              {teamError && <p style={{ fontSize: 12, color: 'var(--red)', marginBottom: 12 }}>{teamError}</p>}
-              <div className="flex-between" style={{ marginBottom: 8 }}>
-                <p style={{ fontSize: 13, color: 'var(--label3)' }}>
-                  Joueurs à inclure
-                  {teamIds.length > 0 && <span style={{ color: 'var(--label2)', marginLeft: 6 }}>{teamIds.length} sélectionné{teamIds.length > 1 ? 's' : ''}</span>}
-                </p>
-                <div className="flex gap-8">
-                  <button className="tag tag-dim" onClick={() => setTeamIds(activePlayers.map(p => p.id))}>Tous</button>
-                  <button className="tag tag-dim" onClick={() => setTeamIds([])}>Aucun</button>
-                </div>
-              </div>
-              <div className="player-grid" style={{ marginBottom: 12 }}>
-                {activePlayers.map(p => (
-                  <button key={String(p.id)} className={`player-chip ${teamIds.includes(p.id) ? 'sel-1st' : ''}`}
-                    onClick={() => toggleTeamId(p.id)}>{p.name}</button>
-                ))}
-              </div>
-              <button className="btn btn-primary btn-full"
-                disabled={!teamName.trim() || teamIds.length < 2 || createTeamMutation.isPending}
-                onClick={saveTeam}>
-                {createTeamMutation.isPending ? 'Création…' : `Créer l'équipe · ${teamIds.length} joueur${teamIds.length !== 1 ? 's' : ''}`}
-              </button>
-            </div>
-          )}
-        </div>
+        <PlayersSection {...shared} players={players} teams={teams} orgId={currentOrg?.id} />
+        <TeamsSection {...shared} activePlayers={activePlayers} teams={teams} orgId={currentOrg?.id} />
       </CollapsibleSection>
 
       {/* ── ZONE 3 : Paramètres ────────────────────────────────────────── */}
@@ -1087,168 +157,14 @@ export function AdminView({ players, activeMatch, currentOrg, onShowGuide, onGoT
         isOpen={settingsOpen}
         onToggle={() => setSettingsOpen(v => !v)}
       >
-        {/* Compte */}
-        {!DEMO_MODE && (
-          <div style={{ marginBottom: 20 }}>
-            <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--label3)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 10 }}>
-              Compte · {currentOrg?.name || 'Mon équipe'}
-            </p>
-            {currentOrg?.slug && (
-              <div style={{ marginBottom: 12 }}>
-                <p style={{ fontSize: 12, color: 'var(--label3)', marginBottom: 4 }}>
-                  Lien de vote à partager avec ton équipe
-                </p>
-                <div style={{
-                  background: 'var(--bg3)', borderRadius: 'var(--radius-sm)',
-                  padding: '10px 12px', fontSize: 12, color: 'var(--label2)',
-                  wordBreak: 'break-all',
-                }}>
-                  {window.location.origin}/vote?org={currentOrg.slug}
-                </div>
-                <button className="btn btn-secondary btn-full" style={{ marginTop: 8, fontSize: 13 }}
-                  onClick={() => void copyOrgLink()}>
-                  Copier le lien
-                </button>
-              </div>
-            )}
-            {currentOrg?.plan === 'pro' ? (
-              <ManageSubscriptionButton orgId={currentOrg.id} />
-            ) : (
-              <div style={{
-                background: 'linear-gradient(135deg, rgba(255,215,0,0.08) 0%, rgba(255,215,0,0.04) 100%)',
-                border: '1px solid var(--gold-dim)',
-                borderRadius: 'var(--radius-lg)',
-                padding: '16px',
-                marginBottom: 12,
-              }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
-                  <span style={{ fontSize: 16 }}>⭐</span>
-                  <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--gold)', letterSpacing: '0.02em' }}>
-                    Pépite &amp; Citron Pro
-                  </span>
-                </div>
-                <p style={{ fontSize: 13, color: 'var(--label2)', lineHeight: 1.5, marginBottom: 12 }}>
-                  Stats de saison, historique de matchs et tendances par joueur — dès 12,99 €/an.
-                </p>
-                <button
-                  className="btn btn-full"
-                  style={{
-                    background: 'var(--gold-fill)', color: '#000', border: 'none',
-                    borderRadius: 'var(--radius-sm)', padding: '11px',
-                    fontSize: 13, fontWeight: 800, cursor: 'pointer',
-                  }}
-                  onClick={onUpgrade}
-                >
-                  Passer Pro →
-                </button>
-              </div>
-            )}
-            <button className="btn btn-secondary btn-full" style={{ fontSize: 13 }} onClick={onShowGuide}>
-              📖 Comment ça marche
-            </button>
-          </div>
-        )}
-
-        {/* Saison */}
-        <div style={{ marginBottom: 20 }}>
-          <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--label3)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 10 }}>
-            Saison
-          </p>
-          <div className="group">
-            <div className="row">
-              <div className="row-body">
-                <div className="row-title">{seasonName || `Saison ${currentSeason}`}</div>
-                <div className="row-sub">Saison {currentSeason} · en cours</div>
-              </div>
-              <button className="btn btn-secondary" style={{ padding: '5px 12px', fontSize: 13 }}
-                onClick={() => { setSeasonNameDraft(seasonName); setEditingSeason(v => !v); }}>
-                {editingSeason ? 'Annuler' : 'Renommer'}
-              </button>
-            </div>
-            {editingSeason && (
-              <div style={{ padding: '0 16px 14px' }}>
-                <input
-                  aria-label="Nom de la saison"
-                  placeholder={`ex : Hiver 2025, Saison ${currentSeason}…`}
-                  value={seasonNameDraft}
-                  onChange={e => setSeasonNameDraft(e.target.value)}
-                  onKeyDown={e => e.key === 'Enter' && saveSeasonName()}
-                  style={{ marginBottom: 8 }}
-                  autoFocus
-                />
-                <button className="btn btn-primary btn-full"
-                  disabled={!seasonNameDraft.trim()}
-                  onClick={saveSeasonName}>
-                  Sauvegarder le nom
-                </button>
-              </div>
-            )}
-            <div style={{ padding: '0 16px 14px' }}>
-              <button className="btn btn-secondary btn-full" onClick={advanceSeason}>
-                Démarrer la saison {currentSeason + 1}
-              </button>
-            </div>
-          </div>
-        </div>
-
-        {/* Membres */}
-        {!DEMO_MODE && currentOrg?.id && (
-          <div>
-            <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--label3)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 6 }}>
-              Membres
-            </p>
-            <p style={{ fontSize: 12, color: 'var(--label4)', marginBottom: 10 }}>
-              Invite des joueurs à voter avec leur compte. Ils auront accès en mode votant uniquement.
-            </p>
-            {members.length > 0 && (
-              <div className="group" style={{ marginBottom: 12 }}>
-                {members.map((m, i) => (
-                  <div key={m.user_id}>
-                    {i > 0 && <div style={{ height: 1, background: 'var(--separator)', margin: '0 16px' }} />}
-                    <div className="row">
-                      <div className="row-body">
-                        <div className="row-title">{m.email}</div>
-                        <div className="row-sub" style={{ color: m.role === 'admin' ? 'var(--gold)' : 'var(--lemon)' }}>
-                          {m.role === 'admin' ? 'Admin' : 'Votant'}
-                        </div>
-                      </div>
-                      {m.role !== 'admin' && (
-                        <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
-                          <button className="btn btn-secondary" style={{ padding: '5px 12px', fontSize: 13 }}
-                            disabled={addMemberMutation.isPending}
-                            onClick={() => void handlePromoteMember(m.email)}>
-                            Nommer admin
-                          </button>
-                          <button className="btn btn-danger" style={{ padding: '5px 12px', fontSize: 13 }}
-                            onClick={() => handleRemoveMember(m.user_id, m.email)}>
-                            Retirer
-                          </button>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-            <div className="flex gap-8" style={{ marginBottom: memberError ? 4 : 0 }}>
-              <input
-                aria-label="Email du votant"
-                placeholder="Email du votant"
-                value={memberEmail}
-                type="email"
-                onChange={e => { setMemberEmail(e.target.value); setMemberError(null); }}
-                onKeyDown={e => e.key === 'Enter' && handleAddMember()}
-                style={{ borderColor: memberError ? 'var(--red)' : undefined }}
-              />
-              <button className="btn btn-primary" style={{ whiteSpace: 'nowrap', padding: '12px 16px' }}
-                disabled={addMemberMutation.isPending}
-                onClick={handleAddMember}>
-                {addMemberMutation.isPending ? '…' : 'Inviter'}
-              </button>
-            </div>
-            {memberError && <p style={{ fontSize: 12, color: 'var(--red)', marginTop: 4 }}>{memberError}</p>}
-          </div>
-        )}
+        <SettingsSection
+          {...shared}
+          currentOrg={currentOrg}
+          currentSeason={currentSeason}
+          onCopyOrgLink={() => void copyOrgLink()}
+          onShowGuide={onShowGuide}
+          onUpgrade={onUpgrade}
+        />
       </CollapsibleSection>
 
       {/* Legal footer */}
@@ -1274,49 +190,6 @@ export function AdminView({ players, activeMatch, currentOrg, onShowGuide, onGoT
           </a>
         ))}
       </div>
-    </div>
-  );
-}
-
-// ── Manage subscription ───────────────────────────────────────────────────────
-
-function ManageSubscriptionButton({ orgId }: { orgId: string }) {
-  const [loading, setLoading] = useState(false);
-  const [error,   setError]   = useState<string | null>(null);
-
-  const openPortal = async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const { supabase } = await import('@/lib/supabase');
-      const { data: { session } } = await supabase.auth.getSession();
-      const token = session?.access_token;
-      if (!token) throw new Error('Session expirée, reconnecte-toi');
-      const res  = await fetch('/api/create-portal-session', {
-        method:  'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body:    JSON.stringify({ orgId }),
-      });
-      const data = await res.json() as { url?: string; error?: string };
-      if (!res.ok || !data.url) throw new Error(data.error || 'Erreur inattendue');
-      window.location.href = data.url;
-    } catch (err) {
-      setError(humanizeError(err));
-      setLoading(false);
-    }
-  };
-
-  return (
-    <div style={{ marginBottom: 8 }}>
-      <button
-        className="btn btn-secondary btn-full"
-        style={{ fontSize: 13 }}
-        onClick={openPortal}
-        disabled={loading}
-      >
-        {loading ? 'Redirection…' : '💳 Gérer mon abonnement'}
-      </button>
-      {error && <p style={{ fontSize: 12, color: 'var(--red)', marginTop: 4 }}>{error}</p>}
     </div>
   );
 }
