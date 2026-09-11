@@ -4,12 +4,13 @@ import { supabaseAdmin } from './_lib/supabaseAdmin.js';
 import { requireOrgAdmin } from './_lib/auth.js';
 import { checkoutSessionSchema } from './_lib/validation.js';
 import { stripeErrorDetail } from './_lib/stripeError.js';
+import { stripePriceId } from './_lib/stripePrice.js';
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!);
 
-const PRICE_IDS: Record<'monthly' | 'annual', string> = {
-  monthly: process.env.STRIPE_PRICE_MONTHLY!,
-  annual:  process.env.STRIPE_PRICE_ANNUAL!,
+const PRICE_IDS: Record<'monthly' | 'annual', string | undefined> = {
+  monthly: stripePriceId(process.env.STRIPE_PRICE_MONTHLY, 'STRIPE_PRICE_MONTHLY'),
+  annual:  stripePriceId(process.env.STRIPE_PRICE_ANNUAL,  'STRIPE_PRICE_ANNUAL'),
 };
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
