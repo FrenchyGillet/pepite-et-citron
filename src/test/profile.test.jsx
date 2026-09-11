@@ -54,24 +54,14 @@ describe('VoteView — player tracking', () => {
     // Step 0: pick identity
     expect(screen.getByText('Qui es-tu ?')).toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: 'Antoine' }));
-    await user.click(screen.getByRole('button', { name: 'Continuer' }));
 
-    // Step 1: La Pépite
+    // One tap per choice: pépite, 2ème, citron
     await screen.findByText('La Pépite');
     await user.click(screen.getByRole('button', { name: 'Baptiste' }));
-    await user.click(screen.getByRole('button', { name: 'Suivant' }));
-
-    // Step 2: 2ème meilleur
     await screen.findByText('2ème meilleur');
     await user.click(screen.getByRole('button', { name: 'Clément' }));
-    const suivantBtns = screen.getAllByRole('button', { name: 'Suivant' });
-    await user.click(suivantBtns[suivantBtns.length - 1]);
-
-    // Step 3: Le Citron
     await screen.findByText('Le Citron');
     await user.click(screen.getByRole('button', { name: 'David' }));
-    const suivantBtns2 = screen.getAllByRole('button', { name: 'Suivant' });
-    await user.click(suivantBtns2[suivantBtns2.length - 1]);
 
     // Récapitulatif → submit
     await screen.findByText('Récapitulatif');
@@ -97,17 +87,10 @@ describe('VoteView — player tracking', () => {
     // Starts directly at step 1 (no step-0 grid)
     await screen.findByText('La Pépite');
     await user.click(screen.getByRole('button', { name: 'Baptiste' }));
-    await user.click(screen.getByRole('button', { name: 'Suivant' }));
-
     await screen.findByText('2ème meilleur');
     await user.click(screen.getByRole('button', { name: 'Clément' }));
-    const suivantBtns = screen.getAllByRole('button', { name: 'Suivant' });
-    await user.click(suivantBtns[suivantBtns.length - 1]);
-
     await screen.findByText('Le Citron');
     await user.click(screen.getByRole('button', { name: 'Antoine' }));
-    const suivantBtns2 = screen.getAllByRole('button', { name: 'Suivant' });
-    await user.click(suivantBtns2[suivantBtns2.length - 1]);
 
     await screen.findByText('Récapitulatif');
     await user.click(screen.getByRole('button', { name: 'Rendre mon verdict →' }));
@@ -136,7 +119,7 @@ describe('VoteView — player tracking', () => {
     expect(screen.queryByText('Qui es-tu ?')).not.toBeInTheDocument();
   });
 
-  it('prevents continuing without selecting a player at step 0', async () => {
+  it('tapping your name at step 0 starts the vote (no "Continuer" step)', async () => {
     const match   = await __demoAPI.createMatch('Match test', [1, 2, 3], null, 1);
     const players = await __demoAPI.getPlayers();
     const user    = userEvent.setup();
@@ -145,11 +128,9 @@ describe('VoteView — player tracking', () => {
       <VoteView players={players} match={match} onVoted={vi.fn()} />
     );
 
-    const continueBtn = screen.getByRole('button', { name: 'Continuer' });
-    expect(continueBtn).toBeDisabled();
-
+    expect(screen.queryByRole('button', { name: 'Continuer' })).toBeNull();
     await user.click(screen.getByRole('button', { name: 'Antoine' }));
-    expect(continueBtn).not.toBeDisabled();
+    expect(await screen.findByText('La Pépite')).toBeInTheDocument();
   });
 });
 

@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { DEMO_MODE } from '@/api';
 import { useAppStore } from '@/store/appStore';
@@ -32,8 +33,8 @@ export function VoteTab({ isAdmin, activeMatch, lastMatch, players, isLoading = 
   const setGuestToken      = useAppStore(s => s.setGuestToken);
   const navigate           = useNavigate();
 
-  // Voter-link users (no account) see the promo screen after voting;
-  // authenticated users go directly to /results.
+  // Voter-link users (no account) see the promo screen after voting; everyone
+  // else stays on the confirmation (results are hidden until the reveal).
   const isAnonymousVoter = !DEMO_MODE && !session && isVoterSession;
 
   const handleVoted = (name: string, playerId?: EntityId) => {
@@ -45,8 +46,7 @@ export function VoteTab({ isAdmin, activeMatch, lastMatch, players, isLoading = 
       setPendingPlayerId(playerId);
     }
     track(EVENTS.VOTE_COMPLETED, { anonymous: isAnonymousVoter });
-    if (!isAnonymousVoter) navigate('/results');
-    // else: stay on VoteTab — GuestPromoView is rendered below
+    // Stay on VoteTab: /results is locked until the reveal starts.
   };
 
   // The invite link travels in the vote payload and is consumed server-side by
@@ -60,6 +60,15 @@ export function VoteTab({ isAdmin, activeMatch, lastMatch, players, isLoading = 
   // Real-time vote count for post-vote confirmation screen
   const { data: voteCount = 0 } = useVoteCount(activeMatch?.id);
   const presentCount = activeMatch?.present_ids?.length ?? 0;
+
+  // Once the admin starts the reveal, take whoever voted on this device to the
+  // results (Realtime delivers the phase change). Invite-link guests have no
+  // access to results.
+  useEffect(() => {
+    if (activeMatch?.phase === 'counting' && votedThisSession && guestStatus !== 'valid') {
+      navigate('/results');
+    }
+  }, [activeMatch?.phase, votedThisSession, guestStatus, navigate]);
 
   if (guestStatus === 'checking') return (
     <EmptyState
@@ -107,10 +116,9 @@ export function VoteTab({ isAdmin, activeMatch, lastMatch, players, isLoading = 
         title="Vote enregistré ✓"
         subtitle={
           presentCount > 0
-            ? `${voteCount} / ${presentCount} ont voté · résultats en temps réel.`
-            : 'Les résultats se mettent à jour en temps réel.'
+            ? `${voteCount} / ${presentCount} ont voté · les résultats s'afficheront dès le début du dépouillement.`
+            : "Les résultats s'afficheront dès le début du dépouillement."
         }
-        action={{ label: 'Voir les résultats', onClick: () => navigate('/results') }}
       />
     );
   }

@@ -3,6 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { __resetDemoState, __demoAPI } from "@/App.jsx";
 import { api } from "@/api";
+import { useAppStore } from "@/store/appStore";
 import { renderApp } from "./renderApp";
 
 let matchId;
@@ -31,57 +32,90 @@ describe("Player voting flow", () => {
 
     await screen.findByText("Qui es-tu ?");
     await user.click(screen.getByRole("button", { name: "Antoine" }));
-    await user.click(screen.getByRole("button", { name: "Continuer" }));
 
     expect(await screen.findByText(/Connexion instable/i)).toBeInTheDocument();
-    // button is back to its normal label, not stuck on "Vérification…"
-    expect(await screen.findByRole("button", { name: "Continuer" })).toBeEnabled();
+    // not stuck on "Vérification…": the name chips are usable again
+    expect(screen.queryByText("Vérification…")).toBeNull();
+    expect(screen.getByRole("button", { name: "Antoine" })).toBeEnabled();
     // still on step 0
     expect(screen.getByText("Qui es-tu ?")).toBeInTheDocument();
   });
 
-  it("completes full 4-step vote flow", async () => {
+  it("votes in 5 taps: one per choice, comments on the recap, then the verdict", async () => {
     renderApp();
     const user = userEvent.setup();
 
-    // Step 0: select voter
+    // Tap 1 — identity: tapping your name starts the vote (no "Continuer")
     await screen.findByText("Qui es-tu ?");
     await user.click(screen.getByRole("button", { name: "Antoine" }));
-    await user.click(screen.getByRole("button", { name: "Continuer" }));
 
-    // Step 1: La Pépite
+    // Tap 2 — La Pépite: tapping a player moves on (no "Suivant")
     expect(await screen.findByText("La Pépite")).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Baptiste" }));
-    await user.click(screen.getByRole("button", { name: "Suivant" }));
 
-    // Step 2: 2ème meilleur
+    // Tap 3 — 2ème meilleur
     expect(await screen.findByText("2ème meilleur")).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Clément" }));
-    // There may be two "Suivant" buttons (one disabled for Retour area). Click the enabled one.
-    const suivantBtns = screen.getAllByRole("button", { name: "Suivant" });
-    await user.click(suivantBtns[suivantBtns.length - 1]);
 
-    // Step 3: Le Citron
+    // Tap 4 — Le Citron
     expect(await screen.findByText("Le Citron")).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "David" }));
-    const suivantBtns2 = screen.getAllByRole("button", { name: "Suivant" });
-    await user.click(suivantBtns2[suivantBtns2.length - 1]);
 
-    // Step 4: Récapitulatif
+    // Recap: optional comments live here, one per choice
     expect(await screen.findByText("Récapitulatif")).toBeInTheDocument();
-    // Verify selections shown
-    const allText = document.body.textContent;
-    expect(allText).toContain("Baptiste");
-    expect(allText).toContain("Clément");
-    expect(allText).toContain("David");
+    expect(screen.queryByRole("button", { name: "Suivant" })).toBeNull();
+    await user.type(screen.getByRole("textbox", { name: "Commentaire sur Baptiste (optionnel)" }), "Énorme");
+    expect(screen.getByText("Ton vote reste anonyme pour l'équipe.")).toBeInTheDocument();
 
+    // Tap 5 — verdict
     await user.click(screen.getByRole("button", { name: "Rendre mon verdict →" }));
 
-    // After voting, handleVoted() switches tab to "results"; verify the vote was stored
+    // Stays on the confirmation (results are hidden until the reveal)
+    expect(await screen.findByText(/Vote enregistré/i)).toBeInTheDocument();
+    expect(screen.queryByText("Résultats masqués")).toBeNull();
+
     const votes = await __demoAPI.getVotes(matchId);
     const antoineVote = votes.find((v) => v.voter_name === "Antoine");
     expect(antoineVote).toBeDefined();
     expect(antoineVote.best1_id).toBe(2); // Baptiste
+    expect(antoineVote.best1_comment).toBe("Énorme");
+    expect(antoineVote.lemon_id).toBe(4); // David
+  });
+
+  it("going back and re-picking a pépite drops a now-duplicate later pick", async () => {
+    renderApp();
+    const user = userEvent.setup();
+
+    await screen.findByText("Qui es-tu ?");
+    await user.click(screen.getByRole("button", { name: "Antoine" }));
+    await user.click(await screen.findByRole("button", { name: "Baptiste" }));   // pépite 1
+    await screen.findByText("2ème meilleur");
+    await user.click(screen.getByRole("button", { name: "Clément" }));          // pépite 2
+    await screen.findByText("Le Citron");
+
+    // Back twice, then make Clément the first pépite
+    await user.click(screen.getByRole("button", { name: "Retour" }));
+    await screen.findByText("2ème meilleur");
+    await user.click(screen.getByRole("button", { name: "Retour" }));
+    await screen.findByText("La Pépite");
+    await user.click(screen.getByRole("button", { name: "Clément" }));
+
+    // Clément can't also be 2nd: the old pick is cleared, nothing pre-selected
+    await screen.findByText("2ème meilleur");
+    expect(screen.queryByRole("button", { name: "Clément" })).toBeNull();
+    expect(screen.queryAllByRole("button", { pressed: true })).toHaveLength(0);
+  });
+
+  it("takes the voter to the results once the reveal starts", async () => {
+    await __demoAPI.submitVote({ match_id: matchId, voter_name: "Antoine", best1_id: 2, best2_id: 3, lemon_id: 4 });
+    const votes = await __demoAPI.getVotes(matchId);
+    await __demoAPI.startCounting(matchId, votes.map((v) => v.id));
+    useAppStore.setState({ votedThisSession: true });
+
+    renderApp({ initialPath: "/vote" });
+
+    // Counting phase → /results, which shows the reveal header badge
+    expect(await screen.findByText("Dépouillement")).toBeInTheDocument();
   });
 
   it("shows déjà voté when same player tries twice", async () => {
@@ -97,10 +131,9 @@ describe("Player voting flow", () => {
     renderApp();
     const user = userEvent.setup();
 
-    // Step 0: select Antoine
+    // Step 0: tap Antoine (the check runs straight away)
     await screen.findByText("Qui es-tu ?");
     await user.click(screen.getByRole("button", { name: "Antoine" }));
-    await user.click(screen.getByRole("button", { name: "Continuer" }));
 
     expect(await screen.findByText("Tu as déjà voté pour ce match.")).toBeInTheDocument();
   });

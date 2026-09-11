@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { api } from '@/api';
 import { markVotedLocally, classifyVoteError, getStoredVoterIdentity, saveVoterIdentity, loadVoteDraft, saveVoteDraft, clearVoteDraft } from '@/utils/vote';
+import type { VoteDraft } from '@/utils/vote';
 import { saveOfflineVote, isNetworkError } from '@/utils/offlineVote';
 import { useVoteCount } from '@/hooks/queries';
 import { useAppStore } from '@/store/appStore';
@@ -15,6 +16,13 @@ interface VoteViewProps {
   onVoted: (voterName: string, playerId?: EntityId) => void;
   guestName?: string | null;
   onGuestVoted?: (() => Promise<void>) | null;
+}
+
+interface Picks {
+  best1: Player | null;
+  best2: Player | null;
+  best3: Player | null;
+  lemon: Player | null;
 }
 
 export function VoteView({ players, match, onVoted, guestName = null, onGuestVoted = null }: VoteViewProps) {
@@ -55,12 +63,12 @@ export function VoteView({ players, match, onVoted, guestName = null, onGuestVot
   const [checking,     setChecking]     = useState(false);
   const [checkError,   setCheckError]   = useState<string | null>(null);
 
-  // Scroll to the comment+action area after a player is selected so
-  // voters with long player lists don't miss the input/button below the fold.
-  const actionRef = useRef<HTMLDivElement>(null);
-  const scrollToAction = () =>
+  // With auto-advance, the next step would otherwise open wherever the long
+  // player list left the page — bring the top of the vote card back into view.
+  const topRef = useRef<HTMLDivElement>(null);
+  const scrollToTop = () =>
     requestAnimationFrame(() =>
-      actionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
+      topRef.current?.scrollIntoView?.({ behavior: 'smooth', block: 'start' })
     );
 
   const pepiteCount  = match.pepite_count ?? 2;
@@ -68,21 +76,52 @@ export function VoteView({ players, match, onVoted, guestName = null, onGuestVot
   const summaryStep  = pepiteCount === 3 ? 5 : 4;
   const stepBarCount = pepiteCount === 3 ? 4 : 3;
 
-  // ── Save draft snapshot then navigate to nextStep ─────────────────────────
-  // Use this for every "Suivant" / "Retour" button so a refresh always resumes
-  // at the step the user last reached, with their selections intact.
-  const goToStep = (nextStep: number) => {
-    saveVoteDraft(match.id, {
-      step: nextStep,
+  // Picks are passed explicitly by the tap handlers: the matching setState has
+  // not been applied yet when the draft is written.
+  const buildDraft = (draftStep: number, picks: Partial<Picks> = {}): VoteDraft => {
+    const p: Picks = { best1, best2, best3, lemon, ...picks };
+    return {
+      step: draftStep,
       voterName,
       voterPlayerId: selectedVoterPlayer?.id ?? null,
-      best1Id:      best1?.id      ?? null,  best1Comment,
-      best2Id:      best2?.id      ?? null,  best2Comment,
-      best3Id:      best3?.id      ?? null,  best3Comment,
-      lemonId:      lemon?.id      ?? null,  lemonComment,
-    });
-    setStep(nextStep);
+      best1Id: p.best1?.id ?? null,  best1Comment,
+      best2Id: p.best2?.id ?? null,  best2Comment,
+      best3Id: p.best3?.id ?? null,  best3Comment,
+      lemonId: p.lemon?.id ?? null,  lemonComment,
+    };
   };
+
+  // Save a draft snapshot then show nextStep, so a refresh always resumes at
+  // the step the voter last reached, with their selections intact.
+  const goToStep = (nextStep: number, picks: Partial<Picks> = {}) => {
+    if (!guestName) saveVoteDraft(match.id, buildDraft(nextStep, picks));
+    setStep(nextStep);
+    scrollToTop();
+  };
+
+  // Comments are typed on the recap: keep the draft in sync so a screen-lock
+  // does not lose them.
+  useEffect(() => {
+    if (step === summaryStep && !guestName) saveVoteDraft(match.id, buildDraft(summaryStep));
+    // buildDraft reads the latest state; only comment edits should re-save.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [best1Comment, best2Comment, best3Comment, lemonComment]);
+
+  // ── Tap handlers: one tap = one pick = next step ──────────────────────────
+  // Re-picking an earlier rank drops a later pick that became a duplicate
+  // (submit_vote rejects the same player twice).
+  const pickBest1 = (p: Player) => {
+    const next = { best1: p, best2: best2?.id === p.id ? null : best2, best3: best3?.id === p.id ? null : best3 };
+    setBest1(next.best1); setBest2(next.best2); setBest3(next.best3);
+    goToStep(2, next);
+  };
+  const pickBest2 = (p: Player) => {
+    const next = { best2: p, best3: best3?.id === p.id ? null : best3 };
+    setBest2(next.best2); setBest3(next.best3);
+    goToStep(3, next); // 3 = third pépite (3-pépite mode) or citron (2-pépite mode)
+  };
+  const pickBest3 = (p: Player) => { setBest3(p); goToStep(lemonStep, { best3: p }); };
+  const pickLemon = (p: Player) => { setLemon(p); goToStep(summaryStep, { lemon: p }); };
 
   // Absent players are collapsed by default on the lemon step.
   // Reset the collapsed state every time the lemon step is entered.
@@ -96,32 +135,37 @@ export function VoteView({ players, match, onVoted, guestName = null, onGuestVot
   const { data: voteCount = 0 } = useVoteCount(match.id);
   const presentCount = present.length;
 
-  const checkAndNext = async () => {
-    if (!voterName) return;
-    setChecking(true);
+  // Tapping your first name checks you haven't voted yet, then starts the vote.
+  const pickIdentity = async (p: Player) => {
+    setVoterName(p.name);
+    setSelectedVoterPlayer(p);
+    setAlreadyVoted(false);
     setCheckError(null);
+    setChecking(true);
     let voted = false;
     try {
-      voted = await api.hasVoted(match.id, voterName, selectedVoterPlayer?.id ?? null);
+      voted = await api.hasVoted(match.id, p.name, p.id);
     } catch {
       // Réseau instable (vestiaire) — ne pas bloquer le votant sur
-      // « Vérification… ». L'insert dédoublonne de toute façon (409).
+      // « Vérification… ». submit_vote dédoublonne de toute façon.
       setChecking(false);
-      setCheckError('Connexion instable. Réessaie.');
+      setCheckError('Connexion instable. Touche ton prénom pour réessayer.');
       return;
     }
     setChecking(false);
     if (voted) { setAlreadyVoted(true); return; }
-    // Save identity so a refresh at step 1 doesn't force step 0 again
+    // A new identity starts from blank picks (you can't be your own pépite).
+    setBest1(null); setBest2(null); setBest3(null); setLemon(null);
+    setBest1Comment(''); setBest2Comment(''); setBest3Comment(''); setLemonComment('');
     saveVoteDraft(match.id, {
-      step: 1, voterName,
-      voterPlayerId: selectedVoterPlayer?.id ?? null,
+      step: 1, voterName: p.name, voterPlayerId: p.id,
       best1Id: null, best1Comment: '',
       best2Id: null, best2Comment: '',
       best3Id: null, best3Comment: '',
       lemonId: null, lemonComment: '',
     });
     setStep(1);
+    scrollToTop();
   };
 
   const submit = async () => {
@@ -177,8 +221,23 @@ export function VoteView({ players, match, onVoted, guestName = null, onGuestVot
     <div className="content"><div className="empty">🔒 Vote clôturé.<br />Consulte les résultats.</div></div>
   );
 
+  const summaryRows = [
+    { key: 'best1', player: best1, comment: best1Comment, setComment: setBest1Comment,
+      icon: '⭐', iconClass: 'row-icon gold', iconStyle: undefined,
+      tagClass: 'tag tag-gold', tag: pepiteCount === 3 ? '3 pts' : '2 pts' },
+    { key: 'best2', player: best2, comment: best2Comment, setComment: setBest2Comment,
+      icon: '⭐', iconClass: 'row-icon', iconStyle: { background: 'var(--gold-subtle)', opacity: 0.7 },
+      tagClass: 'tag tag-dim', tag: pepiteCount === 3 ? '2 pts' : '1 pt' },
+    ...(pepiteCount === 3 ? [{ key: 'best3', player: best3, comment: best3Comment, setComment: setBest3Comment,
+      icon: '⭐', iconClass: 'row-icon', iconStyle: { background: 'var(--gold-subtle)', opacity: 0.4 },
+      tagClass: 'tag tag-dim', tag: '1 pt' }] : []),
+    { key: 'lemon', player: lemon, comment: lemonComment, setComment: setLemonComment,
+      icon: '🍋', iconClass: 'row-icon lemon', iconStyle: undefined,
+      tagClass: 'tag tag-lemon', tag: 'Citron' },
+  ];
+
   return (
-    <div className="content">
+    <div className="content" ref={topRef}>
       {guestName && (
         <div style={{ background: 'var(--gold-subtle)', border: '1px solid var(--gold-dim)', borderRadius: 'var(--radius-lg)', padding: '12px 16px', marginBottom: 16, display: 'flex', alignItems: 'center', gap: 12 }}>
           <span style={{ fontSize: 22 }}>👋</span>
@@ -205,26 +264,32 @@ export function VoteView({ players, match, onVoted, guestName = null, onGuestVot
             </div>
             <div style={{ fontSize: 12, color: 'var(--label3)', lineHeight: 1.5 }}>
               Désigne le meilleur joueur du match et celui qui a le moins performé.
-              Chaque vote est nominatif : l'équipe voit qui a voté quoi.
+              Ton vote reste anonyme pour l'équipe.
             </div>
           </div>
           <p className="section-label mb-4">Qui es-tu ?</p>
           <div className="player-grid">
             {present.map(p => (
               <button key={String(p.id)} className={`player-chip ${voterName === p.name ? 'sel-1st' : ''}`}
-                onClick={() => { setVoterName(p.name); setSelectedVoterPlayer(p); }}>{p.name}</button>
+                aria-pressed={voterName === p.name} disabled={checking}
+                onClick={() => void pickIdentity(p)}>{p.name}</button>
             ))}
           </div>
-          {alreadyVoted && (
-            <div style={{ color: 'var(--red)', fontSize: 13, marginTop: 8 }}>
-              Tu as déjà voté pour ce match.
-            </div>
-          )}
-          {checkError && (
-            <div style={{ color: 'var(--red)', fontSize: 13, marginTop: 8 }}>
-              ⚠️ {checkError}
-            </div>
-          )}
+          <div aria-live="polite">
+            {checking && (
+              <div style={{ color: 'var(--label3)', fontSize: 13, marginTop: 8 }}>Vérification…</div>
+            )}
+            {alreadyVoted && (
+              <div style={{ color: 'var(--red)', fontSize: 13, marginTop: 8 }}>
+                Tu as déjà voté pour ce match.
+              </div>
+            )}
+            {checkError && (
+              <div style={{ color: 'var(--red)', fontSize: 13, marginTop: 8 }}>
+                ⚠️ {checkError}
+              </div>
+            )}
+          </div>
 
           {/* Vote progress on identity step */}
           {voteCount > 0 && presentCount > 0 && (
@@ -238,11 +303,6 @@ export function VoteView({ players, match, onVoted, guestName = null, onGuestVot
               </span>
             </div>
           )}
-
-          <button className="btn btn-primary btn-full mt-12"
-            disabled={!voterName || checking} onClick={checkAndNext}>
-            {checking ? 'Vérification…' : 'Continuer'}
-          </button>
         </>
       )}
 
@@ -273,7 +333,8 @@ export function VoteView({ players, match, onVoted, guestName = null, onGuestVot
             </div>
           )}
 
-          <div className="step-bar mt-8">
+          <div className="step-bar mt-8" role="progressbar" aria-label="Progression du vote"
+            aria-valuemin={1} aria-valuemax={stepBarCount} aria-valuenow={step}>
             {Array.from({ length: stepBarCount }, (_, i) => i + 1).map(i => (
               <div key={i} className={`step-seg ${step > i ? 'done' : step === i ? 'active' : ''}`} />
             ))}
@@ -312,20 +373,9 @@ export function VoteView({ players, match, onVoted, guestName = null, onGuestVot
               <div className="player-grid">
                 {present.filter(p => p.name !== voterName).map(p => (
                   <button key={String(p.id)} className={`player-chip ${best1?.id === p.id ? 'sel-1st' : ''}`}
-                    onClick={() => { setBest1(p); scrollToAction(); }}>{p.name}</button>
+                    aria-pressed={best1?.id === p.id}
+                    onClick={() => pickBest1(p)}>{p.name}</button>
                 ))}
-              </div>
-              <div ref={actionRef}>
-                {best1 && (
-                  <>
-                    <p className="section-label mt-12 mb-4">Commentaire (optionnel)</p>
-                    <input placeholder={`Pourquoi ${best1.name} ?`} value={best1Comment} maxLength={COMMENT_MAX_LENGTH}
-                      onChange={e => setBest1Comment(e.target.value)} />
-                  </>
-                )}
-                <button className="btn btn-primary btn-full mt-12" disabled={!best1} onClick={() => goToStep(2)}>
-                  Suivant
-                </button>
               </div>
             </>
           )}
@@ -345,22 +395,11 @@ export function VoteView({ players, match, onVoted, guestName = null, onGuestVot
               <div className="player-grid">
                 {present.filter(p => p.name !== voterName && p.id !== best1?.id).map(p => (
                   <button key={String(p.id)} className={`player-chip ${best2?.id === p.id ? 'sel-2nd' : ''}`}
-                    onClick={() => { setBest2(p); scrollToAction(); }}>{p.name}</button>
+                    aria-pressed={best2?.id === p.id}
+                    onClick={() => pickBest2(p)}>{p.name}</button>
                 ))}
               </div>
-              <div ref={actionRef}>
-                {best2 && (
-                  <>
-                    <p className="section-label mt-12 mb-4">Commentaire (optionnel)</p>
-                    <input placeholder={`Pourquoi ${best2.name} ?`} value={best2Comment} maxLength={COMMENT_MAX_LENGTH}
-                      onChange={e => setBest2Comment(e.target.value)} />
-                  </>
-                )}
-                <div className="flex gap-8 mt-12">
-                  <button className="btn btn-secondary" onClick={() => goToStep(1)}>Retour</button>
-                  <button className="btn btn-primary" style={{ flex: 1 }} disabled={!best2} onClick={() => goToStep(3)}>Suivant</button>
-                </div>
-              </div>
+              <button className="btn btn-secondary btn-full mt-12" onClick={() => goToStep(1)}>Retour</button>
             </>
           )}
 
@@ -379,22 +418,11 @@ export function VoteView({ players, match, onVoted, guestName = null, onGuestVot
               <div className="player-grid">
                 {present.filter(p => p.name !== voterName && p.id !== best1?.id && p.id !== best2?.id).map(p => (
                   <button key={String(p.id)} className={`player-chip ${best3?.id === p.id ? 'sel-2nd' : ''}`}
-                    onClick={() => { setBest3(p); scrollToAction(); }}>{p.name}</button>
+                    aria-pressed={best3?.id === p.id}
+                    onClick={() => pickBest3(p)}>{p.name}</button>
                 ))}
               </div>
-              <div ref={actionRef}>
-                {best3 && (
-                  <>
-                    <p className="section-label mt-12 mb-4">Commentaire (optionnel)</p>
-                    <input placeholder={`Pourquoi ${best3.name} ?`} value={best3Comment} maxLength={COMMENT_MAX_LENGTH}
-                      onChange={e => setBest3Comment(e.target.value)} />
-                  </>
-                )}
-                <div className="flex gap-8 mt-12">
-                  <button className="btn btn-secondary" onClick={() => goToStep(2)}>Retour</button>
-                  <button className="btn btn-primary" style={{ flex: 1 }} disabled={!best3} onClick={() => goToStep(4)}>Suivant</button>
-                </div>
-              </div>
+              <button className="btn btn-secondary btn-full mt-12" onClick={() => goToStep(2)}>Retour</button>
             </>
           )}
 
@@ -411,13 +439,15 @@ export function VoteView({ players, match, onVoted, guestName = null, onGuestVot
               <div className="player-grid">
                 {present.map(p => (
                   <button key={String(p.id)} className={`player-chip ${lemon?.id === p.id ? 'sel-lemon' : ''}`}
-                    onClick={() => { setLemon(p); scrollToAction(); }}>{p.name}</button>
+                    aria-pressed={lemon?.id === p.id}
+                    onClick={() => pickLemon(p)}>{p.name}</button>
                 ))}
               </div>
               {absent.length > 0 && (
                 <>
                   <button
                     onClick={() => setAbsentOpen(o => !o)}
+                    aria-expanded={absentOpen}
                     style={{
                       display: 'flex', alignItems: 'center', gap: 6,
                       background: 'none', border: 'none', padding: '14px 0 8px',
@@ -440,7 +470,8 @@ export function VoteView({ players, match, onVoted, guestName = null, onGuestVot
                       {absent.map(p => (
                         <button key={String(p.id)}
                           className={`player-chip ${lemon?.id === p.id ? 'sel-lemon' : ''}`}
-                          onClick={() => { setLemon(p); scrollToAction(); }}
+                          aria-pressed={lemon?.id === p.id}
+                          onClick={() => pickLemon(p)}
                           style={{ opacity: lemon?.id === p.id ? 1 : 0.5, borderStyle: 'dashed' }}>
                           {p.name}
                         </button>
@@ -449,19 +480,7 @@ export function VoteView({ players, match, onVoted, guestName = null, onGuestVot
                   )}
                 </>
               )}
-              <div ref={actionRef}>
-                {lemon && (
-                  <>
-                    <p className="section-label mt-12 mb-4">Commentaire (optionnel)</p>
-                    <input placeholder={`Pourquoi ${lemon.name} ?`} value={lemonComment} maxLength={COMMENT_MAX_LENGTH}
-                      onChange={e => setLemonComment(e.target.value)} />
-                  </>
-                )}
-                <div className="flex gap-8 mt-12">
-                  <button className="btn btn-secondary" onClick={() => goToStep(lemonStep - 1)}>Retour</button>
-                  <button className="btn btn-primary" style={{ flex: 1 }} disabled={!lemon} onClick={() => goToStep(summaryStep)}>Suivant</button>
-                </div>
-              </div>
+              <button className="btn btn-secondary btn-full mt-12" onClick={() => goToStep(lemonStep - 1)}>Retour</button>
             </>
           )}
         </>
@@ -471,46 +490,29 @@ export function VoteView({ players, match, onVoted, guestName = null, onGuestVot
         <>
           <p className="section-label mt-8 mb-4">Récapitulatif</p>
           <div className="group">
-            <div className="row">
-              <div className="row-icon gold">⭐</div>
-              <div className="row-body">
-                <div className="row-title">{best1?.name}</div>
-                {best1Comment && <div className="row-sub">{best1Comment}</div>}
-              </div>
-              <span className="tag tag-gold">{pepiteCount === 3 ? '3 pts' : '2 pts'}</span>
-            </div>
-            <div className="row">
-              <div className="row-icon" style={{ background: 'var(--gold-subtle)', opacity: 0.7 }}>⭐</div>
-              <div className="row-body">
-                <div className="row-title">{best2?.name}</div>
-                {best2Comment && <div className="row-sub">{best2Comment}</div>}
-              </div>
-              <span className="tag tag-dim">{pepiteCount === 3 ? '2 pts' : '1 pt'}</span>
-            </div>
-            {pepiteCount === 3 && (
-              <div className="row">
-                <div className="row-icon" style={{ background: 'var(--gold-subtle)', opacity: 0.4 }}>⭐</div>
+            {summaryRows.map(r => (
+              <div key={r.key} className="row" style={{ flexWrap: 'wrap' }}>
+                <div className={r.iconClass} style={r.iconStyle}>{r.icon}</div>
                 <div className="row-body">
-                  <div className="row-title">{best3?.name}</div>
-                  {best3Comment && <div className="row-sub">{best3Comment}</div>}
+                  <div className="row-title">{r.player?.name}</div>
                 </div>
-                <span className="tag tag-dim">1 pt</span>
+                <span className={r.tagClass}>{r.tag}</span>
+                <input
+                  aria-label={`Commentaire sur ${r.player?.name ?? ''} (optionnel)`}
+                  placeholder={`Pourquoi ${r.player?.name ?? ''} ? (optionnel)`}
+                  value={r.comment}
+                  maxLength={COMMENT_MAX_LENGTH}
+                  onChange={e => r.setComment(e.target.value)}
+                  style={{ flexBasis: '100%', marginTop: 8, minHeight: 44, padding: '10px 14px' }}
+                />
               </div>
-            )}
-            <div className="row">
-              <div className="row-icon lemon">🍋</div>
-              <div className="row-body">
-                <div className="row-title">{lemon?.name}</div>
-                {lemonComment && <div className="row-sub">{lemonComment}</div>}
-              </div>
-              <span className="tag tag-lemon">Citron</span>
-            </div>
+            ))}
           </div>
           <p style={{ fontSize: 12, color: 'var(--label3)', textAlign: 'center', marginBottom: 12 }}>
-            Ton vote est nominatif. Assume tes choix.
+            Ton vote reste anonyme pour l'équipe.
           </p>
           {submitError && (
-            <div style={{
+            <div role="alert" style={{
               background: 'rgba(255,59,48,0.1)', border: '1px solid rgba(255,59,48,0.25)',
               borderRadius: 10, padding: '10px 14px', marginBottom: 12,
               fontSize: 13, color: 'var(--red, #ff3b30)', textAlign: 'center',

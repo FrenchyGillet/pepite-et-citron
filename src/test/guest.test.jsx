@@ -72,30 +72,20 @@ describe("Guest token flow", () => {
     renderApp({ initialPath: `/vote?guest=${token}` });
     const user = userEvent.setup();
 
-    // Step 1: La Pépite
+    // One tap per choice: pépite, 2ème, citron
     await screen.findByText("La Pépite");
     await user.click(screen.getByRole("button", { name: "Baptiste" }));
-    await user.click(screen.getByRole("button", { name: "Suivant" }));
-
-    // Step 2: 2ème meilleur
     await screen.findByText("2ème meilleur");
     await user.click(screen.getByRole("button", { name: "Clément" }));
-    const suivantBtns = screen.getAllByRole("button", { name: "Suivant" });
-    await user.click(suivantBtns[suivantBtns.length - 1]);
-
-    // Step 3: Le Citron
     await screen.findByText("Le Citron");
     await user.click(screen.getByRole("button", { name: "David" }));
-    const suivantBtns2 = screen.getAllByRole("button", { name: "Suivant" });
-    await user.click(suivantBtns2[suivantBtns2.length - 1]);
 
     // Submit
     await screen.findByText("Récapitulatif");
     await user.click(screen.getByRole("button", { name: "Rendre mon verdict →" }));
 
-    // After voting, handleVoted() navigates to /results and handleGuestVoted marks the token
-    // Wait for the results tab to appear (confirms vote flow completed)
-    expect(await screen.findByText("Résultats masqués")).toBeInTheDocument();
+    // Stays on the vote tab with the confirmation (the link travelled with the vote)
+    expect(await screen.findByText(/Vote enregistré/i)).toBeInTheDocument();
 
     // Verify token is marked used
     const tokens = await __demoAPI.getGuestTokens(match.id);
@@ -142,22 +132,18 @@ describe("3-pépite mode", () => {
     // Step 1 — La Pépite (3 pts)
     await screen.findByText("La Pépite");
     await user.click(screen.getByRole("button", { name: "Baptiste" }));
-    await user.click(screen.getByRole("button", { name: "Suivant" }));
 
     // Step 2 — 2ème meilleur (2 pts)
     await screen.findByText("2ème meilleur");
     await user.click(screen.getByRole("button", { name: "Clément" }));
-    await user.click(screen.getByRole("button", { name: "Suivant" }));
 
     // Step 3 — 3ème meilleur (1 pt) — only exists in 3-pépite mode
     await screen.findByText("3ème meilleur");
     await user.click(screen.getByRole("button", { name: "David" }));
-    await user.click(screen.getByRole("button", { name: "Suivant" }));
 
     // Step 4 — Le Citron
     await screen.findByText("Le Citron");
     await user.click(screen.getByRole("button", { name: "Étienne" }));
-    await user.click(screen.getByRole("button", { name: "Suivant" }));
 
     // Summary — verify all 3 pépites appear
     await screen.findByText("Récapitulatif");
@@ -167,7 +153,7 @@ describe("3-pépite mode", () => {
 
     // Submit — must not throw "column not found" error
     await user.click(screen.getByRole("button", { name: "Rendre mon verdict →" }));
-    expect(await screen.findByText("Résultats masqués")).toBeInTheDocument();
+    expect(await screen.findByText(/Vote enregistré/i)).toBeInTheDocument();
 
     // Verify vote was stored with best3_id
     const votes = await __demoAPI.getVotes(match.id);
@@ -184,11 +170,9 @@ describe("3-pépite mode", () => {
 
     await screen.findByText("La Pépite");
     await user.click(screen.getByRole("button", { name: "Baptiste" }));
-    await user.click(screen.getByRole("button", { name: "Suivant" }));
 
     await screen.findByText("2ème meilleur");
     await user.click(screen.getByRole("button", { name: "Clément" }));
-    await user.click(screen.getByRole("button", { name: "Suivant" }));
 
     // Next step must be Citron, NOT 3ème meilleur
     await screen.findByText("Le Citron");

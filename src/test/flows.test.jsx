@@ -189,7 +189,6 @@ describe('Vote counter', () => {
     // Advance to step 1
     await screen.findByText(/Qui es-tu/i);
     await user.click(screen.getByRole('button', { name: 'Baptiste' }));
-    await user.click(screen.getByRole('button', { name: /Continuer/i }));
 
     await screen.findByText('La Pépite');
 
