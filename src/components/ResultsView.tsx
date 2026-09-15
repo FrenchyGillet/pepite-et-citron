@@ -10,6 +10,7 @@ import { SeasonTeaser } from './SeasonTeaser';
 import { useVotes, useVoteCount } from '@/hooks/queries';
 import { useRevealNext, useCloseMatch, useUpdateMatch } from '@/hooks/mutations';
 import { track, EVENTS } from '@/utils/analytics';
+import { sharedLandingUrl } from '@/utils/share';
 import type { Player, Match, EntityId } from '@/types';
 
 interface ResultsViewProps {
@@ -55,6 +56,7 @@ function ShareResultsButton({
       lemonName   ? `🍋 Citron : ${lemonName}`   : '',
       '',
       'Résultats via Pépite & Citron 🔥',
+      sharedLandingUrl('results'),
     ].filter(Boolean);
     return lines.join('\n');
   };

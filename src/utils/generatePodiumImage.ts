@@ -246,12 +246,15 @@ export async function generatePodiumImage({
     ctx.fillText(`${lemonWinner.pts} pt${lemonWinner.pts > 1 ? 's' : ''}`, W - PAD, CITRON_Y + 68);
   }
 
-  // Footer
+  // Footer — the image travels through team chats: say where it comes from.
   ctx.textAlign = 'center';
   ctx.textBaseline = 'alphabetic';
-  ctx.font = `400 26px ${FONT}`;
-  ctx.fillStyle = c.t4;
-  ctx.fillText('Pépite & Citron  ·  Généré automatiquement', W / 2, H - 55);
+  ctx.font = `700 30px ${FONT}`;
+  ctx.fillStyle = c.gold;
+  ctx.fillText('pepite-citron.com', W / 2, H - 75);
+  ctx.font = `400 24px ${FONT}`;
+  ctx.fillStyle = c.t3;
+  ctx.fillText('Votez la pépite et le citron de votre équipe', W / 2, H - 38);
 
   return new Promise((resolve, reject) => {
     canvas.toBlob(blob => {

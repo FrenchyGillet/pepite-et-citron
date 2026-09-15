@@ -14,25 +14,27 @@
   <meta name="mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
   <meta name="apple-mobile-web-app-title" content="Pépite &amp; Citron" />
-  <title>Pépite & Citron — Votez le meilleur et le moins bon joueur</title>
-  <meta name="description" content="Après chaque match, désignez la pépite et le citron de l'équipe. Vote en un geste, résultats en temps réel, stats de saison." />
+  <!-- SEO: people search "homme du match" / "joueur du match", not the brand. -->
+  <title>Vote de l'homme du match et du citron — Pépite & Citron</title>
+  <meta name="description" content="Élisez l'homme du match (la pépite) et le citron de votre équipe en 30 secondes, depuis le téléphone, sans compte pour les joueurs. Foot, hockey, rugby, basket, volley…" />
   <link rel="canonical" href="https://pepite-citron.com/" />
 
   <!-- Open Graph -->
   <meta property="og:type"        content="website" />
   <meta property="og:url"         content="https://pepite-citron.com/" />
-  <meta property="og:title"       content="Pépite & Citron — Votez le meilleur et le moins bon joueur" />
-  <meta property="og:description" content="Après chaque match, désignez la pépite et le citron de l'équipe. Vote en un geste, résultats en temps réel, stats de saison." />
+  <meta property="og:title"       content="Pépite & Citron — Le vote de l'homme du match (et du citron)" />
+  <meta property="og:description" content="Élisez la pépite et le citron de votre équipe en 30 secondes, sans compte pour les joueurs. Résultats en direct, podium à partager, stats de saison." />
   <meta property="og:image"       content="https://pepite-citron.com/api/og" />
   <meta property="og:image:width"  content="1200" />
   <meta property="og:image:height" content="630" />
   <meta property="og:locale"      content="fr_BE" />
+  <meta property="og:locale:alternate" content="fr_FR" />
   <meta property="og:site_name"   content="Pépite & Citron" />
 
   <!-- Twitter / X Card -->
   <meta name="twitter:card"        content="summary_large_image" />
-  <meta name="twitter:title"       content="Pépite & Citron — Votez le meilleur et le moins bon joueur" />
-  <meta name="twitter:description" content="Après chaque match, désignez la pépite et le citron de l'équipe. Vote en un geste, résultats en temps réel." />
+  <meta name="twitter:title"       content="Pépite & Citron — Le vote de l'homme du match (et du citron)" />
+  <meta name="twitter:description" content="Élisez la pépite et le citron de votre équipe en 30 secondes, sans compte pour les joueurs." />
   <meta name="twitter:image"       content="https://pepite-citron.com/api/og" />
 
   <!-- Structured data (WebApplication) -->
@@ -42,7 +44,7 @@
     "@type": "WebApplication",
     "name": "Pépite & Citron",
     "url": "https://pepite-citron.com",
-    "description": "Application de vote pour désigner le meilleur joueur (⭐ Pépite) et le moins bon joueur (🍋 Citron) après chaque match d'équipe.",
+    "description": "Application de vote de l'homme du match : l'équipe élit la pépite (meilleur joueur) et le citron du match depuis le téléphone, sans compte pour les joueurs.",
     "applicationCategory": "SportsApplication",
     "operatingSystem": "Web, iOS, Android",
     "offers": [
@@ -54,10 +56,27 @@
       },
       {
         "@type": "Offer",
-        "name": "Pro",
+        "name": "Pro annuel",
         "price": "12.99",
         "priceCurrency": "EUR",
-        "billingDuration": "P1Y"
+        "priceSpecification": {
+          "@type": "UnitPriceSpecification",
+          "price": "12.99",
+          "priceCurrency": "EUR",
+          "billingDuration": "P1Y"
+        }
+      },
+      {
+        "@type": "Offer",
+        "name": "Pro mensuel",
+        "price": "2.99",
+        "priceCurrency": "EUR",
+        "priceSpecification": {
+          "@type": "UnitPriceSpecification",
+          "price": "2.99",
+          "priceCurrency": "EUR",
+          "billingDuration": "P1M"
+        }
       }
     ],
     "author": {
@@ -188,6 +207,16 @@
     }
     .hero h1 .highlight-pepite { color: var(--pepite); }
     .hero h1 .highlight-citron { color: var(--citron); }
+    .hero h1 .hero-eyebrow {
+      display: block;
+      font-size: clamp(14px, 2.2vw, 17px);
+      font-weight: 700;
+      letter-spacing: 1px;
+      line-height: 1.4;
+      text-transform: uppercase;
+      color: var(--label-secondary);
+      margin-bottom: 14px;
+    }
     .hero-sub {
       font-size: clamp(16px, 2.5vw, 20px);
       color: var(--label-secondary);
@@ -792,6 +821,7 @@
 <section class="hero">
   <div class="hero-badge">Gratuit · Pro dès 12,99 €/an</div>
   <h1>
+    <span class="hero-eyebrow">Le vote de l'homme du match</span>
     La <span class="highlight-pepite">⭐ pépite</span><br>
     et le <span class="highlight-citron">🍋 citron</span><br>
     de chaque match.

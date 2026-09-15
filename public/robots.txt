@@ -1,9 +1,17 @@
 User-agent: *
 Allow: /$
 Allow: /landing.html
+Allow: /landing.js
+Allow: /pwa-guard.js
 Allow: /privacy.html
 Allow: /terms.html
 Allow: /sitemap.xml
+# Share image and icons: previews and Google Images need them.
+Allow: /api/og
+Allow: /icon.svg
+Allow: /icon-192x192.png
+Allow: /icon-512x512.png
+Allow: /manifest.webmanifest
 Disallow: /
 
 Sitemap: https://pepite-citron.com/sitemap.xml

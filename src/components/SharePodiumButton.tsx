@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { generatePodiumImage } from '@/utils/generatePodiumImage';
 import { track, EVENTS } from '@/utils/analytics';
+import { sharedLandingUrl } from '@/utils/share';
 import type { RankedPlayer, RankedLemonPlayer } from '@/utils/scoring';
 import type { Match } from '@/types';
 
@@ -29,7 +30,11 @@ export function SharePodiumButton({ match, pepiteRanked, lemonRanked, isDark }: 
       const file = new File([blob], `podium-${match.label}.png`, { type: 'image/png' });
 
       if (navigator.canShare?.({ files: [file] })) {
-        await navigator.share({ files: [file], title: `Podium — ${match.label}` });
+        await navigator.share({
+          files: [file],
+          title: `Podium — ${match.label}`,
+          text:  `Podium via Pépite & Citron 🏆 ${sharedLandingUrl('podium')}`,
+        });
         track(EVENTS.PODIUM_SHARED, { method: 'share' });
         setState('done');
         setTimeout(() => setState('idle'), 2500);
