@@ -6,6 +6,9 @@ Allow: /pwa-guard.js
 Allow: /privacy.html
 Allow: /terms.html
 Allow: /sitemap.xml
+# SEO guides (rewritten to public/guides/*.html in vercel.json)
+Allow: /homme-du-match
+Allow: /guide.css
 # Share image and icons: previews and Google Images need them.
 Allow: /api/og
 Allow: /icon.svg

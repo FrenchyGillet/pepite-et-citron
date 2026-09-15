@@ -1,0 +1,142 @@
+/* Shared styles for the SEO guide pages (public/guides/*.html).
+   Same palette as landing.html — dark, system font, no web font. */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg:      #000000;
+  --bg2:     #1C1C1E;
+  --bg3:     #2C2C2E;
+  --label:   #FFFFFF;
+  --label2:  rgba(235,235,245,0.7);
+  --label3:  rgba(235,235,245,0.55);
+  --sep:     rgba(84,84,88,0.65);
+  --pepite:  #FFD700;
+  --citron:  #aadd00;
+}
+
+html { scroll-behavior: smooth; }
+body {
+  font-family: system-ui, -apple-system, 'Segoe UI', sans-serif;
+  background: var(--bg);
+  color: var(--label);
+  line-height: 1.65;
+  -webkit-font-smoothing: antialiased;
+}
+a { color: var(--pepite); }
+
+/* ─── NAV ─── */
+.nav {
+  position: sticky; top: 0; z-index: 100;
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  height: 56px; padding: 0 24px;
+  background: rgba(0,0,0,0.85);
+  backdrop-filter: saturate(180%) blur(20px);
+  -webkit-backdrop-filter: saturate(180%) blur(20px);
+  border-bottom: 1px solid var(--sep);
+}
+.nav-logo {
+  font-size: 17px; font-weight: 700; letter-spacing: -0.3px;
+  color: var(--label); text-decoration: none; white-space: nowrap;
+}
+.nav-logo .amp { color: var(--label3); }
+.nav-cta {
+  background: var(--pepite); color: #000; text-decoration: none;
+  border-radius: 20px; padding: 8px 16px; font-size: 14px; font-weight: 700;
+  white-space: nowrap;
+}
+
+/* ─── PAGE ─── */
+.page { max-width: 760px; margin: 0 auto; padding: 0 24px; }
+.breadcrumb { font-size: 13px; color: var(--label3); padding-top: 28px; }
+.breadcrumb a { color: var(--label2); text-decoration: none; }
+.breadcrumb a:hover { color: var(--label); }
+
+.hero { padding: 36px 0 48px; border-bottom: 1px solid var(--sep); }
+.hero h1 {
+  font-size: clamp(30px, 5.5vw, 48px); font-weight: 900;
+  line-height: 1.12; letter-spacing: -1.2px; margin-bottom: 20px;
+}
+.lead { font-size: clamp(16px, 2.4vw, 19px); color: var(--label2); margin-bottom: 28px; }
+.cta-row { display: flex; gap: 12px; flex-wrap: wrap; }
+.btn-primary, .btn-secondary {
+  display: inline-block; text-decoration: none; border-radius: 14px;
+  padding: 14px 26px; font-size: 16px; font-weight: 700;
+}
+.btn-primary   { background: var(--pepite); color: #000; }
+.btn-secondary { background: var(--bg2); color: var(--label); border: 1px solid var(--sep); font-weight: 600; }
+.btn-primary:hover, .btn-secondary:hover { opacity: .88; }
+
+section.block { padding: 44px 0; border-bottom: 1px solid var(--sep); }
+section.block h2 {
+  font-size: clamp(22px, 3.6vw, 30px); font-weight: 800;
+  letter-spacing: -0.6px; line-height: 1.2; margin-bottom: 16px;
+}
+section.block h3 { font-size: 18px; font-weight: 700; margin: 22px 0 6px; }
+section.block p { color: var(--label2); margin-bottom: 14px; }
+section.block p:last-child { margin-bottom: 0; }
+section.block strong { color: var(--label); }
+
+.steps { list-style: none; counter-reset: step; display: flex; flex-direction: column; gap: 14px; }
+.steps li {
+  counter-increment: step; position: relative;
+  padding-left: 44px; color: var(--label2);
+}
+.steps li::before {
+  content: counter(step);
+  position: absolute; left: 0; top: 0;
+  width: 30px; height: 30px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  background: var(--bg3); border: 1px solid var(--sep);
+  color: var(--pepite); font-size: 13px; font-weight: 700;
+}
+
+.bullets { list-style: none; display: flex; flex-direction: column; gap: 10px; }
+.bullets li { position: relative; padding-left: 30px; color: var(--label2); }
+.bullets li::before { content: '⭐'; position: absolute; left: 0; font-size: 15px; }
+.bullets.citron li::before { content: '🍋'; }
+
+/* ─── FAQ ─── */
+.faq-list { display: flex; flex-direction: column; gap: 10px; }
+.faq-item { background: var(--bg2); border: 1px solid var(--sep); border-radius: 16px; padding: 0 20px; }
+.faq-item summary {
+  cursor: pointer; list-style: none; position: relative;
+  padding: 16px 28px 16px 0; font-size: 16px; font-weight: 700;
+}
+.faq-item summary::-webkit-details-marker { display: none; }
+.faq-item summary::after {
+  content: '+'; position: absolute; right: 0; top: 50%; transform: translateY(-50%);
+  color: var(--pepite); font-size: 22px; font-weight: 400;
+}
+.faq-item[open] summary::after { content: '−'; }
+section.block .faq-item p { padding-bottom: 16px; margin: 0; }
+
+/* ─── RELATED & CTA ─── */
+.chips { display: flex; flex-wrap: wrap; gap: 10px; }
+.chips a {
+  text-decoration: none; color: var(--label);
+  background: var(--bg3); border: 1px solid var(--sep);
+  border-radius: 20px; padding: 7px 15px; font-size: 14px; font-weight: 600;
+}
+.chips a:hover { border-color: rgba(255,215,0,0.5); }
+
+.cta-box {
+  margin: 44px 0; padding: 32px 28px; text-align: center;
+  background: var(--bg2); border: 1px solid rgba(255,215,0,0.35); border-radius: 22px;
+}
+.cta-box h2 { font-size: clamp(22px, 3.6vw, 28px); font-weight: 800; letter-spacing: -0.5px; margin-bottom: 8px; }
+.cta-box p { color: var(--label2); margin-bottom: 22px; }
+
+/* ─── FOOTER ─── */
+.footer { border-top: 1px solid var(--sep); padding: 36px 24px; text-align: center; }
+.footer-logo { font-size: 18px; font-weight: 800; color: var(--label); text-decoration: none; }
+.footer-links { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px 20px; margin-top: 16px; }
+.footer-links a { font-size: 13px; color: var(--label3); text-decoration: none; }
+.footer-links a:hover { color: var(--label); }
+
+@media (max-width: 420px) {
+  .nav { padding: 0 16px; }
+  .nav-logo { font-size: 14px; }
+  .nav-cta { padding: 7px 12px; font-size: 13px; }
+  .page { padding: 0 18px; }
+  .cta-box { padding: 26px 18px; }
+}

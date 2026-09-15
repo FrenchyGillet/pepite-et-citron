@@ -89,6 +89,32 @@
   }
   </script>
 
+  <!-- FAQ rich result — must match the visible #faq section word for word. -->
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "FAQPage",
+    "mainEntity": [
+      { "@type": "Question", "name": "Comment organiser le vote de l'homme du match ?",
+        "acceptedAnswer": { "@type": "Answer", "text": "Le capitaine crée l'équipe une fois, puis à chaque match coche les joueurs présents, lance le vote et partage le lien dans le groupe. Chacun vote en 30 secondes ; le dépouillement révèle ensuite les bulletins un par un." } },
+      { "@type": "Question", "name": "Les joueurs doivent-ils créer un compte ?",
+        "acceptedAnswer": { "@type": "Answer", "text": "Non. Les joueurs ouvrent le lien de l'équipe et choisissent leur prénom. Seul le capitaine crée un compte. Les supporters peuvent voter avec un lien invité à usage unique." } },
+      { "@type": "Question", "name": "Le vote est-il anonyme ?",
+        "acceptedAnswer": { "@type": "Answer", "text": "Oui pour l'équipe : les coéquipiers voient les résultats, jamais le bulletin des autres. Seuls les administrateurs de l'équipe ont accès au détail des votes." } },
+      { "@type": "Question", "name": "C'est quoi, le citron ?",
+        "acceptedAnswer": { "@type": "Answer", "text": "Pas le plus mauvais du match : le plus distrait, celui qui a fait la bévue mémorable ou déclenché le fou rire du vestiaire. Rien de méchant, juste une tradition d'équipe." } },
+      { "@type": "Question", "name": "Combien ça coûte ?",
+        "acceptedAnswer": { "@type": "Answer", "text": "Le vote, les résultats et le podium sont gratuits, sans limite de matchs. L'offre Pro (2,99 € par mois ou 12,99 € par an) ajoute les statistiques de saison, l'historique des matchs, les tendances par joueur et l'assiduité. Résiliation en un clic." } },
+      { "@type": "Question", "name": "Faut-il installer une application ?",
+        "acceptedAnswer": { "@type": "Answer", "text": "Non, tout fonctionne dans le navigateur du téléphone. Vous pouvez l'ajouter à l'écran d'accueil pour la lancer comme une app, sans passer par un store." } },
+      { "@type": "Question", "name": "Peut-on fixer une heure limite de vote ?",
+        "acceptedAnswer": { "@type": "Answer", "text": "Oui : 30 minutes, 1 heure, 2 heures ou sans limite, avec la possibilité de prolonger de 15 minutes et de relancer les retardataires par message ou notification." } },
+      { "@type": "Question", "name": "Pour quels sports ?",
+        "acceptedAnswer": { "@type": "Answer", "text": "Tous les sports d'équipe : football, rugby, hockey, basket, volley, handball… Et bien au-delà : EVG, équipe de travail, soirée jeux ou week-end entre amis." } }
+    ]
+  }
+  </script>
+
   <!-- No web font: system fonts load instantly and send nothing to a third party. -->
   <!-- Umami Analytics (sans cookies). Query strings are kept here on purpose:
        they carry the utm_* campaign tags. -->
@@ -795,6 +821,31 @@
     .feature-title { font-size: 16px; font-weight: 700; margin-bottom: 6px; }
     .feature-desc  { font-size: 14px; color: var(--label-secondary); line-height: 1.5; }
 
+    /* ─── GUIDES & FAQ ─── */
+    .guides-links {
+      margin-top: 28px; font-size: 14px; color: var(--label-secondary);
+      display: flex; flex-wrap: wrap; gap: 8px 10px; align-items: center;
+    }
+    .guides-links a {
+      color: var(--label-primary); text-decoration: none; font-weight: 600;
+      background: var(--bg-tertiary); border: 1px solid var(--separator);
+      border-radius: 20px; padding: 6px 14px;
+    }
+    .guides-links a:hover { border-color: rgba(255,215,0,0.5); }
+    .faq-list { display: flex; flex-direction: column; gap: 10px; max-width: 720px; }
+    .faq-item { background: var(--bg-secondary); border: 1px solid var(--separator); border-radius: 16px; padding: 0 20px; }
+    .faq-item summary {
+      cursor: pointer; list-style: none; position: relative;
+      padding: 18px 28px 18px 0; font-size: 16px; font-weight: 700;
+    }
+    .faq-item summary::-webkit-details-marker { display: none; }
+    .faq-item summary::after {
+      content: '+'; position: absolute; right: 0; top: 50%; transform: translateY(-50%);
+      color: var(--pepite); font-size: 22px; font-weight: 400;
+    }
+    .faq-item[open] summary::after { content: '−'; }
+    .faq-item p { padding: 0 0 18px; font-size: 15px; color: var(--label-secondary); line-height: 1.6; }
+
     /* ─── RESPONSIVE ─── */
     @media (max-width: 600px) {
       .hero { padding: 72px 20px 60px; }
@@ -1050,6 +1101,15 @@
         <div class="occ-desc">WEI, gala, soirée d'intégration… Un vote léger pour garder une trace de chaque événement.</div>
       </div>
     </div>
+    <div class="guides-links">
+      <span>Guides du vote de l'homme du match :</span>
+      <a href="/homme-du-match/football" data-umami-event="landing_guide_link" data-umami-event-to="football">⚽ Football</a>
+      <a href="/homme-du-match/rugby" data-umami-event="landing_guide_link" data-umami-event-to="rugby">🏉 Rugby</a>
+      <a href="/homme-du-match/hockey" data-umami-event="landing_guide_link" data-umami-event-to="hockey">🏑 Hockey</a>
+      <a href="/homme-du-match/basket" data-umami-event="landing_guide_link" data-umami-event-to="basket">🏀 Basket</a>
+      <a href="/homme-du-match/volley" data-umami-event="landing_guide_link" data-umami-event-to="volley">🏐 Volley</a>
+      <a href="/homme-du-match" data-umami-event="landing_guide_link" data-umami-event-to="hub">📖 Le guide complet</a>
+    </div>
   </div>
 </section>
 
@@ -1178,6 +1238,48 @@
   </div>
 </section>
 
+<!-- FAQ (keep in sync with the FAQPage JSON-LD in <head>) -->
+<section id="faq">
+  <div class="section-inner">
+    <div class="section-tag">FAQ</div>
+    <h2 class="section-title">Questions fréquentes</h2>
+    <div class="faq-list">
+      <details class="faq-item">
+        <summary>Comment organiser le vote de l'homme du match ?</summary>
+        <p>Le capitaine crée l'équipe une fois, puis à chaque match coche les joueurs présents, lance le vote et partage le lien dans le groupe. Chacun vote en 30 secondes ; le dépouillement révèle ensuite les bulletins un par un.</p>
+      </details>
+      <details class="faq-item">
+        <summary>Les joueurs doivent-ils créer un compte ?</summary>
+        <p>Non. Les joueurs ouvrent le lien de l'équipe et choisissent leur prénom. Seul le capitaine crée un compte. Les supporters peuvent voter avec un lien invité à usage unique.</p>
+      </details>
+      <details class="faq-item">
+        <summary>Le vote est-il anonyme ?</summary>
+        <p>Oui pour l'équipe : les coéquipiers voient les résultats, jamais le bulletin des autres. Seuls les administrateurs de l'équipe ont accès au détail des votes.</p>
+      </details>
+      <details class="faq-item">
+        <summary>C'est quoi, le citron ?</summary>
+        <p>Pas le plus mauvais du match : le plus distrait, celui qui a fait la bévue mémorable ou déclenché le fou rire du vestiaire. Rien de méchant, juste une tradition d'équipe.</p>
+      </details>
+      <details class="faq-item">
+        <summary>Combien ça coûte ?</summary>
+        <p>Le vote, les résultats et le podium sont gratuits, sans limite de matchs. L'offre Pro (2,99 € par mois ou 12,99 € par an) ajoute les statistiques de saison, l'historique des matchs, les tendances par joueur et l'assiduité. Résiliation en un clic.</p>
+      </details>
+      <details class="faq-item">
+        <summary>Faut-il installer une application ?</summary>
+        <p>Non, tout fonctionne dans le navigateur du téléphone. Vous pouvez l'ajouter à l'écran d'accueil pour la lancer comme une app, sans passer par un store.</p>
+      </details>
+      <details class="faq-item">
+        <summary>Peut-on fixer une heure limite de vote ?</summary>
+        <p>Oui : 30 minutes, 1 heure, 2 heures ou sans limite, avec la possibilité de prolonger de 15 minutes et de relancer les retardataires par message ou notification.</p>
+      </details>
+      <details class="faq-item">
+        <summary>Pour quels sports ?</summary>
+        <p>Tous les sports d'équipe : football, rugby, hockey, basket, volley, handball… Et bien au-delà : EVG, équipe de travail, soirée jeux ou week-end entre amis.</p>
+      </details>
+    </div>
+  </div>
+</section>
+
 <!-- FOOTER -->
 <footer>
   <div class="footer-logo">
@@ -1192,6 +1294,8 @@
     <a href="#tarifs" data-umami-event="landing_footer_link" data-umami-event-link="pricing">Tarifs</a>
     <a href="#occasions" data-umami-event="landing_footer_link" data-umami-event-link="occasions">Occasions</a>
     <a href="#installer" data-umami-event="landing_footer_link" data-umami-event-link="install">Installer</a>
+    <a href="#faq" data-umami-event="landing_footer_link" data-umami-event-link="faq">FAQ</a>
+    <a href="/homme-du-match" data-umami-event="landing_footer_link" data-umami-event-link="guide">Guide du vote</a>
     <a href="/privacy.html" data-umami-event="landing_footer_link" data-umami-event-link="privacy">Confidentialité</a>
     <a href="/terms.html" data-umami-event="landing_footer_link" data-umami-event-link="terms">CGU</a>
     <a href="mailto:feedback@pepite-citron.com" data-umami-event="landing_feedback_clicked">💬 Feedback</a>

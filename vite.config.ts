@@ -1,21 +1,41 @@
 import { defineConfig, type Plugin } from "vite";
 import react from "@vitejs/plugin-react";
+import fs from "fs";
 import path from "path";
 import { VitePWA } from "vite-plugin-pwa";
+
+/**
+ * Exact-path rewrites to static HTML pages declared in vercel.json (SEO
+ * guides, /privacy…), so dev serves them like production does.
+ */
+function staticPageRewrites(): Map<string, string> {
+  const { rewrites } = JSON.parse(fs.readFileSync(path.resolve(__dirname, "vercel.json"), "utf8")) as {
+    rewrites: Array<{ source: string; destination: string; missing?: unknown }>;
+  };
+  return new Map(
+    rewrites
+      .filter(r => !r.missing && r.destination.endsWith(".html") && !/[:(*]/.test(r.source))
+      .map(r => [r.source, r.destination]),
+  );
+}
 
 /**
  * The SPA entry is app.html (not index.html), so Vite's built-in "serve
  * index.html for every route" fallback no longer fires. This plugin restores
  * it for `vite dev` / `vite preview` and mirrors the production vercel.json
- * routing: "/" is the static landing page, every other app route is the SPA.
+ * routing: "/" is the static landing page, static pages keep their rewrites,
+ * every other app route is the SPA.
  */
 function devRouting(): Plugin {
+  const staticPages = staticPageRewrites();
   const resolve = (rawUrl: string): string | null => {
     const [pathname, query = ""] = rawUrl.split("?");
     if (pathname === "/") {
       const q = new URLSearchParams(query);
       return q.has("org") || q.has("guest") ? "/app.html" : "/landing.html";
     }
+    const staticPage = staticPages.get(pathname);
+    if (staticPage) return staticPage;
     if (
       !pathname.includes(".") &&
       !pathname.startsWith("/@") &&

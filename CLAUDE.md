@@ -32,7 +32,8 @@ pepite-citron/
 ├── supabase/
 │   ├── migrations/            ← migrations SQL numérotées (YYYYMMNN_nom.sql)
 │   └── schema.sql             ← ancien schéma, NON à jour : la vérité est dans migrations/
-├── public/                    ← landing.html, privacy.html, terms.html, icônes
+├── public/                    ← landing.html, privacy.html, terms.html, icônes,
+│                                guides/ (pages SEO « homme du match », style guide.css)
 └── src/
     ├── main.tsx               ← point d'entrée (Sentry, QueryClient persisté, BrowserRouter)
     ├── App.tsx                ← auth, org, routes React Router, écrans chargés à la demande (lazy)
@@ -156,6 +157,7 @@ Les contrastes texte/fond sont vérifiés (WCAG AA) par `src/utils/contrast.test
 - Script Umami dans `app.html` et les pages statiques de `public/` ; pages vues de la SPA suivies automatiquement.
 - Events : `track(EVENTS.X, data)` depuis `src/utils/analytics.ts` — ajouter tout nouvel event au catalogue `EVENTS` (nom `snake_case`). Sur la landing : attributs `data-umami-event` / `landing.js`.
 - **Jamais de donnée personnelle** : ni noms, emails, ids, libellés de match ou jetons — seulement des compteurs, booléens et petites énumérations.
+- Pages SEO statiques (`public/guides/*.html`) : servies par des rewrites exactes dans `vercel.json` (reprises en dev par `vite.config.ts`). Une nouvelle page = rewrite avant le catch-all + entrée `sitemap.xml` + `Allow` dans `robots.txt` ; la FAQ JSON-LD doit reprendre mot pour mot les `<summary>` visibles. `src/test/seoPages.test.ts` vérifie tout ça.
 - `app.html` exclut query string et hash des pages vues (`?guest=` à usage unique, `#access_token` de récupération) : ne pas retirer ces attributs. `data-domains` : rien n'est envoyé depuis localhost ni les previews Vercel.
 
 ---
