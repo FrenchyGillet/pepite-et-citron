@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { humanizeError } from '@/utils/errors';
 import { postToApi } from '@/lib/serverApi';
+import { track, EVENTS } from '@/utils/analytics';
 
 // ── Manage subscription (Stripe billing portal) ───────────────────────────────
 export function ManageSubscriptionButton({ orgId }: { orgId: string }) {
@@ -9,6 +10,7 @@ export function ManageSubscriptionButton({ orgId }: { orgId: string }) {
   const [detail,  setDetail]  = useState<string | null>(null);
 
   const openPortal = async () => {
+    track(EVENTS.BILLING_PORTAL_OPENED);
     setLoading(true);
     setError(null);
     setDetail(null);

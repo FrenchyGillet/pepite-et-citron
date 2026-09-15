@@ -7,6 +7,7 @@ import { persistQueryClient } from '@tanstack/query-persist-client-core';
 import { createSyncStoragePersister } from '@tanstack/query-sync-storage-persister';
 import * as Sentry from '@sentry/react';
 import App from '@/App';
+import { trackAppLaunch } from '@/utils/analytics';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -112,6 +113,8 @@ if (IS_PROD && !SENTRY_DSN) {
     });
   });
 }
+
+trackAppLaunch();
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

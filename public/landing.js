@@ -1,5 +1,10 @@
 var isAnnual = true;
 
+// Umami may be blocked (ad blocker) or not loaded yet: never let it break the page.
+function track(event, data) {
+  try { if (window.umami) window.umami.track(event, data); } catch (e) { /* ignore */ }
+}
+
 function toggleBilling() {
   isAnnual = !isAnnual;
   var toggle  = document.getElementById('billing-toggle');
@@ -25,6 +30,10 @@ function toggleBilling() {
     lAnnual.style.color  = 'var(--label-secondary)';
     lMonthly.style.color = 'var(--label-primary)';
   }
+  var plan = isAnnual ? 'annual' : 'monthly';
+  toggle.setAttribute('aria-checked', String(isAnnual));
+  cta.setAttribute('data-umami-event-plan', plan);
+  track('landing_billing_toggled', { plan: plan });
 }
 
 document.addEventListener('DOMContentLoaded', function() {
@@ -34,6 +43,32 @@ document.addEventListener('DOMContentLoaded', function() {
     toggle.addEventListener('click', toggleBilling);
     toggle.addEventListener('keydown', function(e) {
       if (e.key === ' ' || e.key === 'Enter') { e.preventDefault(); toggleBilling(); }
+    });
+  }
+
+  // Scroll depth: which sections visitors actually reach (once per page view)
+  if ('IntersectionObserver' in window) {
+    var sections = [
+      ['.features', 'features'],
+      ['.story-section', 'story'],
+      ['#comment-ca-marche', 'how'],
+      ['#occasions', 'occasions'],
+      ['#tarifs', 'pricing'],
+      ['#installer', 'install'],
+      ['footer', 'footer'],
+    ];
+    var observer = new IntersectionObserver(function(entries) {
+      entries.forEach(function(entry) {
+        if (!entry.isIntersecting) return;
+        observer.unobserve(entry.target);
+        track('landing_section_viewed', { section: entry.target.getAttribute('data-section') });
+      });
+    }, { threshold: 0.3 });
+    sections.forEach(function(s) {
+      var el = document.querySelector(s[0]);
+      if (!el) return;
+      el.setAttribute('data-section', s[1]);
+      observer.observe(el);
     });
   }
 

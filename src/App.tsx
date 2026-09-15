@@ -15,6 +15,7 @@ import { usePullToRefresh }         from '@/hooks/usePullToRefresh';
 import { JoinOrgView }       from '@/components/JoinOrgView';
 import { NoTeamView }        from '@/components/NoTeamView';
 import { takeUpgradeIntent, type UpgradePlan } from '@/utils/signupIntent';
+import { track, identify, displayMode, EVENTS } from '@/utils/analytics';
 import { useAuth }           from '@/hooks/useAuth';
 import { useGuest }          from '@/hooks/useGuest';
 import { useTheme }          from '@/hooks/useTheme';
@@ -160,13 +161,27 @@ export default function App() {
 
   // Show a one-time success toast after Stripe redirect
   const upgradeSuccess = searchParams.get('upgrade') === 'success';
+  useEffect(() => {
+    if (upgradeSuccess) track(EVENTS.CHECKOUT_COMPLETED);
+  }, [upgradeSuccess]);
+
+  // Segment every page view and event by audience and plan (nothing personal).
+  const audience = session ? (currentOrg?.role ?? 'member') : isVoterSession ? 'voter_link' : 'visitor';
+  const plan     = currentOrg?.plan ?? 'none';
+  useEffect(() => {
+    identify({ audience, plan, display: displayMode() });
+  }, [audience, plan]);
 
   // "Passer Pro" clicked on the landing page: offer it once the visitor is the
   // admin of a free team (after the onboarding guide, not on top of it).
   useEffect(() => {
     if (DEMO_MODE || showOnboarding || currentOrg?.role !== 'admin' || currentOrg.plan === 'pro') return;
     const plan = takeUpgradeIntent();
-    if (plan) { setUpgradePlan(plan); setShowUpgradeModal(true); }
+    if (plan) {
+      track(EVENTS.UPGRADE_CLICKED, { source: 'landing', plan });
+      setUpgradePlan(plan);
+      setShowUpgradeModal(true);
+    }
   }, [currentOrg, showOnboarding]);
 
   // ── Auth gates ──────────────────────────────────────────────────────────
@@ -288,7 +303,7 @@ export default function App() {
       <>
         <GlobalStyle />
         <NoTeamView
-          onCreate={() => setCreatingTeam(true)}
+          onCreate={() => { track(EVENTS.NO_TEAM_CREATE_CLICKED); setCreatingTeam(true); }}
           onRetry={() => { setOrgsResolved(false); void loadOrgs(); }}
           onSignOut={handleSignOut}
         />
@@ -391,7 +406,11 @@ export default function App() {
             className={`tab-bar-item ${location.pathname === `/${t.id}` ? 'active' : ''}`}
             aria-current={location.pathname === `/${t.id}` ? 'page' : undefined}
             aria-label={t.locked ? `${t.label} (réservé à Pro)` : undefined}
-            onClick={() => t.locked ? setShowUpgradeModal(true) : navigate(`/${t.id}`)}
+            onClick={() => {
+              if (!t.locked) { navigate(`/${t.id}`); return; }
+              track(EVENTS.UPGRADE_CLICKED, { source: 'tab_bar' });
+              setShowUpgradeModal(true);
+            }}
             style={t.locked ? { opacity: 0.6 } : undefined}
           >
             <div aria-hidden="true" style={{ position: 'relative', display: 'inline-flex' }}>

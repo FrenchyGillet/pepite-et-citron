@@ -8,6 +8,7 @@ import { PodiumView } from './PodiumView';
 import { useAllVotes, useMatches, useTeams, useCurrentSeason, useSeasonNames } from '@/hooks/queries';
 import { useDeleteMatch, useUpdateMatch } from '@/hooks/mutations';
 import { useConfirm } from '@/hooks/useConfirm';
+import { track, EVENTS } from '@/utils/analytics';
 import type { Player, Match, EntityId } from '@/types';
 
 interface StatsViewProps {
@@ -99,7 +100,10 @@ export function StatsView({ players, activeMatch, isAdmin, orgId }: StatsViewPro
       confirmLabel: 'Supprimer', danger: true,
     }))) return;
     deleteMatchMutation.mutate(match.id, {
-      onSuccess: () => { if (expandedId === match.id) setExpandedId(null); },
+      onSuccess: () => {
+        track(EVENTS.MATCH_DELETED);
+        if (expandedId === match.id) setExpandedId(null);
+      },
     });
   };
 

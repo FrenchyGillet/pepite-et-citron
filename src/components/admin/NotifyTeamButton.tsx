@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { track, EVENTS } from '@/utils/analytics';
 
 // ── Notify team button ────────────────────────────────────────────────────────
 export function NotifyTeamButton({
@@ -20,6 +21,7 @@ export function NotifyTeamButton({
     if (navigator.share) {
       try {
         await navigator.share({ text });
+        track(EVENTS.VOTE_LINK_SHARED, { method: 'share' });
         onShared?.();
         setSent(true);
         setTimeout(() => setSent(false), 3000);
@@ -27,6 +29,7 @@ export function NotifyTeamButton({
         // user cancelled
       }
     } else {
+      track(EVENTS.VOTE_LINK_SHARED, { method: 'copy' });
       onFallback();
       setSent(true);
       setTimeout(() => setSent(false), 3000);

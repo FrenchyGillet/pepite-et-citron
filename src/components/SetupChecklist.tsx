@@ -6,6 +6,7 @@
  * (link copied, first match). Dismissible.
  */
 import { useState, useEffect } from 'react';
+import { track, EVENTS } from '@/utils/analytics';
 
 interface Props {
   orgId:         string;
@@ -56,6 +57,7 @@ export function SetupChecklist({ orgId, playerCount, teamCount, matchCount, onCo
   if (dismissed) return null;
 
   const handleDismiss = () => {
+    track(EVENTS.SETUP_CHECKLIST_DISMISSED, { completed: completedCount, of: required.length });
     localStorage.setItem(DISMISSED_KEY(orgId), '1');
     setDismissed(true);
   };

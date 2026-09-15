@@ -6,6 +6,7 @@ import { useOrg } from '@/hooks/useOrg';
 import { useTheme } from '@/hooks/useTheme';
 import { useActiveMatch } from '@/hooks/queries';
 import { initials, avatarColor } from '@/utils/player';
+import { track, EVENTS } from '@/utils/analytics';
 import type { Org } from '@/types';
 
 export function AppHeader() {
@@ -49,7 +50,7 @@ export function AppHeader() {
               myOrgs={myOrgs}
               open={orgPickerOpen}
               setOpen={setOrgPickerOpen}
-              onSwitch={(org) => { switchOrg(org); setOrgPickerOpen(false); }}
+              onSwitch={(org) => { track(EVENTS.ORG_SWITCHED); switchOrg(org); setOrgPickerOpen(false); }}
             />
           )}
           <div className="header-sub">
@@ -58,7 +59,10 @@ export function AppHeader() {
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           <FeedbackButton />
-          <ThemeToggle theme={theme} onToggle={toggleTheme} />
+          <ThemeToggle theme={theme} onToggle={() => {
+            track(EVENTS.THEME_TOGGLED, { to: theme === 'dark' ? 'light' : 'dark' });
+            toggleTheme();
+          }} />
           {session && !DEMO_MODE && (
             <ProfileButton email={session.user.email ?? ''} onNavigate={() => navigate('/profile')} />
           )}
@@ -162,6 +166,7 @@ function FeedbackButton() {
   return (
     <a
       href="mailto:feedback@pepite-citron.com"
+      onClick={() => track(EVENTS.FEEDBACK_CLICKED)}
       aria-label="Envoyer un feedback"
       title="Envoyer un feedback"
       style={{

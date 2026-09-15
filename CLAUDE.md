@@ -151,6 +151,15 @@ Les contrastes texte/fond sont vérifiés (WCAG AA) par `src/utils/contrast.test
 
 ---
 
+## Analytics (Umami)
+
+- Script Umami dans `app.html` et les pages statiques de `public/` ; pages vues de la SPA suivies automatiquement.
+- Events : `track(EVENTS.X, data)` depuis `src/utils/analytics.ts` — ajouter tout nouvel event au catalogue `EVENTS` (nom `snake_case`). Sur la landing : attributs `data-umami-event` / `landing.js`.
+- **Jamais de donnée personnelle** : ni noms, emails, ids, libellés de match ou jetons — seulement des compteurs, booléens et petites énumérations.
+- `app.html` exclut query string et hash des pages vues (`?guest=` à usage unique, `#access_token` de récupération) : ne pas retirer ces attributs. `data-domains` : rien n'est envoyé depuis localhost ni les previews Vercel.
+
+---
+
 ## Variables d'environnement
 
 Voir `.env.example` pour la liste complète et commentée. Côté client (préfixe `VITE_`) : `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`, `VITE_SENTRY_DSN`, `VITE_APP_URL`. Côté serveur (`api/`) uniquement : `SUPABASE_SERVICE_ROLE_KEY`, Stripe, VAPID (push), `RESEND_API_KEY` / `BREVO_API_KEY`, `EMAIL_FROM`…

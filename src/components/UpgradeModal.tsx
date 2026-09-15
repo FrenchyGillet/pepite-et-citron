@@ -1,6 +1,7 @@
-import { useState } from 'react';
+import { useCallback, useState } from 'react';
 import { useModalA11y } from '@/hooks/useModalA11y';
 import { humanizeError } from '@/utils/errors';
+import { track, EVENTS } from '@/utils/analytics';
 import { postToApi } from '@/lib/serverApi';
 
 interface Props {
@@ -28,9 +29,15 @@ export function UpgradeModal({ orgId, onClose, initialPlan = 'annual' }: Props) 
   const [loading, setLoading] = useState(false);
   const [error,   setError]   = useState<string | null>(null);
   const [detail,  setDetail]  = useState<string | null>(null);
-  const dialogRef = useModalA11y(onClose);
+  // Stable: useModalA11y re-runs its focus trap whenever this changes.
+  const dismiss = useCallback(() => {
+    track(EVENTS.UPGRADE_MODAL_DISMISSED);
+    onClose();
+  }, [onClose]);
+  const dialogRef = useModalA11y(dismiss);
 
   async function handleUpgrade() {
+    track(EVENTS.CHECKOUT_STARTED, { plan });
     setLoading(true);
     setError(null);
     setDetail(null);
@@ -43,6 +50,7 @@ export function UpgradeModal({ orgId, onClose, initialPlan = 'annual' }: Props) 
       }
       window.location.href = data.url;
     } catch (err) {
+      track(EVENTS.CHECKOUT_FAILED, { plan });
       setError(humanizeError(err));
       setLoading(false);
     }
@@ -56,7 +64,7 @@ export function UpgradeModal({ orgId, onClose, initialPlan = 'annual' }: Props) 
         display: 'flex', alignItems: 'flex-end', justifyContent: 'center',
         backdropFilter: 'blur(4px)',
       }}
-      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
+      onClick={(e) => { if (e.target === e.currentTarget) dismiss(); }}
     >
       <div
         ref={dialogRef}
@@ -81,7 +89,7 @@ export function UpgradeModal({ orgId, onClose, initialPlan = 'annual' }: Props) 
             </div>
           </div>
           <button
-            onClick={onClose}
+            onClick={dismiss}
             aria-label="Fermer"
             style={{ background: 'var(--bg3)', border: 'none', borderRadius: '50%', width: 32, height: 32, cursor: 'pointer', color: 'var(--label2)', fontSize: 18, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
           >×</button>

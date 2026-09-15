@@ -9,6 +9,7 @@
 import { useState, useCallback } from 'react';
 import { api } from '@/api';
 import { VAPID_PUBLIC_KEY } from '@/config';
+import { track, EVENTS } from '@/utils/analytics';
 
 const STORAGE_KEY = 'pepite_push_subscribed';
 
@@ -50,6 +51,7 @@ export function usePushNotifications(): UsePushNotificationsReturn {
     try {
       const permission = await Notification.requestPermission();
       if (permission !== 'granted') {
+        track(EVENTS.PUSH_DENIED);
         setStatus('denied');
         return;
       }
@@ -67,9 +69,11 @@ export function usePushNotifications(): UsePushNotificationsReturn {
       // l'utilisateur croit les notifs actives alors qu'aucune ligne n'existe.
       await api.subscribePush(orgId, sub.toJSON());
       localStorage.setItem(STORAGE_KEY, '1');
+      track(EVENTS.PUSH_ENABLED);
       setStatus('subscribed');
     } catch (err) {
       console.error('Push subscribe failed:', err);
+      track(EVENTS.PUSH_FAILED);
       setStatus('error');
     }
   }, [isSupported]);
@@ -85,6 +89,7 @@ export function usePushNotifications(): UsePushNotificationsReturn {
         await sub.unsubscribe();
       }
       localStorage.removeItem(STORAGE_KEY);
+      track(EVENTS.PUSH_DISABLED);
       setStatus('idle');
     } catch (err) {
       console.error('Push unsubscribe failed:', err);

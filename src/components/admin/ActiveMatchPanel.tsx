@@ -4,6 +4,7 @@ import { humanizeError } from '@/utils/errors';
 import { shuffleRevealOrder } from '@/utils/vote';
 import { extendDeadline, formatDeadline, isDeadlinePassed, DEADLINE_EXTENSION_MINUTES } from '@/utils/deadline';
 import { buildReminderMessage } from '@/utils/reminder';
+import { track, EVENTS } from '@/utils/analytics';
 import { useNow } from '@/hooks/useNow';
 import { useVotes } from '@/hooks/queries';
 import { useCloseMatch, useStartCounting, useUpdateMatch, useSendVoteReminder, useDeleteVote } from '@/hooks/mutations';
@@ -59,7 +60,10 @@ export function ActiveMatchPanel({ activeMatch, players, currentOrg, notify, con
     updateMatchMutation.mutate(
       { id: activeMatch.id, data: { vote_deadline: extendDeadline(voteDeadline, Date.now()) } },
       {
-        onSuccess: () => notify(`Vote prolongé de ${DEADLINE_EXTENSION_MINUTES} min`),
+        onSuccess: () => {
+          track(EVENTS.VOTE_DEADLINE_EXTENDED);
+          notify(`Vote prolongé de ${DEADLINE_EXTENSION_MINUTES} min`);
+        },
         onError: (err) => notify(humanizeError(err)),
       },
     );
@@ -69,6 +73,11 @@ export function ActiveMatchPanel({ activeMatch, players, currentOrg, notify, con
   // (reaches everyone, account or not) plus a push to those with the app.
   const remindPendingPlayers = async () => {
     if (!voteUrl || pendingPlayers.length === 0) return;
+    track(EVENTS.VOTE_REMINDER_SENT, {
+      pending: pendingPlayers.length,
+      present: presentPlayers.length,
+      method:  'share' in navigator ? 'share' : 'copy',
+    });
     sendReminderMutation.mutate(
       { matchId: activeMatch.id, matchLabel: activeMatch.label },
       { onSuccess: (sent) => { if (sent) notify(`🔔 Notification envoyée à ${sent} joueur${sent > 1 ? 's' : ''}`); } },
@@ -98,7 +107,7 @@ export function ActiveMatchPanel({ activeMatch, players, currentOrg, notify, con
       confirmLabel: 'Annuler le vote', danger: true,
     }))) return;
     deleteVoteMutation.mutate(vote.id, {
-      onSuccess: () => notify(`Vote de ${p.name} annulé`),
+      onSuccess: () => { track(EVENTS.VOTE_CANCELLED_BY_ADMIN); notify(`Vote de ${p.name} annulé`); },
       onError: (err) => notify(humanizeError(err)),
     });
   };
@@ -110,14 +119,21 @@ export function ActiveMatchPanel({ activeMatch, players, currentOrg, notify, con
       confirmLabel: 'Clore sans dépouiller', danger: true,
     }))) return;
     closeMatchMutation.mutate(activeMatch.id, {
-      onSuccess: () => notify('Vote clôturé'),
+      onSuccess: () => { track(EVENTS.MATCH_CLOSED_WITHOUT_COUNT, { votes: voteCount }); notify('Vote clôturé'); },
       onError:   (err) => notify(humanizeError(err)),
     });
   };
 
   const startCounting = () => {
     startCountingMutation.mutate({ id: activeMatch.id, order: shuffleRevealOrder(matchVotes) }, {
-      onSuccess: () => onGoToResults?.(),
+      onSuccess: () => {
+        track(EVENTS.COUNTING_STARTED, {
+          votes:        voteCount,
+          present:      activeMatch.present_ids.length,
+          participation: activeMatch.present_ids.length ? Math.round(100 * voteCount / activeMatch.present_ids.length) : 0,
+        });
+        onGoToResults?.();
+      },
     });
   };
 

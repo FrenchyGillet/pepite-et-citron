@@ -4,6 +4,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { api, setCurrentOrgId, DEMO_MODE } from '@/api';
 import { clearLocalPersonalData, unsubscribeDeviceFromPush } from '@/utils/localData';
 import { useAppStore, clearOrgsCache } from '@/store/appStore';
+import { track, EVENTS } from '@/utils/analytics';
 
 export function useAuth() {
   const navigate     = useNavigate();
@@ -17,6 +18,7 @@ export function useAuth() {
   const setJustSignedUp     = useAppStore(s => s.setJustSignedUp);
 
   const handleSignOut = useCallback(async () => {
+    track(EVENTS.SIGNED_OUT);
     try {
       await api.signOut();
     } catch (err) {

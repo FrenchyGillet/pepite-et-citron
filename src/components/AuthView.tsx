@@ -55,6 +55,7 @@ export function AuthView({ onAuth }: AuthViewProps) {
       setApiError(null);
       try {
         await api.resetPassword(data.email);
+        track(EVENTS.PASSWORD_RESET_REQUESTED);
         setResetSent(true);
       } catch (err) {
         setApiError(humanizeError(err));
@@ -85,6 +86,7 @@ export function AuthView({ onAuth }: AuthViewProps) {
         onAuth(session, mode === 'signup');
       }
     } catch (err) {
+      track(EVENTS.AUTH_FAILED, { mode });
       setApiError(humanizeError(err));
     }
   });
@@ -245,7 +247,7 @@ export function AuthView({ onAuth }: AuthViewProps) {
 
       <div style={{ marginTop: 24, textAlign: 'center', maxWidth: 340 }}>
         <button
-          onClick={() => setShowGuide(true)}
+          onClick={() => { track(EVENTS.AUTH_GUIDE_OPENED); setShowGuide(true); }}
           style={{
             background: 'none', border: 'none', cursor: 'pointer',
             fontSize: 13, color: 'var(--label3)', marginBottom: 16,

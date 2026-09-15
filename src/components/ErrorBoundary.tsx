@@ -1,4 +1,5 @@
 import { Component, type ReactNode, type ErrorInfo } from 'react';
+import { track, EVENTS } from '@/utils/analytics';
 
 interface ErrorBoundaryProps {
   label?: string;
@@ -23,6 +24,7 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
 
   componentDidCatch(error: Error, info: ErrorInfo): void {
     console.error(`[ErrorBoundary:${this.props.label}]`, error, info.componentStack);
+    track(EVENTS.SCREEN_CRASHED, { screen: this.props.label ?? 'Profil' });
   }
 
   reset = (): void => this.setState({ error: null });

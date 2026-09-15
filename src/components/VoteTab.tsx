@@ -45,7 +45,11 @@ export function VoteTab({ isAdmin, activeMatch, lastMatch, players, isLoading = 
     if (playerId && isAnonymousVoter && !guestToken) {
       setPendingPlayerId(playerId);
     }
-    track(EVENTS.VOTE_COMPLETED, { anonymous: isAnonymousVoter });
+    track(EVENTS.VOTE_COMPLETED, {
+      anonymous:   isAnonymousVoter,
+      guest:       !!guestName,
+      pepiteCount: activeMatch?.pepite_count ?? 2,
+    });
     // Stay on VoteTab: /results is locked until the reveal starts.
   };
 

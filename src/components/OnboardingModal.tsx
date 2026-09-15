@@ -1,5 +1,6 @@
-import { useState, type ReactNode } from 'react';
+import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
 import { useModalA11y } from '@/hooks/useModalA11y';
+import { track, EVENTS } from '@/utils/analytics';
 
 interface Step {
   color: string;
@@ -66,7 +67,17 @@ export function OnboardingModal({ onClose }: OnboardingModalProps) {
   const [step, setStep] = useState(0);
   const isLast = step === STEPS.length - 1;
   const s = STEPS[step];
-  const dialogRef = useModalA11y(onClose);
+
+  // The step is read through a ref so `close` stays stable: useModalA11y
+  // re-runs its focus trap whenever its callback changes.
+  const stepRef = useRef(step);
+  useEffect(() => { stepRef.current = step; }, [step]);
+  const close = useCallback(() => {
+    const reached = stepRef.current + 1;
+    track(EVENTS.ONBOARDING_CLOSED, { step: reached, completed: reached === STEPS.length });
+    onClose();
+  }, [onClose]);
+  const dialogRef = useModalA11y(close);
 
   return (
     <div
@@ -76,7 +87,7 @@ export function OnboardingModal({ onClose }: OnboardingModalProps) {
         display: 'flex', alignItems: 'flex-end', justifyContent: 'center',
         padding: '0 0 env(safe-area-inset-bottom, 0)',
       }}
-      onClick={e => { if (e.target === e.currentTarget) onClose(); }}
+      onClick={e => { if (e.target === e.currentTarget) close(); }}
     >
       <div
         ref={dialogRef}
@@ -122,7 +133,7 @@ export function OnboardingModal({ onClose }: OnboardingModalProps) {
 
         <div style={{ display: 'flex', gap: 10 }}>
           {step === 0 ? (
-            <button onClick={onClose} style={{
+            <button onClick={close} style={{
               flex: 1, padding: '13px', background: 'var(--bg3)', border: 'none',
               borderRadius: 14, fontSize: 15, fontWeight: 600, color: 'var(--label3)', cursor: 'pointer',
             }}>
@@ -136,7 +147,7 @@ export function OnboardingModal({ onClose }: OnboardingModalProps) {
               ← Retour
             </button>
           )}
-          <button onClick={() => isLast ? onClose() : setStep(s => s + 1)} style={{
+          <button onClick={() => isLast ? close() : setStep(s => s + 1)} style={{
             flex: 2, padding: '13px', background: s.color, border: 'none',
             borderRadius: 14, fontSize: 15, fontWeight: 700,
             color: step === 1 || step === 2 ? '#fff' : '#000', cursor: 'pointer',

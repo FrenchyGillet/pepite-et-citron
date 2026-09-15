@@ -2,6 +2,7 @@ import { useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { api, setCurrentOrgId, DEMO_MODE } from '@/api';
 import { useAppStore } from '@/store/appStore';
+import { track, EVENTS } from '@/utils/analytics';
 
 export function useGuest() {
   const navigate       = useNavigate();
@@ -20,13 +21,17 @@ export function useGuest() {
     const orgSlug    = searchParams.get('org');
 
     if (guestParam) {
+      track(EVENTS.VOTER_LINK_OPENED, { type: 'guest' });
       setIsVoterSession(true);
       setGuestStatus('checking');
 
       // Safety net: never leave the guest stuck on "Vérification…" if the
       // network hangs. 8 s matches the timeout budget used in useAuth.
       const timeout = setTimeout(() => {
-        if (useAppStore.getState().guestStatus === 'checking') setGuestStatus('invalid');
+        if (useAppStore.getState().guestStatus === 'checking') {
+          track(EVENTS.GUEST_LINK_INVALID, { reason: 'timeout' });
+          setGuestStatus('invalid');
+        }
       }, 8000);
 
       void (async () => {
@@ -46,9 +51,11 @@ export function useGuest() {
             setGuestStatus('valid');
             navigate('/vote', { replace: true });
           } else {
+            track(EVENTS.GUEST_LINK_INVALID, { reason: result ? 'used' : 'unknown' });
             setGuestStatus('invalid');
           }
         } catch {
+          track(EVENTS.GUEST_LINK_INVALID, { reason: 'error' });
           setGuestStatus('invalid');
         } finally {
           clearTimeout(timeout);
@@ -57,6 +64,7 @@ export function useGuest() {
     } else if (orgSlug && !DEMO_MODE) {
       setIsVoterSession(true);
       void api.getOrgBySlug(orgSlug).then(org => {
+        track(EVENTS.VOTER_LINK_OPENED, { type: 'org', found: !!org });
         if (org) {
           setCurrentOrgId(org.id);
           // No role on a slug-resolved org — force null so isAdmin stays false

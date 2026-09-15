@@ -71,8 +71,9 @@
   </script>
 
   <!-- No web font: system fonts load instantly and send nothing to a third party. -->
-  <!-- Umami Analytics (sans cookies) -->
-  <script defer src="https://cloud.umami.is/script.js" data-website-id="49c8f860-14d7-49c4-897b-9c547febd823"></script>
+  <!-- Umami Analytics (sans cookies). Query strings are kept here on purpose:
+       they carry the utm_* campaign tags. -->
+  <script defer src="https://cloud.umami.is/script.js" data-website-id="49c8f860-14d7-49c4-897b-9c547febd823" data-domains="pepite-citron.com"></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -782,7 +783,7 @@
     <span class="star">⭐</span> Pépite <span style="color:var(--label-tertiary);">&</span> <span class="lemon">🍋</span> Citron
   </div>
   <div class="nav-actions">
-    <a href="#tarifs" class="nav-tarifs">Tarifs</a>
+    <a href="#tarifs" class="nav-tarifs" data-umami-event="landing_nav_tarifs">Tarifs</a>
     <a href="/login" class="nav-cta" data-umami-event="landing_nav_cta">Lancer l'app →</a>
   </div>
 </nav>
@@ -877,7 +878,7 @@
       </div>
       <div class="how-setup-step">
         <div class="how-setup-num">3</div>
-        <div class="how-setup-text"><strong>Installe l'app sur ton écran d'accueil</strong> (facultatif) — <a href="#installer" style="color:var(--pepite);text-decoration:none;">30 secondes</a>, et elle se lance en plein écran comme une vraie app.</div>
+        <div class="how-setup-text"><strong>Installe l'app sur ton écran d'accueil</strong> (facultatif) — <a href="#installer" style="color:var(--pepite);text-decoration:none;" data-umami-event="landing_install_link">30 secondes</a>, et elle se lance en plein écran comme une vraie app.</div>
       </div>
     </div>
 
@@ -1068,7 +1069,7 @@
         <div class="pricing-feature"><span class="star">⭐</span><span class="pricing-feature-text"><strong>Statistiques de saison complètes</strong></span></div>
         <div class="pricing-feature"><span class="star">⭐</span><span class="pricing-feature-text"><strong>Historique de tous vos matchs</strong></span></div>
         <div class="pricing-feature"><span class="star">⭐</span><span class="pricing-feature-text">Tendances par joueur &amp; assiduité</span></div>
-        <a href="/login?mode=signup&amp;plan=annual" class="pricing-cta pro" id="pro-cta" data-umami-event="landing_pricing_pro_cta">Passer Pro — 12,99 €/an →</a>
+        <a href="/login?mode=signup&amp;plan=annual" class="pricing-cta pro" id="pro-cta" data-umami-event="landing_pricing_pro_cta" data-umami-event-plan="annual">Passer Pro — 12,99 €/an →</a>
         <div style="text-align:center;font-size:11px;color:var(--label-tertiary);margin-top:10px">Résiliation en un clic · Paiement sécurisé Stripe</div>
       </div>
 
@@ -1076,7 +1077,7 @@
   </div>
 </section>
 
-<script src="landing.js?v=3" defer></script>
+<script src="landing.js?v=4" defer></script>
 
 <!-- PWA INSTALL -->
 <section id="installer">
@@ -1156,14 +1157,14 @@
     "Aucun joueur n'a été blessé lors de la création de cette app. (Sauf leur ego.)"
   </div>
   <div class="footer-links">
-    <a href="/login">Ouvrir l'app</a>
-    <a href="#comment-ca-marche">Comment ça marche</a>
-    <a href="#tarifs">Tarifs</a>
-    <a href="#occasions">Occasions</a>
-    <a href="#installer">Installer</a>
-    <a href="/privacy.html">Confidentialité</a>
-    <a href="/terms.html">CGU</a>
-    <a href="mailto:feedback@pepite-citron.com">💬 Feedback</a>
+    <a href="/login" data-umami-event="landing_footer_link" data-umami-event-link="app">Ouvrir l'app</a>
+    <a href="#comment-ca-marche" data-umami-event="landing_footer_link" data-umami-event-link="how">Comment ça marche</a>
+    <a href="#tarifs" data-umami-event="landing_footer_link" data-umami-event-link="pricing">Tarifs</a>
+    <a href="#occasions" data-umami-event="landing_footer_link" data-umami-event-link="occasions">Occasions</a>
+    <a href="#installer" data-umami-event="landing_footer_link" data-umami-event-link="install">Installer</a>
+    <a href="/privacy.html" data-umami-event="landing_footer_link" data-umami-event-link="privacy">Confidentialité</a>
+    <a href="/terms.html" data-umami-event="landing_footer_link" data-umami-event-link="terms">CGU</a>
+    <a href="mailto:feedback@pepite-citron.com" data-umami-event="landing_feedback_clicked">💬 Feedback</a>
   </div>
   <div class="footer-copy">© 2026 Pépite &amp; Citron · Fait avec ⭐ et 🍋</div>
 </footer>

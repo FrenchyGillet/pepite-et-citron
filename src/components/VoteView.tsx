@@ -7,6 +7,7 @@ import { useVoteCount } from '@/hooks/queries';
 import { useNow } from '@/hooks/useNow';
 import { formatClockTime, formatDeadline, isDeadlinePassed } from '@/utils/deadline';
 import { useAppStore } from '@/store/appStore';
+import { track, EVENTS } from '@/utils/analytics';
 import type { Player, Match, EntityId } from '@/types';
 
 // Server-side cap in submit_vote (20260014).
@@ -157,7 +158,8 @@ export function VoteView({ players, match, onVoted, guestName = null, onGuestVot
       return;
     }
     setChecking(false);
-    if (voted) { setAlreadyVoted(true); return; }
+    if (voted) { setAlreadyVoted(true); track(EVENTS.VOTE_ALREADY_CAST); return; }
+    track(EVENTS.VOTE_STARTED, { pepiteCount });
     // A new identity starts from blank picks (you can't be your own pépite).
     setBest1(null); setBest2(null); setBest3(null); setLemon(null);
     setBest1Comment(''); setBest2Comment(''); setBest3Comment(''); setLemonComment('');
@@ -188,6 +190,7 @@ export function VoteView({ players, match, onVoted, guestName = null, onGuestVot
 
     // ── Offline-first: if device is offline, queue locally and proceed ──────
     if (!navigator.onLine) {
+      track(EVENTS.VOTE_QUEUED_OFFLINE, { reason: 'offline' });
       saveOfflineVote(votePayload);
       clearVoteDraft(match.id);
       markVotedLocally(match.id);
@@ -207,6 +210,7 @@ export function VoteView({ players, match, onVoted, guestName = null, onGuestVot
     } catch (err) {
       // Transient network failure → save offline and proceed optimistically
       if (isNetworkError(err)) {
+        track(EVENTS.VOTE_QUEUED_OFFLINE, { reason: 'network' });
         saveOfflineVote(votePayload);
         clearVoteDraft(match.id);
         markVotedLocally(match.id);
@@ -215,7 +219,9 @@ export function VoteView({ players, match, onVoted, guestName = null, onGuestVot
         onVoted(voterName, selectedVoterPlayer?.id);
         return;
       }
-      setSubmitError(classifyVoteError(err));
+      const message = classifyVoteError(err);
+      track(EVENTS.VOTE_FAILED, { reason: message.slice(0, 80) });
+      setSubmitError(message);
     } finally {
       setSubmitting(false);
     }

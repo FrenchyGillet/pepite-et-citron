@@ -1,6 +1,7 @@
 import { useEmailNotifications } from '@/hooks/queries';
 import { useSetEmailNotifications } from '@/hooks/mutations';
 import { humanizeError } from '@/utils/errors';
+import { track, EVENTS } from '@/utils/analytics';
 
 /** Profil → "Emails de vote": the member's own preference for this team (F10). */
 export function EmailPreferences({ orgId, orgName }: { orgId: string; orgName: string }) {
@@ -32,7 +33,10 @@ export function EmailPreferences({ orgId, orgName }: { orgId: string; orgName: s
         aria-label="Recevoir les emails de vote"
         checked={checked}
         disabled={isLoading || isError || setPreference.isPending}
-        onChange={e => setPreference.mutate(e.target.checked)}
+        onChange={e => {
+          track(EVENTS.EMAIL_NOTIFICATIONS_TOGGLED, { enabled: e.target.checked });
+          setPreference.mutate(e.target.checked);
+        }}
         style={{ width: 22, height: 22, accentColor: 'var(--gold-fill)', flexShrink: 0 }}
       />
     </label>

@@ -34,8 +34,12 @@
     <meta name="twitter:description" content="Après chaque match, désignez la pépite et le citron de l'équipe. Vote en un geste, résultats en temps réel, stats de saison." />
     <meta name="twitter:image"       content="https://pepite-citron.com/api/og" />
 
-    <!-- Umami Analytics — no cookies, GDPR-friendly -->
-    <script defer src="https://cloud.umami.is/script.js" data-website-id="49c8f860-14d7-49c4-897b-9c547febd823"></script>
+    <!-- Umami Analytics — no cookies, GDPR-friendly.
+         exclude-search/hash: page views must never carry ?guest= tokens (single-use
+         invite links) or #access_token (password recovery). Events cover the rest.
+         data-domains: nothing is sent from localhost or Vercel previews. -->
+    <script defer src="https://cloud.umami.is/script.js" data-website-id="49c8f860-14d7-49c4-897b-9c547febd823"
+      data-domains="pepite-citron.com" data-exclude-search="true" data-exclude-hash="true"></script>
   </head>
   <body>
     <div id="root"></div>

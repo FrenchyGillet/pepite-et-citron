@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { teamNameSchema } from '@/schemas';
+import { track, EVENTS } from '@/utils/analytics';
 import { useCreateTeam, useUpdateTeam, useDeleteTeam } from '@/hooks/mutations';
 import type { EntityId, Player, Team } from '@/types';
 import { activeTeamPlayerIds, sectionLabelStyle, type ConfirmFn, type Notify } from './shared';
@@ -36,7 +37,10 @@ export function TeamsSection({ activePlayers, teams, orgId, notify, confirm }: T
     setTeamError(null);
     createTeamMutation.mutate(
       { name: result.data.name, playerIds: teamIds },
-      { onSuccess: () => { setTeamName(''); setTeamIds([]); notify('Équipe sauvegardée !'); } },
+      { onSuccess: () => {
+        track(EVENTS.LINEUP_CREATED, { players: teamIds.length });
+        setTeamName(''); setTeamIds([]); notify('Équipe sauvegardée !');
+      } },
     );
   };
 

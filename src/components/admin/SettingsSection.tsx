@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { DEMO_MODE } from '@/api';
 import { memberEmailSchema } from '@/schemas';
 import { humanizeError } from '@/utils/errors';
+import { track, EVENTS } from '@/utils/analytics';
 import { useOrgMembers, useSeasonNames } from '@/hooks/queries';
 import { useAddMember, useRemoveMember, useAdvanceSeason, useSetSeasonName } from '@/hooks/mutations';
 import type { Org } from '@/types';
@@ -82,7 +83,7 @@ function AccountSettings({ currentOrg, onCopyOrgLink, onShowGuide, onUpgrade }: 
               borderRadius: 'var(--radius-sm)', padding: '11px',
               fontSize: 13, fontWeight: 800, cursor: 'pointer',
             }}
-            onClick={onUpgrade}
+            onClick={() => { track(EVENTS.UPGRADE_CLICKED, { source: 'settings' }); onUpgrade?.(); }}
           >
             Passer Pro →
           </button>
@@ -119,7 +120,10 @@ function SeasonSettings({ currentSeason, orgId, notify, confirm }: { currentSeas
       confirmLabel: 'Démarrer',
     }))) return;
     advanceSeasonMutation.mutate(undefined, {
-      onSuccess: (next) => { setSeasonNameDraft(''); notify(`Saison ${next} démarrée !`); },
+      onSuccess: (next) => {
+        track(EVENTS.SEASON_ADVANCED, { season: next });
+        setSeasonNameDraft(''); notify(`Saison ${next} démarrée !`);
+      },
       onError: (err) => notify(humanizeError(err)),
     });
   };
@@ -181,7 +185,10 @@ function MemberSettings({ orgId, notify, confirm }: { orgId: string; notify: Not
     setMemberError(null);
     const { email } = result.data;
     addMemberMutation.mutate({ email, role: 'voter' }, {
-      onSuccess: () => { setMemberEmail(''); notify(`${email} ajouté comme votant`); },
+      onSuccess: () => {
+        track(EVENTS.MEMBER_ADDED, { role: 'voter' });
+        setMemberEmail(''); notify(`${email} ajouté comme votant`);
+      },
       onError: (err) => notify(humanizeError(err)),
     });
   };
@@ -194,7 +201,7 @@ function MemberSettings({ orgId, notify, confirm }: { orgId: string; notify: Not
       confirmLabel: 'Nommer admin',
     }))) return;
     addMemberMutation.mutate({ email, role: 'admin' }, {
-      onSuccess: () => notify(`${email} est maintenant admin`),
+      onSuccess: () => { track(EVENTS.MEMBER_PROMOTED); notify(`${email} est maintenant admin`); },
       onError: (err) => notify(humanizeError(err)),
     });
   };

@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { DEMO_MODE, api } from '@/api';
 import { useAppStore } from '@/store/appStore';
 import { humanizeError } from '@/utils/errors';
+import { track, EVENTS } from '@/utils/analytics';
 import { EmailPreferences } from './EmailPreferences';
 import { clearLocalPersonalData, unsubscribeDeviceFromPush } from '@/utils/localData';
 import { joinFrenchList } from '@/utils/reminder';
@@ -49,6 +50,7 @@ export function ProfileView() {
     setError(null);
     try {
       await linkPlayer.mutateAsync(player.id);
+      track(EVENTS.PLAYER_CLAIMED);
       setSelectedPlayer(player);
       setNickname(player.nickname?.trim() ?? '');
       setStep('edit');
@@ -74,6 +76,7 @@ export function ProfileView() {
     const trimmed = nickname.trim();
     try {
       await updatePlayer.mutateAsync({ id: selectedPlayer.id, data: { nickname: trimmed || null } });
+      track(EVENTS.NICKNAME_SAVED, { hasNickname: !!trimmed });
       setSaved(true);
       setTimeout(() => setSaved(false), 2500);
     } catch {
@@ -320,6 +323,7 @@ function DeleteAccountButton() {
     setError(null);
     try {
       await api.deleteAccount();
+      track(EVENTS.ACCOUNT_DELETED, { adminTeams: adminTeams.length });
       clearLocalPersonalData();
       void unsubscribeDeviceFromPush();
       // After deletion the auth state change will redirect to AuthView

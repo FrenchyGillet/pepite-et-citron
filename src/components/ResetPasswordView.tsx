@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { api } from '@/api';
 import { useAppStore } from '@/store/appStore';
 import { humanizeError } from '@/utils/errors';
+import { track, EVENTS } from '@/utils/analytics';
 
 export function ResetPasswordView() {
   const setPasswordRecovery = useAppStore(s => s.setPasswordRecovery);
@@ -28,6 +29,7 @@ export function ResetPasswordView() {
     setSubmitting(true);
     try {
       await api.updatePassword(password);
+      track(EVENTS.PASSWORD_RESET_COMPLETED);
       setDone(true);
       // Give user 2 s to read the success message, then clear recovery mode
       // so the app continues as a normal authenticated session.

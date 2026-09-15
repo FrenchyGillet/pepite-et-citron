@@ -9,6 +9,7 @@ import { SharePodiumButton } from './SharePodiumButton';
 import { SeasonTeaser } from './SeasonTeaser';
 import { useVotes, useVoteCount } from '@/hooks/queries';
 import { useRevealNext, useCloseMatch, useUpdateMatch } from '@/hooks/mutations';
+import { track, EVENTS } from '@/utils/analytics';
 import type { Player, Match, EntityId } from '@/types';
 
 interface ResultsViewProps {
@@ -63,6 +64,7 @@ function ShareResultsButton({
     if (navigator.share) {
       try {
         await navigator.share({ text });
+        track(EVENTS.RESULTS_SHARED, { method: 'share' });
         setShared(true);
         setTimeout(() => setShared(false), 3000);
       } catch {
@@ -70,6 +72,7 @@ function ShareResultsButton({
       }
     } else {
       // Desktop fallback: open WhatsApp web
+      track(EVENTS.RESULTS_SHARED, { method: 'whatsapp' });
       window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank');
     }
   };
@@ -229,7 +232,9 @@ export function ResultsView({ players, match, isAdmin, isDark, orgId, isPro, onU
       revealNextMutation.mutate({ id: match.id, count: next });
     };
 
-    const handleFinish = () => closeMatchMutation.mutate(match.id);
+    const handleFinish = () => closeMatchMutation.mutate(match.id, {
+      onSuccess: () => track(EVENTS.COUNTING_FINISHED, { votes: revealOrder.length }),
+    });
 
     return (
       <div className="content">
@@ -358,6 +363,7 @@ export function ResultsView({ players, match, isAdmin, isDark, orgId, isPro, onU
   } = computeResultsSummary(votes, present, players, pepiteCount, tiebreakers);
 
   const setTiebreaker = (field: string, playerId: EntityId) => {
+    track(EVENTS.TIEBREAKER_RESOLVED, { field });
     updateMatchMutation.mutate({ id: match.id, data: { tiebreakers: { ...tiebreakers, [field]: playerId } } });
   };
 
@@ -405,7 +411,7 @@ export function ResultsView({ players, match, isAdmin, isDark, orgId, isPro, onU
           </div>
           <button
             className="btn btn-primary btn-full"
-            onClick={() => setPodiumRevealed(true)}
+            onClick={() => { track(EVENTS.PODIUM_REVEALED, { admin: isAdmin }); setPodiumRevealed(true); }}
             style={{ fontSize: 17, fontWeight: 800 }}
           >
             🎉 Révéler le classement !
@@ -493,7 +499,7 @@ export function ResultsView({ players, match, isAdmin, isDark, orgId, isPro, onU
                   </div>
                 </div>
                 <button
-                  onClick={onUpgrade}
+                  onClick={() => { track(EVENTS.UPGRADE_CLICKED, { source: 'results' }); onUpgrade(); }}
                   style={{
                     background: 'var(--gold-fill)', color: '#000', border: 'none',
                     borderRadius: 10, padding: '9px 14px',

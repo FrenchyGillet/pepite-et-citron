@@ -12,6 +12,7 @@
  */
 import { useState } from 'react';
 import { usePushNotifications } from '@/hooks/usePushNotifications';
+import { track, EVENTS } from '@/utils/analytics';
 
 const DISMISS_KEY = 'pepite_push_banner_dismissed';
 
@@ -31,6 +32,7 @@ export function PushNotificationBanner({ orgId }: Props) {
   if (status === 'error')     return null;
 
   const handleDismiss = () => {
+    track(EVENTS.PUSH_BANNER_DISMISSED);
     localStorage.setItem(DISMISS_KEY, '1');
     setDismissed(true);
   };
