@@ -32,7 +32,7 @@ export function SharePodiumButton({ match, pepiteRanked, lemonRanked, isDark }: 
       if (navigator.canShare?.({ files: [file] })) {
         await navigator.share({
           files: [file],
-          title: `Podium — ${match.label}`,
+          title: `Podium : ${match.label}`,
           text:  `Podium via Pépite & Citron 🏆 ${sharedLandingUrl('podium')}`,
         });
         track(EVENTS.PODIUM_SHARED, { method: 'share' });

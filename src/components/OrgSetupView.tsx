@@ -154,7 +154,7 @@ export function OrgSetupView({ onOrgCreated, userEmail, onBack }: OrgSetupViewPr
             Créez votre équipe 🎉
           </div>
           <div style={{ fontSize: 13, color: 'var(--label3)' }}>
-            Bienvenue {userEmail} — configurez votre espace en 30 secondes.
+            Bienvenue {userEmail}, configurez votre espace en 30 secondes.
           </div>
         </div>
 

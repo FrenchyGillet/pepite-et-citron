@@ -16,7 +16,7 @@ export function markVotedLocally(matchId: EntityId): void {
 export function classifyVoteError(err: unknown): string {
   // Single network-error heuristic, shared with the offline-vote queue.
   if (isNetworkError(err)) {
-    return 'Erreur réseau — vérifie ta connexion et réessaie.';
+    return 'Erreur réseau : vérifie ta connexion et réessaie.';
   }
   return (err instanceof Error ? err.message : '') || "Erreur lors de l'envoi, réessaie.";
 }

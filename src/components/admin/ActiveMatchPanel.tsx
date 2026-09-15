@@ -92,7 +92,7 @@ export function ActiveMatchPanel({ activeMatch, players, currentOrg, notify, con
       try { await navigator.share({ text }); } catch { /* user cancelled */ }
     } else {
       await copyToClipboard(text);
-      notify('Message copié — colle-le dans le groupe de l\'équipe');
+      notify('Message copié, colle-le dans le groupe de l\'équipe');
     }
   };
 
@@ -151,7 +151,7 @@ export function ActiveMatchPanel({ activeMatch, players, currentOrg, notify, con
           <div className="row-title">{activeMatch.label}</div>
           <div className="row-sub" aria-live="polite" aria-atomic="true">
             {phase === 'voting'   && `${voteCount} vote${voteCount !== 1 ? 's' : ''} reçu${voteCount !== 1 ? 's' : ''} sur ${activeMatch.present_ids.length} joueurs`}
-            {phase === 'counting' && `Dépouillement — ${activeMatch.revealed_count || 0}/${(activeMatch.reveal_order || []).length} votes révélés`}
+            {phase === 'counting' && `Dépouillement : ${activeMatch.revealed_count || 0}/${(activeMatch.reveal_order || []).length} votes révélés`}
           </div>
         </div>
       </div>

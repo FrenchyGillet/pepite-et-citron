@@ -42,7 +42,7 @@ export function NoTeamView({ onCreate, onRetry, onSignOut }: NoTeamViewProps) {
           Créer mon équipe
         </button>
         <button className="btn btn-secondary btn-full" style={{ marginTop: 10 }} onClick={onRetry}>
-          J'ai déjà une équipe — réessayer
+          J'ai déjà une équipe, réessayer
         </button>
         <button
           onClick={onSignOut}

@@ -39,7 +39,7 @@ export function PlayersSection({ players, teams, orgId, notify, confirm }: Playe
       archived.length ? `archivé, à réactiver : ${archived.join(', ')}` : '',
       tooLong.length  ? `trop long (50 caractères max) : ${tooLong.join(', ')}` : '',
     ].filter(Boolean).join(' · ');
-    if (toAdd.length === 0) { setPlayerError(skipped ? `Rien à ajouter — ${skipped}` : 'Le prénom est requis'); return; }
+    if (toAdd.length === 0) { setPlayerError(skipped ? `Rien à ajouter : ${skipped}` : 'Le prénom est requis'); return; }
     setPlayerError(null);
     addPlayersMutation.mutate(toAdd, {
       onSuccess: () => {

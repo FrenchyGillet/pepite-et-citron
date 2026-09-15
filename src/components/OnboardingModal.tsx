@@ -93,7 +93,7 @@ export function OnboardingModal({ onClose }: OnboardingModalProps) {
         ref={dialogRef}
         role="dialog"
         aria-modal="true"
-        aria-label={`Guide de démarrage — étape ${step + 1} sur ${STEPS.length} : ${s.title}`}
+        aria-label={`Guide de démarrage, étape ${step + 1} sur ${STEPS.length} : ${s.title}`}
         style={{
           background: 'var(--bg2)', borderRadius: '24px 24px 0 0',
           width: '100%', maxWidth: 480, padding: '8px 24px 32px',

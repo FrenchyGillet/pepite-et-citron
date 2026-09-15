@@ -165,7 +165,7 @@ export function UpgradeModal({ orgId, onClose, initialPlan = 'annual' }: Props) 
             opacity: loading ? 0.7 : 1, transition: 'opacity 0.15s',
           }}
         >
-          {loading ? 'Redirection…' : `Passer Pro — ${plan === 'monthly' ? '2,99 €/mois' : '12,99 €/an'} →`}
+          {loading ? 'Redirection…' : `Passer Pro : ${plan === 'monthly' ? '2,99 €/mois' : '12,99 €/an'} →`}
         </button>
         <div style={{ textAlign: 'center', fontSize: 12, color: 'var(--label3)', marginTop: 12 }}>
           Résiliation en un clic · Paiement sécurisé Stripe

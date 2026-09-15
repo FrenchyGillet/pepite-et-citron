@@ -12,7 +12,7 @@ function rpcWithTimeout<T>(fn: () => PromiseLike<T>, ms = 10000): Promise<T> {
   return Promise.race([
     Promise.resolve(fn()),
     new Promise<never>((_, reject) =>
-      setTimeout(() => reject(new Error("Délai dépassé — vérifie ta connexion et réessaie.")), ms)
+      setTimeout(() => reject(new Error("Délai dépassé : vérifie ta connexion et réessaie.")), ms)
     ),
   ]);
 }

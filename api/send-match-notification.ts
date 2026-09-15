@@ -93,7 +93,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const unsubscribe = unsubscribeUrl(APP_URL, user_id, orgId);
     return {
       to:      email,
-      subject: `⭐ Vote ouvert — ${matchLabel}`,
+      subject: `⭐ Vote ouvert : ${matchLabel}`,
       html:    renderEmail({ safeLabel, safeOrgName, voteUrl, unsubscribe }),
       // One-click unsubscribe in Gmail / Apple Mail (RFC 8058).
       headers: {

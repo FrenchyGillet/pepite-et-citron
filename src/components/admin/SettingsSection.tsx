@@ -74,7 +74,7 @@ function AccountSettings({ currentOrg, onCopyOrgLink, onShowGuide, onUpgrade }: 
             </span>
           </div>
           <p style={{ fontSize: 13, color: 'var(--label2)', lineHeight: 1.5, marginBottom: 12 }}>
-            Stats de saison, historique de matchs et tendances par joueur — dès 12,99 €/an.
+            Stats de saison, historique de matchs et tendances par joueur, dès 12,99 €/an.
           </p>
           <button
             className="btn btn-full"

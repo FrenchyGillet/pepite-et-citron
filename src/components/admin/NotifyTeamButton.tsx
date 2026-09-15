@@ -17,7 +17,7 @@ export function NotifyTeamButton({
   const [sent, setSent] = useState(false);
 
   const handleNotify = async () => {
-    const text = `🗳️ Vote ouvert — ${matchLabel}\nVotez maintenant : ${voteUrl}`;
+    const text = `🗳️ Vote ouvert : ${matchLabel}\nVotez maintenant : ${voteUrl}`;
     if (navigator.share) {
       try {
         await navigator.share({ text });

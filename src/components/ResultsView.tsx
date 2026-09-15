@@ -123,7 +123,7 @@ function TiebreakerCard({ title, color, field, tiedPlayers, step, disabled, onPi
       borderRadius: 'var(--radius-lg)', padding: '16px', marginBottom: 12,
     }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
-        <div style={{ fontSize: 15, fontWeight: 700 }}>🍺 Égalité — {title}</div>
+        <div style={{ fontSize: 15, fontWeight: 700 }}>🍺 Égalité : {title}</div>
         {step && (
           <span style={{
             fontSize: 11, fontWeight: 700, color: 'var(--label3)',

@@ -77,7 +77,7 @@ export function StatsLockedView({ onUpgrade, players }: Props) {
         Stats de saison
       </div>
       <div style={{ fontSize: 15, color: 'var(--label2)', lineHeight: 1.6, maxWidth: 280, marginBottom: 28 }}>
-        Le classement cumulé de la saison, l'historique de tous vos matchs et les tendances par joueur — réservés au plan Pro.
+        Le classement cumulé de la saison, l'historique de tous vos matchs et les tendances par joueur, réservés au plan Pro.
       </div>
 
       <button
@@ -94,7 +94,7 @@ export function StatsLockedView({ onUpgrade, players }: Props) {
           marginBottom: 12,
         }}
       >
-        Passer Pro — dès 12,99 €/an →
+        Passer Pro : dès 12,99 €/an →
       </button>
 
       <div style={{ fontSize: 12, color: 'var(--label3)' }}>

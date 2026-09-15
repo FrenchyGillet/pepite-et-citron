@@ -76,7 +76,7 @@ export function GuestPromoView({ canSeeResults, voterName, orgName }: GuestPromo
         <p style={{ fontSize: 14, color: 'var(--label3)', margin: '0 0 20px', lineHeight: 1.6 }}>
           {orgName
             ? 'Crée ton compte gratuit pour retrouver tes stats, choisir un surnom affiché sur le podium, et ne plus jamais rater un vote.'
-            : 'Crée ton équipe gratuitement et organise des votes Pépite & Citron après chaque match — en quelques secondes, au bar.'}
+            : 'Crée ton équipe gratuitement et organise des votes Pépite & Citron après chaque match, en quelques secondes, au bar.'}
         </p>
         <button
           className="btn btn-primary btn-full"
