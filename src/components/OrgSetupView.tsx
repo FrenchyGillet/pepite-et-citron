@@ -5,20 +5,12 @@ import { api } from '@/api';
 import { orgSetupSchema, type OrgSetupFormValues } from '@/schemas';
 import { humanizeError } from '@/utils/errors';
 import { track, EVENTS } from '@/utils/analytics';
+import { toSlug } from '@/utils/slug';
 import type { Org } from '@/types';
 
 interface OrgCreateFormProps {
   onOrgCreated: (org: Org) => void;
   submitLabel?: string;
-}
-
-function toSlug(str: string): string {
-  return str
-    .toLowerCase()
-    .normalize('NFD').replace(/[̀-ͯ]/g, '')
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-+|-+$/g, '')
-    .slice(0, 40);
 }
 
 const FieldError = ({ msg }: { msg?: string }) =>

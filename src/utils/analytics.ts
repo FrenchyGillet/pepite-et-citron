@@ -37,6 +37,8 @@ export const EVENTS = {
 
   // Onboarding funnel: landing → signup → team created / joined → first match
   ORG_CREATED:                'org_created',
+  FIRST_VOTE_LAUNCHED:        'first_vote_launched',
+  QUICK_START_FAILED:         'quick_start_failed',
   ORG_JOINED:                 'org_joined',
   ORG_SWITCHED:               'org_switched',
   NO_TEAM_CREATE_CLICKED:     'no_team_create_clicked',
@@ -57,6 +59,7 @@ export const EVENTS = {
   // Match lifecycle (admin side)
   MATCH_CREATED:              'match_created',
   VOTE_LINK_SHARED:           'vote_link_shared',
+  VOTE_QR_SHOWN:              'vote_qr_shown',
   VOTE_DEADLINE_EXTENDED:     'vote_deadline_extended',
   VOTE_REMINDER_SENT:         'vote_reminder_sent',
   VOTE_CANCELLED_BY_ADMIN:    'vote_cancelled_by_admin',

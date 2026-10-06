@@ -14,6 +14,7 @@ import { PullToRefreshIndicator }   from '@/components/PullToRefreshIndicator';
 import { usePullToRefresh }         from '@/hooks/usePullToRefresh';
 import { JoinOrgView }       from '@/components/JoinOrgView';
 import { NoTeamView }        from '@/components/NoTeamView';
+import { QuickStartView }    from '@/components/QuickStartView';
 import { takeUpgradeIntent, type UpgradePlan } from '@/utils/signupIntent';
 import { track, identify, displayMode, EVENTS } from '@/utils/analytics';
 import { useAuth }           from '@/hooks/useAuth';
@@ -113,6 +114,7 @@ export default function App() {
   const setJustSignedUp  = useAppStore(s => s.setJustSignedUp);
   const pendingOrgId     = useAppStore(s => s.pendingOrgId);
   const pendingOrgName   = useAppStore(s => s.pendingOrgName);
+  const quickStartActive = useAppStore(s => s.quickStartActive);
 
   // ── Server state ────────────────────────────────────────────────────────
   const { data: players = [], isLoading: playersLoading }  = usePlayers(currentOrg?.id);
@@ -193,6 +195,12 @@ export default function App() {
     return <><GlobalStyle /><ResetPasswordView /></>;
   }
 
+  // /start runs signup, team, players and the first vote in one go: keep it on
+  // screen while it does, whatever the session and org gates below would show.
+  if (!DEMO_MODE && quickStartActive) {
+    return <><GlobalStyle /><QuickStartView /></>;
+  }
+
   if (authLoading && !isVoterLink) {
     return (
       <>
@@ -206,6 +214,16 @@ export default function App() {
   }
 
   if (!DEMO_MODE && !session && !isVoterLink) {
+    // New organisers: one-screen setup that ends on an open vote.
+    if (location.pathname === '/start') {
+      return <><GlobalStyle /><QuickStartView /></>;
+    }
+    // Older landing links (/login?mode=signup) for someone creating a team. A
+    // voter joining an existing team (pendingOrgId) keeps the signup form.
+    if (location.pathname === '/login' && searchParams.get('mode') === 'signup' && !pendingOrgId) {
+      const plan = searchParams.get('plan');
+      return <Navigate to={plan ? `/start?plan=${encodeURIComponent(plan)}` : '/start'} replace />;
+    }
     // Marketing lives at "/" (static landing.html). The auth screen has its
     // own URL so it can be linked to directly; any other app path a logged-out
     // visitor hits sends them there.

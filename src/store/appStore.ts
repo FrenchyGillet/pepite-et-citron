@@ -82,6 +82,8 @@ interface AppStore {
                                          // A login with a transiently/genuinely empty org list
                                          // must NOT show it (see App.tsx).
   showOnboarding:    boolean;
+  /** The /start flow is running: App keeps it on screen through signup and org load. */
+  quickStartActive:  boolean;
   lastMatchId:       EntityId | null;
   passwordRecovery:  boolean;
 
@@ -104,6 +106,7 @@ interface AppStore {
   setPendingOrgId:      (id: string | null) => void;
   setPendingOrgName:    (name: string | null) => void;
   setJustSignedUp:      (v: boolean) => void;
+  setQuickStartActive:  (v: boolean) => void;
   setShowOnboarding:    (v: boolean) => void;
   setLastMatchId:       (id: EntityId | null) => void;
   setPasswordRecovery:  (v: boolean) => void;
@@ -135,6 +138,7 @@ export function resetAppStore() {
     pendingOrgName: null,
     justSignedUp: false,
     showOnboarding: false,
+    quickStartActive: false,
     lastMatchId: null,
     passwordRecovery: false,
   });
@@ -165,6 +169,7 @@ export const useAppStore = create<AppStore>((set, get) => ({
   pendingOrgName:   initialPendingOrg?.name ?? null,
   justSignedUp:     false,
   showOnboarding:   false,
+  quickStartActive: false,
   lastMatchId:      null,
   passwordRecovery: false,
 
@@ -187,6 +192,7 @@ export const useAppStore = create<AppStore>((set, get) => ({
   setPendingOrgId:     (id)   => { set({ pendingOrgId: id }); writePendingOrg(id, id ? get().pendingOrgName : null); },
   setPendingOrgName:   (name) => { set({ pendingOrgName: name }); const id = get().pendingOrgId; if (id) writePendingOrg(id, name); },
   setJustSignedUp:     (v)   => set({ justSignedUp: v }),
+  setQuickStartActive: (v)   => set({ quickStartActive: v }),
   setShowOnboarding:   (v)   => set({ showOnboarding: v }),
   setLastMatchId:      (id)  => set({ lastMatchId: id }),
   setPasswordRecovery: (v)   => set({ passwordRecovery: v }),

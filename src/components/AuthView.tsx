@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { api } from '@/api';
 import { loginSchema, signupSchema, type AuthFormValues } from '@/schemas';
@@ -7,6 +7,7 @@ import { OnboardingModal } from '@/components/OnboardingModal';
 import { track, EVENTS } from '@/utils/analytics';
 import { humanizeError } from '@/utils/errors';
 import { parseUpgradePlan, saveUpgradeIntent } from '@/utils/signupIntent';
+import { useAppStore } from '@/store/appStore';
 import type { UserSession } from '@/types';
 
 interface AuthViewProps {
@@ -22,6 +23,8 @@ export function AuthView({ onAuth }: AuthViewProps) {
   // The landing's "create" buttons link to /login?mode=signup: open straight
   // on the signup form instead of making new visitors look for it.
   const [searchParams] = useSearchParams();
+  const navigate       = useNavigate();
+  const pendingOrgId   = useAppStore(s => s.pendingOrgId);
   const [mode,      setMode]      = useState<AuthMode>(() => searchParams.get('mode') === 'signup' ? 'signup' : 'login');
   const [apiError,  setApiError]  = useState<string | null>(null);
   const [resetSent, setResetSent] = useState(false);
@@ -123,6 +126,18 @@ export function AuthView({ onAuth }: AuthViewProps) {
               }}>{t.label}</button>
             ))}
           </div>
+        )}
+
+        {/* A voter joining their team (pendingOrgId) signs up here; someone
+            starting a team is better served by /start (vote open in 1 min). */}
+        {mode === 'signup' && !pendingOrgId && (
+          <button type="button" onClick={() => navigate('/start')} style={{
+            width: '100%', marginBottom: 16, padding: '10px 12px', textAlign: 'left',
+            background: 'var(--gold-dim)', border: 'none', borderRadius: 'var(--radius-sm)',
+            fontSize: 13, fontWeight: 600, color: 'var(--gold)', cursor: 'pointer',
+          }}>
+            Tu crées une équipe ? Lance ton premier vote en 1 minute →
+          </button>
         )}
 
         {mode === 'forgot' && (

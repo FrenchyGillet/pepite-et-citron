@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useLocation } from 'react-router-dom';
 import { DEMO_MODE } from '@/api';
 import { track, EVENTS } from '@/utils/analytics';
 import { isActive } from '@/utils/player';
@@ -47,6 +48,9 @@ export function AdminView({ isAdmin = true, players, activeMatch, currentOrg, on
   const [settingsOpen, setSettingsOpen] = useState(false);
 
   const { confirm, confirmDialog } = useConfirm();
+  // Arrived from /start with the first vote already open.
+  const firstVote = !!(useLocation().state as { firstVote?: boolean } | null)?.firstVote
+    && (activeMatch?.phase ?? 'closed') === 'voting';
   const { data: teams         = [] } = useTeams(currentOrg?.id);
   const { data: currentSeason = 1  } = useCurrentSeason(currentOrg?.id);
 
@@ -82,8 +86,23 @@ export function AdminView({ isAdmin = true, players, activeMatch, currentOrg, on
       {confirmDialog}
 
       {/* ── Push notification opt-in banner ───────────────────────────── */}
-      {!DEMO_MODE && currentOrg?.id && (
+      {!DEMO_MODE && currentOrg?.id && !firstVote && (
         <PushNotificationBanner orgId={currentOrg.id} />
+      )}
+
+      {firstVote && (
+        <div role="status" style={{
+          background: 'var(--gold-dim)', borderRadius: 'var(--radius-lg)',
+          padding: '14px 16px', margin: '8px 0 12px',
+        }}>
+          <div style={{ fontSize: 16, fontWeight: 800, color: 'var(--gold)', marginBottom: 4 }}>
+            🎉 Ton premier vote est ouvert !
+          </div>
+          <p style={{ fontSize: 13, color: 'var(--label2)', lineHeight: 1.5 }}>
+            Fais scanner le QR code ou envoie le lien dans le groupe. Quand tout le monde a voté,
+            lance le dépouillement : les votes se révèlent un par un.
+          </p>
+        </div>
       )}
 
       {/* ── Setup checklist (new orgs only) ───────────────────────────── */}
@@ -118,6 +137,7 @@ export function AdminView({ isAdmin = true, players, activeMatch, currentOrg, on
             onLinkShared={markLinkShared}
             onGoToResults={onGoToResults}
             canManageVoters={isAdmin}
+            firstVote={firstVote}
           />
         ) : activePlayers.length === 0 ? (
           <div className="group">

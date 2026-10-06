@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { copyToClipboard } from '@/utils/clipboard';
 import { humanizeError } from '@/utils/errors';
 import { shuffleRevealOrder } from '@/utils/vote';
@@ -9,6 +10,7 @@ import { useNow } from '@/hooks/useNow';
 import { useVotes } from '@/hooks/queries';
 import { useCloseMatch, useStartCounting, useUpdateMatch, useSendVoteReminder, useDeleteVote } from '@/hooks/mutations';
 import type { Match, Org, Player } from '@/types';
+import { QrCode } from '@/components/QrCode';
 import { NotifyTeamButton } from './NotifyTeamButton';
 import type { ConfirmFn, Notify } from './shared';
 
@@ -26,14 +28,18 @@ interface ActiveMatchPanelProps {
    * voter identity, which get_match_votes never gives a captain.
    */
   canManageVoters?: boolean;
+  /** Just opened from /start: show the QR code straight away. */
+  firstVote?: boolean;
 }
 
 /**
  * The match being voted on: live count, deadline, vote link, reveal button,
  * who voted (with reminders and vote cancelling) and the discreet close link.
  */
-export function ActiveMatchPanel({ activeMatch, players, currentOrg, notify, confirm, onCopyOrgLink, onLinkShared, onGoToResults, canManageVoters = true }: ActiveMatchPanelProps) {
+export function ActiveMatchPanel({ activeMatch, players, currentOrg, notify, confirm, onCopyOrgLink, onLinkShared, onGoToResults, canManageVoters = true, firstVote = false }: ActiveMatchPanelProps) {
+  const navigate = useNavigate();
   const [voterTrackingOpen, setVoterTrackingOpen] = useState(false);
+  const [qrOpen,            setQrOpen]            = useState(firstVote);
 
   const { data: matchVotes = [] } = useVotes(activeMatch.id);
   const voteCount = matchVotes.length;
@@ -204,6 +210,22 @@ export function ActiveMatchPanel({ activeMatch, players, currentOrg, notify, con
                 </button>
               </div>
               <NotifyTeamButton voteUrl={voteUrl} matchLabel={activeMatch.label} onFallback={onCopyOrgLink} onShared={onLinkShared} />
+              {/* In the locker room, everyone scanning one phone beats a link. */}
+              <button className="btn btn-secondary btn-full" style={{ fontSize: 14 }} aria-expanded={qrOpen}
+                onClick={() => { if (!qrOpen) { track(EVENTS.VOTE_QR_SHOWN); onLinkShared?.(); } setQrOpen(o => !o); }}>
+                {qrOpen ? 'Masquer le QR code' : '📱 Afficher le QR code'}
+              </button>
+              {qrOpen && (
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, padding: '8px 0' }}>
+                  <QrCode value={voteUrl} label="QR code du lien de vote" />
+                  <p style={{ fontSize: 13, color: 'var(--label3)', textAlign: 'center' }}>
+                    Fais scanner ce code par l'équipe pour voter.
+                  </p>
+                </div>
+              )}
+              <button className="btn btn-secondary btn-full" style={{ fontSize: 14 }} onClick={() => navigate('/vote')}>
+                🗳️ Voter moi aussi
+              </button>
             </>
           )}
           <button className="btn btn-primary btn-full" onClick={startCounting} disabled={startCountingMutation.isPending || voteCount === 0}>
