@@ -24,6 +24,7 @@ import { useRealtime }       from '@/hooks/useRealtime';
 import { useOfflineSync }    from '@/hooks/useOfflineSync';
 import { useWakeUp }         from '@/hooks/useWakeUp';
 import { refreshCoreData }   from '@/lib/refresh';
+import { canRunMatches as roleCanRunMatches } from '@/utils/roles';
 import { usePlayers }        from '@/hooks/queries';
 import { useAppStore }       from '@/store/appStore';
 import { useSearchParams }   from 'react-router-dom';
@@ -145,6 +146,9 @@ export default function App() {
   // an authenticated voter into the Admin view. Legit admins always get
   // role === 'admin' from get_my_orgs (COALESCE default).
   const isAdmin = DEMO_MODE || (!!session && currentOrg?.role === 'admin');
+  // Captains run the match of the day too (open, reveal, close) — same strict
+  // rule: only a role from get_my_orgs counts.
+  const canRunMatches = DEMO_MODE || (!!session && roleCanRunMatches(currentOrg?.role));
   const isPro   = DEMO_MODE || currentOrg?.plan === 'pro';
 
   // isVoterLink must remain true even AFTER useGuest calls navigate('/vote'),
@@ -316,7 +320,7 @@ export default function App() {
     { id: 'vote',    label: 'Vote',      locked: false, icon: <><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></> },
     { id: 'results', label: 'Résultats', locked: false, icon: <path d="M18 20V10M12 20V4M6 20v-6"/> },
     { id: 'stats',   label: 'Saison',    locked: !isPro, icon: <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/> },
-    ...(isAdmin ? [{ id: 'admin', label: 'Admin', locked: false, icon: <><circle cx="12" cy="8" r="4"/><path d="M20 21a8 8 0 10-16 0"></path></> }] : []),
+    ...(canRunMatches ? [{ id: 'admin', label: isAdmin ? 'Admin' : 'Capitaine', locked: false, icon: <><circle cx="12" cy="8" r="4"/><path d="M20 21a8 8 0 10-16 0"></path></> }] : []),
   ];
 
   return (
@@ -342,13 +346,13 @@ export default function App() {
           <Route path="/login" element={<Navigate to="/vote" replace />} />
           <Route path="/vote" element={
             <ErrorBoundary label="Vote">
-              <VoteTab isAdmin={isAdmin} activeMatch={activeMatch} lastMatch={lastMatch} players={players}
+              <VoteTab isAdmin={canRunMatches} activeMatch={activeMatch} lastMatch={lastMatch} players={players}
                 isLoading={matchLoading || playersLoading} />
             </ErrorBoundary>
           } />
           <Route path="/results" element={
             <ErrorBoundary label="Résultats">
-              <ResultsView players={players} match={lastMatch} isAdmin={isAdmin} isDark={theme === 'dark'}
+              <ResultsView players={players} match={lastMatch} isAdmin={canRunMatches} isDark={theme === 'dark'}
                 orgId={currentOrg?.id} isPro={isPro} onUpgrade={() => setShowUpgradeModal(true)} />
             </ErrorBoundary>
           } />
@@ -356,14 +360,15 @@ export default function App() {
             isPro
               ? <ErrorBoundary label="Saison">
                   <StatsView players={players} activeMatch={activeMatch} isAdmin={isAdmin}
-                    orgId={currentOrg?.id} />
+                    canRunMatches={canRunMatches} orgId={currentOrg?.id} />
                 </ErrorBoundary>
               : <StatsLockedView onUpgrade={() => setShowUpgradeModal(true)} players={players} />
           } />
           <Route path="/admin" element={
-            isAdmin
+            canRunMatches
               ? <ErrorBoundary label="Admin">
                   <AdminView
+                    isAdmin={isAdmin}
                     players={players}
                     activeMatch={activeMatch}
                     currentOrg={currentOrg}

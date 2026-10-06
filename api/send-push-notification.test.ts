@@ -71,6 +71,22 @@ describe('POST /api/send-push-notification', () => {
     expect(res.statusCode).toBe(403);
   });
 
+  it('fans out for a captain caller', async () => {
+    mockFrom.mockImplementation(makeFrom({
+      role: 'captain',
+      tables: {
+        push_subscriptions: {
+          data: [{ endpoint: 'https://push/1', p256dh: 'k', auth: 'a', user_id: 'user-2' }],
+          error: null,
+        },
+      },
+    }));
+    const res = makeRes();
+    await handler(req() as any, res as any);
+    expect(res.statusCode).toBe(200);
+    expect(sendNotification).toHaveBeenCalledTimes(1);
+  });
+
   it('returns 400 on an invalid type', async () => {
     const res = makeRes();
     await handler(req({ body: { orgId: 'org-1', type: 'nope', matchLabel: 'x' } }) as any, res as any);

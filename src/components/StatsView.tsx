@@ -5,16 +5,20 @@ import { computeResultsSummary } from '@/utils/scoring';
 import { Sparkline } from './Sparkline';
 import { EmptyState } from './EmptyState';
 import { PodiumView } from './PodiumView';
+import { ManualResultForm } from './ManualResultForm';
+import { Toast } from './Toast';
 import { useAllVotes, useMatches, useTeams, useCurrentSeason, useSeasonNames } from '@/hooks/queries';
 import { useDeleteMatch, useUpdateMatch } from '@/hooks/mutations';
 import { useConfirm } from '@/hooks/useConfirm';
 import { track, EVENTS } from '@/utils/analytics';
-import type { Player, Match, EntityId } from '@/types';
+import type { Player, Match, EntityId, ManualResult } from '@/types';
 
 interface StatsViewProps {
   players: Player[];
   activeMatch: Match | null;
   isAdmin: boolean;
+  /** Admin or captain: may enter a missing result and edit a match. */
+  canRunMatches?: boolean;
   orgId?: string | null;
 }
 
@@ -22,6 +26,34 @@ interface EditingMatch {
   id: EntityId;
   label: string;
   team_id: EntityId | null;
+}
+
+/** Podium of a hand-entered match: the names, and the points when known. */
+function ManualResultSummary({ result, players }: { result: ManualResult; players: Player[] }) {
+  const nameOf = (id: EntityId) => players.find(p => String(p.id) === String(id))?.name ?? '?';
+  const pts = (map: Record<string, number> | undefined, id: EntityId) => {
+    const n = map?.[String(id)];
+    return n != null ? ` · ${n} pt${n > 1 ? 's' : ''}` : '';
+  };
+  const placeLabels = ['⭐ La Pépite', '2e', '3e'];
+  return (
+    <div className="group" style={{ marginBottom: 4 }}>
+      {result.best_ids.map((id, i) => (
+        <div key={String(id)} className="row">
+          <div className="row-body">
+            <div className="row-sub" style={{ color: i === 0 ? 'var(--gold)' : 'var(--label3)' }}>{placeLabels[i]}</div>
+            <div className="row-title" style={{ fontWeight: i === 0 ? 700 : 500 }}>{nameOf(id)}{pts(result.best_pts, id)}</div>
+          </div>
+        </div>
+      ))}
+      <div className="row">
+        <div className="row-body">
+          <div className="row-sub" style={{ color: 'var(--lemon)' }}>🍋 Le Citron</div>
+          <div className="row-title" style={{ fontWeight: 700 }}>{nameOf(result.lemon_id)}{pts(result.lemon_pts, result.lemon_id)}</div>
+        </div>
+      </div>
+    </div>
+  );
 }
 
 // Module-level so the buttons are not remounted on every StatsView render.
@@ -40,11 +72,14 @@ function TabBar({ items, active, onChange }: { items: { id: number; label: strin
   );
 }
 
-export function StatsView({ players, activeMatch, isAdmin, orgId }: StatsViewProps) {
+export function StatsView({ players, activeMatch, isAdmin, canRunMatches = isAdmin, orgId }: StatsViewProps) {
   const [selectedSeason, setSelectedSeason] = useState<number | null>(null);
   const [selectedTeamId, setSelectedTeamId] = useState<EntityId | null>(null);
   const [expandedId,     setExpandedId]     = useState<EntityId | null>(null);
   const [editingMatch,   setEditingMatch]   = useState<EditingMatch | null>(null);
+  // 'new' = adding a missing result; a match = editing a hand-entered one.
+  const [manualForm,     setManualForm]     = useState<'new' | Match | null>(null);
+  const [toast,          setToast]          = useState<string | null>(null);
 
   const { data: allVotes   = [], isError: votesError,   refetch: refetchVotes }   = useAllVotes(orgId);
   const { data: allMatches = [], isLoading, isError: matchesError, refetch: refetchMatches } = useMatches(orgId);
@@ -118,6 +153,7 @@ export function StatsView({ players, activeMatch, isAdmin, orgId }: StatsViewPro
   return (
     <div className="content">
       {confirmDialog}
+      {toast && <Toast msg={toast} onDone={() => setToast(null)} />}
       {seasons.length > 0 && (
         <div style={{ marginTop: 12, marginBottom: 16 }}>
           <TabBar
@@ -143,12 +179,27 @@ export function StatsView({ players, activeMatch, isAdmin, orgId }: StatsViewPro
         </div>
       )}
 
-      {filteredMatches.length === 0 ? (
-        <EmptyState
-          icon={<><path d="M18 20V10M12 20V4M6 20v-6"/></>}
-          title="Pas encore de match"
-          subtitle="Les statistiques s'afficheront dès que le premier match de cette saison sera clôturé."
+      {manualForm && (
+        <ManualResultForm
+          players={players}
+          teams={allTeams}
+          season={activeSeason}
+          orgId={orgId}
+          match={manualForm === 'new' ? undefined : manualForm}
+          onDone={msg => { setManualForm(null); setToast(msg); }}
+          onCancel={() => setManualForm(null)}
         />
+      )}
+
+      {filteredMatches.length === 0 ? (
+        !manualForm && (
+          <EmptyState
+            icon={<><path d="M18 20V10M12 20V4M6 20v-6"/></>}
+            title="Pas encore de match"
+            subtitle="Les statistiques s'afficheront dès que le premier match de cette saison sera clôturé."
+            action={canRunMatches ? { label: 'Ajouter un résultat', onClick: () => setManualForm('new') } : null}
+          />
+        )
       ) : (
         <>
           <p className="section-label mb-4">Classement Pépites ⭐</p>
@@ -244,7 +295,12 @@ export function StatsView({ players, activeMatch, isAdmin, orgId }: StatsViewPro
             </>
           )}
 
-          <p className="section-label mb-8">Matchs</p>
+          <div className="flex-between mb-8">
+            <p className="section-label">Matchs</p>
+            {canRunMatches && !manualForm && (
+              <button className="tag tag-dim" onClick={() => setManualForm('new')}>+ Ajouter un résultat</button>
+            )}
+          </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 20 }}>
             {filteredMatches.map(match => {
               const matchVotes   = allVotes.filter(v => v.match_id === match.id);
@@ -252,6 +308,7 @@ export function StatsView({ players, activeMatch, isAdmin, orgId }: StatsViewPro
               const isExpanded   = expandedId === match.id;
               const isEditing    = editingMatch?.id === match.id;
               const teamName     = allTeams.find(t => t.id === match.team_id)?.name;
+              const manual       = match.manual_result;
 
               return (
                 <div key={String(match.id)} style={{ background: 'var(--bg2)', borderRadius: 'var(--radius-lg)', overflow: 'hidden' }}>
@@ -262,7 +319,7 @@ export function StatsView({ players, activeMatch, isAdmin, orgId }: StatsViewPro
                       <div style={{ fontSize: 12, color: 'var(--label3)', marginTop: 2 }}>
                         {formatDate(match.created_at)}
                         {teamName && <span> · <span style={{ color: 'var(--gold)' }}>{teamName}</span></span>}
-                        {' · '}{matchVotes.length} vote{matchVotes.length !== 1 ? 's' : ''}
+                        {' · '}{manual ? 'saisi à la main' : `${matchVotes.length} vote${matchVotes.length !== 1 ? 's' : ''}`}
                       </div>
                     </div>
                     <span style={{ color: 'var(--label4)', fontSize: 11 }}>{isExpanded ? '▲' : '▼'}</span>
@@ -270,7 +327,9 @@ export function StatsView({ players, activeMatch, isAdmin, orgId }: StatsViewPro
 
                   {isExpanded && (
                     <div style={{ borderTop: '1px solid var(--separator)', padding: '12px 16px' }}>
-                      {matchVotes.length === 0 ? (
+                      {manual ? (
+                        <ManualResultSummary result={manual} players={players} />
+                      ) : matchVotes.length === 0 ? (
                         <p style={{ fontSize: 14, color: 'var(--label3)', marginBottom: 12 }}>Aucun vote enregistré.</p>
                       ) : (
                         <>
@@ -311,7 +370,7 @@ export function StatsView({ players, activeMatch, isAdmin, orgId }: StatsViewPro
                         </>
                       )}
 
-                      {isAdmin && (isEditing && editingMatch ? (
+                      {canRunMatches && (isEditing && editingMatch ? (
                         <div style={{ marginTop: 12, display: 'flex', flexDirection: 'column', gap: 8 }}>
                           <input aria-label="Nom du match" value={editingMatch.label}
                             onChange={e => setEditingMatch(em => em ? { ...em, label: e.target.value } : em)}
@@ -337,10 +396,12 @@ export function StatsView({ players, activeMatch, isAdmin, orgId }: StatsViewPro
                       ) : (
                         <div className="flex gap-8" style={{ marginTop: 12 }}>
                           <button className="btn btn-secondary" style={{ flex: 1 }}
-                            onClick={() => setEditingMatch({ id: match.id, label: match.label, team_id: match.team_id || null })}>
+                            onClick={() => manual
+                              ? setManualForm(match)
+                              : setEditingMatch({ id: match.id, label: match.label, team_id: match.team_id || null })}>
                             Modifier
                           </button>
-                          <button className="btn btn-danger" onClick={() => handleDelete(match)}>Supprimer</button>
+                          {isAdmin && <button className="btn btn-danger" onClick={() => handleDelete(match)}>Supprimer</button>}
                         </div>
                       ))}
                     </div>

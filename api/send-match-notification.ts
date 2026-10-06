@@ -13,7 +13,7 @@
  */
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { supabaseAdmin as supabase } from './_lib/supabaseAdmin.js';
-import { requireOrgAdmin } from './_lib/auth.js';
+import { requireOrgMatchRunner } from './_lib/auth.js';
 import { matchNotificationSchema } from './_lib/validation.js';
 import { escapeHtml } from './_lib/http.js';
 import { unsubscribeUrl } from './_lib/unsubscribe.js';
@@ -34,8 +34,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (!parsed.success) return res.status(400).json({ error: 'Requête invalide' });
   const { orgId, matchLabel } = parsed.data;
 
-  // Only an admin of this org may notify its members.
-  const auth = await requireOrgAdmin(req, orgId);
+  // Only an admin or captain of this org may notify its members.
+  const auth = await requireOrgMatchRunner(req, orgId);
   if (!auth.ok) return res.status(auth.status).json({ error: auth.error });
 
   // Fetch org info (slug for the vote link)

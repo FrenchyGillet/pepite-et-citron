@@ -39,7 +39,7 @@ export function makeRes() {
  * `role: null` simulates a non-member (403). Other tables come from `tables`.
  */
 export function makeFrom(opts: {
-  role?: 'admin' | 'voter' | null;
+  role?: 'admin' | 'captain' | 'voter' | null;
   members?: unknown[];
   tables?: Record<string, unknown>;
 } = {}) {

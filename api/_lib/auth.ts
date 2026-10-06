@@ -1,7 +1,7 @@
 import type { VercelRequest } from '@vercel/node';
 import { supabaseAdmin } from './supabaseAdmin.js';
 
-export type OrgRole = 'admin' | 'voter';
+export type OrgRole = 'admin' | 'captain' | 'voter';
 
 type AuthOk = { ok: true; userId: string };
 type AuthFail = { ok: false; status: 401 | 403; error: string };
@@ -51,6 +51,22 @@ export async function requireOrgAdmin(
   if (!result.ok) return result;
   if (result.role !== 'admin') {
     return { ok: false, status: 403, error: 'Réservé aux administrateurs' };
+  }
+  return result;
+}
+
+/**
+ * Verify the caller may run this org's vote: an admin, or a captain (the
+ * teammate an admin delegated the match of the day to, 20260019).
+ */
+export async function requireOrgMatchRunner(
+  req: VercelRequest,
+  orgId: string,
+): Promise<MemberOk | AuthFail> {
+  const result = await requireOrgMember(req, orgId);
+  if (!result.ok) return result;
+  if (result.role !== 'admin' && result.role !== 'captain') {
+    return { ok: false, status: 403, error: 'Réservé aux administrateurs et capitaines' };
   }
   return result;
 }

@@ -19,7 +19,7 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import webpush from 'web-push';
 import { supabaseAdmin as supabase } from './_lib/supabaseAdmin.js';
-import { requireOrgAdmin } from './_lib/auth.js';
+import { requireOrgMatchRunner } from './_lib/auth.js';
 import { pushNotificationSchema } from './_lib/validation.js';
 
 const APP_URL = process.env.VITE_APP_URL || 'https://pepite-citron.com';
@@ -43,8 +43,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (!parsed.success) return res.status(400).json({ error: 'Requête invalide' });
   const { orgId, type, matchLabel, matchId } = parsed.data;
 
-  // Only an admin of this org may push to its subscribers.
-  const auth = await requireOrgAdmin(req, orgId);
+  // Only an admin or captain of this org may push to its subscribers.
+  const auth = await requireOrgMatchRunner(req, orgId);
   if (!auth.ok) return res.status(auth.status).json({ error: auth.error });
 
   // A reminder only goes to present players who have not voted yet and whose

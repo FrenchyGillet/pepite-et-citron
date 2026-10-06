@@ -7,7 +7,8 @@ import { useTheme } from '@/hooks/useTheme';
 import { useActiveMatch } from '@/hooks/queries';
 import { initials, avatarColor } from '@/utils/player';
 import { track, EVENTS } from '@/utils/analytics';
-import type { Org } from '@/types';
+import { canRunMatches, roleLabel } from '@/utils/roles';
+import type { Org, OrgRole } from '@/types';
 
 export function AppHeader() {
   const currentOrg = useAppStore(s => s.currentOrg);
@@ -94,13 +95,13 @@ function OrgPicker({ currentOrg, myOrgs, open, setOpen, onSwitch }: OrgPickerPro
           <span className="header-sub" style={{ color: 'var(--gold)', fontWeight: 600 }}>{currentOrg.name}</span>
           {currentOrg.plan === 'pro' && <ProCrown />}
           <span aria-hidden="true" style={{ fontSize: 9, color: 'var(--gold)', opacity: 0.7, marginTop: 1 }}>▼</span>
-          {currentOrg.role === 'voter' && <RoleBadge />}
+          {currentOrg.role && currentOrg.role !== 'admin' && <RoleBadge role={currentOrg.role} />}
         </button>
       ) : (
         <div className="header-sub" style={{ color: 'var(--gold)', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 5 }}>
           {currentOrg.name}
           {currentOrg.plan === 'pro' && <ProCrown />}
-          {currentOrg.role === 'voter' && <RoleBadge />}
+          {currentOrg.role && currentOrg.role !== 'admin' && <RoleBadge role={currentOrg.role} />}
         </div>
       )}
       {open && myOrgs.length > 1 && (
@@ -123,11 +124,11 @@ function OrgPicker({ currentOrg, myOrgs, open, setOpen, onSwitch }: OrgPickerPro
               </span>
               <span style={{
                 fontSize: 11, fontWeight: 700,
-                color: org.role === 'admin' ? 'var(--gold)' : 'var(--lemon)',
-                background: org.role === 'admin' ? 'rgba(255,214,10,0.12)' : 'rgba(170,221,0,0.12)',
+                color: canRunMatches(org.role) ? 'var(--gold)' : 'var(--lemon)',
+                background: canRunMatches(org.role) ? 'rgba(255,214,10,0.12)' : 'rgba(170,221,0,0.12)',
                 borderRadius: 4, padding: '2px 6px', flexShrink: 0,
               }}>
-                {org.role === 'admin' ? 'Admin' : 'Votant'}
+                {roleLabel(org.role)}
               </span>
             </button>
           ))}
@@ -137,10 +138,15 @@ function OrgPicker({ currentOrg, myOrgs, open, setOpen, onSwitch }: OrgPickerPro
   );
 }
 
-function RoleBadge() {
+function RoleBadge({ role }: { role: OrgRole }) {
+  const captain = role === 'captain';
   return (
-    <span style={{ fontSize: 10, fontWeight: 700, background: 'rgba(170,221,0,0.15)', color: 'var(--lemon)', borderRadius: 4, padding: '1px 5px' }}>
-      votant
+    <span style={{
+      fontSize: 10, fontWeight: 700, borderRadius: 4, padding: '1px 5px',
+      background: captain ? 'rgba(255,214,10,0.12)' : 'rgba(170,221,0,0.15)',
+      color: captain ? 'var(--gold)' : 'var(--lemon)',
+    }}>
+      {roleLabel(role).toLowerCase()}
     </span>
   );
 }

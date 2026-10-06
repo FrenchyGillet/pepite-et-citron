@@ -21,13 +21,18 @@ interface ActiveMatchPanelProps {
   onCopyOrgLink: () => void;
   onLinkShared?: () => void;
   onGoToResults?: () => void;
+  /**
+   * Admin only: « Qui a voté ? », reminders and vote cancelling need the
+   * voter identity, which get_match_votes never gives a captain.
+   */
+  canManageVoters?: boolean;
 }
 
 /**
  * The match being voted on: live count, deadline, vote link, reveal button,
  * who voted (with reminders and vote cancelling) and the discreet close link.
  */
-export function ActiveMatchPanel({ activeMatch, players, currentOrg, notify, confirm, onCopyOrgLink, onLinkShared, onGoToResults }: ActiveMatchPanelProps) {
+export function ActiveMatchPanel({ activeMatch, players, currentOrg, notify, confirm, onCopyOrgLink, onLinkShared, onGoToResults, canManageVoters = true }: ActiveMatchPanelProps) {
   const [voterTrackingOpen, setVoterTrackingOpen] = useState(false);
 
   const { data: matchVotes = [] } = useVotes(activeMatch.id);
@@ -205,7 +210,7 @@ export function ActiveMatchPanel({ activeMatch, players, currentOrg, notify, con
             {startCountingMutation.isPending ? 'Préparation…' : `Lancer le dépouillement · ${voteCount} vote${voteCount !== 1 ? 's' : ''}`}
           </button>
           {/* ── Voter tracking toggle ───────────────────────── */}
-          {presentPlayers.length > 0 && (
+          {canManageVoters && presentPlayers.length > 0 && (
             <div>
               <button
                 onClick={() => setVoterTrackingOpen(o => !o)}

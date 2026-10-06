@@ -147,6 +147,16 @@ export const demoAPI: API = {
     demoState.matches.push(m);
     return Promise.resolve(m);
   },
+  createManualMatch: ({ label, presentIds, teamId, season, pepiteCount, playedAt, result }) => {
+    const m: Match = {
+      id: demoState.nextId++, label, present_ids: presentIds,
+      is_open: false, phase: "closed", reveal_order: [], revealed_count: 0,
+      season: season || demoState.currentSeason, team_id: teamId ?? null,
+      created_at: playedAt, pepite_count: pepiteCount, manual_result: result,
+    };
+    demoState.matches.push(m);
+    return Promise.resolve(m);
+  },
   closeMatch:    (id) => {
     const m = demoState.matches.find(m => m.id === id);
     if (m) { m.is_open = false; m.phase = "closed"; }
@@ -478,6 +488,18 @@ export const realAPI: API = {
         team_id: teamId ?? null, season: season || 1, org_id: _orgId,
         ...(pepiteCount === 3 ? { pepite_count: 3 } : {}),
         ...(voteDeadline ? { vote_deadline: voteDeadline } : {}),
+      }).select()
+    );
+    return rows[0];
+  },
+  // Closed from the start: matches_manual_result_check (20260019) forbids
+  // reopening it. No withRetry (INSERT — see createMatch).
+  createManualMatch: async ({ label, presentIds, teamId, season, pepiteCount, playedAt, result }) => {
+    const rows = await run<Match[]>(
+      supabase.from("matches").insert({
+        label, present_ids: presentIds, is_open: false, phase: "closed",
+        team_id: teamId ?? null, season: season || 1, org_id: _orgId,
+        pepite_count: pepiteCount, created_at: playedAt, manual_result: result,
       }).select()
     );
     return rows[0];

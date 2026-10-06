@@ -18,6 +18,8 @@ import { SetupChecklist } from './SetupChecklist';
 import { PushNotificationBanner } from './PushNotificationBanner';
 
 interface AdminViewProps {
+  /** false for a captain: match of the day only, no roster or settings. */
+  isAdmin?: boolean;
   players: Player[];
   activeMatch: Match | null;
   currentOrg: Org | null;
@@ -31,7 +33,7 @@ interface AdminViewProps {
  * vote link, open/closed zones). Each section in ./admin owns its own form
  * state and mutations.
  */
-export function AdminView({ players, activeMatch, currentOrg, onShowGuide, onGoToResults, onUpgrade }: AdminViewProps) {
+export function AdminView({ isAdmin = true, players, activeMatch, currentOrg, onShowGuide, onGoToResults, onUpgrade }: AdminViewProps) {
   const [toast, setToast] = useState<string | null>(null);
   const [linkCopied, setLinkCopied] = useState(() =>
     currentOrg?.id ? !!localStorage.getItem(`pepite_link_copied_${currentOrg.id}`) : false
@@ -85,7 +87,7 @@ export function AdminView({ players, activeMatch, currentOrg, onShowGuide, onGoT
       )}
 
       {/* ── Setup checklist (new orgs only) ───────────────────────────── */}
-      {!DEMO_MODE && currentOrg?.id && !activeMatch && (
+      {!DEMO_MODE && isAdmin && currentOrg?.id && !activeMatch && (
         <SetupChecklist
           orgId={currentOrg.id}
           playerCount={activePlayers.length}
@@ -115,13 +117,16 @@ export function AdminView({ players, activeMatch, currentOrg, onShowGuide, onGoT
             onCopyOrgLink={() => void copyOrgLink()}
             onLinkShared={markLinkShared}
             onGoToResults={onGoToResults}
+            canManageVoters={isAdmin}
           />
         ) : activePlayers.length === 0 ? (
           <div className="group">
             <div className="row">
               <div className="row-body">
                 <div className="row-title" style={{ color: 'var(--label3)' }}>Aucun joueur enregistré</div>
-                <div className="row-sub">Ajoute tes joueurs dans "Effectif" ci-dessous ↓</div>
+                <div className="row-sub">
+                  {isAdmin ? 'Ajoute tes joueurs dans "Effectif" ci-dessous ↓' : "L'admin doit d'abord ajouter les joueurs."}
+                </div>
               </div>
             </div>
           </div>
@@ -143,33 +148,35 @@ export function AdminView({ players, activeMatch, currentOrg, onShowGuide, onGoT
       )}
 
       {/* ── ZONE 2 : Effectif ──────────────────────────────────────────── */}
-      <CollapsibleSection
-        title="Effectif"
-        badge={activePlayers.length}
-        subtitle="Joueurs et équipes de l'organisation."
-        isOpen={effectifOpen}
-        onToggle={() => setEffectifOpen(v => !v)}
-      >
-        <PlayersSection {...shared} players={players} teams={teams} orgId={currentOrg?.id} />
-        <TeamsSection {...shared} activePlayers={activePlayers} teams={teams} orgId={currentOrg?.id} />
-      </CollapsibleSection>
+      {isAdmin && (<>
+        <CollapsibleSection
+          title="Effectif"
+          badge={activePlayers.length}
+          subtitle="Joueurs et équipes de l'organisation."
+          isOpen={effectifOpen}
+          onToggle={() => setEffectifOpen(v => !v)}
+        >
+          <PlayersSection {...shared} players={players} teams={teams} orgId={currentOrg?.id} />
+          <TeamsSection {...shared} activePlayers={activePlayers} teams={teams} orgId={currentOrg?.id} />
+        </CollapsibleSection>
 
-      {/* ── ZONE 3 : Paramètres ────────────────────────────────────────── */}
-      <CollapsibleSection
-        title="Paramètres"
-        subtitle="Compte, saison et membres."
-        isOpen={settingsOpen}
-        onToggle={() => setSettingsOpen(v => !v)}
-      >
-        <SettingsSection
-          {...shared}
-          currentOrg={currentOrg}
-          currentSeason={currentSeason}
-          onCopyOrgLink={() => void copyOrgLink()}
-          onShowGuide={onShowGuide}
-          onUpgrade={onUpgrade}
-        />
-      </CollapsibleSection>
+        {/* ── ZONE 3 : Paramètres ────────────────────────────────────────── */}
+        <CollapsibleSection
+          title="Paramètres"
+          subtitle="Compte, saison et membres."
+          isOpen={settingsOpen}
+          onToggle={() => setSettingsOpen(v => !v)}
+        >
+          <SettingsSection
+            {...shared}
+            currentOrg={currentOrg}
+            currentSeason={currentSeason}
+            onCopyOrgLink={() => void copyOrgLink()}
+            onShowGuide={onShowGuide}
+            onUpgrade={onUpgrade}
+          />
+        </CollapsibleSection>
+      </>)}
 
       {/* Legal footer */}
       <div style={{

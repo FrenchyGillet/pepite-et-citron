@@ -5,7 +5,8 @@ import { humanizeError } from '@/utils/errors';
 import { track, EVENTS } from '@/utils/analytics';
 import { useOrgMembers, useSeasonNames } from '@/hooks/queries';
 import { useAddMember, useRemoveMember, useAdvanceSeason, useSetSeasonName } from '@/hooks/mutations';
-import type { Org } from '@/types';
+import { roleLabel } from '@/utils/roles';
+import type { Org, OrgMember } from '@/types';
 import { ManageSubscriptionButton } from './ManageSubscriptionButton';
 import { sectionLabelStyle, type ConfirmFn, type Notify } from './shared';
 
@@ -206,6 +207,22 @@ function MemberSettings({ orgId, notify, confirm }: { orgId: string; notify: Not
     });
   };
 
+  // Captain: runs the vote when the admin is away (open, reveal, close, guest
+  // links, missing results) without roster, members or billing rights.
+  const handleSetCaptain = async (member: OrgMember, captain: boolean) => {
+    if (captain && !(await confirm({
+      message: `Nommer ${member.email} capitaine ? Ce membre pourra lancer, dépouiller et clore un vote, et ajouter un résultat manquant, sans voir qui a voté quoi.`,
+      confirmLabel: 'Nommer capitaine',
+    }))) return;
+    addMemberMutation.mutate({ email: member.email, role: captain ? 'captain' : 'voter' }, {
+      onSuccess: () => {
+        track(captain ? EVENTS.CAPTAIN_APPOINTED : EVENTS.CAPTAIN_REMOVED);
+        notify(captain ? `${member.email} est maintenant capitaine` : `${member.email} n'est plus capitaine`);
+      },
+      onError: (err) => notify(humanizeError(err)),
+    });
+  };
+
   const handleRemoveMember = async (userId: string, email: string) => {
     if (!(await confirm({ message: `Retirer ${email} ?`, confirmLabel: 'Retirer', danger: true }))) return;
     removeMemberMutation.mutate(userId, {
@@ -219,21 +236,27 @@ function MemberSettings({ orgId, notify, confirm }: { orgId: string; notify: Not
       <p style={{ ...sectionLabelStyle, marginBottom: 6 }}>Membres</p>
       <p style={{ fontSize: 12, color: 'var(--label4)', marginBottom: 10 }}>
         Invite des joueurs à voter avec leur compte. Ils auront accès en mode votant uniquement.
+        Nomme un capitaine pour qu'il puisse lancer le vote quand tu n'es pas là.
       </p>
       {members.length > 0 && (
         <div className="group" style={{ marginBottom: 12 }}>
           {members.map((m, i) => (
             <div key={m.user_id}>
               {i > 0 && <div style={{ height: 1, background: 'var(--separator)', margin: '0 16px' }} />}
-              <div className="row">
+              <div className="row" style={{ flexWrap: 'wrap', rowGap: 8 }}>
                 <div className="row-body">
                   <div className="row-title">{m.email}</div>
-                  <div className="row-sub" style={{ color: m.role === 'admin' ? 'var(--gold)' : 'var(--lemon)' }}>
-                    {m.role === 'admin' ? 'Admin' : 'Votant'}
+                  <div className="row-sub" style={{ color: m.role === 'voter' ? 'var(--lemon)' : 'var(--gold)' }}>
+                    {roleLabel(m.role)}
                   </div>
                 </div>
                 {m.role !== 'admin' && (
-                  <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, flexShrink: 0 }}>
+                    <button className="btn btn-secondary" style={{ padding: '5px 12px', fontSize: 13 }}
+                      disabled={addMemberMutation.isPending}
+                      onClick={() => void handleSetCaptain(m, m.role !== 'captain')}>
+                      {m.role === 'captain' ? 'Retirer capitaine' : 'Nommer capitaine'}
+                    </button>
                     <button className="btn btn-secondary" style={{ padding: '5px 12px', fontSize: 13 }}
                       disabled={addMemberMutation.isPending}
                       onClick={() => void handlePromoteMember(m.email)}>

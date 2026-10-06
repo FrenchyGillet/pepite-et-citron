@@ -1,7 +1,7 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/api';
 import { queryKeys } from './queries';
-import type { EntityId, Vote, Match, Player } from '@/types';
+import type { EntityId, Vote, Match, Player, ManualMatchInput, OrgRole } from '@/types';
 
 export function useSubmitVote(matchId: EntityId | null | undefined) {
   const qc = useQueryClient();
@@ -86,6 +86,15 @@ export function useCreateMatch(orgId?: string | null) {
         void sendPushNotification(orgId, 'vote_open', vars.label);
       }
     },
+  });
+}
+
+/** A match played without a vote, entered from the history: no notification. */
+export function useCreateManualMatch(orgId?: string | null) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (input: ManualMatchInput) => api.createManualMatch(input),
+    onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.matches(orgId) }),
   });
 }
 
@@ -239,7 +248,7 @@ export function useDeleteGuestToken(matchId: EntityId | null | undefined) {
 export function useAddMember(orgId: string | null | undefined) {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: ({ email, role }: { email: string; role?: 'admin' | 'voter' }) =>
+    mutationFn: ({ email, role }: { email: string; role?: OrgRole }) =>
       api.addMember(email, orgId!, role),
     onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.orgMembers(orgId) }),
   });

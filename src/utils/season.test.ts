@@ -186,3 +186,45 @@ describe('computeSeasonStats', () => {
     expect(maxPts).toBe(4); // alice: 2+2
   });
 });
+
+// ── Hand-entered results (no ballots) ─────────────────────────────────────────
+
+describe('computeSeasonStats — manual results', () => {
+  const manualMatch = (id: number, presentIds: number[], manual_result: Match['manual_result']): Match => ({
+    ...makeMatch(id, presentIds), manual_result,
+  });
+
+  it('counts the titles and the attendance, without points when no totals', () => {
+    const { rankedBest, rankedLemon, rankedAttendance } = computeSeasonStats(
+      allPlayers, [manualMatch(1, [1, 2, 3], { best_ids: [1, 2], lemon_id: 3 })], [], [],
+    );
+    expect(rankedBest.map(s => [s.name, s.bestPts, s.wins])).toEqual([['Alice', 0, 1]]);
+    expect(rankedLemon.map(s => [s.name, s.lemonPts, s.lemons])).toEqual([['Charlie', 0, 1]]);
+    expect(rankedAttendance).toHaveLength(3);
+  });
+
+  it('adds the totals when they were entered', () => {
+    const { rankedBest, rankedLemon } = computeSeasonStats(allPlayers, [
+      manualMatch(1, [1, 2, 3], { best_ids: [1], lemon_id: 3, best_pts: { '1': 9, '2': 4 }, lemon_pts: { '3': 6 } }),
+    ], [], []);
+    expect(rankedBest.map(s => [s.name, s.bestPts])).toEqual([['Alice', 9], ['Bob', 4]]);
+    expect(rankedLemon.map(s => [s.name, s.lemonPts])).toEqual([['Charlie', 6]]);
+  });
+
+  it('ignores stray ballots on a manual match and mixes with voted matches', () => {
+    const voted = makeMatch(2, [1, 2, 3]);
+    const { rankedBest } = computeSeasonStats(allPlayers, [
+      manualMatch(1, [1, 2, 3], { best_ids: [2], lemon_id: 3 }),
+      voted,
+    ], [
+      makeVote(10, 1, { best1_id: 1 }),
+      makeVote(11, 2, { best1_id: 1, best2_id: 3, lemon_id: 2 }),
+    ], []);
+    const alice = rankedBest.find(s => s.name === 'Alice');
+    const bob = rankedBest.find(s => s.name === 'Bob');
+    expect(alice).toMatchObject({ bestPts: 2, wins: 1 }); // only the voted match
+    expect(bob).toMatchObject({ bestPts: 0, wins: 1 });   // the manual title
+    // points first, then titles
+    expect(rankedBest.map(s => s.name)).toEqual(['Alice', 'Charlie', 'Bob']);
+  });
+});

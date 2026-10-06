@@ -1,6 +1,7 @@
 import type { Player, Match, Vote, Team } from '@/types';
 import { computeScores } from '@/utils';
 import { resolveWinners } from '@/utils/scoring';
+import { manualScores } from '@/utils/manualResult';
 
 export interface PlayerStat {
   name: string;
@@ -50,7 +51,10 @@ export function computeSeasonStats(
   sortedMatches.forEach(match => {
     const mv = allVotes.filter(v => v.match_id === match.id);
     const pp = players.filter(p => (match.present_ids || []).includes(p.id));
-    const { best, lemon } = computeScores(mv, pp, players, match.pepite_count ?? 2);
+    const manual = match.manual_result;
+    const { best, lemon } = manual
+      ? manualScores(manual, pp, players)
+      : computeScores(mv, pp, players, match.pepite_count ?? 2);
     let maxB = 0, maxL = 0;
 
     const presentSet = new Set((match.present_ids || []).map(String));
@@ -88,6 +92,15 @@ export function computeSeasonStats(
       }
     });
 
+    // A hand-entered match names its Pépite and Citron directly.
+    if (manual) {
+      const pepite = stats[String(manual.best_ids[0])];
+      if (pepite) pepite.wins++;
+      const citron = stats[String(manual.lemon_id)];
+      if (citron) citron.lemons++;
+      return;
+    }
+
     // Match winner(s): same rule as the podium (resolveWinners) — the admin's
     // tiebreaker if set, otherwise every player tied at the top score.
     const tb = match.tiebreakers || {};
@@ -102,8 +115,12 @@ export function computeSeasonStats(
     s => s.bestPts > 0 || s.lemonPts > 0 || s.matchesPlayed > 0 || s.absences > 0
   );
 
-  const rankedBest  = [...allStats].filter(s => s.bestPts  > 0).sort((a, b) => b.bestPts  - a.bestPts);
-  const rankedLemon = [...allStats].filter(s => s.lemonPts > 0).sort((a, b) => b.lemonPts - a.lemonPts);
+  // A title won on a hand-entered match without totals counts with 0 pts, so
+  // titles keep a player in the ranking and break ties on points.
+  const rankedBest  = [...allStats].filter(s => s.bestPts  > 0 || s.wins   > 0)
+    .sort((a, b) => b.bestPts  - a.bestPts  || b.wins   - a.wins);
+  const rankedLemon = [...allStats].filter(s => s.lemonPts > 0 || s.lemons > 0)
+    .sort((a, b) => b.lemonPts - a.lemonPts || b.lemons - a.lemons);
 
   // Attendance: fewest absences first, most games played as tiebreaker.
   const rankedAttendance = [...allStats]

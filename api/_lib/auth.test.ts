@@ -15,7 +15,7 @@ vi.mock('@supabase/supabase-js', () => ({
 }));
 
 import { makeFrom } from './testUtils';
-import { authenticate, requireOrgMember, requireOrgAdmin } from './auth';
+import { authenticate, requireOrgMember, requireOrgAdmin, requireOrgMatchRunner } from './auth';
 
 const reqWith = (authorization?: string) =>
   ({ headers: authorization ? { authorization } : {} }) as any;
@@ -70,6 +70,27 @@ describe('api/_lib/auth', () => {
 
     it('propagates a 401 from authenticate', async () => {
       expect(await requireOrgAdmin(reqWith(), 'org-1')).toMatchObject({ ok: false, status: 401 });
+    });
+
+    it('is 403 for a captain', async () => {
+      mockFrom.mockImplementation(makeFrom({ role: 'captain' }));
+      expect(await requireOrgAdmin(reqWith('Bearer x'), 'org-1')).toMatchObject({ ok: false, status: 403 });
+    });
+  });
+
+  describe('requireOrgMatchRunner', () => {
+    it('is 403 for a voter', async () => {
+      mockFrom.mockImplementation(makeFrom({ role: 'voter' }));
+      expect(await requireOrgMatchRunner(reqWith('Bearer x'), 'org-1')).toMatchObject({ ok: false, status: 403 });
+    });
+
+    it('accepts a captain', async () => {
+      mockFrom.mockImplementation(makeFrom({ role: 'captain' }));
+      expect(await requireOrgMatchRunner(reqWith('Bearer x'), 'org-1')).toMatchObject({ ok: true, role: 'captain' });
+    });
+
+    it('accepts an admin', async () => {
+      expect(await requireOrgMatchRunner(reqWith('Bearer x'), 'org-1')).toMatchObject({ ok: true, role: 'admin' });
     });
   });
 });

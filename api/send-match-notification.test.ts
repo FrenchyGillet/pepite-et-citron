@@ -179,7 +179,7 @@ describe('POST /api/send-match-notification', () => {
     });
     let orgMembersCalls = 0;
     mockFrom.mockImplementation((t: string) => {
-      // 1st org_members read = the caller's role (requireOrgAdmin), 2nd = preferences
+      // 1st org_members read = the caller's role (requireOrgMatchRunner), 2nd = preferences
       if (t === 'org_members' && ++orgMembersCalls === 2) return makeChain({ data: null, error: { message: 'column does not exist' } });
       return base(t);
     });

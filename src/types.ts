@@ -31,7 +31,25 @@ export interface Match {
   pepite_count?: 2 | 3;
   /** After this time submit_vote refuses ballots (null = no deadline). */
   vote_deadline?: string | null;
+  /** Result entered by hand for a match played without a vote (no ballots). */
+  manual_result?: ManualResult | null;
 }
+
+/**
+ * Result of a match nobody launched a vote for, entered afterwards from the
+ * history. Points are optional: without them the match only counts in the
+ * Pépite / Citron titles and the attendance, not in the season points.
+ */
+export interface ManualResult {
+  /** Podium order, first = the Pépite (1 to pepite_count players). */
+  best_ids: EntityId[];
+  lemon_id: EntityId;
+  /** Totals by player id, when someone counted them. */
+  best_pts?: Record<string, number>;
+  lemon_pts?: Record<string, number>;
+}
+
+export type OrgRole = 'admin' | 'captain' | 'voter';
 
 export interface Vote {
   id?: EntityId;
@@ -65,14 +83,14 @@ export interface Org {
   id: string;
   name: string;
   slug: string;
-  role?: 'admin' | 'voter' | null;
+  role?: OrgRole | null;
   plan?: 'free' | 'pro';
 }
 
 export interface OrgMember {
   user_id: string;
   email: string;
-  role: 'admin' | 'voter';
+  role: OrgRole;
 }
 
 export interface Team {
@@ -80,6 +98,17 @@ export interface Team {
   name: string;
   player_ids: EntityId[];
   org_id?: string;
+}
+
+export interface ManualMatchInput {
+  label: string;
+  presentIds: EntityId[];
+  teamId: EntityId | null;
+  season: number;
+  pepiteCount: 2 | 3;
+  /** ISO date of the match (it is usually entered days later). */
+  playedAt: string;
+  result: ManualResult;
 }
 
 // ─── Score types ─────────────────────────────────────────────────────────────
@@ -131,7 +160,7 @@ export interface API {
   getMyOrgs(): Promise<Org[]>;
   getOrgBySlug(slug: string): Promise<Org | null>;
   getOrgMembers(orgId: string): Promise<OrgMember[]>;
-  addMember(email: string, orgId: string, role?: 'admin' | 'voter'): Promise<void>;
+  addMember(email: string, orgId: string, role?: OrgRole): Promise<void>;
   removeMember(userId: string, orgId: string): Promise<unknown>;
   /** The caller's "vote ouvert" email preference for this team (F10). */
   getEmailNotifications(orgId: string): Promise<boolean>;
@@ -152,6 +181,8 @@ export interface API {
   getMatches(): Promise<Match[]>;
   getMatchById(id: EntityId): Promise<Match | null>;
   createMatch(label: string, presentIds: EntityId[], teamId: EntityId | null, season: number, pepiteCount?: 2 | 3, voteDeadline?: string | null): Promise<Match>;
+  /** A closed match carrying a hand-entered result (no vote). */
+  createManualMatch(input: ManualMatchInput): Promise<Match>;
   closeMatch(id: EntityId): Promise<unknown>;
   startCounting(id: EntityId, order: EntityId[]): Promise<unknown>;
   revealNext(id: EntityId, count: number): Promise<unknown>;

@@ -65,6 +65,7 @@ export const EVENTS = {
   COUNTING_FINISHED:          'counting_finished',
   TIEBREAKER_RESOLVED:        'tiebreaker_resolved',
   MATCH_DELETED:              'match_deleted',
+  MANUAL_RESULT_SAVED:        'manual_result_saved',
 
   // Results
   PODIUM_REVEALED:            'podium_revealed',
@@ -76,6 +77,8 @@ export const EVENTS = {
   LINEUP_CREATED:             'lineup_created',
   MEMBER_ADDED:               'member_added',
   MEMBER_PROMOTED:            'member_promoted',
+  CAPTAIN_APPOINTED:          'captain_appointed',
+  CAPTAIN_REMOVED:            'captain_removed',
   SEASON_ADVANCED:            'season_advanced',
   ORG_LINK_COPIED:            'org_link_copied',
   GUEST_LINK_COPIED:          'guest_link_copied',
