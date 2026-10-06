@@ -56,6 +56,8 @@ describe("/start — premier vote en une minute", () => {
     const { currentOrg, quickStartActive } = useAppStore.getState();
     expect(currentOrg).toMatchObject({ name: "FC Lions", role: "admin" });
     expect(quickStartActive).toBe(false);
+    // "Voter moi aussi" opens on Yann's ballot
+    expect(JSON.parse(localStorage.getItem("pepite_voter_identity"))).toMatchObject({ name: "Yann" });
     // No guide modal on top of the open vote
     expect(localStorage.getItem(`pepite_onboarded_${currentOrg.id}`)).toBe("1");
   });

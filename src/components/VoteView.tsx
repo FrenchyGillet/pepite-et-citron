@@ -35,10 +35,17 @@ export function VoteView({ players, match, onVoted, guestName = null, onGuestVot
   // Single-use invite link: travels with the vote and is consumed server-side.
   const guestToken = useAppStore(s => s.guestToken);
 
-  const storedPlayer = storedIdentity
+  // A signed-in member whose account is linked to a player (profile, or "Et
+  // toi, c'est lequel ?" at /start) is that player: don't ask who they are.
+  const userId = useAppStore(s => s.session?.user.id);
+  const linkedPlayer = !guestName && userId
+    ? players.find(p => p.user_id === userId && presentIds.includes(p.id))
+    : undefined;
+
+  const storedPlayer = linkedPlayer ?? (storedIdentity
     ? (players.find(p => p.id === storedIdentity.playerId && presentIds.includes(p.id))
        ?? players.find(p => p.name === storedIdentity.name && presentIds.includes(p.id)))
-    : null;
+    : null);
 
   // ── Draft persistence: restore in-progress vote so a refresh / screen-lock
   //    resumes from the last completed step (not step 0).
