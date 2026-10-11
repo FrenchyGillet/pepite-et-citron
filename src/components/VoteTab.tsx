@@ -8,6 +8,7 @@ import { useVoteCount } from '@/hooks/queries';
 import { VoteView } from './VoteView';
 import { EmptyState } from './EmptyState';
 import { GuestPromoView } from './GuestPromoView';
+import { LinkOrgBanner, JoinLinkOrgOffer } from './LinkOrgBanner';
 import type { Player, Match, EntityId } from '@/types';
 
 interface VoteTabProps {
@@ -18,7 +19,16 @@ interface VoteTabProps {
   isLoading?: boolean;
 }
 
-export function VoteTab({ isAdmin, activeMatch, lastMatch, players, isLoading = false }: VoteTabProps) {
+export function VoteTab(props: VoteTabProps) {
+  return (
+    <>
+      <LinkOrgBanner />
+      <VoteTabContent {...props} />
+    </>
+  );
+}
+
+function VoteTabContent({ isAdmin, activeMatch, lastMatch, players, isLoading = false }: VoteTabProps) {
   const session            = useAppStore(s => s.session);
   const guestStatus        = useAppStore(s => s.guestStatus);
   const guestName          = useAppStore(s => s.guestName);
@@ -115,15 +125,18 @@ export function VoteTab({ isAdmin, activeMatch, lastMatch, players, isLoading = 
       );
     }
     return (
-      <EmptyState
-        icon={<><path d="M22 11.08V12a10 10 0 11-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></>}
-        title="Vote enregistré ✓"
-        subtitle={
-          presentCount > 0
-            ? `${voteCount} / ${presentCount} ont voté · les résultats s'afficheront dès le début du dépouillement.`
-            : "Les résultats s'afficheront dès le début du dépouillement."
-        }
-      />
+      <>
+        <EmptyState
+          icon={<><path d="M22 11.08V12a10 10 0 11-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></>}
+          title="Vote enregistré ✓"
+          subtitle={
+            presentCount > 0
+              ? `${voteCount} / ${presentCount} ont voté · les résultats s'afficheront dès le début du dépouillement.`
+              : "Les résultats s'afficheront dès le début du dépouillement."
+          }
+        />
+        <JoinLinkOrgOffer />
+      </>
     );
   }
 

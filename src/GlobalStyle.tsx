@@ -223,6 +223,7 @@ export function GlobalStyle() {
       min-height: 48px;
     }
     .player-chip:active     { background: var(--bg3); }
+    .player-chip.sel-id     { background: var(--bg3); color: var(--label); font-weight: 700; }
     .player-chip.sel-1st    { background: var(--gold-subtle);  color: var(--gold);          animation: chipSelect 0.28s cubic-bezier(0.34, 1.56, 0.64, 1); }
     .player-chip.sel-2nd    { background: var(--gold-subtle);  color: rgba(255,214,10,0.6); animation: chipSelect 0.28s cubic-bezier(0.34, 1.56, 0.64, 1); }
     .player-chip.sel-lemon  { background: var(--lemon-subtle); color: var(--lemon);         animation: chipSelect 0.28s cubic-bezier(0.34, 1.56, 0.64, 1); }

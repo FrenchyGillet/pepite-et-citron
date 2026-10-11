@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { api, setCurrentOrgId, DEMO_MODE } from '@/api';
+import { api, DEMO_MODE } from '@/api';
 import { useAppStore } from '@/store/appStore';
 import { track, EVENTS } from '@/utils/analytics';
 
@@ -12,7 +12,7 @@ export function useGuest() {
   const setGuestName       = useAppStore(s => s.setGuestName);
   const setGuestStatus     = useAppStore(s => s.setGuestStatus);
   const setIsVoterSession  = useAppStore(s => s.setIsVoterSession);
-  const setCurrentOrg      = useAppStore(s => s.setCurrentOrg);
+  const openLinkOrg        = useAppStore(s => s.openLinkOrg);
   const setPendingOrgId    = useAppStore(s => s.setPendingOrgId);
   const setPendingOrgName  = useAppStore(s => s.setPendingOrgName);
 
@@ -40,12 +40,8 @@ export function useGuest() {
           if (result && !result.used) {
             const match = await api.getMatchById(result.match_id);
             const orgId = match?.org_id;
-            if (orgId) {
-              setCurrentOrgId(orgId);
-              if (!useAppStore.getState().currentOrg) {
-                setCurrentOrg({ id: orgId, name: '', slug: '', role: null });
-              }
-            }
+            // The link's team wins, even over a signed-in user's own team.
+            if (orgId) openLinkOrg({ id: orgId, name: '', slug: '' });
             setGuestToken(guestParam);
             setGuestName(result.name);
             setGuestStatus('valid');
@@ -66,10 +62,10 @@ export function useGuest() {
       void api.getOrgBySlug(orgSlug).then(org => {
         track(EVENTS.VOTER_LINK_OPENED, { type: 'org', found: !!org });
         if (org) {
-          setCurrentOrgId(org.id);
-          // No role on a slug-resolved org — force null so isAdmin stays false
-          // until loadOrgs() confirms the real membership.
-          if (!useAppStore.getState().currentOrg) setCurrentOrg({ ...org, role: null });
+          // The link's team wins, even over a signed-in user's own team: they
+          // vote there like any link voter, member or not (joining is offered
+          // after the vote, never automatic).
+          openLinkOrg(org);
           // Remember this org so we can auto-join after signup (instead of OrgSetupView)
           setPendingOrgId(org.id);
           setPendingOrgName(org.name);

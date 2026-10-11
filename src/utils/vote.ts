@@ -30,19 +30,30 @@ interface StoredVoterIdentity {
   playerId: EntityId | null;
 }
 
-/** Retrieve the stored voter name for this device (null if none). */
-export function getStoredVoterIdentity(): StoredVoterIdentity | null {
+// One identity per team: a "Thomas" remembered in one team must not be taken
+// for the "Thomas" of another. The unscoped key is what older versions wrote.
+const identityKey = (orgId?: string | null) =>
+  orgId ? `${VOTER_IDENTITY_KEY}_${orgId}` : VOTER_IDENTITY_KEY;
+
+/** Retrieve the voter name stored on this device for this team (null if none). */
+export function getStoredVoterIdentity(orgId?: string | null): StoredVoterIdentity | null {
   try {
-    const raw = localStorage.getItem(VOTER_IDENTITY_KEY);
-    if (!raw) return null;
-    return JSON.parse(raw) as StoredVoterIdentity;
+    const raw = localStorage.getItem(identityKey(orgId));
+    if (raw) return JSON.parse(raw) as StoredVoterIdentity;
+    if (!orgId) return null;
+    // Identity saved before identities were per team: only trust the player
+    // id, which belongs to a single team (a first name does not).
+    const legacy = localStorage.getItem(VOTER_IDENTITY_KEY);
+    if (!legacy) return null;
+    const { playerId } = JSON.parse(legacy) as StoredVoterIdentity;
+    return playerId != null ? { name: '', playerId } : null;
   } catch { return null; }
 }
 
-/** Persist the voter's name after a successful vote. */
-export function saveVoterIdentity(name: string, playerId: EntityId | null): void {
+/** Persist the voter's name for this team after a successful vote. */
+export function saveVoterIdentity(name: string, playerId: EntityId | null, orgId?: string | null): void {
   try {
-    localStorage.setItem(VOTER_IDENTITY_KEY, JSON.stringify({ name, playerId }));
+    localStorage.setItem(identityKey(orgId), JSON.stringify({ name, playerId }));
   } catch { /* quota exceeded — ignore */ }
 }
 

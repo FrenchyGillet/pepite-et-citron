@@ -28,6 +28,7 @@ export function useAuth() {
     }
     clearOrgsCache();   // else loadOrgs() restores the previous account's org
     setSession(null);
+    useAppStore.getState().clearLinkOrg();
     setCurrentOrg(null);
     setCurrentOrgId(null);
     setJustSignedUp(false);

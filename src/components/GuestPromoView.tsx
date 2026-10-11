@@ -18,6 +18,7 @@ export function GuestPromoView({ canSeeResults, voterName, orgName }: GuestPromo
   const setGuestStatus    = useAppStore(s => s.setGuestStatus);
   const setGuestToken     = useAppStore(s => s.setGuestToken);
   const setCurrentOrg     = useAppStore(s => s.setCurrentOrg);
+  const clearLinkOrg      = useAppStore(s => s.clearLinkOrg);
 
   function handleCreateAccount() {
     track(EVENTS.PROMO_SIGNUP_CLICKED);
@@ -28,6 +29,7 @@ export function GuestPromoView({ canSeeResults, voterName, orgName }: GuestPromo
     setIsVoterSession(false);
     setGuestStatus(null);
     setGuestToken(null);
+    clearLinkOrg();
     setCurrentOrg(null);
     setCurrentOrgId(null);
     navigate('/login?mode=signup', { replace: true });

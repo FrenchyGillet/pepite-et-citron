@@ -30,10 +30,11 @@ interface Picks {
 
 export function VoteView({ players, match, onVoted, guestName = null, onGuestVoted = null }: VoteViewProps) {
   // ── Voter identity: restore from localStorage if the player is present ───
-  const storedIdentity = !guestName ? getStoredVoterIdentity() : null;
+  const storedIdentity = !guestName ? getStoredVoterIdentity(match.org_id) : null;
   const presentIds = match.present_ids || [];
   // Single-use invite link: travels with the vote and is consumed server-side.
   const guestToken = useAppStore(s => s.guestToken);
+  const orgName    = useAppStore(s => s.currentOrg?.name);
 
   // A signed-in member whose account is linked to a player (profile, or "Et
   // toi, c'est lequel ?" at /start) is that player: don't ask who they are.
@@ -44,7 +45,7 @@ export function VoteView({ players, match, onVoted, guestName = null, onGuestVot
 
   const storedPlayer = linkedPlayer ?? (storedIdentity
     ? (players.find(p => p.id === storedIdentity.playerId && presentIds.includes(p.id))
-       ?? players.find(p => p.name === storedIdentity.name && presentIds.includes(p.id)))
+       ?? players.find(p => !!storedIdentity.name && p.name === storedIdentity.name && presentIds.includes(p.id)))
     : null);
 
   // ── Draft persistence: restore in-progress vote so a refresh / screen-lock
@@ -201,7 +202,7 @@ export function VoteView({ players, match, onVoted, guestName = null, onGuestVot
       saveOfflineVote(votePayload);
       clearVoteDraft(match.id);
       markVotedLocally(match.id);
-      saveVoterIdentity(voterName, selectedVoterPlayer?.id ?? null);
+      saveVoterIdentity(voterName, selectedVoterPlayer?.id ?? null, match.org_id);
       setSubmitting(false);
       onVoted(voterName, selectedVoterPlayer?.id);
       return;
@@ -212,7 +213,7 @@ export function VoteView({ players, match, onVoted, guestName = null, onGuestVot
       if (onGuestVoted) await onGuestVoted();
       clearVoteDraft(match.id);
       markVotedLocally(match.id);
-      saveVoterIdentity(voterName, selectedVoterPlayer?.id ?? null);
+      saveVoterIdentity(voterName, selectedVoterPlayer?.id ?? null, match.org_id);
       onVoted(voterName, selectedVoterPlayer?.id);
     } catch (err) {
       // Transient network failure → save offline and proceed optimistically
@@ -221,7 +222,7 @@ export function VoteView({ players, match, onVoted, guestName = null, onGuestVot
         saveOfflineVote(votePayload);
         clearVoteDraft(match.id);
         markVotedLocally(match.id);
-        saveVoterIdentity(voterName, selectedVoterPlayer?.id ?? null);
+        saveVoterIdentity(voterName, selectedVoterPlayer?.id ?? null, match.org_id);
         setSubmitting(false);
         onVoted(voterName, selectedVoterPlayer?.id);
         return;
@@ -283,27 +284,33 @@ export function VoteView({ players, match, onVoted, guestName = null, onGuestVot
 
       {step === 0 && !guestName && (
         <>
-          {/* Context banner for first-time voters */}
-          <div style={{
-            background: 'linear-gradient(135deg, var(--gold-subtle) 0%, var(--lemon-subtle) 100%)',
-            border: '1px solid var(--separator2)',
-            borderRadius: 'var(--radius-lg)',
-            padding: '14px 16px',
-            marginBottom: 20,
-            marginTop: 8,
-          }}>
-            <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--label)', marginBottom: 4 }}>
-              ⭐ Pépite &amp; 🍋 Citron · {match.label}
+          {/* Not a vote step yet: no gold, no star, and a title that says so. */}
+          <div style={{ textAlign: 'center', margin: '12px 0 16px' }}>
+            <div style={{
+              display: 'inline-block', padding: '4px 12px', borderRadius: 20, marginBottom: 14,
+              background: 'var(--bg3)', color: 'var(--label2)',
+              fontSize: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em',
+            }}>
+              Avant de voter
             </div>
-            <div style={{ fontSize: 12, color: 'var(--label3)', lineHeight: 1.5 }}>
-              Désigne le meilleur joueur du match et celui qui a le moins performé.
-              Ton vote reste anonyme pour l'équipe.
-            </div>
+            <div aria-hidden="true" style={{
+              width: 56, height: 56, borderRadius: '50%', margin: '0 auto 12px',
+              background: 'var(--bg2)', display: 'flex', alignItems: 'center', justifyContent: 'center',
+              fontSize: 26,
+            }}>👤</div>
+            <h2 style={{ fontSize: 26, fontWeight: 800, color: 'var(--label)', letterSpacing: '-0.4px', margin: '0 0 6px' }}>
+              Qui es-tu ?
+            </h2>
+            <p style={{ fontSize: 15, color: 'var(--label2)', lineHeight: 1.45, margin: 0 }}>
+              Touche <strong style={{ color: 'var(--label)' }}>ton prénom</strong>. Le vote commence juste après.
+            </p>
+            <p style={{ fontSize: 12, color: 'var(--label3)', margin: '8px 0 0' }}>
+              {orgName ? `${orgName} · ${match.label}` : match.label}
+            </p>
           </div>
-          <p className="section-label mb-4">Qui es-tu ?</p>
           <div className="player-grid">
             {present.map(p => (
-              <button key={String(p.id)} className={`player-chip ${voterName === p.name ? 'sel-1st' : ''}`}
+              <button key={String(p.id)} className={`player-chip ${voterName === p.name ? 'sel-id' : ''}`}
                 aria-pressed={voterName === p.name} disabled={checking}
                 onClick={() => void pickIdentity(p)}>{p.name}</button>
             ))}
@@ -323,6 +330,10 @@ export function VoteView({ players, match, onVoted, guestName = null, onGuestVot
               </div>
             )}
           </div>
+
+          <p style={{ fontSize: 12, color: 'var(--label3)', textAlign: 'center', margin: '12px 0 0', lineHeight: 1.5 }}>
+            Ton prénom sert à compter les votes. Ton vote reste anonyme pour l'équipe.
+          </p>
 
           {/* Vote progress on identity step */}
           {voteCount > 0 && presentCount > 0 && (

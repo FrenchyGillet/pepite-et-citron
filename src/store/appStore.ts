@@ -63,6 +63,11 @@ interface AppStore {
   orgsResolved:        boolean;
   orgsLoadError:       boolean;
   orgsLoadErrorDetail: string | null;
+  // Team opened from a vote link (?org= / ?guest=) in this session. It wins
+  // over the usual team, member of it or not: loadOrgs() must not switch back.
+  linkOrg:             Org | null;
+  // The signed-in user's own team while a link shows another one ("Revenir à…").
+  usualOrg:            Org | null;
 
   // ── Guest ─────────────────────────────────────────────────────────────────
   guestToken:      string | null;
@@ -110,6 +115,8 @@ interface AppStore {
   setShowOnboarding:    (v: boolean) => void;
   setLastMatchId:       (id: EntityId | null) => void;
   setPasswordRecovery:  (v: boolean) => void;
+  openLinkOrg:          (org: Org) => void;
+  clearLinkOrg:         () => void;
 
   // ── Async actions ─────────────────────────────────────────────────────────
   loadOrgs: () => Promise<Org | null>;
@@ -126,6 +133,8 @@ export function resetAppStore() {
     orgsResolved: DEMO_MODE,
     orgsLoadError: false,
     orgsLoadErrorDetail: null,
+    linkOrg: null,
+    usualOrg: null,
     guestToken: null,
     guestName: null,
     guestStatus: null,
@@ -157,6 +166,8 @@ export const useAppStore = create<AppStore>((set, get) => ({
   orgsResolved:        DEMO_MODE,
   orgsLoadError:       false,
   orgsLoadErrorDetail: null,
+  linkOrg:             null,
+  usualOrg:            null,
   guestToken:       null,
   guestName:        null,
   guestStatus:      null,
@@ -197,6 +208,24 @@ export const useAppStore = create<AppStore>((set, get) => ({
   setLastMatchId:      (id)  => set({ lastMatchId: id }),
   setPasswordRecovery: (v)   => set({ passwordRecovery: v }),
 
+  openLinkOrg: (org) => {
+    const { myOrgs, currentOrg, usualOrg } = get();
+    const link: Org = { ...org, role: null };
+    // The team shown until now is the usual one if it is really theirs.
+    const previous = usualOrg ?? (currentOrg && myOrgs.some(o => o.id === currentOrg.id) ? currentOrg : null);
+    const switching = currentOrg?.id !== org.id;
+    set({
+      linkOrg:    link,
+      // Role only ever comes from get_my_orgs: null keeps isAdmin false.
+      currentOrg: myOrgs.find(o => o.id === org.id) ?? link,
+      usualOrg:   previous && previous.id !== org.id ? previous : null,
+      // What was known about the previous team's match does not apply here.
+      ...(switching ? { lastMatchId: null, votedThisSession: false } : {}),
+    });
+    setCurrentOrgId(org.id);
+  },
+  clearLinkOrg: () => set({ linkOrg: null, usualOrg: null }),
+
   // ── Async actions ──────────────────────────────────────────────────────────
   loadOrgs: async () => {
     set({ orgsLoadError: false, orgsLoadErrorDetail: null });
@@ -205,10 +234,13 @@ export const useAppStore = create<AppStore>((set, get) => ({
     const cached = readOrgsCache();
     let restoredFromCache = false;
     if (cached?.orgs.length) {
-      const cachedCurrent = cached.orgs.find(o => o.id === cached.currentOrgId) || cached.orgs[0];
+      const cachedUsual   = cached.orgs.find(o => o.id === cached.currentOrgId) || cached.orgs[0];
+      const link          = get().linkOrg;
+      const cachedCurrent = link ? (cached.orgs.find(o => o.id === link.id) ?? link) : cachedUsual;
       set({
         myOrgs: cached.orgs,
         currentOrg: cachedCurrent,
+        usualOrg: link && cachedUsual.id !== link.id ? cachedUsual : null,
         orgsResolved: true,       // unblock the UI right now
       });
       setCurrentOrgId(cachedCurrent.id);
@@ -221,15 +253,25 @@ export const useAppStore = create<AppStore>((set, get) => ({
       // Success — always clear any error flag (the hard-timeout may have set it
       // while we were still awaiting a slow cold-start wake-up).
       set({ myOrgs: orgs, orgsLoadError: false, orgsLoadErrorDetail: null });
+      // A vote link opened in this session keeps showing its team; the usual
+      // team is only remembered, for "Revenir à…" and for the next launch.
+      const link = get().linkOrg;
       if (orgs.length) {
-        const currentOrgId = get().currentOrg?.id ?? null;
-        const current = orgs.find(o => o.id === currentOrgId) || orgs[0];
-        set({ currentOrg: current });
+        const usualId = link
+          ? (get().usualOrg?.id ?? cached?.currentOrgId ?? null)
+          : (get().currentOrg?.id ?? null);
+        const usual   = orgs.find(o => o.id === usualId) || orgs[0];
+        const current = link ? (orgs.find(o => o.id === link.id) ?? link) : usual;
+        set({ currentOrg: current, usualOrg: link && usual.id !== link.id ? usual : null });
         setCurrentOrgId(current.id);
-        writeOrgsCache(orgs, current.id);   // persist for next load
+        writeOrgsCache(orgs, usual.id);   // persist for next load
         return current;
       }
       writeOrgsCache([], null);
+      if (link) {
+        set({ currentOrg: link, usualOrg: null });
+        setCurrentOrgId(link.id);
+      }
       return null;
     } catch (err) {
       console.error('loadOrgs:', err);
@@ -250,7 +292,7 @@ export const useAppStore = create<AppStore>((set, get) => ({
   signOut: async () => {
     await api.signOut();
     clearOrgsCache();
-    set({ session: null, currentOrg: null, myOrgs: [] });
+    set({ session: null, currentOrg: null, myOrgs: [], linkOrg: null, usualOrg: null });
     setCurrentOrgId(null);
   },
 }));

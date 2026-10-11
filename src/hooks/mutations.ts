@@ -1,6 +1,7 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/api';
 import { queryKeys } from './queries';
+import { useAppStore } from '@/store/appStore';
 import type { EntityId, Vote, Match, Player, ManualMatchInput, OrgRole } from '@/types';
 
 export function useSubmitVote(matchId: EntityId | null | undefined) {
@@ -8,6 +9,17 @@ export function useSubmitVote(matchId: EntityId | null | undefined) {
   return useMutation({
     mutationFn: (vote: Vote) => api.submitVote(vote),
     onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.votes(matchId) }),
+  });
+}
+
+/** Adds the signed-in user to a team as a voter, then reloads their teams. */
+export function useJoinOrg() {
+  const loadOrgs = useAppStore(s => s.loadOrgs);
+  return useMutation({
+    mutationFn: async (orgId: string) => {
+      await api.selfJoinOrg(orgId);
+      await loadOrgs();
+    },
   });
 }
 

@@ -41,6 +41,8 @@ export const EVENTS = {
   QUICK_START_FAILED:         'quick_start_failed',
   ORG_JOINED:                 'org_joined',
   ORG_SWITCHED:               'org_switched',
+  LINK_ORG_LEFT:              'link_org_left',
+  LINK_ORG_JOINED:            'link_org_joined',
   NO_TEAM_CREATE_CLICKED:     'no_team_create_clicked',
   ONBOARDING_CLOSED:          'onboarding_closed',
   SETUP_CHECKLIST_DISMISSED:  'setup_checklist_dismissed',

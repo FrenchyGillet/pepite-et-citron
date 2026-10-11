@@ -10,14 +10,17 @@ export function useOrg() {
   const setLastMatchId     = useAppStore(s => s.setLastMatchId);
   const setVotedThisSession = useAppStore(s => s.setVotedThisSession);
   const loadOrgs           = useAppStore(s => s.loadOrgs);
+  const clearLinkOrg       = useAppStore(s => s.clearLinkOrg);
 
   const switchOrg = useCallback((org: Org) => {
+    // An explicit choice ends the vote-link visit.
+    clearLinkOrg();
     setCurrentOrg(org);
     setCurrentOrgId(org.id);
     setLastMatchId(null);
     setVotedThisSession(false);
     queryClient.clear();
-  }, [queryClient, setCurrentOrg, setLastMatchId, setVotedThisSession]);
+  }, [queryClient, clearLinkOrg, setCurrentOrg, setLastMatchId, setVotedThisSession]);
 
   return { switchOrg, loadOrgs };
 }
