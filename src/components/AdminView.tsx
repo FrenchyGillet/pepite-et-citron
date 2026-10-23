@@ -9,6 +9,8 @@ import { useConfirm } from '@/hooks/useConfirm';
 import { CollapsibleSection } from '@/components/admin/CollapsibleSection';
 import { ActiveMatchPanel } from '@/components/admin/ActiveMatchPanel';
 import { MatchLauncher } from '@/components/admin/MatchLauncher';
+import { ScheduleMatchForm } from '@/components/admin/ScheduleMatchForm';
+import { UpcomingMatches } from '@/components/admin/UpcomingMatches';
 import { GuestLinksSection } from '@/components/admin/GuestLinksSection';
 import { PlayersSection } from '@/components/admin/PlayersSection';
 import { TeamsSection } from '@/components/admin/TeamsSection';
@@ -43,6 +45,9 @@ export function AdminView({ isAdmin = true, players, activeMatch, currentOrg, on
   const [matchEverLaunched, setMatchEverLaunched] = useState(() =>
     currentOrg?.id ? !!localStorage.getItem(`pepite_match_launched_${currentOrg.id}`) : false
   );
+
+  // "Match du soir": open the vote now, or schedule it (20260021).
+  const [launchMode, setLaunchMode] = useState<'now' | 'schedule'>('now');
 
   // Collapsible zones
   const [effectifOpen, setEffectifOpen] = useState(players.length === 0);
@@ -151,15 +156,35 @@ export function AdminView({ isAdmin = true, players, activeMatch, currentOrg, on
             </div>
           </div>
         ) : (
-          <MatchLauncher
-            activePlayers={activePlayers}
-            teams={teams}
-            currentSeason={currentSeason}
-            orgId={currentOrg?.id}
-            notify={setToast}
-            onLaunched={markMatchLaunched}
-          />
+          <>
+            <div role="tablist" style={{ display: 'flex', gap: 4, marginBottom: 10, background: 'var(--bg3)', borderRadius: 'var(--radius-sm)', padding: 4 }}>
+              {(['now', 'schedule'] as const).map(mode => (
+                <button key={mode} role="tab" aria-selected={launchMode === mode} onClick={() => setLaunchMode(mode)} style={{
+                  flex: 1, padding: '8px 0', borderRadius: 'var(--radius-sm)', border: 'none',
+                  fontSize: 13, fontWeight: 600, cursor: 'pointer',
+                  background: launchMode === mode ? 'var(--bg)' : 'transparent',
+                  color: launchMode === mode ? 'var(--label)' : 'var(--label3)',
+                }}>
+                  {t(mode === 'now' ? 'schedule.tabNow' : 'schedule.tabSchedule')}
+                </button>
+              ))}
+            </div>
+            {launchMode === 'now' ? (
+              <MatchLauncher
+                activePlayers={activePlayers}
+                teams={teams}
+                currentSeason={currentSeason}
+                orgId={currentOrg?.id}
+                notify={setToast}
+                onLaunched={markMatchLaunched}
+              />
+            ) : (
+              <ScheduleMatchForm teams={teams} orgId={currentOrg?.id} notify={setToast} />
+            )}
+          </>
         )}
+        <UpcomingMatches orgId={currentOrg?.id} notify={setToast} confirm={confirm} canManage
+          canOpenNow={!activeMatch} onOpened={markMatchLaunched} />
       </div>
 
       {/* Supporters invités — only during voting phase */}

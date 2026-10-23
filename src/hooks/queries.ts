@@ -17,6 +17,8 @@ export const queryKeys = {
   seasonName:    (season: number)                      => ['seasonName',    season]   as const,
   orgMembers:    (orgId: string | null | undefined)    => ['orgMembers',    orgId]    as const,
   emailNotifications: (orgId: string | null | undefined) => ['emailNotifications', orgId] as const,
+  schedules:     (orgId?: string | null)               => ['schedules',     orgId]    as const,
+  voteOpenDelay: (orgId?: string | null)               => ['voteOpenDelay', orgId]    as const,
 } as const;
 
 const orgEnabled = (orgId?: string | null) => DEMO_MODE || !!orgId;
@@ -115,6 +117,26 @@ export function useCurrentSeason(orgId?: string | null) {
   return useQuery({
     queryKey: queryKeys.currentSeason(orgId),
     queryFn: () => api.getCurrentSeason(),
+    enabled: orgEnabled(orgId),
+    staleTime: 60_000,
+  });
+}
+
+/** Upcoming scheduled matches (20260021), soonest first. Readable by link voters too. */
+export function useUpcomingSchedules(orgId?: string | null) {
+  return useQuery({
+    queryKey: queryKeys.schedules(orgId),
+    queryFn: () => api.getUpcomingSchedules(),
+    enabled: orgEnabled(orgId),
+    staleTime: 60_000,
+  });
+}
+
+/** Minutes between kick-off and the vote opening; null = never chosen. */
+export function useVoteOpenDelay(orgId?: string | null) {
+  return useQuery({
+    queryKey: queryKeys.voteOpenDelay(orgId),
+    queryFn: () => api.getVoteOpenDelay(),
     enabled: orgEnabled(orgId),
     staleTime: 60_000,
   });

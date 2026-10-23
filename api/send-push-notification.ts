@@ -17,24 +17,18 @@
  *   VITE_APP_URL       — defaults to https://pepite-citron.com
  */
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import webpush from 'web-push';
 import { supabaseAdmin as supabase } from './_lib/supabaseAdmin.js';
 import { requireOrgMatchRunner } from './_lib/auth.js';
 import { pushNotificationSchema } from './_lib/validation.js';
+import { pushConfigured, pushToOrg } from './_lib/push.js';
 
 const APP_URL = process.env.VITE_APP_URL || 'https://pepite-citron.com';
-
-// Same public key as the client's VITE_VAPID_PUBLIC_KEY (the name .env.example
-// documents): accept either, so one variable in Vercel is enough.
-const VAPID_PUBLIC_KEY  = process.env.VAPID_PUBLIC_KEY || process.env.VITE_VAPID_PUBLIC_KEY;
-const VAPID_PRIVATE_KEY = process.env.VAPID_PRIVATE_KEY;
-const VAPID_SUBJECT     = process.env.VAPID_SUBJECT || `mailto:francois@pepite-citron.com`;
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'POST') return res.status(405).end();
 
   // Require VAPID keys — skip gracefully if not configured
-  if (!VAPID_PUBLIC_KEY || !VAPID_PRIVATE_KEY) {
+  if (!pushConfigured()) {
     console.warn('send-push-notification: VAPID keys not set, skipping');
     return res.status(200).json({ skipped: true });
   }
@@ -49,83 +43,26 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   // A reminder only goes to present players who have not voted yet and whose
   // player is linked to an account (push subscriptions are per user).
-  let targetUserIds: string[] | null = null;
+  let targetUserIds: string[] | undefined;
   if (type === 'vote_reminder') {
     targetUserIds = await pendingVoterUserIds(orgId, matchId as string);
     if (targetUserIds.length === 0) return res.status(200).json({ sent: 0 });
   }
 
-  // Fetch the org's push subscriptions (only the targeted users for a reminder)
-  let subsQuery = supabase
-    .from('push_subscriptions')
-    .select('endpoint, p256dh, auth, user_id')
-    .eq('org_id', orgId);
-  if (targetUserIds) subsQuery = subsQuery.in('user_id', targetUserIds);
-  const { data: subs, error: subsErr } = await subsQuery;
-
-  if (subsErr) {
-    console.error('fetch push_subscriptions error:', subsErr);
-    return res.status(200).json({ sent: 0 });
-  }
-
-  if (!subs || subs.length === 0) {
-    return res.status(200).json({ sent: 0 });
-  }
-
-  // Build notification payload
   const content = {
     vote_open:     { title: '🗳️ Vote ouvert !',         body: `Désigne la pépite et le citron de ${matchLabel}` },
     vote_reminder: { title: '⏰ Il manque ton vote !',   body: `Désigne la pépite et le citron de ${matchLabel} avant la fermeture` },
     results_ready: { title: '🏆 Résultats disponibles !', body: `Les résultats de ${matchLabel} sont prêts` },
   }[type];
-  const payload = JSON.stringify({
+
+  const sent = await pushToOrg(orgId, {
     type,
     ...content,
     // Never the bare APP_URL: "/" is the marketing landing (vercel.json), not
     // the app. Subscribers are always signed in (push_subscriptions.user_id),
     // so the plain app routes are enough.
-    url: type === 'results_ready'
-      ? `${APP_URL}/results`
-      : `${APP_URL}/vote`,
-    icon:  '/icon-192x192.png',
-    badge: '/icon-192x192.png',
-  });
-
-  webpush.setVapidDetails(VAPID_SUBJECT, VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY);
-
-  // Fan-out to all subscribers (parallel, best-effort)
-  const staleEndpoints: string[] = [];
-
-  await Promise.allSettled(
-    (subs as Array<{ endpoint: string; p256dh: string; auth: string; user_id: string }>)
-      .map(async (sub) => {
-        try {
-          await webpush.sendNotification(
-            { endpoint: sub.endpoint, keys: { p256dh: sub.p256dh, auth: sub.auth } },
-            payload,
-            { TTL: 60 * 60 }, // 1 hour TTL — discard if device is offline > 1 h
-          );
-        } catch (err) {
-          // 410 Gone or 404 Not Found → subscription expired, remove it
-          const statusCode = (err as { statusCode?: number })?.statusCode;
-          if (statusCode === 410 || statusCode === 404) {
-            staleEndpoints.push(sub.endpoint);
-          } else {
-            console.error('push delivery error:', err);
-          }
-        }
-      }),
-  );
-
-  // Clean up expired subscriptions
-  if (staleEndpoints.length > 0) {
-    await supabase
-      .from('push_subscriptions')
-      .delete()
-      .in('endpoint', staleEndpoints);
-  }
-
-  const sent = subs.length - staleEndpoints.length;
+    url: type === 'results_ready' ? `${APP_URL}/results` : `${APP_URL}/vote`,
+  }, { userIds: targetUserIds });
   return res.status(200).json({ sent });
 }
 

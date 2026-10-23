@@ -481,12 +481,37 @@ describe('realAPI', () => {
       expect(expired).toBe(true);
     });
 
+    it('opens due scheduled votes before reading', async () => {
+      const calls: string[] = [];
+      server.use(
+        http.post(`${RPC}/open_due_scheduled_matches`, () => { calls.push('open'); return HttpResponse.json(1); }),
+        http.post(`${RPC}/delete_abandoned_votes`, () => { calls.push('expire'); return HttpResponse.json(0); }),
+        http.get(`${BASE}/matches`, () => { calls.push('read'); return HttpResponse.json([mockMatch]); }),
+      );
+      expect((await realAPI.getActiveMatch())?.label).toBe('vs Bruxelles');
+      expect(calls).toEqual(['open', 'expire', 'read']);
+    });
+
     it('still answers when the expiry RPC is missing (migration not applied)', async () => {
       server.use(
         http.post(`${RPC}/delete_abandoned_votes`, () => HttpResponse.json({ message: 'not found' }, { status: 404 })),
         http.get(`${BASE}/matches`, () => HttpResponse.json([mockMatch])),
       );
       expect((await realAPI.getActiveMatch())?.label).toBe('vs Bruxelles');
+    });
+  });
+
+  describe('getUpcomingSchedules', () => {
+    it('soonest vote first, times as HH:MM', async () => {
+      const row = (id: number, opens: string) => ({
+        id, label: null, starts_at: null, weekday: 2, start_time: '20:00:00', timezone: 'Europe/Brussels',
+        team_id: null, pepite_count: 3, next_kick_off: opens, opens_at: opens,
+      });
+      server.use(http.post(`${RPC}/get_upcoming_schedules`, () =>
+        HttpResponse.json([row(2, '2026-11-03T20:30:00Z'), row(1, '2026-10-28T20:30:00Z')])));
+      const list = await realAPI.getUpcomingSchedules();
+      expect(list.map(s => s.id)).toEqual([1, 2]);
+      expect(list[0].start_time).toBe('20:00');
     });
   });
 

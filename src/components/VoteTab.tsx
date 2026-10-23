@@ -4,7 +4,9 @@ import { DEMO_MODE } from '@/api';
 import { useAppStore } from '@/store/appStore';
 import { track, EVENTS } from '@/utils/analytics';
 import { hasVotedLocally } from '@/utils/vote';
-import { useVoteCount } from '@/hooks/queries';
+import { useUpcomingSchedules, useVoteCount } from '@/hooks/queries';
+import { formatClockTime } from '@/utils/deadline';
+import { formatKickOff } from '@/utils/schedule';
 import { VoteView } from './VoteView';
 import { EmptyState } from './EmptyState';
 import { GuestPromoView } from './GuestPromoView';
@@ -74,6 +76,13 @@ function VoteTabContent({ isAdmin, activeMatch, lastMatch, players, isLoading = 
 
   // Real-time vote count for post-vote confirmation screen
   const { data: voteCount = 0 } = useVoteCount(activeMatch?.id);
+  // The next scheduled match (20260021): what a pinned link shows between votes.
+  const { data: upcoming = [] } = useUpcomingSchedules(currentOrg?.id);
+  const next = upcoming[0];
+  const nextMatch = next ? {
+    title:    t('schedule.nextTitle', { when: formatKickOff(next.next_kick_off) }),
+    subtitle: t('schedule.opensAt', { time: formatClockTime(next.opens_at) }),
+  } : null;
   const presentCount = activeMatch?.present_ids?.length ?? 0;
 
   // Once the admin starts the reveal, take whoever voted on this device to the
@@ -156,15 +165,15 @@ function VoteTabContent({ isAdmin, activeMatch, lastMatch, players, isLoading = 
     return (
       <EmptyState
         icon={<><rect x="3" y="3" width="18" height="18" rx="3"/><path d="M8 12h8M12 8v8"/></>}
-        title={t(isVoterSession ? 'voteTab.noVoteYet' : 'voteTab.noMatch')}
-        subtitle={
+        title={nextMatch?.title ?? t(isVoterSession ? 'voteTab.noVoteYet' : 'voteTab.noMatch')}
+        subtitle={nextMatch?.subtitle ?? (
           isVoterSession
             ? t('voteTab.captainNotYet')
             : isAdmin
               ? t('voteTab.openFromAdmin')
               : t('voteTab.captainNotOpened')
-        }
-        action={isAdmin ? { label: t('voteTab.openMatch'), onClick: () => navigate('/admin') } : null}
+        )}
+        action={isAdmin && !nextMatch ? { label: t('voteTab.openMatch'), onClick: () => navigate('/admin') } : null}
       />
     );
   }
@@ -174,7 +183,9 @@ function VoteTabContent({ isAdmin, activeMatch, lastMatch, players, isLoading = 
       <EmptyState
         icon={<><rect x="3" y="11" width="18" height="10" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></>}
         title={t('voteTab.closed')}
-        subtitle={t(isVoterSession ? 'voteTab.closedVoter' : 'voteTab.closedHint')}
+        subtitle={nextMatch
+          ? `${t(isVoterSession ? 'voteTab.closedVoter' : 'voteTab.closedHint')} ${nextMatch.title}. ${nextMatch.subtitle}`
+          : t(isVoterSession ? 'voteTab.closedVoter' : 'voteTab.closedHint')}
         action={{ label: t('voteTab.seeResults'), onClick: () => navigate('/results') }}
       />
     );

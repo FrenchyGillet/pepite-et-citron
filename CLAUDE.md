@@ -27,6 +27,7 @@ pepite-citron/
 ├── api/                       ← fonctions serverless Vercel (+ tests *.test.ts)
 │   ├── _lib/                  ← auth (requireOrgAdmin), validation zod, email, unsubscribe…
 │   ├── send-match-notification.ts, send-push-notification.ts, send-welcome-email.ts, unsubscribe.ts
+│   ├── cron/scheduled-matches.ts ← appelé par pg_cron (CRON_SECRET) : ouvre les matchs programmés, relance
 │   ├── create-checkout-session.ts, create-portal-session.ts, stripe-webhook.ts
 │   └── delete-account.ts
 ├── supabase/

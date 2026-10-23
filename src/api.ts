@@ -1,8 +1,9 @@
 import { SUPABASE_URL } from '@/config';
 import { supabase } from '@/lib/supabase';
 import { isAbandonedVote, isDeadlinePassed } from '@/utils/deadline';
+import { DEFAULT_VOTE_OPEN_DELAY, dueOccurrence, localDateKey, nextOccurrence, votedByHand, type DemoSchedule } from '@/utils/schedule';
 import type {
-  API, EntityId, Player, Match, Vote, GuestToken, Org, OrgMember, Team, UserSession,
+  API, EntityId, Player, Match, MatchSchedule, Vote, GuestToken, Org, OrgMember, Team, UserSession,
 } from '@/types';
 import { t } from '@/i18n';
 import { UserError } from '@/utils/errors';
@@ -85,9 +86,46 @@ export const demoState = {
   nextId:       100,
   currentSeason: 1,
   seasonNames:  {} as Record<number, string>,
+  schedules:    [] as DemoSchedule[],
+  voteOpenDelay: null as number | null,
 };
 
 const demoVoteCount = (matchId: EntityId) => demoState.votes.filter(v => v.match_id === matchId).length;
+
+// When votes were launched by hand ("Maintenant"): they can stand for an occurrence.
+const demoHandVotes = () => demoState.matches
+  .filter(m => m.schedule_id == null && !m.manual_result).map(m => new Date(m.created_at).getTime());
+
+// Mirrors open_due_scheduled_matches (20260021): never while a vote is pending,
+// never a second vote for a match already voted by hand.
+function demoOpenDueSchedules(): void {
+  const delay = demoState.voteOpenDelay ?? DEFAULT_VOTE_OPEN_DELAY;
+  for (const s of demoState.schedules) {
+    const kickOff = dueOccurrence(s, delay);
+    if (!kickOff) continue;
+    if (votedByHand(kickOff, delay, demoHandVotes())) { s.last_opened_on = localDateKey(kickOff); continue; }
+    if (demoState.matches.some(m => m.is_open || m.phase === "counting")) return;
+    demoCreateScheduledMatch(s, kickOff, kickOff);
+  }
+}
+
+function demoCreateScheduledMatch(s: DemoSchedule, kickOff: Date, dated: Date): Match {
+  const present = demoState.players
+    .filter(p => !p.archived_at)
+    .filter(p => s.team_id == null || (demoState.teams.find(t => t.id === s.team_id)?.player_ids ?? []).includes(p.id))
+    .map(p => p.id);
+  const day = `${String(kickOff.getDate()).padStart(2, "0")}/${String(kickOff.getMonth() + 1).padStart(2, "0")}`;
+  demoState.matches.push({
+    id: demoState.nextId++, present_ids: present,
+    label: s.label ?? ({ en: `Match of ${day}`, nl: `Match van ${day}`, fr: `Match du ${day}` })[s.locale],
+    is_open: true, phase: "voting", reveal_order: [], revealed_count: 0,
+    season: demoState.currentSeason, team_id: s.team_id ?? null,
+    created_at: dated.toISOString(), pepite_count: present.length >= 4 ? s.pepite_count : 2,
+    schedule_id: s.id,
+  });
+  s.last_opened_on = localDateKey(kickOff);
+  return demoState.matches[demoState.matches.length - 1];
+}
 
 export const demoAPI: API = {
   // Auth (stubs pour le mode démo)
@@ -136,6 +174,7 @@ export const demoAPI: API = {
   },
   linkPlayer: (_playerId) => Promise.resolve(true),
   getActiveMatch: () => {
+    demoOpenDueSchedules();
     // Mirrors delete_abandoned_votes (20260020).
     demoState.matches = demoState.matches.filter(m => !isAbandonedVote(m, demoVoteCount(m.id)));
     return Promise.resolve(demoState.matches.find(m => m.is_open || m.phase === "counting") ?? null);
@@ -188,6 +227,40 @@ export const demoAPI: API = {
     demoState.votes   = demoState.votes.filter(v => v.match_id !== id);
     return Promise.resolve(true);
   },
+  getUpcomingSchedules: () => {
+    const delay = demoState.voteOpenDelay ?? DEFAULT_VOTE_OPEN_DELAY;
+    const upcoming: MatchSchedule[] = demoState.schedules.flatMap(s => {
+      const kickOff = nextOccurrence(s, delay, Date.now(), demoHandVotes());
+      return kickOff ? [{
+        id: s.id, label: s.label, starts_at: s.starts_at, weekday: s.weekday, start_time: s.start_time,
+        timezone: s.timezone, team_id: s.team_id, pepite_count: s.pepite_count,
+        next_kick_off: kickOff.toISOString(), opens_at: new Date(kickOff.getTime() + delay * 60_000).toISOString(),
+      }] : [];
+    });
+    return Promise.resolve(upcoming.sort((a, b) => a.opens_at.localeCompare(b.opens_at)));
+  },
+  createSchedule: (input) => {
+    demoState.schedules.push({ ...input, id: demoState.nextId++, created_at: new Date().toISOString(), last_opened_on: null });
+    return Promise.resolve();
+  },
+  deleteSchedule: (id) => {
+    demoState.schedules = demoState.schedules.filter(s => s.id !== id);
+    return Promise.resolve();
+  },
+  openScheduleNow: (id) => {
+    // Mirrors open_schedule_now (20260021).
+    const s = demoState.schedules.find(x => x.id === id);
+    if (!s) return Promise.reject(new Error("Match programmé introuvable."));
+    if (demoState.matches.some(m => m.is_open || m.phase === "counting")) {
+      return Promise.reject(new Error("Un vote est déjà en cours."));
+    }
+    const delay = demoState.voteOpenDelay ?? DEFAULT_VOTE_OPEN_DELAY;
+    const kickOff = nextOccurrence(s, delay, Date.now(), demoHandVotes());
+    if (!kickOff) return Promise.reject(new Error("Match programmé introuvable."));
+    return Promise.resolve(demoCreateScheduledMatch(s, kickOff, new Date(Math.min(kickOff.getTime(), Date.now()))));
+  },
+  getVoteOpenDelay: () => Promise.resolve(demoState.voteOpenDelay),
+  setVoteOpenDelay: (minutes) => { demoState.voteOpenDelay = minutes; return Promise.resolve(); },
   getCurrentSeason: () => Promise.resolve(demoState.currentSeason),
   advanceSeason:    () => { demoState.currentSeason++; return Promise.resolve(demoState.currentSeason); },
   getSeasonName:    (season) => Promise.resolve(demoState.seasonNames[season] ?? null),
@@ -479,8 +552,11 @@ export const realAPI: API = {
   // ── Matchs ────────────────────────────────────────────────────────────────
   getActiveMatch: () =>
     withRetry(async () => {
-      // An open vote left without a ballot for 24 h is deleted first
-      // (20260020). Best effort: the filter below hides it anyway.
+      // A scheduled vote that is due opens first (20260021), and an open vote
+      // left without a ballot for 24 h is deleted (20260020). Best effort:
+      // without these migrations the select below still answers.
+      const { error: openErr } = await supabase.rpc("open_due_scheduled_matches", { p_org_id: _orgId });
+      if (openErr) console.warn("open_due_scheduled_matches:", openErr.message);
       const { error: expireErr } = await supabase.rpc("delete_abandoned_votes", { p_org_id: _orgId });
       if (expireErr) console.warn("delete_abandoned_votes:", expireErr.message);
       const { data, error } = await supabase.from("matches").select("*")
@@ -565,6 +641,46 @@ export const realAPI: API = {
   // Le compteur de saison vit sur organizations.current_season ; les noms de
   // saison sur la table season_names (org_id, season, name). Cf. migration
   // 20260004_seasons.sql.
+  // ── Matchs programmés (20260021) ──────────────────────────────────────────
+  getUpcomingSchedules: () =>
+    withRetry(async () => {
+      const { data, error } = await supabase.rpc("get_upcoming_schedules", { p_org_id: _orgId });
+      if (error) throw new Error(error.message);
+      return ((data as MatchSchedule[] | null) ?? [])
+        .map(s => ({ ...s, start_time: s.start_time ? s.start_time.slice(0, 5) : null }))
+        .sort((a, b) => a.opens_at.localeCompare(b.opens_at));
+    }),
+  // No withRetry: a retried INSERT after a timeout would schedule it twice.
+  createSchedule: async (input) => {
+    const { error } = await supabase.from("match_schedules").insert({ ...input, org_id: _orgId });
+    if (error) throw new Error(error.message);
+  },
+  deleteSchedule: async (id) => {
+    const { error } = await supabase.from("match_schedules").delete().eq("id", id);
+    if (error) throw new Error(error.message);
+  },
+  // No withRetry: it opens a vote (the unique occurrence index would refuse a
+  // replay, but the retry would then fail with a confusing error).
+  openScheduleNow: async (id) => {
+    const { data, error } = await rpcWithTimeout(() => supabase.rpc("open_schedule_now", { p_schedule_id: id }));
+    if (error) throw new Error(error.message);
+    const match = (data as Match[] | null)?.[0];
+    if (!match) throw new Error("Match programmé introuvable.");
+    return match;
+  },
+  getVoteOpenDelay: () =>
+    withRetry(async () => {
+      const { data, error } = await supabase.from("organizations")
+        .select("vote_open_delay_minutes").eq("id", _orgId).maybeSingle();
+      if (error) throw new Error(error.message);
+      return (data as { vote_open_delay_minutes?: number | null } | null)?.vote_open_delay_minutes ?? null;
+    }),
+  // Idempotent UPDATE: safe to retry.
+  setVoteOpenDelay: (minutes) =>
+    withRetry(async () => {
+      const { error } = await supabase.rpc("set_vote_open_delay", { p_org_id: _orgId, p_minutes: minutes });
+      if (error) throw new Error(error.message);
+    }),
   getCurrentSeason: () =>
     withRetry(async () => {
       const { data, error } = await supabase.from("organizations")
@@ -751,6 +867,8 @@ export function __resetDemoState(): void {
   demoState.nextId        = 100;
   demoState.currentSeason = 1;
   demoState.seasonNames   = {};
+  demoState.schedules     = [];
+  demoState.voteOpenDelay = null;
 }
 
 export { demoAPI as __demoAPI };

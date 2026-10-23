@@ -3,8 +3,9 @@ import { DEMO_MODE } from '@/api';
 import { memberEmailSchema } from '@/schemas';
 import { humanizeError } from '@/utils/errors';
 import { track, EVENTS } from '@/utils/analytics';
-import { useOrgMembers, useSeasonNames } from '@/hooks/queries';
-import { useAddMember, useRemoveMember, useAdvanceSeason, useSetSeasonName } from '@/hooks/mutations';
+import { useOrgMembers, useSeasonNames, useVoteOpenDelay } from '@/hooks/queries';
+import { useAddMember, useRemoveMember, useAdvanceSeason, useSetSeasonName, useSetVoteOpenDelay } from '@/hooks/mutations';
+import { DEFAULT_VOTE_OPEN_DELAY, VOTE_OPEN_DELAYS, formatDelay } from '@/utils/schedule';
 import { roleLabel } from '@/utils/roles';
 import type { Org, OrgMember } from '@/types';
 import { ManageSubscriptionButton } from './ManageSubscriptionButton';
@@ -29,6 +30,7 @@ export function SettingsSection({ currentOrg, currentSeason, notify, confirm, on
         <AccountSettings currentOrg={currentOrg} onCopyOrgLink={onCopyOrgLink} onShowGuide={onShowGuide} onUpgrade={onUpgrade} />
       )}
       <SeasonSettings currentSeason={currentSeason} notify={notify} confirm={confirm} orgId={currentOrg?.id} />
+      <ScheduleSettings orgId={currentOrg?.id} notify={notify} />
       {!DEMO_MODE && currentOrg?.id && (
         <MemberSettings orgId={currentOrg.id} notify={notify} confirm={confirm} />
       )}
@@ -94,6 +96,34 @@ function AccountSettings({ currentOrg, onCopyOrgLink, onShowGuide, onUpgrade }: 
       <button className="btn btn-secondary btn-full" style={{ fontSize: 13 }} onClick={onShowGuide}>
         {t('settings.howItWorks')}
       </button>
+    </div>
+  );
+}
+
+// ── Matchs programmés ─────────────────────────────────────────────────────────
+function ScheduleSettings({ orgId, notify }: { orgId?: string; notify: Notify }) {
+  const { data: delay } = useVoteOpenDelay(orgId);
+  const setDelay = useSetVoteOpenDelay(orgId);
+  const current = delay ?? DEFAULT_VOTE_OPEN_DELAY;
+  const choices = VOTE_OPEN_DELAYS.includes(current) ? VOTE_OPEN_DELAYS : [...VOTE_OPEN_DELAYS, current].sort((a, b) => a - b);
+  return (
+    <div style={{ marginBottom: 20 }}>
+      <p style={sectionLabelStyle}>{t('schedule.settingsTitle')}</p>
+      <div className="group">
+        <div className="row">
+          <label htmlFor="settings-vote-delay" className="row-body">
+            <div className="row-title" style={{ fontSize: 14 }}>{t('schedule.settingsDelay')}</div>
+          </label>
+          <select id="settings-vote-delay" value={current} disabled={setDelay.isPending}
+            onChange={e => setDelay.mutate(Number(e.target.value), {
+              onSuccess: () => notify(t('schedule.delaySaved')),
+              onError: (err) => notify(humanizeError(err)),
+            })}
+            style={{ width: 'auto', fontSize: 14, padding: '6px 8px' }}>
+            {choices.map(m => <option key={m} value={m}>{formatDelay(m)}</option>)}
+          </select>
+        </div>
+      </div>
     </div>
   );
 }

@@ -93,6 +93,8 @@ export const EVENTS = {
   NICKNAME_SAVED:             'nickname_saved',
   EMAIL_NOTIFICATIONS_TOGGLED:'email_notifications_toggled',
   LANGUAGE_CHANGED:           'language_changed',
+  MATCH_SCHEDULED:            'match_scheduled',
+  SCHEDULE_OPENED_NOW:        'schedule_opened_now',
   PUSH_ENABLED:               'push_enabled',
   PUSH_DENIED:                'push_denied',
   PUSH_FAILED:                'push_failed',

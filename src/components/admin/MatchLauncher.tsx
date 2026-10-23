@@ -80,17 +80,17 @@ export function MatchLauncher({ activePlayers, teams, currentSeason, orgId, noti
         <>
           <p style={{ fontSize: 13, color: 'var(--label3)', marginBottom: 8 }}>{t('launcher.loadTeam')}</p>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 16 }}>
-            {teams.map(t => {
-              const ids      = activeTeamPlayerIds(t, activePlayers);
+            {teams.map(team => {
+              const ids      = activeTeamPlayerIds(team, activePlayers);
               const selected = presentIds.length > 0 && ids.every(id => presentIds.includes(id)) && presentIds.length === ids.length;
               return (
-                <button key={String(t.id)} onClick={() => loadTeamIntoMatch(t)} aria-pressed={selected} style={{
+                <button key={String(team.id)} onClick={() => loadTeamIntoMatch(team)} aria-pressed={selected} style={{
                   padding: '8px 14px', borderRadius: 'var(--radius-sm)', fontSize: 14, fontWeight: 600,
                   background: selected ? 'var(--gold-dim)' : 'var(--bg3)',
                   color: selected ? 'var(--gold)' : 'var(--label2)',
                   border: 'none', cursor: 'pointer',
                 }}>
-                  {t.name} · {ids.length} joueurs
+                  {t('launcher.teamPlayers', { team: team.name, count: ids.length })}
                 </button>
               );
             })}

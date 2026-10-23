@@ -33,6 +33,8 @@ export interface Match {
   vote_deadline?: string | null;
   /** Ballots received, kept by a trigger on votes (20260013). */
   vote_count?: number;
+  /** The schedule that opened this vote on its own (20260021). */
+  schedule_id?: EntityId | null;
   /** Result entered by hand for a match played without a vote (no ballots). */
   manual_result?: ManualResult | null;
 }
@@ -87,6 +89,38 @@ export interface Org {
   slug: string;
   role?: OrgRole | null;
   plan?: 'free' | 'pro';
+}
+
+/**
+ * A scheduled match (20260021): once (starts_at) or every week (weekday +
+ * start_time, in the team's timezone). The vote opens on its own at kick-off
+ * + the team's delay.
+ */
+export interface MatchSchedule {
+  id: EntityId;
+  label: string | null;
+  starts_at: string | null;
+  /** 0 = Sunday … 6 = Saturday, as Date.getDay(). */
+  weekday: number | null;
+  /** "HH:MM" (local to `timezone`). */
+  start_time: string | null;
+  timezone: string;
+  team_id: EntityId | null;
+  pepite_count: 2 | 3;
+  /** Next kick-off whose vote has not opened yet, and its opening time. */
+  next_kick_off: string;
+  opens_at: string;
+}
+
+export interface MatchScheduleInput {
+  label: string | null;
+  starts_at: string | null;
+  weekday: number | null;
+  start_time: string | null;
+  timezone: string;
+  team_id: EntityId | null;
+  pepite_count: 2 | 3;
+  locale: 'fr' | 'en' | 'nl';
 }
 
 export interface OrgMember {
@@ -190,6 +224,17 @@ export interface API {
   revealNext(id: EntityId, count: number): Promise<unknown>;
   updateMatch(id: EntityId, data: Partial<Match>): Promise<unknown>;
   deleteMatch(id: EntityId): Promise<unknown>;
+
+  // Scheduled matches (20260021)
+  /** Upcoming scheduled matches of the current team, soonest first. */
+  getUpcomingSchedules(): Promise<MatchSchedule[]>;
+  createSchedule(input: MatchScheduleInput): Promise<void>;
+  deleteSchedule(id: EntityId): Promise<void>;
+  /** « Ouvrir maintenant »: opens the schedule's next occurrence now. */
+  openScheduleNow(id: EntityId): Promise<Match>;
+  /** Minutes between kick-off and the vote opening; null = never set (90). */
+  getVoteOpenDelay(): Promise<number | null>;
+  setVoteOpenDelay(minutes: number): Promise<void>;
 
   // Season
   getCurrentSeason(): Promise<number>;

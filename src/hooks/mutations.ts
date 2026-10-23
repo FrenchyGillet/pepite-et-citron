@@ -2,7 +2,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { api, DEMO_MODE } from '@/api';
 import { queryKeys } from './queries';
 import { useAppStore } from '@/store/appStore';
-import type { EntityId, Vote, Match, Player, ManualMatchInput, OrgRole } from '@/types';
+import type { EntityId, Vote, Match, Player, ManualMatchInput, MatchScheduleInput, OrgRole } from '@/types';
 
 export function useSubmitVote(matchId: EntityId | null | undefined) {
   const qc = useQueryClient();
@@ -97,6 +97,56 @@ export function useCreateMatch(orgId?: string | null) {
         void sendMatchNotification(orgId, vars.label);
         void sendPushNotification(orgId, 'vote_open', vars.label);
       }
+    },
+  });
+}
+
+/** Schedules a match (20260021); the delay is saved first when asked. */
+export function useCreateSchedule(orgId?: string | null) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ input, delayMinutes }: { input: MatchScheduleInput; delayMinutes?: number }) => {
+      if (delayMinutes != null) await api.setVoteOpenDelay(delayMinutes);
+      await api.createSchedule(input);
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: queryKeys.schedules(orgId) });
+      qc.invalidateQueries({ queryKey: queryKeys.voteOpenDelay(orgId) });
+    },
+  });
+}
+
+/** « Ouvrir maintenant »: the match ended early. Members are told as usual. */
+export function useOpenScheduleNow(orgId?: string | null) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: EntityId) => api.openScheduleNow(id),
+    onSuccess: (match) => {
+      qc.invalidateQueries({ queryKey: queryKeys.activeMatch(orgId) });
+      qc.invalidateQueries({ queryKey: queryKeys.schedules(orgId) });
+      if (orgId) {
+        void sendMatchNotification(orgId, match.label);
+        void sendPushNotification(orgId, 'vote_open', match.label);
+      }
+    },
+  });
+}
+
+export function useDeleteSchedule(orgId?: string | null) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: EntityId) => api.deleteSchedule(id),
+    onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.schedules(orgId) }),
+  });
+}
+
+export function useSetVoteOpenDelay(orgId?: string | null) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (minutes: number) => api.setVoteOpenDelay(minutes),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: queryKeys.voteOpenDelay(orgId) });
+      qc.invalidateQueries({ queryKey: queryKeys.schedules(orgId) });
     },
   });
 }
