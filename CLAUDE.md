@@ -51,7 +51,7 @@ pepite-citron/
     ├── hooks/                 ← queries.ts, mutations.ts, useAuth, useGuest, useRealtime,
     │                            useOfflineSync, useConfirm, useNow…
     ├── store/appStore.ts      ← store Zustand (session, org courante, thème…)
-    ├── i18n/                  ← traductions : index.ts (t, useT, langue), fr.ts (source), en.ts
+    ├── i18n/                  ← traductions : index.ts (t, useT, langue), fr.ts (source), en.ts, nl.ts
     ├── utils/                 ← logique métier pure et testée (scoring, season, vote, player,
     │                            deadline, reminder, errors, localData…)
     └── test/                  ← setup, MSW, renderApp + tests de composants et d'API
@@ -82,9 +82,10 @@ L'app utilise **React Router v7** avec `BrowserRouter` (dans `main.tsx`) :
 
 ### Langue
 - **Code** : anglais (variables, fonctions, composants, commentaires)
-- **UI / Contenu** : français (source) et anglais, via `src/i18n/` : jamais de texte en dur dans un composant
-  - Nouveau texte : une clé dans `fr.ts` **et** `en.ts` (TypeScript refuse une clé manquante), puis `t('ns.cle', { var })`
-  - Pluriels `{ one, other }` choisis par `count` ; variables `{nom}` identiques dans les deux langues (`i18n.test.ts`)
+- **UI / Contenu** : français (source), anglais et néerlandais (Belgique), via `src/i18n/` : jamais de texte en dur dans un composant
+  - Nouveau texte : une clé dans `fr.ts`, `en.ts` **et** `nl.ts` (TypeScript refuse une clé manquante), puis `t('ns.cle', { var })`
+  - Pluriels `{ one, other }` choisis par `count` ; variables `{nom}` identiques dans toutes les langues (`i18n.test.ts`)
+  - Néerlandais : tutoiement (« je »), « ploeg » pour l'équipe, « kern » pour l'effectif ; à faire relire par un Flamand
   - La marque reste française partout : « Pépite & Citron », une pépite, un citron
   - Langue : choix enregistré sur l'appareil (Profil, écran de vote, /login, /start), sinon celle du navigateur, sinon anglais
   - Les messages d'erreur de la base restent en français : `humanizeError` les traduit (`errors.server`) ; un message déjà écrit pour l'utilisateur côté app est une `UserError`

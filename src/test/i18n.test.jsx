@@ -63,6 +63,14 @@ describe("English", () => {
       .toBe("Invalid email address.");
   });
 
+  it("the vote screen is in Dutch too", () => {
+    setLang("nl");
+    renderWithProviders(<VoteView players={players} match={match} onVoted={vi.fn()} />);
+    expect(screen.getByText("Wie ben jij?")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Nederlands" })).toHaveAttribute("aria-pressed", "true");
+    expect(humanizeError(new Error("Tu as déjà voté pour ce match."))).toBe("Je hebt al gestemd voor deze match.");
+  });
+
   it("server messages (French in the database) are shown in English", () => {
     setLang("en");
     expect(humanizeError(new Error("Tu as déjà voté pour ce match."))).toBe("You've already voted for this match.");

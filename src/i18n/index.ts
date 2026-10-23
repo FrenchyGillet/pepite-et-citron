@@ -2,6 +2,7 @@ import { useCallback } from 'react';
 import { create } from 'zustand';
 import { fr } from './fr';
 import { en } from './en';
+import { nl } from './nl';
 
 /**
  * UI translations. French is the source language: `fr.ts` defines every key,
@@ -32,21 +33,21 @@ type LeafPaths<T, P extends string = ''> = {
 export type TKey = LeafPaths<Messages>;
 export type TVars = Record<string, string | number>;
 
-export const LANGS = ['fr', 'en'] as const;
+export const LANGS = ['fr', 'en', 'nl'] as const;
 export type Lang = typeof LANGS[number];
 
 /** Shown in the language picker, each in its own language. */
-export const LANG_NAMES: Record<Lang, string> = { fr: 'Français', en: 'English' };
+export const LANG_NAMES: Record<Lang, string> = { fr: 'Français', en: 'English', nl: 'Nederlands' };
 
-const MESSAGES: Record<Lang, Messages> = { fr, en };
+const MESSAGES: Record<Lang, Messages> = { fr, en, nl };
 const LANG_KEY = 'pepite_lang';
 
 const isLang = (v: unknown): v is Lang => typeof v === 'string' && (LANGS as readonly string[]).includes(v);
 
 /**
  * The language chosen on this device, else the first supported one in the
- * browser's list, else English (closer than French for, say, a Dutch or
- * German phone). No browser at all: French.
+ * browser's list, else English (closer than French for, say, a German
+ * phone). No browser at all: French.
  */
 export function detectLanguage(): Lang {
   try {
@@ -86,7 +87,7 @@ export const setLang = (lang: Lang): void => useLangStore.getState().setLang(lan
 
 /** BCP 47 locale for dates and numbers. */
 export function dateLocale(lang: Lang = getLang()): string {
-  return lang === 'en' ? 'en-GB' : 'fr-BE';
+  return lang === 'en' ? 'en-GB' : lang === 'nl' ? 'nl-BE' : 'fr-BE';
 }
 
 function lookup(messages: Messages, key: string): string | Plural | undefined {

@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { fr } from './fr';
 import { en } from './en';
+import { nl } from './nl';
 import { detectLanguage, setLang, t, translate, useLangStore } from './index';
 
 type Node = string | { [key: string]: Node };
@@ -18,21 +19,21 @@ afterEach(() => {
 });
 
 describe('dictionaries', () => {
-  it('English has every French key, with the same placeholders, and no empty text', () => {
+  it.each([['en', en], ['nl', nl]])('%s has every French key, with the same placeholders, and no empty text', (_, dict) => {
     const frLeaves = new Map(leaves(fr as unknown as Node));
-    const enLeaves = new Map(leaves(en as unknown as Node));
-    expect([...enLeaves.keys()].sort()).toEqual([...frLeaves.keys()].sort());
+    const otherLeaves = new Map(leaves(dict as unknown as Node));
+    expect([...otherLeaves.keys()].sort()).toEqual([...frLeaves.keys()].sort());
     for (const [path, text] of frLeaves) {
-      const other = enLeaves.get(path)!;
+      const other = otherLeaves.get(path)!;
       expect(other.trim(), path).not.toBe('');
       expect(placeholders(other), path).toEqual(placeholders(text));
     }
   });
 
-  it('keeps the brand in French', () => {
-    expect(en.share.text).toContain('Pépite & Citron');
-    expect(en.vote.pepiteTitle).toContain('Pépite');
-    expect(en.vote.citronTitle).toContain('Citron');
+  it.each([['en', en], ['nl', nl]])('%s keeps the brand in French', (_, dict) => {
+    expect(dict.share.text).toContain('Pépite & Citron');
+    expect(dict.vote.pepiteTitle).toContain('Pépite');
+    expect(dict.vote.citronTitle).toContain('Citron');
   });
 });
 
@@ -48,6 +49,8 @@ describe('translate', () => {
     expect(translate('fr', 'common.votes', { count: 2 })).toBe('2 votes');
     expect(translate('en', 'common.votes', { count: 0 })).toBe('0 votes');
     expect(translate('en', 'common.votes', { count: 1 })).toBe('1 vote');
+    expect(translate('nl', 'common.votes', { count: 0 })).toBe('0 stemmen');
+    expect(translate('nl', 'common.votes', { count: 1 })).toBe('1 stem');
   });
 
   it('t() follows the current language', () => {
@@ -73,6 +76,8 @@ describe('detectLanguage', () => {
     browser(['fr-BE', 'en']);
     expect(detectLanguage()).toBe('fr');
     browser(['nl-BE', 'en-GB', 'fr']);
+    expect(detectLanguage()).toBe('nl');
+    browser(['de-DE', 'en-GB', 'fr']);
     expect(detectLanguage()).toBe('en');
   });
 
