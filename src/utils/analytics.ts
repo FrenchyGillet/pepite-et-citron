@@ -111,6 +111,7 @@ export const EVENTS = {
   BILLING_PORTAL_OPENED:      'billing_portal_opened',
   PROMO_SIGNUP_CLICKED:       'promo_signup_clicked',
   PROMO_RESULTS_CLICKED:      'promo_results_clicked',
+  SUPPORT_CLICKED:            'support_clicked',
 } as const;
 
 export type AnalyticsEvent = typeof EVENTS[keyof typeof EVENTS];

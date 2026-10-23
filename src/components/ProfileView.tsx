@@ -1,6 +1,7 @@
 import { useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { DEMO_MODE, api } from '@/api';
+import { SUPPORT_URL } from '@/config';
 import { useAppStore } from '@/store/appStore';
 import { humanizeError } from '@/utils/errors';
 import { track, EVENTS } from '@/utils/analytics';
@@ -19,6 +20,7 @@ export function ProfileView() {
   const navigate     = useNavigate();
   const session      = useAppStore(s => s.session);
   const currentOrg   = useAppStore(s => s.currentOrg);
+  const isPro        = DEMO_MODE || currentOrg?.plan === 'pro';
 
   const { handleSignOut } = useAuth();
 
@@ -240,6 +242,31 @@ export function ProfileView() {
           )}
 
           {error && <p style={{ color: '#FF453A', fontSize: 13, marginTop: 12 }}>{error}</p>}
+        </div>
+      )}
+
+      {/* ── Support (tip) — only once the team is Pro, so it never competes with the upgrade ── */}
+      {SUPPORT_URL && isPro && (
+        <div style={{ marginTop: 32, borderTop: '1px solid var(--separator)', paddingTop: 24 }}>
+          <p style={{
+            fontSize: 13, fontWeight: 600, color: 'var(--label3)',
+            textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 12,
+          }}>
+            {t('profile.supportTitle')}
+          </p>
+          <p style={{ fontSize: 14, color: 'var(--label2)', lineHeight: 1.5, marginBottom: 12 }}>
+            {t('profile.supportText')}
+          </p>
+          <a
+            className="btn btn-secondary btn-full"
+            href={SUPPORT_URL}
+            target="_blank"
+            rel="noopener noreferrer"
+            onClick={() => track(EVENTS.SUPPORT_CLICKED)}
+            style={{ fontSize: 14, textDecoration: 'none', boxSizing: 'border-box' }}
+          >
+            {t('profile.supportCta')}
+          </a>
         </div>
       )}
 

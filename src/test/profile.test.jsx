@@ -16,6 +16,11 @@ import { useAppStore } from '@/store/appStore';
 import { VoteView }    from '@/components/VoteView';
 import { ProfileView } from '@/components/ProfileView';
 
+vi.mock('@/config', async (importOriginal) => ({
+  ...(await importOriginal()),
+  SUPPORT_URL: 'https://buy.stripe.com/test_support',
+}));
+
 // ── Helpers ────────────────────────────────────────────────────────────────────
 
 function renderWithProviders(ui) {
@@ -227,5 +232,20 @@ describe('appStore — pendingPlayerId', () => {
     useAppStore.getState().setPendingPlayerId(42);
     useAppStore.getState().setPendingPlayerId(null);
     expect(useAppStore.getState().pendingPlayerId).toBeNull();
+  });
+});
+
+describe('ProfileView — support link', () => {
+  it('offers a tip link to members of a Pro team (demo teams are Pro)', async () => {
+    useAppStore.setState({
+      session:    { user: { id: 'user-abc', email: 'test@example.com' } },
+      currentOrg: null,
+    });
+    renderWithProviders(<ProfileView />);
+
+    const link = await screen.findByRole('link', { name: /Soutenir Pépite & Citron/i });
+    expect(link).toHaveAttribute('href', 'https://buy.stripe.com/test_support');
+    expect(link).toHaveAttribute('target', '_blank');
+    expect(screen.getByText(/Ton équipe est déjà en Pro/i)).toBeInTheDocument();
   });
 });
