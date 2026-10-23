@@ -13,6 +13,7 @@ import { track, EVENTS } from '@/utils/analytics';
 import { sharedLandingUrl } from '@/utils/share';
 import type { Player, Match, EntityId } from '@/types';
 import { t } from '@/i18n';
+import { RevealAnnouncements } from './RevealAnnouncements';
 
 interface ResultsViewProps {
   players: Player[];
@@ -463,6 +464,7 @@ export function ResultsView({ players, match, isAdmin, isDark, orgId, isPro, onU
       {/* ── Post-podium CTAs ─────────────────────────────────────────────── */}
       {podiumRevealed && (
         <div style={{ marginTop: 8, marginBottom: 20, display: 'flex', flexDirection: 'column', gap: 10 }}>
+          <RevealAnnouncements orgId={orgId} match={match} players={players} />
 
           {/* Pro: shortcut to season stats */}
           {isPro && (

@@ -13,6 +13,7 @@ import { useConfirm } from '@/hooks/useConfirm';
 import { track, EVENTS } from '@/utils/analytics';
 import type { Player, Match, EntityId, ManualResult } from '@/types';
 import { t } from '@/i18n';
+import { SeasonAwards } from '@/components/SeasonAwards';
 
 interface StatsViewProps {
   players: Player[];
@@ -203,6 +204,7 @@ export function StatsView({ players, activeMatch, isAdmin, canRunMatches = isAdm
         )
       ) : (
         <>
+          <SeasonAwards players={players} matches={filteredMatches} votes={allVotes} />
           <p className="section-label mb-4">{t('stats.pepiteRanking')}</p>
           {rankedBest.length === 0
             ? <div className="group" style={{ marginBottom: 12 }}><div className="row"><span style={{ color: 'var(--label3)', fontSize: 14 }}>{t('stats.noVotes')}</span></div></div>
