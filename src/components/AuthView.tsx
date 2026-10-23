@@ -11,7 +11,7 @@ import { useAppStore } from '@/store/appStore';
 import type { UserSession } from '@/types';
 
 interface AuthViewProps {
-  onAuth: (session: UserSession, isSignup: boolean) => void;
+  onAuth: (session: UserSession) => void;
 }
 
 type AuthMode = 'login' | 'signup' | 'forgot';
@@ -20,8 +20,9 @@ const FieldError = ({ msg }: { msg?: string }) =>
   msg ? <p style={{ fontSize: 12, color: 'var(--red)', marginTop: 4 }}>{msg}</p> : null;
 
 export function AuthView({ onAuth }: AuthViewProps) {
-  // The landing's "create" buttons link to /login?mode=signup: open straight
-  // on the signup form instead of making new visitors look for it.
+  // The signup form is for a voter joining their team (pendingOrgId, from the
+  // "Rejoindre" button after a vote, /login?mode=signup). Someone creating a
+  // team is sent to /start, which also opens their first vote.
   const [searchParams] = useSearchParams();
   const navigate       = useNavigate();
   const pendingOrgId   = useAppStore(s => s.pendingOrgId);
@@ -46,6 +47,7 @@ export function AuthView({ onAuth }: AuthViewProps) {
   }, [searchParams]);
 
   const switchMode = (next: AuthMode) => {
+    if (next === 'signup' && !pendingOrgId) { navigate('/start'); return; }
     setMode(next);
     setApiError(null);
     setResetSent(false);
@@ -86,7 +88,10 @@ export function AuthView({ onAuth }: AuthViewProps) {
       const session = await api.getSession();
       if (session) {
         track(mode === 'signup' ? EVENTS.AUTH_SIGNUP : EVENTS.AUTH_LOGIN);
-        onAuth(session, mode === 'signup');
+        onAuth(session);
+      } else {
+        // Email confirmation on in Supabase: nothing to sign in with yet.
+        setApiError('Compte créé : confirme ton adresse email puis connecte-toi.');
       }
     } catch (err) {
       track(EVENTS.AUTH_FAILED, { mode });
@@ -126,18 +131,6 @@ export function AuthView({ onAuth }: AuthViewProps) {
               }}>{t.label}</button>
             ))}
           </div>
-        )}
-
-        {/* A voter joining their team (pendingOrgId) signs up here; someone
-            starting a team is better served by /start (vote open in 1 min). */}
-        {mode === 'signup' && !pendingOrgId && (
-          <button type="button" onClick={() => navigate('/start')} style={{
-            width: '100%', marginBottom: 16, padding: '10px 12px', textAlign: 'left',
-            background: 'var(--gold-dim)', border: 'none', borderRadius: 'var(--radius-sm)',
-            fontSize: 13, fontWeight: 600, color: 'var(--gold)', cursor: 'pointer',
-          }}>
-            Tu crées une équipe ? Lance ton premier vote en 1 minute →
-          </button>
         )}
 
         {mode === 'forgot' && (

@@ -1,5 +1,8 @@
 import { describe, it, expect } from 'vitest';
-import { defaultMatchLabel, quickStartPepiteCount, teamSlug, validateQuickStart } from './quickStart';
+import {
+  clearQuickStartDraft, defaultMatchLabel, quickStartPepiteCount, readQuickStartDraft, saveQuickStartDraft,
+  teamSlug, validateQuickStart,
+} from './quickStart';
 
 const form = (o = {}) => ({
   teamName: 'FC Lions', playersText: 'Antoine\nBaptiste, Clément; David', email: 'a@b.fr', password: '12345678', ...o,
@@ -38,5 +41,28 @@ describe('validateQuickStart', () => {
   it('reports every missing field at once', () => {
     const { errors } = validateQuickStart({ teamName: ' ', playersText: '', email: 'nope', password: '123' });
     expect(Object.keys(errors).sort()).toEqual(['email', 'password', 'playersText', 'teamName']);
+  });
+});
+
+describe('signed-in organiser', () => {
+  it('needs no email or password', () => {
+    expect(validateQuickStart(form({ email: '', password: '' }), { needsAccount: false }).errors).toEqual({});
+  });
+});
+
+describe('quick start draft', () => {
+  it('keeps the team and players until cleared, never the credentials', () => {
+    saveQuickStartDraft({ teamName: 'FC Lions', playersText: 'Antoine\nBaptiste', meName: 'Antoine' });
+    expect(readQuickStartDraft()).toEqual({ teamName: 'FC Lions', playersText: 'Antoine\nBaptiste', meName: 'Antoine' });
+    expect(localStorage.getItem('pepite_quick_start_draft')).not.toMatch(/password|email/);
+    clearQuickStartDraft();
+    expect(readQuickStartDraft()).toBeNull();
+  });
+
+  it('ignores a damaged draft', () => {
+    localStorage.setItem('pepite_quick_start_draft', '{"teamName":3}');
+    expect(readQuickStartDraft()).toBeNull();
+    localStorage.setItem('pepite_quick_start_draft', 'not json');
+    expect(readQuickStartDraft()).toBeNull();
   });
 });

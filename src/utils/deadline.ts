@@ -42,3 +42,19 @@ export function formatDeadline(deadline: string, now: number = Date.now()): stri
   const m = minutes % 60;
   return `Fermeture dans ${h} h${m ? ` ${String(m).padStart(2, '0')}` : ''}`;
 }
+
+/**
+ * A vote still open with no ballot this long after it was opened was
+ * abandoned: it is deleted and refuses ballots (migration 20260020). A vote
+ * with at least one ballot never closes on its own.
+ */
+export const ABANDONED_VOTE_HOURS = 24;
+
+export function isAbandonedVote(
+  match: { phase: string; is_open: boolean; created_at: string },
+  voteCount: number,
+  now: number = Date.now(),
+): boolean {
+  return match.phase === 'voting' && match.is_open && voteCount === 0
+    && now - new Date(match.created_at).getTime() > ABANDONED_VOTE_HOURS * 3_600_000;
+}

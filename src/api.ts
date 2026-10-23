@@ -1,8 +1,8 @@
 import { SUPABASE_URL } from '@/config';
 import { supabase } from '@/lib/supabase';
-import { isDeadlinePassed } from '@/utils/deadline';
+import { isAbandonedVote, isDeadlinePassed } from '@/utils/deadline';
 import type {
-  API, Player, Match, Vote, GuestToken, Org, OrgMember, Team, UserSession,
+  API, EntityId, Player, Match, Vote, GuestToken, Org, OrgMember, Team, UserSession,
 } from '@/types';
 
 export const DEMO_MODE = SUPABASE_URL.includes("VOTRE_PROJET");
@@ -85,6 +85,8 @@ export const demoState = {
   seasonNames:  {} as Record<number, string>,
 };
 
+const demoVoteCount = (matchId: EntityId) => demoState.votes.filter(v => v.match_id === matchId).length;
+
 export const demoAPI: API = {
   // Auth (stubs pour le mode démo)
   signUp:         () => Promise.resolve({ user: { id: "demo" } }),
@@ -131,9 +133,11 @@ export const demoAPI: API = {
     return Promise.resolve(true);
   },
   linkPlayer: (_playerId) => Promise.resolve(true),
-  getActiveMatch: () => Promise.resolve(
-    demoState.matches.find(m => m.is_open || m.phase === "counting") ?? null
-  ),
+  getActiveMatch: () => {
+    // Mirrors delete_abandoned_votes (20260020).
+    demoState.matches = demoState.matches.filter(m => !isAbandonedVote(m, demoVoteCount(m.id)));
+    return Promise.resolve(demoState.matches.find(m => m.is_open || m.phase === "counting") ?? null);
+  },
   getMatches:     () => Promise.resolve([...demoState.matches].reverse()),
   createMatch: (label, presentIds, teamId, season, pepiteCount, voteDeadline) => {
     const m: Match = {
@@ -203,6 +207,9 @@ export const demoAPI: API = {
     if (isDeadlinePassed(match?.vote_deadline)) {
       return Promise.reject(new Error("Le vote est clôturé : l'heure limite est passée."));
     }
+    if (match && isAbandonedVote(match, demoVoteCount(match.id))) {
+      return Promise.reject(new Error("Le vote est clôturé pour ce match."));
+    }
     if (guest_token) {
       const t = demoState.guestTokens.find(t => t.token === guest_token);
       if (t) t.used = true;
@@ -241,7 +248,10 @@ export const demoAPI: API = {
     demoState.guestTokens = demoState.guestTokens.filter(t => t.id !== id);
     return Promise.resolve(true);
   },
-  getMatchById: (id) => Promise.resolve(demoState.matches.find(m => m.id === id) ?? null),
+  getMatchById: (id) => {
+    const m = demoState.matches.find(m => m.id === id);
+    return Promise.resolve(m && !isAbandonedVote(m, demoVoteCount(m.id)) ? m : null);
+  },
 
   // Push notifications (no-op stubs in demo mode)
   subscribePush:   () => Promise.resolve(),
@@ -467,12 +477,17 @@ export const realAPI: API = {
   // ── Matchs ────────────────────────────────────────────────────────────────
   getActiveMatch: () =>
     withRetry(async () => {
+      // An open vote left without a ballot for 24 h is deleted first
+      // (20260020). Best effort: the filter below hides it anyway.
+      const { error: expireErr } = await supabase.rpc("delete_abandoned_votes", { p_org_id: _orgId });
+      if (expireErr) console.warn("delete_abandoned_votes:", expireErr.message);
       const { data, error } = await supabase.from("matches").select("*")
         .or("is_open.eq.true,phase.eq.counting")
         .eq("org_id", _orgId)
         .order("created_at", { ascending: false });
       if (error) throw new Error(error.message);
-      return (data?.[0] as Match) ?? null;
+      const matches = (data as Match[] | null) ?? [];
+      return matches.find(m => !isAbandonedVote(m, m.vote_count ?? 0)) ?? null;
     }),
   getMatches: () =>
     withRetry(async () => {
@@ -540,7 +555,8 @@ export const realAPI: API = {
     withRetry(async () => {
       const { data, error } = await supabase.from("matches").select("*").eq("id", id);
       if (error) throw new Error(error.message);
-      return (data?.[0] as Match) ?? null;
+      const m = (data?.[0] as Match) ?? null;
+      return m && !isAbandonedVote(m, m.vote_count ?? 0) ? m : null;
     }),
 
   // ── Saison ────────────────────────────────────────────────────────────────

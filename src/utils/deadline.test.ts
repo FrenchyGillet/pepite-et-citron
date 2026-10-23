@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { deadlineFrom, extendDeadline, formatClockTime, formatDeadline, isDeadlinePassed } from './deadline';
+import { deadlineFrom, extendDeadline, formatClockTime, formatDeadline, isAbandonedVote, isDeadlinePassed } from './deadline';
 import { buildReminderMessage, joinFrenchList } from './reminder';
 
 const NOW = Date.parse('2026-09-11T20:00:00Z');
@@ -55,5 +55,21 @@ describe('reminder message', () => {
   it('singular, and no closing line without an open deadline', () => {
     const text = buildReminderMessage({ matchLabel: 'Match', pendingNames: ['Max'], voteUrl: 'u', now: NOW });
     expect(text).toBe('⏰ Match : il manque encore le vote de Max.\nVotez ici 👉 u');
+  });
+});
+
+describe('isAbandonedVote', () => {
+  const hoursAgo = (h: number) => new Date(NOW - h * 3_600_000).toISOString();
+  const open = (h: number) => ({ phase: 'voting', is_open: true, created_at: hoursAgo(h) });
+
+  it('an open vote with no ballot after 24 h', () => {
+    expect(isAbandonedVote(open(25), 0, NOW)).toBe(true);
+    expect(isAbandonedVote(open(23), 0, NOW)).toBe(false);
+  });
+
+  it('never a vote with a ballot, nor one already closed or being revealed', () => {
+    expect(isAbandonedVote(open(48), 1, NOW)).toBe(false);
+    expect(isAbandonedVote({ ...open(48), phase: 'counting', is_open: false }, 0, NOW)).toBe(false);
+    expect(isAbandonedVote({ ...open(48), phase: 'closed', is_open: false }, 0, NOW)).toBe(false);
   });
 });

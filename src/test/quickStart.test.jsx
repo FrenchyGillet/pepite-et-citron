@@ -14,13 +14,17 @@ function AdminProbe() {
   return <div>admin {state?.firstVote ? "first vote" : ""}</div>;
 }
 
-function renderAt(path, element) {
+function StartProbe() {
+  return <div>start screen</div>;
+}
+
+function renderAt(path, element, { startElement = element } = {}) {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } });
   return render(
     <MemoryRouter initialEntries={[path]}>
       <QueryClientProvider client={queryClient}>
         <Routes>
-          <Route path="/start" element={element} />
+          <Route path="/start" element={startElement} />
           <Route path="/login" element={element} />
           <Route path="/admin" element={<AdminProbe />} />
         </Routes>
@@ -33,7 +37,7 @@ beforeEach(() => {
   __resetDemoState();
   localStorage.clear();
   sessionStorage.clear();
-  useAppStore.setState({ currentOrg: null, myOrgs: [], quickStartActive: false, pendingOrgId: null });
+  useAppStore.setState({ session: null, currentOrg: null, myOrgs: [], quickStartActive: false, pendingOrgId: null });
 });
 
 describe("/start — premier vote en une minute", () => {
@@ -101,15 +105,80 @@ describe("/start — premier vote en une minute", () => {
 });
 
 describe("Signup form", () => {
-  it("points team creators to /start", () => {
-    renderAt("/login?mode=signup", <AuthView onAuth={vi.fn()} />);
-    expect(screen.getByRole("button", { name: /Lance ton premier vote en 1 minute/ })).toBeInTheDocument();
+  it("'Créer un compte' sends team creators to /start", async () => {
+    renderAt("/login", <AuthView onAuth={vi.fn()} />, { startElement: <StartProbe /> });
+    await userEvent.setup().click(screen.getByRole("button", { name: "Créer un compte" }));
+    expect(screen.getByText("start screen")).toBeInTheDocument();
   });
 
-  it("not a voter joining their team", () => {
+  it("keeps the signup form for a voter joining their team", async () => {
     useAppStore.setState({ pendingOrgId: "org-9" });
-    renderAt("/login?mode=signup", <AuthView onAuth={vi.fn()} />);
-    expect(screen.queryByRole("button", { name: /premier vote en 1 minute/ })).toBeNull();
+    renderAt("/login", <AuthView onAuth={vi.fn()} />, { startElement: <StartProbe /> });
+    await userEvent.setup().click(screen.getByRole("button", { name: "Créer un compte" }));
+    expect(screen.getByRole("button", { name: "Créer mon compte" })).toBeInTheDocument();
+  });
+});
+
+describe("/start once signed in", () => {
+  it("asks no email or password and opens the vote", async () => {
+    const signUp = vi.spyOn(__demoAPI, "signUp");
+    useAppStore.setState({ session: { user: { id: "u1", email: "coach@club.fr" } } });
+    renderAt("/start", <QuickStartView onSignOut={vi.fn()} />);
+    const user = userEvent.setup();
+
+    expect(screen.queryByLabelText("Adresse email")).toBeNull();
+    expect(screen.queryByLabelText("Mot de passe")).toBeNull();
+    expect(screen.getByText(/Connecté avec coach@club.fr/)).toBeInTheDocument();
+
+    await user.type(screen.getByLabelText("Nom de l'équipe"), "FC Lions");
+    await user.type(screen.getByLabelText("Les joueurs"), "Zoé\nYann\nXavier");
+    await user.click(screen.getByRole("button", { name: /Lancer le vote/ }));
+
+    expect(await screen.findByText("admin first vote")).toBeInTheDocument();
+    expect(signUp).not.toHaveBeenCalled();
+    expect(demoState.matches).toHaveLength(1);
+  });
+
+  it("keeps the user's other teams when adding one", async () => {
+    const usual = { id: "org-1", name: "Les Anciens", slug: "anciens", role: "admin" };
+    useAppStore.setState({ session: { user: { id: "u1" } }, myOrgs: [usual], currentOrg: usual });
+    renderAt("/start", <QuickStartView />);
+    const user = userEvent.setup();
+
+    expect(screen.getByRole("button", { name: "← Retour" })).toBeInTheDocument();
+    await user.type(screen.getByLabelText("Nom de l'équipe"), "FC Lions");
+    await user.type(screen.getByLabelText("Les joueurs"), "Zoé\nYann\nXavier");
+    await user.click(screen.getByRole("button", { name: /Lancer le vote/ }));
+
+    expect(await screen.findByText("admin first vote")).toBeInTheDocument();
+    const { myOrgs, currentOrg } = useAppStore.getState();
+    expect(myOrgs.map(o => o.name)).toEqual(["Les Anciens", "FC Lions"]);
+    expect(currentOrg).toMatchObject({ name: "FC Lions", role: "admin" });
+  });
+});
+
+describe("/start draft", () => {
+  it("comes back filled in after confirming the email, and is gone once the vote is open", async () => {
+    vi.spyOn(__demoAPI, "getSession").mockResolvedValueOnce(null).mockResolvedValueOnce(null);
+    const { unmount } = renderAt("/start", <QuickStartView />);
+    const user = userEvent.setup();
+    await user.type(screen.getByLabelText("Nom de l'équipe"), "FC Lions");
+    await user.type(screen.getByLabelText("Les joueurs"), "Zoé\nYann\nXavier");
+    await user.click(screen.getByRole("button", { name: "Yann" }));
+    await user.type(screen.getByLabelText("Adresse email"), "coach@club.fr");
+    await user.type(screen.getByLabelText("Mot de passe"), "motdepasse");
+    await user.click(screen.getByRole("button", { name: /Lancer le vote/ }));
+    expect(await screen.findByRole("alert")).toHaveTextContent(/confirme ton adresse email/);
+    unmount();
+
+    // Signed in after confirming: same screen, nothing to type again.
+    useAppStore.setState({ session: { user: { id: "u1", email: "coach@club.fr" } }, quickStartActive: false });
+    renderAt("/start", <QuickStartView />);
+    expect(screen.getByLabelText("Nom de l'équipe")).toHaveValue("FC Lions");
+    expect(screen.getByRole("button", { name: "Yann" })).toHaveAttribute("aria-pressed", "true");
+    await user.click(screen.getByRole("button", { name: /Lancer le vote/ }));
+    expect(await screen.findByText("admin first vote")).toBeInTheDocument();
+    expect(localStorage.getItem("pepite_quick_start_draft")).toBeNull();
   });
 });
 

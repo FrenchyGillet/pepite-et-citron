@@ -15,7 +15,6 @@ export function useAuth() {
   const setCurrentOrg       = useAppStore(s => s.setCurrentOrg);
   const loadOrgs            = useAppStore(s => s.loadOrgs);
   const setPasswordRecovery = useAppStore(s => s.setPasswordRecovery);
-  const setJustSignedUp     = useAppStore(s => s.setJustSignedUp);
 
   const handleSignOut = useCallback(async () => {
     track(EVENTS.SIGNED_OUT);
@@ -31,14 +30,13 @@ export function useAuth() {
     useAppStore.getState().clearLinkOrg();
     setCurrentOrg(null);
     setCurrentOrgId(null);
-    setJustSignedUp(false);
     queryClient.clear();
     // Shared phones: leave nothing of this account behind (ballots in the
     // persisted cache, voter identity, drafts, push notifications).
     clearLocalPersonalData();
     void unsubscribeDeviceFromPush();
     navigate('/vote');
-  }, [navigate, queryClient, setSession, setCurrentOrg, setJustSignedUp]);
+  }, [navigate, queryClient, setSession, setCurrentOrg]);
 
   useEffect(() => {
     if (DEMO_MODE) return;
@@ -88,8 +86,7 @@ export function useAuth() {
         clearOrgsCache();
         setCurrentOrg(null);
         setCurrentOrgId(null);
-        setJustSignedUp(false);
-        queryClient.clear();
+            queryClient.clear();
       } else if (event === 'SIGNED_IN') {
         // Explicit sign-in: reload orgs (bootstrap handles the initial load).
         await loadOrgs().catch(err => console.error('onAuthChange loadOrgs:', err));

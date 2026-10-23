@@ -1,11 +1,10 @@
 import React, { useState, useEffect, useCallback, lazy, Suspense } from 'react';
 import { Routes, Route, Navigate, useNavigate, useLocation } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
-import { DEMO_MODE, setCurrentOrgId } from '@/api';
+import { DEMO_MODE } from '@/api';
 import { GlobalStyle }       from '@/GlobalStyle';
 import { AuthView }          from '@/components/AuthView';
 import { ResetPasswordView } from '@/components/ResetPasswordView';
-import { OrgSetupView }      from '@/components/OrgSetupView';
 import { AppHeader }         from '@/components/AppHeader';
 import { VoteTab }           from '@/components/VoteTab';
 import { ResultsView }       from '@/components/ResultsView';
@@ -16,6 +15,7 @@ import { JoinOrgView }       from '@/components/JoinOrgView';
 import { NoTeamView }        from '@/components/NoTeamView';
 import { QuickStartView }    from '@/components/QuickStartView';
 import { takeUpgradeIntent, type UpgradePlan } from '@/utils/signupIntent';
+import { readQuickStartDraft } from '@/utils/quickStart';
 import { track, identify, displayMode, EVENTS } from '@/utils/analytics';
 import { useAuth }           from '@/hooks/useAuth';
 import { useGuest }          from '@/hooks/useGuest';
@@ -29,7 +29,6 @@ import { canRunMatches as roleCanRunMatches } from '@/utils/roles';
 import { usePlayers }        from '@/hooks/queries';
 import { useAppStore }       from '@/store/appStore';
 import { useSearchParams }   from 'react-router-dom';
-import type { Org } from '@/types';
 
 // Screens most voters never open are loaded on demand: someone arriving from
 // a vote link downloads the vote screen, not Admin, Saison or Profil.
@@ -82,8 +81,6 @@ export default function App() {
 
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
   const [upgradePlan,      setUpgradePlan]      = useState<UpgradePlan>('annual');
-  // Set from NoTeamView ("Créer mon équipe") — see the no-team branch below.
-  const [creatingTeam,     setCreatingTeam]     = useState(false);
   const [offlineToast,     setOfflineToast]     = useState<string | null>(null);
 
   // ── Bootstrap side-effects ──────────────────────────────────────────────
@@ -104,14 +101,9 @@ export default function App() {
   const guestToken       = useAppStore(s => s.guestToken);
   const isVoterSession   = useAppStore(s => s.isVoterSession);
   const setSession       = useAppStore(s => s.setSession);
-  const setCurrentOrg    = useAppStore(s => s.setCurrentOrg);
-  const setMyOrgs        = useAppStore(s => s.setMyOrgs);
   const setOrgsResolved  = useAppStore(s => s.setOrgsResolved);
-  const setOrgsLoadError = useAppStore(s => s.setOrgsLoadError);
   const setShowOnboarding = useAppStore(s => s.setShowOnboarding);
   const loadOrgs         = useAppStore(s => s.loadOrgs);
-  const justSignedUp     = useAppStore(s => s.justSignedUp);
-  const setJustSignedUp  = useAppStore(s => s.setJustSignedUp);
   const pendingOrgId     = useAppStore(s => s.pendingOrgId);
   const pendingOrgName   = useAppStore(s => s.pendingOrgName);
   const quickStartActive = useAppStore(s => s.quickStartActive);
@@ -198,7 +190,7 @@ export default function App() {
   // /start runs signup, team, players and the first vote in one go: keep it on
   // screen while it does, whatever the session and org gates below would show.
   if (!DEMO_MODE && quickStartActive) {
-    return <><GlobalStyle /><QuickStartView /></>;
+    return <><GlobalStyle /><QuickStartView onSignOut={handleSignOut} /></>;
   }
 
   if (authLoading && !isVoterLink) {
@@ -230,7 +222,7 @@ export default function App() {
     if (location.pathname !== '/login') {
       return <Navigate to="/login" replace />;
     }
-    return <><GlobalStyle /><AuthView onAuth={(s, isSignup) => { setSession(s); if (isSignup) setJustSignedUp(true); }} /></>;
+    return <><GlobalStyle /><AuthView onAuth={setSession} /></>;
   }
 
   if (!DEMO_MODE && session && !orgsResolved && !isVoterLink) {
@@ -282,55 +274,34 @@ export default function App() {
       );
     }
 
-    // ── Brand-new user with no team: create one ───────────────────────────────
-    // Gated on justSignedUp (set only by AuthView's signup form) rather than
-    // inferring "new user" from an empty org list: a *login* can also land
-    // here with currentOrg still null if getMyOrgs() raced the fresh session
-    // and returned an empty list without throwing (no cache yet to mask it,
-    // typically first login on a new browser). Showing this form in that case
-    // would let an existing user spin up a second, empty org and "lose" their
-    // real one — never do that on a login, only ever right after signup.
-    // Or when the user explicitly chose "Créer mon équipe" on NoTeamView.
-    if (justSignedUp || creatingTeam) {
-      return (
-        <>
-          <GlobalStyle />
-          <OrgSetupView
-            userEmail={session.user?.email}
-            onBack={creatingTeam && !justSignedUp ? () => setCreatingTeam(false) : undefined}
-            onOrgCreated={(org) => {
-              const orgWithRole: Org = { ...org, role: 'admin' };
-              setCurrentOrg(orgWithRole);
-              setCurrentOrgId(org.id);
-              setMyOrgs([orgWithRole]);
-              setOrgsResolved(true);
-              setOrgsLoadError(false);
-              setJustSignedUp(false);
-              setCreatingTeam(false);
-              if (!localStorage.getItem(`pepite_onboarded_${org.id}`)) {
-                setShowOnboarding(true);
-              }
-            }}
-          />
-        </>
-      );
+    // ── Creating the team: always /start (team, players and the first vote
+    // in one go — the name-only form left empty teams behind). Also reopened
+    // filled in when a draft is waiting: back from confirming their email, or
+    // after a reload in the middle of it.
+    if (location.pathname === '/start' || readQuickStartDraft()) {
+      return <><GlobalStyle /><QuickStartView onSignOut={handleSignOut} /></>;
     }
 
     // ── Signed in, no team, nothing to join ─────────────────────────────────
-    // Usually a new captain who left before creating their team (justSignedUp
-    // lives in memory only) — this used to be a dead end. Rarely, an existing
-    // member whose team list came back empty: creating a team is therefore an
-    // explicit choice, next to "Réessayer", never automatic.
+    // A voter who signed up without joining, or rarely an existing member
+    // whose team list came back empty (a login can race get_my_orgs): creating
+    // a team is therefore an explicit choice, next to "Réessayer", never
+    // automatic — it would let them "lose" their real team.
     return (
       <>
         <GlobalStyle />
         <NoTeamView
-          onCreate={() => { track(EVENTS.NO_TEAM_CREATE_CLICKED); setCreatingTeam(true); }}
+          onCreate={() => { track(EVENTS.NO_TEAM_CREATE_CLICKED); navigate('/start'); }}
           onRetry={() => { setOrgsResolved(false); void loadOrgs(); }}
           onSignOut={handleSignOut}
         />
       </>
     );
+  }
+
+  // A signed-in user adding another team (Profil): same one-screen setup.
+  if (!DEMO_MODE && session && location.pathname === '/start') {
+    return <><GlobalStyle /><QuickStartView onSignOut={handleSignOut} /></>;
   }
 
   // ── Main app ────────────────────────────────────────────────────────────

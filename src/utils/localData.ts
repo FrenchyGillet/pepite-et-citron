@@ -11,6 +11,7 @@ const PERSONAL_KEYS = [
   'pepite_voter_identity',  // "who am I" on the vote screen (older, unscoped)
   'pepite_voted',           // matches already voted from this device
   'pepite_pending_org',     // team to join after signup (?org= link)
+  'pepite_quick_start_draft', // team name and players typed on /start
 ];
 const PERSONAL_PREFIXES = [
   'pepite_voter_identity_', // "who am I" on the vote screen, per team

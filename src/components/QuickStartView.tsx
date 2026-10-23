@@ -10,8 +10,8 @@ import { saveVoterIdentity } from '@/utils/vote';
 import { parseUpgradePlan, saveUpgradeIntent } from '@/utils/signupIntent';
 import { track, EVENTS } from '@/utils/analytics';
 import {
-  QUICK_START_MIN_PLAYERS, quickStartPepiteCount, validateQuickStart,
-  type QuickStartField, type QuickStartForm,
+  QUICK_START_MIN_PLAYERS, clearQuickStartDraft, quickStartPepiteCount, readQuickStartDraft,
+  saveQuickStartDraft, validateQuickStart, type QuickStartField, type QuickStartForm,
 } from '@/utils/quickStart';
 import type { Org } from '@/types';
 
@@ -33,18 +33,35 @@ const linkStyle: CSSProperties = {
 const FieldError = ({ msg }: { msg?: string }) =>
   msg ? <p style={{ fontSize: 12, color: 'var(--red)', marginTop: 4 }}>{msg}</p> : null;
 
+interface QuickStartViewProps {
+  /** Shown to a signed-in user with no team yet, instead of "Se connecter". */
+  onSignOut?: () => void;
+}
+
 /**
  * /start — the whole setup on one screen, for the organiser who discovers the
  * app at the end of a match: team name, players, account, and the vote opens.
  * Everything else (line-ups, members, seasons) comes later.
+ *
+ * The only way to create a team: a signed-in user (no team yet, back from
+ * confirming their email, or adding another team) skips the account fields.
  */
-export function QuickStartView() {
+export function QuickStartView({ onSignOut }: QuickStartViewProps = {}) {
   const navigate       = useNavigate();
   const [searchParams] = useSearchParams();
   const queryClient    = useQueryClient();
 
-  const [form,    setForm]    = useState<QuickStartForm>({ teamName: '', playersText: '', email: '', password: '' });
-  const [meName,  setMeName]  = useState<string | null>(null);
+  const session = useAppStore(s => s.session);
+  const myOrgs  = useAppStore(s => s.myOrgs);
+  // Read once: signup sets the session mid-flow, the form must not change then.
+  const [signedIn] = useState(() => !!session);
+
+  // Back from confirming their email, or after a failed attempt: filled in again.
+  const [draft] = useState(readQuickStartDraft);
+  const [form,    setForm]    = useState<QuickStartForm>({
+    teamName: draft?.teamName ?? '', playersText: draft?.playersText ?? '', email: '', password: '',
+  });
+  const [meName,  setMeName]  = useState<string | null>(draft?.meName ?? null);
   const [errors,  setErrors]  = useState<Partial<Record<QuickStartField, string>>>({});
   const [apiError, setApiError] = useState<string | null>(null);
   const [step,    setStep]    = useState<QuickStartStep | null>(null);
@@ -59,7 +76,8 @@ export function QuickStartView() {
   const setMyOrgs           = useAppStore(s => s.setMyOrgs);
   const setOrgsResolved     = useAppStore(s => s.setOrgsResolved);
   const setOrgsLoadError    = useAppStore(s => s.setOrgsLoadError);
-  const setJustSignedUp     = useAppStore(s => s.setJustSignedUp);
+  const clearLinkOrg        = useAppStore(s => s.clearLinkOrg);
+  const setLastMatchId      = useAppStore(s => s.setLastMatchId);
 
   // "Passer Pro" on the landing: offer the upgrade once the team exists (App).
   useEffect(() => {
@@ -80,16 +98,21 @@ export function QuickStartView() {
 
   const finish = (org: Org) => {
     const orgWithRole: Org = { ...org, role: 'admin' };
+    // Their other teams stay in the switcher (a second team made from Profil).
+    const others = useAppStore.getState().myOrgs.filter(o => o.id !== org.id);
+    clearLinkOrg();
     setCurrentOrgId(org.id);
     setCurrentOrg(orgWithRole);
-    setMyOrgs([orgWithRole]);
+    setMyOrgs([...others, orgWithRole]);
+    setLastMatchId(null);
     setOrgsResolved(true);
     setOrgsLoadError(false);
-    setJustSignedUp(false);
+    clearQuickStartDraft();
     // No guide modal and no "first match" checklist step: they just did it.
     localStorage.setItem(`pepite_onboarded_${org.id}`, '1');
     localStorage.setItem(`pepite_match_launched_${org.id}`, '1');
-    void queryClient.invalidateQueries();
+    // Whatever was cached belongs to the previous team (or to nobody).
+    queryClient.clear();
     setQuickStartActive(false);
     navigate('/admin', { replace: true, state: { firstVote: true } });
   };
@@ -97,9 +120,10 @@ export function QuickStartView() {
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (step) return;
-    const { errors: found, names: validNames } = validateQuickStart(form);
+    const { errors: found, names: validNames } = validateQuickStart(form, { needsAccount: !signedIn });
     setErrors(found);
     if (Object.keys(found).length) return;
+    saveQuickStartDraft({ teamName: form.teamName, playersText: form.playersText, meName: me });
 
     setApiError(null);
     // From here App keeps this screen mounted, whatever signup does to the session.
@@ -113,7 +137,7 @@ export function QuickStartView() {
         s => {
           current = s;
           setStep(s);
-          if (s === 'team' && !signupTracked.current) { signupTracked.current = true; track(EVENTS.AUTH_SIGNUP); }
+          if (s === 'team' && !signedIn && !signupTracked.current) { signupTracked.current = true; track(EVENTS.AUTH_SIGNUP); }
         },
       );
       // Same funnel events as the step-by-step setup, then the quick-start one.
@@ -206,6 +230,7 @@ export function QuickStartView() {
           </div>
         )}
 
+        {!signedIn && <>
         <div style={{ height: 1, background: 'var(--separator)', margin: '4px 0' }} />
         <p style={{ fontSize: 12, color: 'var(--label3)', marginBottom: -4 }}>
           Ton compte organisateur, pour gérer l'équipe et dévoiler les résultats.
@@ -227,6 +252,7 @@ export function QuickStartView() {
             style={{ width: '100%', boxSizing: 'border-box', borderColor: errors.password ? 'var(--red)' : undefined }} />
           <FieldError msg={errors.password} />
         </div>
+        </>}
 
         {apiError && (
           <div role="alert" style={{
@@ -234,7 +260,11 @@ export function QuickStartView() {
             borderRadius: 'var(--radius-sm)', padding: '10px 12px', fontSize: 13, color: 'var(--red)',
           }}>
             {apiError}
-            {progress.current.signedUp && <div style={{ marginTop: 4 }}>Ton compte est créé : réessaie, on reprend où ça s'est arrêté.</div>}
+            {progress.current.signedUp && (
+              <div style={{ marginTop: 4 }}>
+                {signedIn ? 'Réessaie' : 'Ton compte est créé : réessaie'}, on reprend où ça s'est arrêté.
+              </div>
+            )}
           </div>
         )}
 
@@ -245,16 +275,30 @@ export function QuickStartView() {
       </form>
 
       <div style={{ marginTop: 20, textAlign: 'center', maxWidth: 360, fontSize: 13, color: 'var(--label3)' }}>
-        <p>
-          Déjà un compte ?{' '}
-          <button type="button" style={linkStyle} onClick={() => navigate('/login')}>Se connecter</button>
-        </p>
+        {!signedIn ? (
+          <p>
+            Déjà un compte ?{' '}
+            <button type="button" style={linkStyle} onClick={() => navigate('/login')}>Se connecter</button>
+          </p>
+        ) : myOrgs.length > 0 ? (
+          <button type="button" style={linkStyle} disabled={!!step} onClick={() => navigate('/profile')}>← Retour</button>
+        ) : (
+          <p>
+            Connecté avec {session?.user?.email}
+            {onSignOut && <>
+              {' · '}
+              <button type="button" style={linkStyle} disabled={!!step} onClick={onSignOut}>Se déconnecter</button>
+            </>}
+          </p>
+        )}
+        {!signedIn && (
         <p style={{ marginTop: 12, fontSize: 11, color: 'var(--label4)', lineHeight: 1.6 }}>
           En créant un compte, tu acceptes nos{' '}
           <a href="/terms.html" target="_blank" rel="noopener noreferrer" style={{ color: 'var(--label3)', textDecoration: 'underline' }}>CGU</a>
           {' '}et notre{' '}
           <a href="/privacy.html" target="_blank" rel="noopener noreferrer" style={{ color: 'var(--label3)', textDecoration: 'underline' }}>politique de confidentialité</a>.
         </p>
+        )}
       </div>
     </div>
   );

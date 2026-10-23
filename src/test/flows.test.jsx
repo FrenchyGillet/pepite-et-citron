@@ -1,10 +1,10 @@
 /**
  * flows.test.jsx — Integration tests for flows not covered elsewhere.
  *
- * Covers three gaps identified in the diagram audit:
+ * Covers gaps identified in the diagram audit:
  *   1. JoinOrgView  — auto-join lifecycle after ?org= signup
- *   2. OrgSetupView — slug hidden from user, vote link preview
  *   3. Vote counter — real-time count shown in VoteView + post-vote screen
+ *   (2, the name-only team form, was replaced by /start: quickStart.test.jsx)
  *
  * NOTE: The ?org=slug voter flow (anonymous, no account) is gated by
  * `!DEMO_MODE` in useGuest and App.tsx, so it cannot be tested end-to-end
@@ -19,7 +19,6 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { MemoryRouter } from 'react-router-dom';
 
 import { JoinOrgView }   from '@/components/JoinOrgView';
-import { OrgSetupView }  from '@/components/OrgSetupView';
 import { __resetDemoState, __demoAPI } from '@/App';
 import { useAppStore }   from '@/store/appStore';
 import { renderApp }     from './renderApp';
@@ -115,73 +114,6 @@ describe('JoinOrgView', () => {
     vi.spyOn(__demoAPI, 'selfJoinOrg').mockRejectedValueOnce(new Error('forbidden'));
     render(withProviders(<JoinOrgView orgId="org-1" orgName="FC Test" />));
     expect(await screen.findByText(/Compte créé/i)).toBeInTheDocument();
-  });
-});
-
-// ── 2. OrgSetupView ────────────────────────────────────────────────────────────
-
-describe('OrgSetupView', () => {
-  it('does NOT show an "Identifiant unique" label', () => {
-    render(withProviders(<OrgSetupView onOrgCreated={vi.fn()} />));
-    expect(screen.queryByText(/identifiant unique/i)).not.toBeInTheDocument();
-  });
-
-  it('does NOT render a visible slug text input', () => {
-    render(withProviders(<OrgSetupView onOrgCreated={vi.fn()} />));
-    // Only one visible text input: the name field
-    const textInputs = screen.getAllByRole('textbox');
-    expect(textInputs).toHaveLength(1);
-    expect(textInputs[0]).toHaveAttribute('placeholder', expect.stringMatching(/HC Montréal/i));
-  });
-
-  it('shows vote link preview after typing team name', async () => {
-    const user = userEvent.setup();
-    render(withProviders(<OrgSetupView onOrgCreated={vi.fn()} />));
-
-    await user.type(screen.getByPlaceholderText(/HC Montréal/i), 'Les Lions');
-
-    // Label appears
-    expect(await screen.findByText(/Lien de vote de votre équipe/i)).toBeInTheDocument();
-    // Slug part renders inside a <strong> — query by the slug text directly
-    expect(await screen.findByText('les-lions')).toBeInTheDocument();
-  });
-
-  it('auto-generates slug from team name (lowercase, no accents)', async () => {
-    const user = userEvent.setup();
-    render(withProviders(<OrgSetupView onOrgCreated={vi.fn()} />));
-
-    await user.type(screen.getByPlaceholderText(/HC Montréal/i), 'Étoile du Nord');
-
-    // Slug rendered in <strong> — check the generated value directly
-    expect(await screen.findByText('etoile-du-nord')).toBeInTheDocument();
-  });
-
-  it('shows name-field error when duplicate slug (not an invisible slug error)', async () => {
-    const user = userEvent.setup();
-    // Make createOrg throw a duplicate error
-    vi.spyOn(__demoAPI, 'createOrg').mockRejectedValueOnce(new Error('duplicate key value violates unique constraint'));
-
-    render(withProviders(<OrgSetupView onOrgCreated={vi.fn()} />));
-
-    await user.type(screen.getByPlaceholderText(/HC Montréal/i), 'Les Lions');
-    await user.click(screen.getByRole('button', { name: /Créer l'équipe/i }));
-
-    // Error must be visible and mention the name, not a hidden slug field
-    expect(await screen.findByText(/Ce nom d'équipe est déjà utilisé/i)).toBeInTheDocument();
-  });
-
-  it('calls onOrgCreated with the created org', async () => {
-    const user = userEvent.setup();
-    const onOrgCreated = vi.fn();
-    render(withProviders(<OrgSetupView onOrgCreated={onOrgCreated} />));
-
-    await user.type(screen.getByPlaceholderText(/HC Montréal/i), 'Les Lions');
-    await user.click(screen.getByRole('button', { name: /Créer l'équipe/i }));
-
-    await waitFor(() => expect(onOrgCreated).toHaveBeenCalledOnce());
-    expect(onOrgCreated).toHaveBeenCalledWith(
-      expect.objectContaining({ name: 'Les Lions', slug: 'les-lions' })
-    );
   });
 });
 

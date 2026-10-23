@@ -82,10 +82,6 @@ interface AppStore {
   pendingPlayerId:   EntityId | null;   // player.id to auto-link after signup
   pendingOrgId:      string | null;     // org.id to auto-join after signup (?org= flow)
   pendingOrgName:    string | null;     // org.name — kept for display in JoinOrgView
-  justSignedUp:      boolean;           // true only right after AuthView's signup form — the
-                                         // only condition allowed to show "create your team".
-                                         // A login with a transiently/genuinely empty org list
-                                         // must NOT show it (see App.tsx).
   showOnboarding:    boolean;
   /** The /start flow is running: App keeps it on screen through signup and org load. */
   quickStartActive:  boolean;
@@ -110,7 +106,6 @@ interface AppStore {
   setPendingPlayerId:   (id: EntityId | null) => void;
   setPendingOrgId:      (id: string | null) => void;
   setPendingOrgName:    (name: string | null) => void;
-  setJustSignedUp:      (v: boolean) => void;
   setQuickStartActive:  (v: boolean) => void;
   setShowOnboarding:    (v: boolean) => void;
   setLastMatchId:       (id: EntityId | null) => void;
@@ -145,7 +140,6 @@ export function resetAppStore() {
     pendingPlayerId: null,
     pendingOrgId: null,
     pendingOrgName: null,
-    justSignedUp: false,
     showOnboarding: false,
     quickStartActive: false,
     lastMatchId: null,
@@ -178,7 +172,6 @@ export const useAppStore = create<AppStore>((set, get) => ({
   pendingPlayerId:  null,
   pendingOrgId:     initialPendingOrg?.id ?? null,
   pendingOrgName:   initialPendingOrg?.name ?? null,
-  justSignedUp:     false,
   showOnboarding:   false,
   quickStartActive: false,
   lastMatchId:      null,
@@ -202,7 +195,6 @@ export const useAppStore = create<AppStore>((set, get) => ({
   setPendingPlayerId:  (id)  => set({ pendingPlayerId: id }),
   setPendingOrgId:     (id)   => { set({ pendingOrgId: id }); writePendingOrg(id, id ? get().pendingOrgName : null); },
   setPendingOrgName:   (name) => { set({ pendingOrgName: name }); const id = get().pendingOrgId; if (id) writePendingOrg(id, name); },
-  setJustSignedUp:     (v)   => set({ justSignedUp: v }),
   setQuickStartActive: (v)   => set({ quickStartActive: v }),
   setShowOnboarding:   (v)   => set({ showOnboarding: v }),
   setLastMatchId:      (id)  => set({ lastMatchId: id }),

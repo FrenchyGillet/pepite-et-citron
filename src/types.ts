@@ -31,6 +31,8 @@ export interface Match {
   pepite_count?: 2 | 3;
   /** After this time submit_vote refuses ballots (null = no deadline). */
   vote_deadline?: string | null;
+  /** Ballots received, kept by a trigger on votes (20260013). */
+  vote_count?: number;
   /** Result entered by hand for a match played without a vote (no ballots). */
   manual_result?: ManualResult | null;
 }

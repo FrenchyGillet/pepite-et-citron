@@ -109,6 +109,23 @@ describe('demoAPI', () => {
     expect((await demoAPI.getMatches())[0].phase).toBe('closed');
   });
 
+  it('deletes a vote left without a ballot for 24 h, and refuses ballots for it', async () => {
+    const m = await demoAPI.createMatch('test', [1, 2, 3], null, 1);
+    m.created_at = new Date(Date.now() - 25 * 3_600_000).toISOString();
+    await expect(demoAPI.submitVote({ match_id: m.id, voter_name: 'Antoine', best1_id: 2, best2_id: 3, lemon_id: 2 }))
+      .rejects.toThrow('Le vote est clôturé pour ce match.');
+    expect(await demoAPI.getMatchById(m.id)).toBeNull();
+    expect(await demoAPI.getActiveMatch()).toBeNull();
+    expect(await demoAPI.getMatches()).toHaveLength(0);
+  });
+
+  it('keeps an old vote that received a ballot', async () => {
+    const m = await demoAPI.createMatch('test', [1, 2, 3], null, 1);
+    await demoAPI.submitVote({ match_id: m.id, voter_name: 'Antoine', best1_id: 2, best2_id: 3, lemon_id: 2 });
+    m.created_at = new Date(Date.now() - 48 * 3_600_000).toISOString();
+    expect((await demoAPI.getActiveMatch())?.id).toBe(m.id);
+  });
+
   it('startCounting switches to counting phase with reveal order', async () => {
     const m = await demoAPI.createMatch('test', [1, 2], null, 1);
     await demoAPI.startCounting(m.id, [10, 11]);
@@ -325,7 +342,7 @@ describe('realAPI', () => {
   const mockMatch: Match = {
     id: 'm1', label: 'vs Bruxelles', is_open: true, phase: 'voting',
     present_ids: ['p1', 'p2'], reveal_order: [], revealed_count: 0,
-    season: 1, team_id: null, created_at: '2024-01-15T20:00:00Z', org_id: 'org-123',
+    season: 1, team_id: null, created_at: '2024-01-15T20:00:00Z', org_id: 'org-123', vote_count: 3,
   };
 
   // ── Players ──
@@ -449,6 +466,27 @@ describe('realAPI', () => {
     it('returns null when server sends empty array', async () => {
       server.use(http.get(`${BASE}/matches`, () => HttpResponse.json([])));
       expect(await realAPI.getActiveMatch()).toBeNull();
+    });
+
+    it('deletes abandoned votes first, and never returns one', async () => {
+      let expired = false;
+      const twoDaysAgo = new Date(Date.now() - 48 * 3_600_000).toISOString();
+      server.use(
+        http.post(`${RPC}/delete_abandoned_votes`, () => { expired = true; return HttpResponse.json(0); }),
+        http.get(`${BASE}/matches`, () => HttpResponse.json([
+          { ...mockMatch, label: 'Abandonné', is_open: true, phase: 'voting', vote_count: 0, created_at: twoDaysAgo },
+        ])),
+      );
+      expect(await realAPI.getActiveMatch()).toBeNull();
+      expect(expired).toBe(true);
+    });
+
+    it('still answers when the expiry RPC is missing (migration not applied)', async () => {
+      server.use(
+        http.post(`${RPC}/delete_abandoned_votes`, () => HttpResponse.json({ message: 'not found' }, { status: 404 })),
+        http.get(`${BASE}/matches`, () => HttpResponse.json([mockMatch])),
+      );
+      expect((await realAPI.getActiveMatch())?.label).toBe('vs Bruxelles');
     });
   });
 
