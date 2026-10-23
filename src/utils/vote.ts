@@ -1,5 +1,7 @@
 import type { EntityId, Vote } from '@/types';
 import { isNetworkError } from '@/utils/offlineVote';
+import { t } from '@/i18n';
+import { humanizeError } from '@/utils/errors';
 
 export function hasVotedLocally(matchId: EntityId | null | undefined): boolean {
   if (matchId == null) return false;
@@ -16,9 +18,10 @@ export function markVotedLocally(matchId: EntityId): void {
 export function classifyVoteError(err: unknown): string {
   // Single network-error heuristic, shared with the offline-vote queue.
   if (isNetworkError(err)) {
-    return 'Erreur réseau : vérifie ta connexion et réessaie.';
+    return t('errors.network');
   }
-  return (err instanceof Error ? err.message : '') || "Erreur lors de l'envoi, réessaie.";
+  // Server messages (French) come back in the user's language.
+  return err instanceof Error && err.message ? humanizeError(err, t('errors.sendFailed')) : t('errors.sendFailed');
 }
 
 // ── Voter identity persistence ────────────────────────────────────────────────

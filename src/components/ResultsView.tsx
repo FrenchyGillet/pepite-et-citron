@@ -12,6 +12,7 @@ import { useRevealNext, useCloseMatch, useUpdateMatch } from '@/hooks/mutations'
 import { track, EVENTS } from '@/utils/analytics';
 import { sharedLandingUrl } from '@/utils/share';
 import type { Player, Match, EntityId } from '@/types';
+import { t } from '@/i18n';
 
 interface ResultsViewProps {
   players: Player[];
@@ -52,10 +53,10 @@ function ShareResultsButton({
     const lemonName   = lemonWinners.map(p => p.name).join(' & ');
     const lines = [
       `🏆 ${match.label}`,
-      pepiteNames ? `⭐ Pépite : ${pepiteNames}` : '',
-      lemonName   ? `🍋 Citron : ${lemonName}`   : '',
+      pepiteNames ? t('results.sharePepite', { names: pepiteNames }) : '',
+      lemonName   ? t('results.shareCitron', { names: lemonName })   : '',
       '',
-      'Résultats via Pépite & Citron 🔥',
+      t('results.shareVia'),
       sharedLandingUrl('results'),
     ].filter(Boolean);
     return lines.join('\n');
@@ -96,7 +97,7 @@ function ShareResultsButton({
       }}
     >
       <span style={{ fontSize: 18 }}>{shared ? '✅' : '💬'}</span>
-      {shared ? 'Partagé !' : 'Envoyer les résultats'}
+      {shared ? t('results.shared') : t('results.sendResults')}
     </button>
   );
 }
@@ -123,7 +124,7 @@ function TiebreakerCard({ title, color, field, tiedPlayers, step, disabled, onPi
       borderRadius: 'var(--radius-lg)', padding: '16px', marginBottom: 12,
     }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
-        <div style={{ fontSize: 15, fontWeight: 700 }}>🍺 Égalité : {title}</div>
+        <div style={{ fontSize: 15, fontWeight: 700 }}>{t('results.tie', { title })}</div>
         {step && (
           <span style={{
             fontSize: 11, fontWeight: 700, color: 'var(--label3)',
@@ -133,10 +134,10 @@ function TiebreakerCard({ title, color, field, tiedPlayers, step, disabled, onPi
         )}
       </div>
       <div style={{ fontSize: 13, color: 'var(--label3)', marginBottom: 12 }}>
-        {tiedPlayers.map(p => p.name).join(' et ')} sont à égalité.<br />
+        {t('results.tiedPlayers', { names: tiedPlayers.map(p => p.name).join(` ${t('results.tiedAnd')} `) })}<br />
         {color === 'lemon'
-          ? 'Qui a perdu le concours de bière ?'
-          : 'Qui a gagné le concours de bière ?'}
+          ? t('results.beerLost')
+          : t('results.beerWon')}
       </div>
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
         {tiedPlayers.map(p => (
@@ -173,8 +174,8 @@ export function ResultsView({ players, match, isAdmin, isDark, orgId, isPro, onU
     <div className="content">
       <EmptyState
         icon={<><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></>}
-        title="Aucun match récent"
-        subtitle="Les résultats s'afficheront ici une fois le premier match clôturé."
+        title={t('results.noRecent')}
+        subtitle={t('results.noRecentHint')}
       />
     </div>
   );
@@ -187,16 +188,16 @@ export function ResultsView({ players, match, isAdmin, isDark, orgId, isPro, onU
   if (phase === 'voting') {
     return (
       <div className="content">
-        <MatchHeader match={match} badge={<span className="badge badge-open">Vote en cours</span>} />
+        <MatchHeader match={match} badge={<span className="badge badge-open">{t('results.voteOpen')}</span>} />
         <div style={{
           background: 'var(--bg2)', borderRadius: 'var(--radius-lg)',
           padding: '40px 20px', textAlign: 'center',
         }}>
           <div style={{ fontSize: 40, marginBottom: 12 }}>🔒</div>
-          <div style={{ fontSize: 17, fontWeight: 600, marginBottom: 6 }}>Résultats masqués</div>
+          <div style={{ fontSize: 17, fontWeight: 600, marginBottom: 6 }}>{t('results.hidden')}</div>
           <div style={{ fontSize: 13, color: 'var(--label3)', lineHeight: 1.6 }}>
-            Le classement sera révélé une fois le vote clôturé.<br />
-            <span style={{ color: 'var(--label2)', fontWeight: 500 }}>{voteCount}</span> vote{voteCount !== 1 ? 's' : ''} reçu{voteCount !== 1 ? 's' : ''} sur {present.length} joueur{present.length !== 1 ? 's' : ''}.
+            {t('results.hiddenHint')}<br />
+            <span style={{ color: 'var(--label2)', fontWeight: 500 }}>{voteCount}</span> {t('results.received', { count: voteCount, present: present.length })}
           </div>
         </div>
       </div>
@@ -220,10 +221,10 @@ export function ResultsView({ players, match, isAdmin, isDark, orgId, isPro, onU
     const pepitePoints = PEPITE_POINTS[pepiteCount];
     const pepiteRows = currentVote
       ? [
-          { rank: 1, label: 'La Pépite', id: currentVote.best1_id, comment: currentVote.best1_comment },
-          { rank: 2, label: '2ème',      id: currentVote.best2_id, comment: currentVote.best2_comment },
+          { rank: 1, label: t('results.rankPepite'), id: currentVote.best1_id, comment: currentVote.best1_comment },
+          { rank: 2, label: t('results.rank2'), id: currentVote.best2_id, comment: currentVote.best2_comment },
           ...(pepiteCount === 3
-            ? [{ rank: 3, label: '3ème', id: currentVote.best3_id, comment: currentVote.best3_comment }]
+            ? [{ rank: 3, label: t('results.rank3'), id: currentVote.best3_id, comment: currentVote.best3_comment }]
             : []),
         ]
       : [];
@@ -240,7 +241,7 @@ export function ResultsView({ players, match, isAdmin, isDark, orgId, isPro, onU
 
     return (
       <div className="content">
-        <MatchHeader match={match} badge={<span className="badge" style={{ background: 'rgba(170,221,0,0.15)', color: 'var(--lemon)' }}>Dépouillement</span>} />
+        <MatchHeader match={match} badge={<span className="badge" style={{ background: 'rgba(170,221,0,0.15)', color: 'var(--lemon)' }}>{t('results.counting')}</span>} />
 
         {!isAdmin ? (
           // Non-admins watch the reveal — they only receive the ballots the
@@ -248,12 +249,12 @@ export function ResultsView({ players, match, isAdmin, isDark, orgId, isPro, onU
           <div style={{ background: 'var(--bg2)', borderRadius: 'var(--radius-lg)', padding: '24px 16px', textAlign: 'center', marginBottom: 16 }}>
             <div style={{ fontSize: 28, marginBottom: 8 }}>{isDone ? '🎉' : '🥁'}</div>
             <div style={{ fontSize: 15, fontWeight: 700, marginBottom: 4 }}>
-              {isDone ? 'Tous les votes ont été révélés' : 'Dépouillement en cours…'}
+              {isDone ? t('results.allRevealed') : t('results.countingNow')}
             </div>
             <div style={{ fontSize: 13, color: 'var(--label3)' }}>
               {isDone
-                ? 'Le classement final va s’afficher.'
-                : `Vote ${revealedCount} / ${revealOrder.length} révélé par l’organisateur.`}
+                ? t('results.finalSoon')
+                : t('results.revealedBy', { n: revealedCount, total: revealOrder.length })}
             </div>
           </div>
         ) : !isDone && currentVote ? (
@@ -264,7 +265,7 @@ export function ResultsView({ players, match, isAdmin, isDark, orgId, isPro, onU
           }}>
             <div style={{ padding: '10px 16px', borderBottom: '1px solid var(--separator)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'var(--bg3)' }}>
               <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--label2)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
-                Vote {revealedCount + 1} / {revealOrder.length}
+                {t('results.voteN', { n: revealedCount + 1, total: revealOrder.length })}
               </span>
               <div style={{ display: 'flex', gap: 4 }}>
                 {revealOrder.map((_, i) => (
@@ -287,7 +288,7 @@ export function ResultsView({ players, match, isAdmin, isDark, orgId, isPro, onU
                     <div style={{ fontSize: first ? 26 : 22, lineHeight: 1, opacity: first ? 1 : 0.5 }}>⭐</div>
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <div style={{ fontSize: 10, fontWeight: 700, color: first ? 'var(--gold)' : 'rgba(255,214,10,0.5)', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 4 }}>
-                        {row.label} · {points} pt{points > 1 ? 's' : ''}
+                        {t('results.rowPoints', { label: row.label, count: points })}
                       </div>
                       <div style={{ fontSize: first ? 22 : 19, fontWeight: first ? 800 : 700, color: first ? 'var(--gold)' : 'var(--label)', letterSpacing: '-0.3px', lineHeight: 1.1 }}>{playerName(row.id)}</div>
                       {row.comment && <div style={{ fontSize: 12, color: 'var(--label3)', fontStyle: 'italic', marginTop: 5 }}>"{row.comment}"</div>}
@@ -298,7 +299,7 @@ export function ResultsView({ players, match, isAdmin, isDark, orgId, isPro, onU
               <div style={{ display: 'flex', alignItems: 'flex-start', gap: 14, padding: '14px 16px 16px', borderLeft: '4px solid var(--lemon)' }}>
                 <div style={{ fontSize: 24, lineHeight: 1 }}>🍋</div>
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--lemon)', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 4 }}>Le Citron</div>
+                  <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--lemon)', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 4 }}>{t('results.citron')}</div>
                   <div style={{ fontSize: 22, fontWeight: 800, color: 'var(--lemon)', letterSpacing: '-0.3px', lineHeight: 1.1 }}>{playerName(currentVote.lemon_id)}</div>
                   {currentVote.lemon_comment && <div style={{ fontSize: 12, color: 'var(--label3)', fontStyle: 'italic', marginTop: 5 }}>"{currentVote.lemon_comment}"</div>}
                 </div>
@@ -307,26 +308,26 @@ export function ResultsView({ players, match, isAdmin, isDark, orgId, isPro, onU
 
             <div style={{ padding: '12px 16px', borderTop: '1px solid var(--separator)' }}>
               <button className="btn btn-primary btn-full" onClick={handleNext}>
-                {revealedCount + 1 < revealOrder.length ? 'Vote suivant →' : 'Voir le classement final →'}
+                {revealedCount + 1 < revealOrder.length ? t('results.nextVote') : t('results.seeFinal')}
               </button>
             </div>
           </div>
         ) : isDone ? (
           <div style={{ background: 'var(--bg2)', borderRadius: 'var(--radius-lg)', padding: '24px 16px', textAlign: 'center', marginBottom: 16 }}>
             <div style={{ fontSize: 32, marginBottom: 8 }}>🎉</div>
-            <div style={{ fontSize: 16, fontWeight: 700, marginBottom: 4 }}>Tous les votes ont été révélés !</div>
-            <div style={{ fontSize: 13, color: 'var(--label3)', marginBottom: 16 }}>Affiche le classement définitif pour tout le monde.</div>
-            <button className="btn btn-primary btn-full" onClick={handleFinish}>Afficher le classement final</button>
+            <div style={{ fontSize: 16, fontWeight: 700, marginBottom: 4 }}>{t('results.allRevealedBang')}</div>
+            <div style={{ fontSize: 13, color: 'var(--label3)', marginBottom: 16 }}>{t('results.showFinalHint')}</div>
+            <button className="btn btn-primary btn-full" onClick={handleFinish}>{t('results.showFinal')}</button>
           </div>
         ) : (
           // Vote référencé par reveal_order mais introuvable (supprimé, ou pas
           // encore synchronisé) — ne jamais bloquer le dépouillement.
           <div style={{ background: 'var(--bg2)', borderRadius: 'var(--radius-lg)', padding: '24px 16px', textAlign: 'center', marginBottom: 16 }}>
             <div style={{ fontSize: 28, marginBottom: 8 }}>⏭️</div>
-            <div style={{ fontSize: 15, fontWeight: 700, marginBottom: 4 }}>Ce vote n'est plus disponible</div>
-            <div style={{ fontSize: 13, color: 'var(--label3)', marginBottom: 16 }}>Il a peut-être été supprimé. Passe au suivant.</div>
+            <div style={{ fontSize: 15, fontWeight: 700, marginBottom: 4 }}>{t('results.voteGone')}</div>
+            <div style={{ fontSize: 13, color: 'var(--label3)', marginBottom: 16 }}>{t('results.voteGoneHint')}</div>
             <button className="btn btn-primary btn-full" onClick={handleNext}>
-              {revealedCount + 1 < revealOrder.length ? 'Vote suivant →' : 'Voir le classement final →'}
+              {revealedCount + 1 < revealOrder.length ? t('results.nextVote') : t('results.seeFinal')}
             </button>
           </div>
         )}
@@ -346,7 +347,7 @@ export function ResultsView({ players, match, isAdmin, isDark, orgId, isPro, onU
                 flexShrink: 0,
               }} />
               <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--label3)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
-                Classement provisoire · {revealedCount}/{revealOrder.length} vote{revealedCount > 1 ? 's' : ''} révélé{revealedCount > 1 ? 's' : ''}
+                {t('results.provisional', { count: revealedCount, n: revealedCount, total: revealOrder.length })}
               </span>
             </div>
             <Scoreboard votes={revealedVotes} present={present} allPlayers={players} pepiteCount={pepiteCount} />
@@ -387,9 +388,9 @@ export function ResultsView({ players, match, isAdmin, isDark, orgId, isPro, onU
 
   return (
     <div className="content">
-      <MatchHeader match={match} badge={<span className="badge badge-closed">Clôturé</span>} />
-      {showBestCard  && <TiebreakerCard disabled={updateMatchMutation.isPending} onPick={setTiebreaker} title="Pépite" color="gold"  field="best_id"  tiedPlayers={bestTiedPlayers}  step={stepLabel(resolvedTies + 1)} />}
-      {showLemonCard && <TiebreakerCard disabled={updateMatchMutation.isPending} onPick={setTiebreaker} title="Citron" color="lemon" field="lemon_id" tiedPlayers={lemonTiedPlayers} step={stepLabel(resolvedTies + 1)} />}
+      <MatchHeader match={match} badge={<span className="badge badge-closed">{t('results.closed')}</span>} />
+      {showBestCard  && <TiebreakerCard disabled={updateMatchMutation.isPending} onPick={setTiebreaker} title={t('results.pepite')} color="gold"  field="best_id"  tiedPlayers={bestTiedPlayers}  step={stepLabel(resolvedTies + 1)} />}
+      {showLemonCard && <TiebreakerCard disabled={updateMatchMutation.isPending} onPick={setTiebreaker} title={t('results.citronShort')} color="lemon" field="lemon_id" tiedPlayers={lemonTiedPlayers} step={stepLabel(resolvedTies + 1)} />}
       {/* Podium is hidden until all tiebreakers are resolved AND the reveal button is pressed */}
       {hasPendingTie ? (
         <div style={{
@@ -398,7 +399,7 @@ export function ResultsView({ players, match, isAdmin, isDark, orgId, isPro, onU
         }}>
           <div style={{ fontSize: 32, marginBottom: 10 }}>🏆</div>
           <div style={{ fontSize: 15, fontWeight: 600, color: 'var(--label2)' }}>
-            Le classement s'affichera après{totalTies > 1 ? ` les ${totalTies} départages` : ' le départage'}.
+            {totalTies > 1 ? t('results.afterTies', { count: totalTies }) : t('results.afterTie')}
           </div>
         </div>
       ) : !podiumRevealed ? (
@@ -407,16 +408,16 @@ export function ResultsView({ players, match, isAdmin, isDark, orgId, isPro, onU
           padding: '40px 24px', textAlign: 'center', marginBottom: 8,
         }}>
           <div style={{ fontSize: 48, marginBottom: 12, lineHeight: 1 }}>🏆</div>
-          <div style={{ fontSize: 18, fontWeight: 800, marginBottom: 6, letterSpacing: '-0.3px' }}>Le verdict est tombé</div>
+          <div style={{ fontSize: 18, fontWeight: 800, marginBottom: 6, letterSpacing: '-0.3px' }}>{t('results.verdict')}</div>
           <div style={{ fontSize: 13, color: 'var(--label3)', marginBottom: 24, lineHeight: 1.5 }}>
-            Les votes ont parlé.<br />Prêts à découvrir la Pépite et le Citron ?
+            {t('results.votesSpoke')}<br />{t('results.readyToDiscover')}
           </div>
           <button
             className="btn btn-primary btn-full"
             onClick={() => { track(EVENTS.PODIUM_REVEALED, { admin: isAdmin }); setPodiumRevealed(true); }}
             style={{ fontSize: 17, fontWeight: 800 }}
           >
-            🎉 Révéler le classement !
+            {t('results.reveal')}
           </button>
         </div>
       ) : (
@@ -443,7 +444,7 @@ export function ResultsView({ players, match, isAdmin, isDark, orgId, isPro, onU
             textTransform: 'uppercase', letterSpacing: '0.08em',
             marginBottom: 10,
           }}>
-            👻 Fantômes · {ghosts.length}
+            {t('results.ghosts', { count: ghosts.length })}
           </p>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
             {ghosts.map(p => (
@@ -475,7 +476,7 @@ export function ResultsView({ players, match, isAdmin, isDark, orgId, isPro, onU
                 fontSize: 14, fontWeight: 600, color: 'var(--gold)', cursor: 'pointer',
               }}
             >
-              <span>📊 Voir le classement de saison</span>
+              <span>{t('results.seeSeason')}</span>
               <span style={{ opacity: 0.7 }}>→</span>
             </button>
           )}
@@ -494,10 +495,10 @@ export function ResultsView({ players, match, isAdmin, isDark, orgId, isPro, onU
                 <div style={{ fontSize: 28, flexShrink: 0 }}>📊</div>
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--label)', marginBottom: 3 }}>
-                    Stats de saison disponibles avec Pro
+                    {t('results.proStats')}
                   </div>
                   <div style={{ fontSize: 12, color: 'var(--label3)', lineHeight: 1.4 }}>
-                    Classement cumulé, historique et tendances par joueur.
+                    {t('results.proStatsHint')}
                   </div>
                 </div>
                 <button
@@ -509,7 +510,7 @@ export function ResultsView({ players, match, isAdmin, isDark, orgId, isPro, onU
                     whiteSpace: 'nowrap', flexShrink: 0,
                   }}
                 >
-                  Voir Pro →
+                  {t('results.seePro')}
                 </button>
               </div>
             </>

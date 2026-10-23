@@ -12,6 +12,7 @@ import { useDeleteMatch, useUpdateMatch } from '@/hooks/mutations';
 import { useConfirm } from '@/hooks/useConfirm';
 import { track, EVENTS } from '@/utils/analytics';
 import type { Player, Match, EntityId, ManualResult } from '@/types';
+import { t } from '@/i18n';
 
 interface StatsViewProps {
   players: Player[];
@@ -33,9 +34,9 @@ function ManualResultSummary({ result, players }: { result: ManualResult; player
   const nameOf = (id: EntityId) => players.find(p => String(p.id) === String(id))?.name ?? '?';
   const pts = (map: Record<string, number> | undefined, id: EntityId) => {
     const n = map?.[String(id)];
-    return n != null ? ` · ${n} pt${n > 1 ? 's' : ''}` : '';
+    return n != null ? ` · ${t('vote.pts', { count: n })}` : '';
   };
-  const placeLabels = ['⭐ La Pépite', '2e', '3e'];
+  const placeLabels = [t('stats.placePepite'), t('stats.place2'), t('stats.place3')];
   return (
     <div className="group" style={{ marginBottom: 4 }}>
       {result.best_ids.map((id, i) => (
@@ -48,7 +49,7 @@ function ManualResultSummary({ result, players }: { result: ManualResult; player
       ))}
       <div className="row">
         <div className="row-body">
-          <div className="row-sub" style={{ color: 'var(--lemon)' }}>🍋 Le Citron</div>
+          <div className="row-sub" style={{ color: 'var(--lemon)' }}>{t('stats.citron')}</div>
           <div className="row-title" style={{ fontWeight: 700 }}>{nameOf(result.lemon_id)}{pts(result.lemon_pts, result.lemon_id)}</div>
         </div>
       </div>
@@ -100,9 +101,9 @@ export function StatsView({ players, activeMatch, isAdmin, canRunMatches = isAdm
     <div className="content">
       <EmptyState
         icon={<><circle cx="12" cy="12" r="9"/><path d="M12 8v5M12 16h.01"/></>}
-        title="Impossible de charger la saison"
-        subtitle="La connexion a échoué. Vérifie ton réseau et réessaie."
-        action={{ label: 'Réessayer', onClick: () => { void refetchMatches(); void refetchVotes(); } }}
+        title={t('stats.loadFailed')}
+        subtitle={t('stats.loadFailedHint')}
+        action={{ label: t('common.retry'), onClick: () => { void refetchMatches(); void refetchVotes(); } }}
       />
     </div>
   );
@@ -112,8 +113,8 @@ export function StatsView({ players, activeMatch, isAdmin, canRunMatches = isAdm
     <div className="content">
       <EmptyState
         icon={<><rect x="3" y="11" width="18" height="10" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></>}
-        title="Classements masqués"
-        subtitle="Les stats de saison sont cachées pendant le vote pour ne pas influencer les choix."
+        title={t('stats.hidden')}
+        subtitle={t('stats.hiddenHint')}
       />
     </div>
   );
@@ -131,8 +132,8 @@ export function StatsView({ players, activeMatch, isAdmin, canRunMatches = isAdm
 
   const handleDelete = async (match: Match) => {
     if (!(await confirm({
-      message: `Supprimer "${match.label}" et tous ses votes ?`,
-      confirmLabel: 'Supprimer', danger: true,
+      message: t('stats.deleteConfirm', { match: match.label }),
+      confirmLabel: t('stats.delete'), danger: true,
     }))) return;
     deleteMatchMutation.mutate(match.id, {
       onSuccess: () => {
@@ -157,13 +158,13 @@ export function StatsView({ players, activeMatch, isAdmin, canRunMatches = isAdm
       {seasons.length > 0 && (
         <div style={{ marginTop: 12, marginBottom: 16 }}>
           <TabBar
-            items={seasons.map(s => ({ id: s, label: `${seasonNames[s] || `Saison ${s}`}${s === currentSeason ? ' ·' : ''}` }))}
+            items={seasons.map(s => ({ id: s, label: `${seasonNames[s] || t('stats.season', { n: s })}${s === currentSeason ? ' ·' : ''}` }))}
             active={activeSeason}
             onChange={s => { setSelectedSeason(s); setSelectedTeamId(null); setExpandedId(null); }}
           />
           <p style={{ fontSize: 11, color: 'var(--label4)', marginTop: 4 }}>
-            {filteredMatches.length} match{filteredMatches.length !== 1 ? 's' : ''}
-            {filteredVotes.length > 0 && ` · ${filteredVotes.length} vote${filteredVotes.length > 1 ? 's' : ''}`}
+            {t('stats.matches', { count: filteredMatches.length })}
+            {filteredVotes.length > 0 && ` · ${t('common.votes', { count: filteredVotes.length })}`}
           </p>
         </div>
       )}
@@ -171,7 +172,7 @@ export function StatsView({ players, activeMatch, isAdmin, canRunMatches = isAdm
       {allTeams.length > 0 && (
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 16 }}>
           <button className={`tag ${selectedTeamId === null ? 'tag-gold' : 'tag-dim'}`}
-            onClick={() => setSelectedTeamId(null)}>Toutes</button>
+            onClick={() => setSelectedTeamId(null)}>{t('stats.all')}</button>
           {allTeams.map(t => (
             <button key={String(t.id)} className={`tag ${selectedTeamId === t.id ? 'tag-gold' : 'tag-dim'}`}
               onClick={() => setSelectedTeamId(t.id)}>{t.name}</button>
@@ -195,16 +196,16 @@ export function StatsView({ players, activeMatch, isAdmin, canRunMatches = isAdm
         !manualForm && (
           <EmptyState
             icon={<><path d="M18 20V10M12 20V4M6 20v-6"/></>}
-            title="Pas encore de match"
-            subtitle="Les statistiques s'afficheront dès que le premier match de cette saison sera clôturé."
-            action={canRunMatches ? { label: 'Ajouter un résultat', onClick: () => setManualForm('new') } : null}
+            title={t('stats.noMatch')}
+            subtitle={t('stats.noMatchHint')}
+            action={canRunMatches ? { label: t('stats.addResult'), onClick: () => setManualForm('new') } : null}
           />
         )
       ) : (
         <>
-          <p className="section-label mb-4">Classement Pépites ⭐</p>
+          <p className="section-label mb-4">{t('stats.pepiteRanking')}</p>
           {rankedBest.length === 0
-            ? <div className="group" style={{ marginBottom: 12 }}><div className="row"><span style={{ color: 'var(--label3)', fontSize: 14 }}>Aucun vote enregistré.</span></div></div>
+            ? <div className="group" style={{ marginBottom: 12 }}><div className="row"><span style={{ color: 'var(--label3)', fontSize: 14 }}>{t('stats.noVotes')}</span></div></div>
             : (
               <div className="group" style={{ marginBottom: 12 }}>
                 {rankedBest.map((s, i) => (
@@ -215,7 +216,7 @@ export function StatsView({ players, activeMatch, isAdmin, canRunMatches = isAdm
                       {(s.wins > 0 || s.absences > 0) && (
                         <div className="flex gap-8 mt-4">
                           {s.wins > 0 && <span className="tag tag-gold">⭐ ×{s.wins}</span>}
-                          {s.absences > 0 && <span className="tag tag-dim">{s.absences} abs.</span>}
+                          {s.absences > 0 && <span className="tag tag-dim">{t('stats.absences', { count: s.absences })}</span>}
                         </div>
                       )}
                     </div>
@@ -232,9 +233,9 @@ export function StatsView({ players, activeMatch, isAdmin, canRunMatches = isAdm
             )
           }
 
-          <p className="section-label mb-4">Classement Citrons 🍋</p>
+          <p className="section-label mb-4">{t('stats.citronRanking')}</p>
           {rankedLemon.length === 0
-            ? <div className="group" style={{ marginBottom: 12 }}><div className="row"><span style={{ color: 'var(--label3)', fontSize: 14 }}>Aucun vote enregistré.</span></div></div>
+            ? <div className="group" style={{ marginBottom: 12 }}><div className="row"><span style={{ color: 'var(--label3)', fontSize: 14 }}>{t('stats.noVotes')}</span></div></div>
             : (
               <div className="group" style={{ marginBottom: 12 }}>
                 {rankedLemon.map((s, i) => (
@@ -245,7 +246,7 @@ export function StatsView({ players, activeMatch, isAdmin, canRunMatches = isAdm
                       {(s.lemons > 0 || s.absences > 0) && (
                         <div className="flex gap-8 mt-4">
                           {s.lemons > 0 && <span className="tag tag-lemon">🍋 ×{s.lemons}</span>}
-                          {s.absences > 0 && <span className="tag tag-dim">{s.absences} abs.</span>}
+                          {s.absences > 0 && <span className="tag tag-dim">{t('stats.absences', { count: s.absences })}</span>}
                         </div>
                       )}
                     </div>
@@ -264,7 +265,7 @@ export function StatsView({ players, activeMatch, isAdmin, canRunMatches = isAdm
 
           {rankedAttendance.length > 0 && (
             <>
-              <p className="section-label mb-4">Assiduité 📋</p>
+              <p className="section-label mb-4">{t('stats.attendance')}</p>
               <div className="group" style={{ marginBottom: 12 }}>
                 {rankedAttendance.map(s => {
                   const pct = totalMatches > 0 ? Math.round((s.matchesPlayed / totalMatches) * 100) : 0;
@@ -296,9 +297,9 @@ export function StatsView({ players, activeMatch, isAdmin, canRunMatches = isAdm
           )}
 
           <div className="flex-between mb-8">
-            <p className="section-label">Matchs</p>
+            <p className="section-label">{t('stats.matchList')}</p>
             {canRunMatches && !manualForm && (
-              <button className="tag tag-dim" onClick={() => setManualForm('new')}>+ Ajouter un résultat</button>
+              <button className="tag tag-dim" onClick={() => setManualForm('new')}>{t('stats.addResultTag')}</button>
             )}
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 20 }}>
@@ -319,7 +320,7 @@ export function StatsView({ players, activeMatch, isAdmin, canRunMatches = isAdm
                       <div style={{ fontSize: 12, color: 'var(--label3)', marginTop: 2 }}>
                         {formatDate(match.created_at)}
                         {teamName && <span> · <span style={{ color: 'var(--gold)' }}>{teamName}</span></span>}
-                        {' · '}{manual ? 'saisi à la main' : `${matchVotes.length} vote${matchVotes.length !== 1 ? 's' : ''}`}
+                        {' · '}{manual ? t('stats.manual') : t('common.votes', { count: matchVotes.length })}
                       </div>
                     </div>
                     <span style={{ color: 'var(--label4)', fontSize: 11 }}>{isExpanded ? '▲' : '▼'}</span>
@@ -330,7 +331,7 @@ export function StatsView({ players, activeMatch, isAdmin, canRunMatches = isAdm
                       {manual ? (
                         <ManualResultSummary result={manual} players={players} />
                       ) : matchVotes.length === 0 ? (
-                        <p style={{ fontSize: 14, color: 'var(--label3)', marginBottom: 12 }}>Aucun vote enregistré.</p>
+                        <p style={{ fontSize: 14, color: 'var(--label3)', marginBottom: 12 }}>{t('stats.noVotes')}</p>
                       ) : (
                         <>
                           {/* Podium complet avec tabs Pépite / Citron */}
@@ -351,7 +352,7 @@ export function StatsView({ players, activeMatch, isAdmin, canRunMatches = isAdm
                                   fontSize: 11, fontWeight: 700, color: 'var(--label4)',
                                   textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 8,
                                 }}>
-                                  👻 Fantômes · {ghosts.length}
+                                  {t('results.ghosts', { count: ghosts.length })}
                                 </p>
                                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
                                   {ghosts.map(p => (
@@ -372,9 +373,9 @@ export function StatsView({ players, activeMatch, isAdmin, canRunMatches = isAdm
 
                       {canRunMatches && (isEditing && editingMatch ? (
                         <div style={{ marginTop: 12, display: 'flex', flexDirection: 'column', gap: 8 }}>
-                          <input aria-label="Nom du match" value={editingMatch.label}
+                          <input aria-label={t('stats.matchName')} value={editingMatch.label}
                             onChange={e => setEditingMatch(em => em ? { ...em, label: e.target.value } : em)}
-                            placeholder="Nom du match" />
+                            placeholder={t('stats.matchName')} />
                           {allTeams.length > 0 && (
                             <select
                               value={editingMatch.team_id != null ? String(editingMatch.team_id) : ''}
@@ -384,13 +385,13 @@ export function StatsView({ players, activeMatch, isAdmin, canRunMatches = isAdm
                                 setEditingMatch(em => em ? { ...em, team_id: picked } : em);
                               }}
                               style={{ background: 'var(--bg3)', color: 'var(--label)', border: 'none', borderRadius: 'var(--radius-sm)', padding: '12px 14px', fontSize: 15, width: '100%', outline: 'none' }}>
-                              <option value="">Sans équipe</option>
+                              <option value="">{t('stats.noTeam')}</option>
                               {allTeams.map(t => <option key={String(t.id)} value={String(t.id)}>{t.name}</option>)}
                             </select>
                           )}
                           <div className="flex gap-8">
-                            <button className="btn btn-secondary" onClick={() => setEditingMatch(null)}>Annuler</button>
-                            <button className="btn btn-primary" style={{ flex: 1 }} onClick={handleSaveEdit}>Sauvegarder</button>
+                            <button className="btn btn-secondary" onClick={() => setEditingMatch(null)}>{t('common.cancel')}</button>
+                            <button className="btn btn-primary" style={{ flex: 1 }} onClick={handleSaveEdit}>{t('stats.save')}</button>
                           </div>
                         </div>
                       ) : (
@@ -399,9 +400,9 @@ export function StatsView({ players, activeMatch, isAdmin, canRunMatches = isAdm
                             onClick={() => manual
                               ? setManualForm(match)
                               : setEditingMatch({ id: match.id, label: match.label, team_id: match.team_id || null })}>
-                            Modifier
+                            {t('stats.edit')}
                           </button>
-                          {isAdmin && <button className="btn btn-danger" onClick={() => handleDelete(match)}>Supprimer</button>}
+                          {isAdmin && <button className="btn btn-danger" onClick={() => handleDelete(match)}>{t('stats.delete')}</button>}
                         </div>
                       ))}
                     </div>

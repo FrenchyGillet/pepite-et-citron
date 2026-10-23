@@ -10,6 +10,7 @@ import { EmptyState } from './EmptyState';
 import { GuestPromoView } from './GuestPromoView';
 import { LinkOrgBanner, JoinLinkOrgOffer } from './LinkOrgBanner';
 import type { Player, Match, EntityId } from '@/types';
+import { t } from '@/i18n';
 
 interface VoteTabProps {
   isAdmin:    boolean;
@@ -87,16 +88,16 @@ function VoteTabContent({ isAdmin, activeMatch, lastMatch, players, isLoading = 
   if (guestStatus === 'checking') return (
     <EmptyState
       icon={<><circle cx="12" cy="12" r="9"/><path d="M12 8v4l2.5 2.5" strokeLinecap="round"/></>}
-      title="Vérification…"
-      subtitle="Validation de ton lien d'invitation"
+      title={t('voteTab.checking')}
+      subtitle={t('voteTab.checkingHint')}
     />
   );
 
   if (guestStatus === 'invalid') return (
     <EmptyState
       icon={<><circle cx="12" cy="12" r="9"/><path d="M15 9l-6 6M9 9l6 6"/></>}
-      title="Lien invalide"
-      subtitle="Ce lien a déjà été utilisé ou n'existe pas."
+      title={t('voteTab.invalidLink')}
+      subtitle={t('voteTab.invalidLinkHint')}
     />
   );
 
@@ -128,11 +129,11 @@ function VoteTabContent({ isAdmin, activeMatch, lastMatch, players, isLoading = 
       <>
         <EmptyState
           icon={<><path d="M22 11.08V12a10 10 0 11-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></>}
-          title="Vote enregistré ✓"
+          title={t('voteTab.saved')}
           subtitle={
             presentCount > 0
-              ? `${voteCount} / ${presentCount} ont voté · les résultats s'afficheront dès le début du dépouillement.`
-              : "Les résultats s'afficheront dès le début du dépouillement."
+              ? t('voteTab.savedProgress', { voted: voteCount, present: presentCount })
+              : t('voteTab.savedHint')
           }
         />
         <JoinLinkOrgOffer />
@@ -146,7 +147,7 @@ function VoteTabContent({ isAdmin, activeMatch, lastMatch, players, isLoading = 
   if (isLoading && !activeMatch && !lastMatch) {
     return (
       <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: 200 }}>
-        <div style={{ fontSize: 13, color: 'var(--label3)' }}>Chargement…</div>
+        <div style={{ fontSize: 13, color: 'var(--label3)' }}>{t('common.loading')}</div>
       </div>
     );
   }
@@ -155,15 +156,15 @@ function VoteTabContent({ isAdmin, activeMatch, lastMatch, players, isLoading = 
     return (
       <EmptyState
         icon={<><rect x="3" y="3" width="18" height="18" rx="3"/><path d="M8 12h8M12 8v8"/></>}
-        title={isVoterSession ? "Pas encore de vote ouvert" : "Pas de match ce soir"}
+        title={t(isVoterSession ? 'voteTab.noVoteYet' : 'voteTab.noMatch')}
         subtitle={
           isVoterSession
-            ? "Ton capitaine n'a pas encore lancé le vote. Reviens quand il partage le lien !"
+            ? t('voteTab.captainNotYet')
             : isAdmin
-              ? "Ouvre un match depuis l'onglet Admin pour lancer le vote."
-              : "Ton capitaine n'a pas encore ouvert le vote."
+              ? t('voteTab.openFromAdmin')
+              : t('voteTab.captainNotOpened')
         }
-        action={isAdmin ? { label: 'Ouvrir un match', onClick: () => navigate('/admin') } : null}
+        action={isAdmin ? { label: t('voteTab.openMatch'), onClick: () => navigate('/admin') } : null}
       />
     );
   }
@@ -172,9 +173,9 @@ function VoteTabContent({ isAdmin, activeMatch, lastMatch, players, isLoading = 
     return (
       <EmptyState
         icon={<><rect x="3" y="11" width="18" height="10" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></>}
-        title="Vote terminé"
-        subtitle={isVoterSession ? "Le vote est clôturé pour ce match. Résultats visibles ci-dessous." : "La période de vote est clôturée."}
-        action={{ label: 'Voir les résultats', onClick: () => navigate('/results') }}
+        title={t('voteTab.closed')}
+        subtitle={t(isVoterSession ? 'voteTab.closedVoter' : 'voteTab.closedHint')}
+        action={{ label: t('voteTab.seeResults'), onClick: () => navigate('/results') }}
       />
     );
   }

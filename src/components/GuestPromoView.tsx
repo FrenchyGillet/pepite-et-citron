@@ -2,6 +2,7 @@ import { useNavigate } from 'react-router-dom';
 import { setCurrentOrgId } from '@/api';
 import { useAppStore } from '@/store/appStore';
 import { track, EVENTS } from '@/utils/analytics';
+import { useT } from '@/i18n';
 
 interface GuestPromoViewProps {
   /** null = ?org= flow (can browse results), 'valid' = ?guest= token flow */
@@ -13,6 +14,7 @@ interface GuestPromoViewProps {
 }
 
 export function GuestPromoView({ canSeeResults, voterName, orgName }: GuestPromoViewProps) {
+  const t = useT();
   const navigate          = useNavigate();
   const setIsVoterSession = useAppStore(s => s.setIsVoterSession);
   const setGuestStatus    = useAppStore(s => s.setGuestStatus);
@@ -55,13 +57,13 @@ export function GuestPromoView({ canSeeResults, voterName, orgName }: GuestPromo
       </div>
 
       <h2 style={{ fontSize: 22, fontWeight: 700, color: 'var(--label)', margin: '0 0 8px' }}>
-        {voterName ? `Bien joué, ${voterName} ! 🎉` : 'Vote enregistré ! 🎉'}
+        {voterName ? t('promo.wellPlayed', { name: voterName }) : t('promo.voteSaved')}
       </h2>
 
       <p style={{ fontSize: 15, color: 'var(--label2)', margin: '0 0 32px', lineHeight: 1.55, maxWidth: 300 }}>
         {orgName
-          ? `Tu fais partie de l'équipe ${orgName}. Rejoins l'app pour suivre tes stats et personnaliser ton profil.`
-          : 'Merci pour ta participation.'}
+          ? t('promo.memberOf', { team: orgName })
+          : t('promo.thanks')}
       </p>
 
       {/* Promo card */}
@@ -73,19 +75,19 @@ export function GuestPromoView({ canSeeResults, voterName, orgName }: GuestPromo
       }}>
         <div style={{ fontSize: 32, marginBottom: 10 }}>⭐🍋</div>
         <h3 style={{ fontSize: 17, fontWeight: 700, color: 'var(--label)', margin: '0 0 8px' }}>
-          {orgName ? `Rejoins ${orgName} sur l’app` : "Tu as aimé l’expérience ?"}
+          {orgName ? t('promo.joinTitle', { team: orgName }) : t('promo.likedTitle')}
         </h3>
         <p style={{ fontSize: 14, color: 'var(--label3)', margin: '0 0 20px', lineHeight: 1.6 }}>
           {orgName
-            ? 'Crée ton compte gratuit pour retrouver tes stats, choisir un surnom affiché sur le podium, et ne plus jamais rater un vote.'
-            : 'Crée ton équipe gratuitement et organise des votes Pépite & Citron après chaque match, en quelques secondes, au bar.'}
+            ? t('promo.joinText')
+            : t('promo.createText')}
         </p>
         <button
           className="btn btn-primary btn-full"
           onClick={handleCreateAccount}
           style={{ fontWeight: 700, fontSize: 15 }}
         >
-          {orgName ? `Rejoindre ${orgName}` : 'Créer mon équipe gratuitement'}
+          {orgName ? t('promo.join', { team: orgName }) : t('promo.createTeam')}
         </button>
       </div>
 
@@ -95,7 +97,7 @@ export function GuestPromoView({ canSeeResults, voterName, orgName }: GuestPromo
           onClick={() => { track(EVENTS.PROMO_RESULTS_CLICKED); navigate('/results'); }}
           style={{ fontSize: 14 }}
         >
-          Voir les résultats du match
+          {t('promo.seeResults')}
         </button>
       )}
     </div>

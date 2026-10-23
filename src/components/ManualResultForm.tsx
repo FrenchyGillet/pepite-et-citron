@@ -10,6 +10,7 @@ import {
 import { useCreateManualMatch, useUpdateMatch } from '@/hooks/mutations';
 import { activeTeamPlayerIds } from '@/components/admin/shared';
 import type { EntityId, Match, Player, Team } from '@/types';
+import { t, type TKey } from '@/i18n';
 
 interface ManualResultFormProps {
   players: Player[];
@@ -30,7 +31,7 @@ const selectStyle: CSSProperties = {
 const fieldLabelStyle: CSSProperties = { display: 'block', fontSize: 13, color: 'var(--label3)', marginBottom: 8 };
 const pointsInputStyle: CSSProperties = { width: 64, padding: '8px 10px', fontSize: 14, textAlign: 'center' };
 
-const PODIUM_LABELS = ['⭐ La Pépite', '2e place (optionnel)', '3e place (optionnel)'];
+const PODIUM_LABELS: TKey[] = ['manualForm.place1', 'manualForm.place2', 'manualForm.place3'];
 
 function emptyDraft(pepiteCount: 2 | 3): ManualResultDraft {
   return { bestIds: Array.from({ length: pepiteCount }, () => null), lemonId: null, bestPts: {}, lemonPts: {} };
@@ -89,7 +90,7 @@ export function ManualResultForm({ players, teams, season, orgId, match, onDone,
   const save = () => {
     const parsedLabel = matchLabelSchema.safeParse({ label });
     if (!parsedLabel.success) { setError(parsedLabel.error.issues[0].message); return; }
-    if (!date) { setError('Indique la date du match.'); return; }
+    if (!date) { setError(t('manualForm.dateMissing')); return; }
     const { result, error: resultError } = buildManualResult(
       showPoints ? draft : { ...draft, bestPts: {}, lemonPts: {} },
       presentIds,
@@ -99,7 +100,7 @@ export function ManualResultForm({ players, teams, season, orgId, match, onDone,
     const onError = (err: unknown) => setError(humanizeError(err));
     const onSuccess = () => {
       track(EVENTS.MANUAL_RESULT_SAVED, { edited: editing, points: hasManualPoints(result), pepiteCount });
-      onDone(editing ? 'Résultat modifié' : 'Résultat ajouté à l’historique');
+      onDone(t(editing ? 'manualForm.edited' : 'manualForm.added'));
     };
 
     if (editing && match) {
@@ -128,27 +129,26 @@ export function ManualResultForm({ players, teams, season, orgId, match, onDone,
   return (
     <div style={{ background: 'var(--bg2)', borderRadius: 'var(--radius-lg)', padding: '14px 16px', marginBottom: 12 }}>
       <div style={{ fontSize: 15, fontWeight: 700, marginBottom: 4 }}>
-        {editing ? 'Modifier le résultat' : 'Ajouter un résultat'}
+        {t(editing ? 'manualForm.editTitle' : 'manualForm.addTitle')}
       </div>
       <p style={{ fontSize: 12, color: 'var(--label3)', marginBottom: 14, lineHeight: 1.5 }}>
-        Pour un match joué sans vote dans l’app. La Pépite et le Citron suffisent ; ajoute les points si tu les as,
-        sinon le match compte dans les titres et l’assiduité, sans points.
+        {t('manualForm.intro')}
       </p>
 
-      <label htmlFor="manual-label" style={fieldLabelStyle}>Nom du match ou de l’adversaire</label>
-      <input id="manual-label" value={label} placeholder="ex : vs Dragons"
+      <label htmlFor="manual-label" style={fieldLabelStyle}>{t('manualForm.labelLabel')}</label>
+      <input id="manual-label" value={label} placeholder={t('manualForm.labelPlaceholder')}
         onChange={e => { setLabel(e.target.value); setError(null); }} style={{ marginBottom: 12 }} />
 
-      <label htmlFor="manual-date" style={fieldLabelStyle}>Date du match</label>
+      <label htmlFor="manual-date" style={fieldLabelStyle}>{t('manualForm.date')}</label>
       <input id="manual-date" type="date" value={date} max={toDateInputValue()}
         onChange={e => { setDate(e.target.value); setError(null); }} style={{ marginBottom: 12 }} />
 
       {teams.length > 0 && (
         <>
-          <label htmlFor="manual-team" style={fieldLabelStyle}>Équipe</label>
+          <label htmlFor="manual-team" style={fieldLabelStyle}>{t('manualForm.team')}</label>
           <select id="manual-team" value={teamId != null ? String(teamId) : ''}
             onChange={e => pickTeam(e.target.value)} style={{ ...selectStyle, marginBottom: 12 }}>
-            <option value="">Sans équipe</option>
+            <option value="">{t('stats.noTeam')}</option>
             {teams.map(t => <option key={String(t.id)} value={String(t.id)}>{t.name}</option>)}
           </select>
         </>
@@ -156,12 +156,12 @@ export function ManualResultForm({ players, teams, season, orgId, match, onDone,
 
       <div className="flex-between" style={{ marginBottom: 8 }}>
         <p style={{ fontSize: 13, color: 'var(--label3)' }}>
-          Joueurs présents
+          {t('manualForm.present')}
           {presentIds.length > 0 && <span style={{ color: 'var(--label2)', marginLeft: 6 }}>{presentIds.length}</span>}
         </p>
         <div className="flex gap-8">
-          <button className="tag tag-dim" onClick={() => setPresentIds(pickable.map(p => p.id))}>Tous</button>
-          <button className="tag tag-dim" onClick={() => setPresentIds([])}>Aucun</button>
+          <button className="tag tag-dim" onClick={() => setPresentIds(pickable.map(p => p.id))}>{t('launcher.all')}</button>
+          <button className="tag tag-dim" onClick={() => setPresentIds([])}>{t('launcher.none')}</button>
         </div>
       </div>
       <div className="player-grid" style={{ marginBottom: 14 }}>
@@ -172,7 +172,7 @@ export function ManualResultForm({ players, teams, season, orgId, match, onDone,
         ))}
       </div>
 
-      <p style={fieldLabelStyle}>Podium</p>
+      <p style={fieldLabelStyle}>{t('manualForm.podium')}</p>
       <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
         {([2, 3] as const).map(n => (
           <button key={n} onClick={() => changePepiteCount(n)} aria-pressed={pepiteCount === n} style={{
@@ -181,7 +181,7 @@ export function ManualResultForm({ players, teams, season, orgId, match, onDone,
             background: pepiteCount === n ? 'var(--gold-fill)' : 'var(--bg3)',
             color: pepiteCount === n ? '#000' : 'var(--label2)',
           }}>
-            {n} pépites
+            {t('manualForm.pepites', { count: n })}
           </button>
         ))}
       </div>
@@ -189,49 +189,49 @@ export function ManualResultForm({ players, teams, season, orgId, match, onDone,
       {draft.bestIds.map((id, i) => (
         <div key={i} style={{ marginBottom: 10 }}>
           <label htmlFor={`manual-best-${i}`} style={{ ...fieldLabelStyle, color: i === 0 ? 'var(--gold)' : 'var(--label3)' }}>
-            {PODIUM_LABELS[i]}
+            {t(PODIUM_LABELS[i])}
           </label>
           <select id={`manual-best-${i}`} value={id != null ? String(id) : ''} style={selectStyle}
             onChange={e => {
               const picked = idFromValue(e.target.value);
               change(d => ({ ...d, bestIds: d.bestIds.map((x, j) => j === i ? picked : x) }));
             }}>
-            <option value="">{i === 0 ? 'Choisir la Pépite' : 'Personne'}</option>
+            <option value="">{t(i === 0 ? 'manualForm.pickPepite' : 'manualForm.nobody')}</option>
             {present.map(p => <option key={String(p.id)} value={String(p.id)}>{p.name}</option>)}
           </select>
         </div>
       ))}
 
-      <label htmlFor="manual-lemon" style={{ ...fieldLabelStyle, color: 'var(--lemon)' }}>🍋 Le Citron</label>
+      <label htmlFor="manual-lemon" style={{ ...fieldLabelStyle, color: 'var(--lemon)' }}>{t('manualForm.citron')}</label>
       <select id="manual-lemon" value={draft.lemonId != null ? String(draft.lemonId) : ''} style={{ ...selectStyle, marginBottom: 14 }}
         onChange={e => { const picked = idFromValue(e.target.value); change(d => ({ ...d, lemonId: picked })); }}>
-        <option value="">Choisir le Citron</option>
+        <option value="">{t('manualForm.pickCitron')}</option>
         {lemonOptions.map(p => <option key={String(p.id)} value={String(p.id)}>{p.name}</option>)}
       </select>
 
       <button className="tag tag-dim" style={{ marginBottom: 12 }} aria-expanded={showPoints}
         onClick={() => setShowPoints(v => !v)}>
-        {showPoints ? '− Retirer les points' : '+ Ajouter les points (optionnel)'}
+        {t(showPoints ? 'manualForm.removePoints' : 'manualForm.addPoints')}
       </button>
 
       {showPoints && (
         <div style={{ marginBottom: 14 }}>
           {present.length === 0 ? (
-            <p style={{ fontSize: 12, color: 'var(--label3)' }}>Sélectionne d’abord les joueurs présents.</p>
+            <p style={{ fontSize: 12, color: 'var(--label3)' }}>{t('manualForm.pickPresentFirst')}</p>
           ) : (
             <div className="group">
               <div className="row" style={{ paddingTop: 8, paddingBottom: 8 }}>
-                <div className="row-body" style={{ fontSize: 12, color: 'var(--label3)' }}>Points du match</div>
-                <span style={{ ...pointsInputStyle, fontSize: 12, color: 'var(--gold)' }}>⭐ pts</span>
-                <span style={{ ...pointsInputStyle, fontSize: 12, color: 'var(--lemon)' }}>🍋 pts</span>
+                <div className="row-body" style={{ fontSize: 12, color: 'var(--label3)' }}>{t('manualForm.matchPoints')}</div>
+                <span style={{ ...pointsInputStyle, fontSize: 12, color: 'var(--gold)' }}>{t('manualForm.pepitePts')}</span>
+                <span style={{ ...pointsInputStyle, fontSize: 12, color: 'var(--lemon)' }}>{t('manualForm.citronPts')}</span>
               </div>
               {present.map(p => (
                 <div key={String(p.id)} className="row" style={{ gap: 8, paddingTop: 6, paddingBottom: 6 }}>
                   <div className="row-body"><div className="row-title" style={{ fontSize: 14 }}>{p.name}</div></div>
-                  <input aria-label={`Points Pépite de ${p.name}`} type="number" min={0} inputMode="numeric"
+                  <input aria-label={t('manualForm.pepitePointsOf', { name: p.name })} type="number" min={0} inputMode="numeric"
                     value={draft.bestPts[String(p.id)] ?? ''} style={pointsInputStyle}
                     onChange={e => change(d => ({ ...d, bestPts: { ...d.bestPts, [String(p.id)]: e.target.value } }))} />
-                  <input aria-label={`Points Citron de ${p.name}`} type="number" min={0} inputMode="numeric"
+                  <input aria-label={t('manualForm.citronPointsOf', { name: p.name })} type="number" min={0} inputMode="numeric"
                     value={draft.lemonPts[String(p.id)] ?? ''} style={pointsInputStyle}
                     onChange={e => change(d => ({ ...d, lemonPts: { ...d.lemonPts, [String(p.id)]: e.target.value } }))} />
                 </div>
@@ -244,9 +244,9 @@ export function ManualResultForm({ players, teams, season, orgId, match, onDone,
       {error && <p role="alert" style={{ fontSize: 12, color: 'var(--red)', marginBottom: 10 }}>{error}</p>}
 
       <div className="flex gap-8">
-        <button className="btn btn-secondary" onClick={onCancel} disabled={pending}>Annuler</button>
+        <button className="btn btn-secondary" onClick={onCancel} disabled={pending}>{t('common.cancel')}</button>
         <button className="btn btn-primary" style={{ flex: 1 }} onClick={save} disabled={pending}>
-          {pending ? 'Enregistrement…' : 'Enregistrer le résultat'}
+          {pending ? t('manualForm.saving') : t('manualForm.save')}
         </button>
       </div>
     </div>

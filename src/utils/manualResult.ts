@@ -1,4 +1,5 @@
 import type { EntityId, ManualResult, Match, Player, Scores } from '@/types';
+import { t } from '@/i18n';
 
 /** What the history form collects before it becomes a ManualResult. */
 export interface ManualResultDraft {
@@ -40,7 +41,7 @@ function parsePoints(raw: Record<string, string>, label: string): { pts: Record<
     if (trimmed === '') continue;
     const n = Number(trimmed);
     if (!Number.isInteger(n) || n < 0 || n > 999) {
-      return { pts, error: `Les points ${label} doivent être des nombres entiers positifs.` };
+      return { pts, error: t('manualResult.pointsInvalid', { label }) };
     }
     pts[id] = n;
   }
@@ -56,24 +57,24 @@ export function buildManualResult(
   presentIds: EntityId[],
 ): { result: ManualResult | null; error: string | null } {
   const present = new Set(presentIds.map(String));
-  if (present.size === 0) return { result: null, error: 'Sélectionne les joueurs présents.' };
+  if (present.size === 0) return { result: null, error: t('manualResult.pickPresent') };
 
   const [pepite, ...others] = draft.bestIds;
-  if (pepite == null) return { result: null, error: 'Choisis la Pépite du match.' };
-  if (draft.lemonId == null) return { result: null, error: 'Choisis le Citron du match.' };
+  if (pepite == null) return { result: null, error: t('manualResult.pickPepite') };
+  if (draft.lemonId == null) return { result: null, error: t('manualResult.pickCitron') };
 
   // Podium places are filled in order: a 3rd without a 2nd is a typo.
   const firstGap = others.findIndex(id => id == null);
   if (firstGap !== -1 && others.slice(firstGap).some(id => id != null)) {
-    return { result: null, error: 'Remplis la 2e place avant la 3e.' };
+    return { result: null, error: t('manualResult.fillSecond') };
   }
   const filledOthers = others.filter((id): id is EntityId => id != null);
   const bestIds = [pepite, ...filledOthers];
   if (new Set(bestIds.map(String)).size !== bestIds.length) {
-    return { result: null, error: 'Un joueur ne peut occuper qu’une place du podium.' };
+    return { result: null, error: t('manualResult.onePlace') };
   }
   if (bestIds.some(id => !present.has(String(id)))) {
-    return { result: null, error: 'Le podium ne peut contenir que des joueurs présents.' };
+    return { result: null, error: t('manualResult.presentOnly') };
   }
 
   const best = parsePoints(draft.bestPts, 'Pépite');

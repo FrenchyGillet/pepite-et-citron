@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { GENERIC_ERROR, humanizeError } from './errors';
+import { genericError, humanizeError } from './errors';
 
 afterEach(() => vi.restoreAllMocks());
 
@@ -27,8 +27,8 @@ describe('humanizeError', () => {
 
   it('hides other technical messages behind the fallback', () => {
     vi.spyOn(console, 'warn').mockImplementation(() => {});
-    expect(humanizeError(new Error('column "foo" of relation "matches" does not exist'))).toBe(GENERIC_ERROR);
-    expect(humanizeError(new Error("Cannot read properties of undefined (reading 'id')"))).toBe(GENERIC_ERROR);
+    expect(humanizeError(new Error('column "foo" of relation "matches" does not exist'))).toBe(genericError());
+    expect(humanizeError(new Error("Cannot read properties of undefined (reading 'id')"))).toBe(genericError());
     expect(humanizeError(new Error('PGRST116'), 'Joueur introuvable.')).toBe('Joueur introuvable.');
   });
 
@@ -37,7 +37,7 @@ describe('humanizeError', () => {
   });
 
   it('empty or non-Error values fall back', () => {
-    expect(humanizeError(undefined)).toBe(GENERIC_ERROR);
+    expect(humanizeError(undefined)).toBe(genericError());
     expect(humanizeError(new Error(''), 'Oups.')).toBe('Oups.');
     expect(humanizeError('Joueur absent de ce match.')).toBe('Joueur absent de ce match.');
   });

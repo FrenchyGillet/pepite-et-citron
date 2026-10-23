@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { track, EVENTS } from '@/utils/analytics';
+import { t } from '@/i18n';
 
 // ── Notify team button ────────────────────────────────────────────────────────
 export function NotifyTeamButton({
@@ -17,7 +18,7 @@ export function NotifyTeamButton({
   const [sent, setSent] = useState(false);
 
   const handleNotify = async () => {
-    const text = `🗳️ Vote ouvert : ${matchLabel}\nVotez maintenant : ${voteUrl}`;
+    const text = t('notifyTeam.message', { match: matchLabel, url: voteUrl });
     if (navigator.share) {
       try {
         await navigator.share({ text });
@@ -55,7 +56,7 @@ export function NotifyTeamButton({
       }}
     >
       <span style={{ fontSize: 18 }}>{sent ? '✅' : '📣'}</span>
-      {sent ? 'Envoyé !' : 'Prévenir l\'équipe'}
+      {t(sent ? 'notifyTeam.sent' : 'notifyTeam.notify')}
     </button>
   );
 }

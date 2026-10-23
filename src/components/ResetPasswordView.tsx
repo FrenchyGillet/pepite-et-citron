@@ -3,8 +3,10 @@ import { api } from '@/api';
 import { useAppStore } from '@/store/appStore';
 import { humanizeError } from '@/utils/errors';
 import { track, EVENTS } from '@/utils/analytics';
+import { useT } from '@/i18n';
 
 export function ResetPasswordView() {
+  const t = useT();
   const setPasswordRecovery = useAppStore(s => s.setPasswordRecovery);
 
   const [password,    setPassword]    = useState('');
@@ -18,11 +20,11 @@ export function ResetPasswordView() {
     setError(null);
 
     if (password.length < 8) {
-      setError('Le mot de passe doit faire au moins 8 caractères.');
+      setError(t('resetPassword.tooShort'));
       return;
     }
     if (password !== confirm) {
-      setError('Les mots de passe ne correspondent pas.');
+      setError(t('resetPassword.mismatch'));
       return;
     }
 
@@ -60,32 +62,32 @@ export function ResetPasswordView() {
           <div style={{ textAlign: 'center', padding: '8px 0' }}>
             <div style={{ fontSize: 36, marginBottom: 12 }}>✅</div>
             <div style={{ fontSize: 16, fontWeight: 700, color: 'var(--label)', marginBottom: 6 }}>
-              Mot de passe mis à jour
+              {t('resetPassword.updated')}
             </div>
             <div style={{ fontSize: 13, color: 'var(--label3)' }}>
-              Tu vas être redirigé vers l'app…
+              {t('resetPassword.redirecting')}
             </div>
           </div>
         ) : (
           <>
             <div style={{ marginBottom: 20 }}>
               <div style={{ fontSize: 17, fontWeight: 700, color: 'var(--label)', marginBottom: 4 }}>
-                Nouveau mot de passe
+                {t('resetPassword.title')}
               </div>
               <div style={{ fontSize: 13, color: 'var(--label3)' }}>
-                Choisis un nouveau mot de passe pour ton compte.
+                {t('resetPassword.intro')}
               </div>
             </div>
 
             <form onSubmit={handleSubmit} noValidate style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
               <div>
                 <label htmlFor="reset-password" style={{ fontSize: 12, fontWeight: 600, color: 'var(--label3)', display: 'block', marginBottom: 6 }}>
-                  Nouveau mot de passe
+                  {t('resetPassword.newLabel')}
                 </label>
                 <input
                   id="reset-password"
                   type="password"
-                  placeholder="8 caractères minimum"
+                  placeholder={t('resetPassword.newPlaceholder')}
                   autoComplete="new-password"
                   value={password}
                   onChange={e => setPassword(e.target.value)}
@@ -95,12 +97,12 @@ export function ResetPasswordView() {
 
               <div>
                 <label htmlFor="reset-confirm" style={{ fontSize: 12, fontWeight: 600, color: 'var(--label3)', display: 'block', marginBottom: 6 }}>
-                  Confirmer le mot de passe
+                  {t('resetPassword.confirmLabel')}
                 </label>
                 <input
                   id="reset-confirm"
                   type="password"
-                  placeholder="Répète ton nouveau mot de passe"
+                  placeholder={t('resetPassword.confirmPlaceholder')}
                   autoComplete="new-password"
                   value={confirm}
                   onChange={e => setConfirm(e.target.value)}
@@ -119,7 +121,7 @@ export function ResetPasswordView() {
               )}
 
               <button type="submit" className="btn btn-primary" disabled={isSubmitting} style={{ marginTop: 4 }}>
-                {isSubmitting ? 'Mise à jour…' : 'Mettre à jour le mot de passe'}
+                {isSubmitting ? t('resetPassword.updating') : t('resetPassword.submit')}
               </button>
             </form>
           </>

@@ -1,9 +1,10 @@
 import { formatClockTime, isDeadlinePassed } from '@/utils/deadline';
+import { t } from '@/i18n';
 
-/** "Thomas", "Thomas et Léo", "Thomas, Léo et Max". */
+/** "Thomas", "Thomas et Léo", "Thomas, Léo et Max" (and in English). */
 export function joinFrenchList(names: string[]): string {
   if (names.length <= 1) return names[0] ?? '';
-  return `${names.slice(0, -1).join(', ')} et ${names[names.length - 1]}`;
+  return `${names.slice(0, -1).join(', ')} ${t('reminder.and')} ${names[names.length - 1]}`;
 }
 
 interface ReminderMessage {
@@ -20,9 +21,10 @@ interface ReminderMessage {
  */
 export function buildReminderMessage({ matchLabel, pendingNames, voteUrl, deadline, now = Date.now() }: ReminderMessage): string {
   const lines = [
-    `⏰ ${matchLabel} : il manque encore ${pendingNames.length > 1 ? 'les votes de' : 'le vote de'} ${joinFrenchList(pendingNames)}.`,
-    deadline && !isDeadlinePassed(deadline, now) ? `Fermeture à ${formatClockTime(deadline)}.` : '',
-    `Votez ici 👉 ${voteUrl}`,
+    t(pendingNames.length > 1 ? 'reminder.missingMany' : 'reminder.missingOne',
+      { match: matchLabel, names: joinFrenchList(pendingNames) }),
+    deadline && !isDeadlinePassed(deadline, now) ? t('reminder.closesAt', { time: formatClockTime(deadline) }) : '',
+    t('reminder.voteHere', { url: voteUrl }),
   ];
   return lines.filter(Boolean).join('\n');
 }

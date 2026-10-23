@@ -13,6 +13,7 @@ import type { Match, Org, Player } from '@/types';
 import { QrCode } from '@/components/QrCode';
 import { NotifyTeamButton } from './NotifyTeamButton';
 import type { ConfirmFn, Notify } from './shared';
+import { t } from '@/i18n';
 
 interface ActiveMatchPanelProps {
   activeMatch: Match;
@@ -73,7 +74,7 @@ export function ActiveMatchPanel({ activeMatch, players, currentOrg, notify, con
       {
         onSuccess: () => {
           track(EVENTS.VOTE_DEADLINE_EXTENDED);
-          notify(`Vote prolongé de ${DEADLINE_EXTENSION_MINUTES} min`);
+          notify(t('activeMatch.extended', { minutes: DEADLINE_EXTENSION_MINUTES }));
         },
         onError: (err) => notify(humanizeError(err)),
       },
@@ -91,7 +92,7 @@ export function ActiveMatchPanel({ activeMatch, players, currentOrg, notify, con
     });
     sendReminderMutation.mutate(
       { matchId: activeMatch.id, matchLabel: activeMatch.label },
-      { onSuccess: (sent) => { if (sent) notify(`🔔 Notification envoyée à ${sent} joueur${sent > 1 ? 's' : ''}`); } },
+      { onSuccess: (sent) => { if (sent) notify(t('activeMatch.pushSent', { count: sent })); } },
     );
     const text = buildReminderMessage({
       matchLabel: activeMatch.label,
@@ -103,7 +104,7 @@ export function ActiveMatchPanel({ activeMatch, players, currentOrg, notify, con
       try { await navigator.share({ text }); } catch { /* user cancelled */ }
     } else {
       await copyToClipboard(text);
-      notify('Message copié, colle-le dans le groupe de l\'équipe');
+      notify(t('activeMatch.messageCopied'));
     }
   };
 
@@ -114,23 +115,23 @@ export function ActiveMatchPanel({ activeMatch, players, currentOrg, notify, con
       ?? matchVotes.find(v => v.voter_player_id == null && v.voter_name === p.name);
     if (vote?.id == null) return;
     if (!(await confirm({
-      message: `Annuler le vote de ${p.name} ? Il pourra voter à nouveau.`,
-      confirmLabel: 'Annuler le vote', danger: true,
+      message: t('activeMatch.cancelVoteConfirm', { name: p.name }),
+      confirmLabel: t('activeMatch.cancelVote'), danger: true,
     }))) return;
     deleteVoteMutation.mutate(vote.id, {
-      onSuccess: () => { track(EVENTS.VOTE_CANCELLED_BY_ADMIN); notify(`Vote de ${p.name} annulé`); },
+      onSuccess: () => { track(EVENTS.VOTE_CANCELLED_BY_ADMIN); notify(t('activeMatch.voteCancelled', { name: p.name })); },
       onError: (err) => notify(humanizeError(err)),
     });
   };
 
   const closeMatch = async () => {
-    const votes = `${voteCount} vote${voteCount !== 1 ? 's' : ''} reçu${voteCount !== 1 ? 's' : ''}`;
+    const votes = t('activeMatch.received', { count: voteCount });
     if (!(await confirm({
-      message: `Clore « ${activeMatch.label} » sans dépouiller ? Le vote sera fermé définitivement : les ${votes} ne seront jamais révélés et le match ne comptera pas dans la saison.`,
-      confirmLabel: 'Clore sans dépouiller', danger: true,
+      message: t('activeMatch.closeConfirm', { match: activeMatch.label, votes }),
+      confirmLabel: t('activeMatch.closeWithoutCount'), danger: true,
     }))) return;
     closeMatchMutation.mutate(activeMatch.id, {
-      onSuccess: () => { track(EVENTS.MATCH_CLOSED_WITHOUT_COUNT, { votes: voteCount }); notify('Vote clôturé'); },
+      onSuccess: () => { track(EVENTS.MATCH_CLOSED_WITHOUT_COUNT, { votes: voteCount }); notify(t('activeMatch.closed')); },
       onError:   (err) => notify(humanizeError(err)),
     });
   };
@@ -161,8 +162,8 @@ export function ActiveMatchPanel({ activeMatch, players, currentOrg, notify, con
         <div className="row-body">
           <div className="row-title">{activeMatch.label}</div>
           <div className="row-sub" aria-live="polite" aria-atomic="true">
-            {phase === 'voting'   && `${voteCount} vote${voteCount !== 1 ? 's' : ''} reçu${voteCount !== 1 ? 's' : ''} sur ${activeMatch.present_ids.length} joueurs`}
-            {phase === 'counting' && `Dépouillement : ${activeMatch.revealed_count || 0}/${(activeMatch.reveal_order || []).length} votes révélés`}
+            {phase === 'voting'   && t('activeMatch.receivedOf', { count: voteCount, present: activeMatch.present_ids.length })}
+            {phase === 'counting' && t('activeMatch.countingProgress', { n: activeMatch.revealed_count || 0, total: (activeMatch.reveal_order || []).length })}
           </div>
         </div>
       </div>
@@ -196,7 +197,7 @@ export function ActiveMatchPanel({ activeMatch, players, currentOrg, notify, con
               }}>
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--label3)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 2 }}>
-                    🔗 Lien de vote
+                    {t('activeMatch.voteLink')}
                   </div>
                   <div style={{ fontSize: 12, color: 'var(--label2)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                     {voteUrl}
@@ -206,30 +207,30 @@ export function ActiveMatchPanel({ activeMatch, players, currentOrg, notify, con
                   className="btn btn-secondary"
                   style={{ padding: '6px 12px', fontSize: 13, whiteSpace: 'nowrap', flexShrink: 0 }}
                   onClick={onCopyOrgLink}>
-                  Copier
+                  {t('activeMatch.copy')}
                 </button>
               </div>
               <NotifyTeamButton voteUrl={voteUrl} matchLabel={activeMatch.label} onFallback={onCopyOrgLink} onShared={onLinkShared} />
               {/* In the locker room, everyone scanning one phone beats a link. */}
               <button className="btn btn-secondary btn-full" style={{ fontSize: 14 }} aria-expanded={qrOpen}
                 onClick={() => { if (!qrOpen) { track(EVENTS.VOTE_QR_SHOWN); onLinkShared?.(); } setQrOpen(o => !o); }}>
-                {qrOpen ? 'Masquer le QR code' : '📱 Afficher le QR code'}
+                {qrOpen ? t('activeMatch.hideQr') : t('activeMatch.showQr')}
               </button>
               {qrOpen && (
                 <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, padding: '8px 0' }}>
-                  <QrCode value={voteUrl} label="QR code du lien de vote" />
+                  <QrCode value={voteUrl} label={t('activeMatch.qrLabel')} />
                   <p style={{ fontSize: 13, color: 'var(--label3)', textAlign: 'center' }}>
-                    Fais scanner ce code par l'équipe pour voter.
+                    {t('activeMatch.qrHint')}
                   </p>
                 </div>
               )}
               <button className="btn btn-secondary btn-full" style={{ fontSize: 14 }} onClick={() => navigate('/vote')}>
-                🗳️ Voter moi aussi
+                {t('activeMatch.voteToo')}
               </button>
             </>
           )}
           <button className="btn btn-primary btn-full" onClick={startCounting} disabled={startCountingMutation.isPending || voteCount === 0}>
-            {startCountingMutation.isPending ? 'Préparation…' : `Lancer le dépouillement · ${voteCount} vote${voteCount !== 1 ? 's' : ''}`}
+            {startCountingMutation.isPending ? t('activeMatch.preparing') : t('activeMatch.startCounting', { count: voteCount })}
           </button>
           {/* ── Voter tracking toggle ───────────────────────── */}
           {canManageVoters && presentPlayers.length > 0 && (
@@ -243,7 +244,7 @@ export function ActiveMatchPanel({ activeMatch, players, currentOrg, notify, con
                 }}
               >
                 <span style={{ fontSize: 13, color: 'var(--label3)' }}>
-                  Qui a voté ?{' '}
+                  {t('activeMatch.whoVoted')}{' '}
                   <span style={{ color: pendingPlayers.length === 0 ? 'var(--green)' : 'var(--label2)', fontWeight: 600 }}>
                     {votedPlayers.length}/{presentPlayers.length}
                   </span>
@@ -260,7 +261,7 @@ export function ActiveMatchPanel({ activeMatch, players, currentOrg, notify, con
                   className="btn btn-secondary btn-full"
                   style={{ marginBottom: 8, fontSize: 14 }}
                   onClick={() => void remindPendingPlayers()}>
-                  ⏰ Relancer les retardataires ({pendingPlayers.length})
+                  {t('activeMatch.remind', { count: pendingPlayers.length })}
                 </button>
               )}
               {voterTrackingOpen && (
@@ -279,8 +280,8 @@ export function ActiveMatchPanel({ activeMatch, players, currentOrg, notify, con
                         {hasVoted && (
                           <button
                             onClick={() => void cancelVote(p)}
-                            aria-label={`Annuler le vote de ${p.name}`}
-                            title="Annuler ce vote"
+                            aria-label={t('activeMatch.cancelVoteOf', { name: p.name })}
+                            title={t('activeMatch.cancelThisVote')}
                             style={{
                               background: 'none', border: 'none', cursor: 'pointer',
                               color: 'inherit', fontSize: 12, lineHeight: 1,
@@ -306,14 +307,14 @@ export function ActiveMatchPanel({ activeMatch, players, currentOrg, notify, con
               background: 'none', border: 'none', cursor: 'pointer',
               fontSize: 13, color: 'var(--label3)', textDecoration: 'underline',
             }}>
-            {closeMatchMutation.isPending ? 'Clôture…' : 'Clore sans dépouiller…'}
+            {closeMatchMutation.isPending ? t('activeMatch.closing') : t('activeMatch.closeLink')}
           </button>
         </div>
       )}
       {phase === 'counting' && (
         <div style={{ padding: '12px 16px' }}>
           <p style={{ fontSize: 13, color: 'var(--label3)', textAlign: 'center' }}>
-            Le dépouillement est en cours dans l'onglet Résultats.
+            {t('activeMatch.countingInResults')}
           </p>
         </div>
       )}

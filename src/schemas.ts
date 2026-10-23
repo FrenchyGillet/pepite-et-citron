@@ -1,14 +1,18 @@
 import { z } from 'zod';
+import { t, type TKey } from '@/i18n';
+
+// Messages are read at validation time, in the current language.
+const msg = (key: TKey, vars?: Record<string, number>) => ({ error: () => t(key, vars) });
 
 // ── Auth ──────────────────────────────────────────────────────────────────────
 export const loginSchema = z.object({
-  email:    z.string().email('Adresse email invalide'),
-  password: z.string().min(1, 'Mot de passe requis'),
+  email:    z.string().email(msg('validation.email')),
+  password: z.string().min(1, msg('validation.passwordRequired')),
 });
 
 export const signupSchema = z.object({
-  email:    z.string().email('Adresse email invalide'),
-  password: z.string().min(8, 'Au moins 8 caractères requis'),
+  email:    z.string().email(msg('validation.email')),
+  password: z.string().min(8, msg('validation.passwordMin')),
 });
 
 export type AuthFormValues = z.infer<typeof signupSchema>;
@@ -17,14 +21,14 @@ export type AuthFormValues = z.infer<typeof signupSchema>;
 export const orgSetupSchema = z.object({
   name: z
     .string()
-    .min(2,  'Au moins 2 caractères')
-    .max(60, 'Trop long (60 caractères max)')
+    .min(2,  msg('validation.min2'))
+    .max(60, msg('validation.maxChars', { max: 60 }))
     .trim(),
   slug: z
     .string()
-    .min(2,  'Au moins 2 caractères')
-    .max(40, 'Trop long (40 caractères max)')
-    .regex(/^[a-z0-9][a-z0-9-]*$/, 'Uniquement lettres minuscules, chiffres et tirets'),
+    .min(2,  msg('validation.min2'))
+    .max(40, msg('validation.maxChars', { max: 40 }))
+    .regex(/^[a-z0-9][a-z0-9-]*$/, msg('validation.slugFormat')),
 });
 
 export type OrgSetupFormValues = z.infer<typeof orgSetupSchema>;
@@ -33,8 +37,8 @@ export type OrgSetupFormValues = z.infer<typeof orgSetupSchema>;
 export const playerNameSchema = z.object({
   name: z
     .string()
-    .min(1, 'Le prénom est requis')
-    .max(50, 'Prénom trop long (50 caractères max)')
+    .min(1, msg('validation.nameRequired'))
+    .max(50, msg('validation.nameTooLong'))
     .trim(),
 });
 
@@ -42,8 +46,8 @@ export const playerNameSchema = z.object({
 export const matchLabelSchema = z.object({
   label: z
     .string()
-    .min(1, 'Le nom du match est requis')
-    .max(100, 'Trop long (100 caractères max)')
+    .min(1, msg('validation.matchLabelRequired'))
+    .max(100, msg('validation.maxChars', { max: 100 }))
     .trim(),
 });
 
@@ -51,8 +55,8 @@ export const matchLabelSchema = z.object({
 export const teamNameSchema = z.object({
   name: z
     .string()
-    .min(1, "Le nom de l'équipe est requis")
-    .max(50, 'Trop long (50 caractères max)')
+    .min(1, msg('validation.teamNameRequired'))
+    .max(50, msg('validation.maxChars', { max: 50 }))
     .trim(),
 });
 
@@ -60,12 +64,12 @@ export const teamNameSchema = z.object({
 export const guestNameSchema = z.object({
   name: z
     .string()
-    .min(1, 'Le prénom est requis')
-    .max(50, 'Trop long (50 caractères max)')
+    .min(1, msg('validation.nameRequired'))
+    .max(50, msg('validation.maxChars', { max: 50 }))
     .trim(),
 });
 
 // ── Admin — membre ────────────────────────────────────────────────────────────
 export const memberEmailSchema = z.object({
-  email: z.string().email('Adresse email invalide'),
+  email: z.string().email(msg('validation.email')),
 });

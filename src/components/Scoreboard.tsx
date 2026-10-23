@@ -3,6 +3,7 @@ import { computeScores } from '@/utils';
 import { displayName } from '@/utils/player';
 import { AnimatedNumber } from './AnimatedNumber';
 import type { Vote, Player, EntityId } from '@/types';
+import { t } from '@/i18n';
 
 interface Tiebreakers {
   best_id?: EntityId;
@@ -57,10 +58,10 @@ export function Scoreboard({ votes, present, allPlayers, tiebreakers = {}, showL
 
   return (
     <>
-      <p className="section-label mb-4">Pépites</p>
+      <p className="section-label mb-4">{t('scoreboard.pepites')}</p>
       <div className="group">
         {bestRanked.length === 0
-          ? <div className="row"><span style={{ color: "var(--label3)", fontSize: 14 }}>Aucun vote révélé…</span></div>
+          ? <div className="row"><span style={{ color: "var(--label3)", fontSize: 14 }}>{t('scoreboard.noneRevealed')}</span></div>
           : bestRanked.map((p, index) => {
             const isBeer  = tiebreakers.best_id === p.id;
             const isFirst = p.rank === 1;
@@ -91,7 +92,7 @@ export function Scoreboard({ votes, present, allPlayers, tiebreakers = {}, showL
       </div>
       {showLemons && lemonRanked.length > 0 && (
         <>
-          <p className="section-label mb-4" style={{ color: "var(--lemon)" }}>Citrons</p>
+          <p className="section-label mb-4" style={{ color: "var(--lemon)" }}>{t('scoreboard.citrons')}</p>
           <div className="group">
             {lemonRanked.map((p, index) => {
               const isBeer   = tiebreakers.lemon_id === p.id;

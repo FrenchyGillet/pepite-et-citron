@@ -12,6 +12,8 @@ import { usePlayers } from '@/hooks/queries';
 import { useUpdatePlayer, useLinkPlayer } from '@/hooks/mutations';
 import { displayName, avatarColor, initials } from '@/utils/player';
 import type { Player } from '@/types';
+import { t } from '@/i18n';
+import { LanguagePicker } from '@/components/LanguagePicker';
 
 export function ProfileView() {
   const navigate     = useNavigate();
@@ -49,7 +51,7 @@ export function ProfileView() {
       setNickname(player.nickname?.trim() ?? '');
       setStep('edit');
     } catch {
-      setError('Ce joueur est déjà revendiqué ou une erreur est survenue.');
+      setError(t('profile.claimFailed'));
     }
   }
 
@@ -66,7 +68,7 @@ export function ProfileView() {
       setSaved(true);
       setTimeout(() => setSaved(false), 2500);
     } catch {
-      setError('Impossible de sauvegarder. Réessaie.');
+      setError(t('profile.saveFailed'));
     }
   }
 
@@ -91,10 +93,10 @@ export function ProfileView() {
           </svg>
         </div>
         <h2 style={{ fontSize: 20, fontWeight: 700, color: 'var(--label)', margin: 0 }}>
-          Connecte-toi pour accéder à ton profil
+          {t('profile.signInFirst')}
         </h2>
         <button className="btn btn-primary" onClick={() => navigate('/vote')} style={{ minWidth: 180 }}>
-          Se connecter
+          {t('common.signIn')}
         </button>
       </div>
     );
@@ -108,14 +110,14 @@ export function ProfileView() {
         <button
           onClick={() => navigate(-1)}
           style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4, color: 'var(--label3)' }}
-          aria-label="Retour"
+          aria-label={t('auth.back')}
         >
           <svg width="22" height="22" viewBox="0 0 24 24" fill="none"
             stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <polyline points="15 18 9 12 15 6"/>
           </svg>
         </button>
-        <h1 style={{ fontSize: 20, fontWeight: 700, color: 'var(--label)', margin: 0 }}>Mon profil</h1>
+        <h1 style={{ fontSize: 20, fontWeight: 700, color: 'var(--label)', margin: 0 }}>{t('profile.title')}</h1>
       </div>
 
       {/* Avatar */}
@@ -135,7 +137,7 @@ export function ProfileView() {
           </div>
           {avatarPlayer?.nickname && (
             <div style={{ fontSize: 13, color: 'var(--label3)', marginTop: 2 }}>
-              Surnom : <strong style={{ color: 'var(--gold)' }}>{avatarPlayer.nickname}</strong>
+              {t('profile.nickname')} <strong style={{ color: 'var(--gold)' }}>{avatarPlayer.nickname}</strong>
             </div>
           )}
         </div>
@@ -145,8 +147,7 @@ export function ProfileView() {
       {step === 'pick' && (
         <div>
           <p style={{ fontSize: 14, color: 'var(--label2)', marginBottom: 16, lineHeight: 1.5 }}>
-            Quel joueur es-tu dans la liste ? Revendique ton profil pour personnaliser ton surnom
-            affiché sur le podium.
+            {t('profile.pickIntro')}
           </p>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
             {players
@@ -181,7 +182,7 @@ export function ProfileView() {
               ))}
             {players.filter(p => !p.user_id && !p.archived_at).length === 0 && (
               <p style={{ fontSize: 14, color: 'var(--label3)', textAlign: 'center', padding: 24 }}>
-                Tous les joueurs ont déjà revendiqué leur profil.
+                {t('profile.allClaimed')}
               </p>
             )}
           </div>
@@ -197,7 +198,7 @@ export function ProfileView() {
             padding: '20px 16px', marginBottom: 20,
           }}>
             <label htmlFor="profile-nickname" style={{ fontSize: 13, fontWeight: 600, color: 'var(--label3)', display: 'block', marginBottom: 8 }}>
-              SURNOM (affiché sur le podium)
+              {t('profile.nicknameLabel')}
             </label>
             <input
               id="profile-nickname"
@@ -215,7 +216,7 @@ export function ProfileView() {
               }}
             />
             <p style={{ fontSize: 12, color: 'var(--label3)', margin: '8px 0 0' }}>
-              Laisse vide pour utiliser ton prénom.
+              {t('profile.nicknameHint')}
             </p>
           </div>
 
@@ -225,7 +226,7 @@ export function ProfileView() {
             disabled={updatePlayer.isPending}
             style={{ fontWeight: 700, fontSize: 15, marginBottom: 12 }}
           >
-            {updatePlayer.isPending ? 'Sauvegarde…' : saved ? '✓ Sauvegardé !' : 'Sauvegarder'}
+            {updatePlayer.isPending ? t('profile.saving') : saved ? t('profile.saved') : t('profile.save')}
           </button>
 
           {!myPlayer && (
@@ -234,7 +235,7 @@ export function ProfileView() {
               onClick={() => setStep('pick')}
               style={{ fontSize: 14 }}
             >
-              Choisir un autre joueur
+              {t('profile.pickAnother')}
             </button>
           )}
 
@@ -249,7 +250,7 @@ export function ProfileView() {
             fontSize: 13, fontWeight: 600, color: 'var(--label3)',
             textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 12,
           }}>
-            Compte
+            {t('profile.account')}
           </p>
 
           {/* Same one-screen setup as a new organiser: players and first vote included. */}
@@ -258,17 +259,18 @@ export function ProfileView() {
             onClick={() => navigate('/start')}
             style={{ fontSize: 14, marginBottom: 8 }}
           >
-            ＋ Créer une nouvelle équipe
+            {t('profile.newTeam')}
           </button>
 
           {currentOrg?.id && <EmailPreferences orgId={currentOrg.id} orgName={currentOrg.name} />}
+          <LanguagePicker />
 
           <button
             className="btn btn-secondary btn-full"
             onClick={handleSignOut}
             style={{ fontSize: 14, marginTop: 8 }}
           >
-            Se déconnecter
+            {t('common.signOut')}
           </button>
 
           <DeleteAccountButton />
@@ -310,7 +312,7 @@ function DeleteAccountButton() {
         style={{ fontSize: 13, marginTop: 8, color: 'var(--red)' }}
         onClick={() => setConfirm1(true)}
       >
-        Supprimer mon compte
+        {t('profile.deleteAccount')}
       </button>
     );
   }
@@ -321,27 +323,23 @@ function DeleteAccountButton() {
       padding: '14px 16px', display: 'flex', flexDirection: 'column', gap: 10,
     }}>
       <p style={{ fontSize: 13, color: 'var(--label)', fontWeight: 600 }}>
-        Confirmer la suppression
+        {t('profile.confirmDelete')}
       </p>
       <p style={{ fontSize: 12, color: 'var(--label3)', lineHeight: 1.5 }}>
-        Ton compte est supprimé définitivement. Tes votes restent dans l&apos;historique de
-        l&apos;équipe, mais anonymisés : ton prénom et tes commentaires sont effacés.
-        Cette action est irréversible.
+        {t('profile.deleteWarning')}
       </p>
       {adminTeams.length > 0 && (
         <p style={{ fontSize: 12, color: 'var(--red)', lineHeight: 1.5, fontWeight: 600 }}>
-          Tu es administrateur de {joinFrenchList(adminTeams)}. Si d&apos;autres membres y ont un
-          compte, nomme d&apos;abord un autre admin (Admin → Paramètres → Membres). Une équipe dont
-          tu es le seul membre est supprimée avec tout son historique.
+          {t('profile.adminWarning', { teams: joinFrenchList(adminTeams) })}
         </p>
       )}
       {error && <p style={{ fontSize: 12, color: 'var(--red)' }}>{error}</p>}
       <div className="flex gap-8">
         <button className="btn btn-secondary" style={{ flex: 1 }} onClick={() => setConfirm1(false)} disabled={loading}>
-          Annuler
+          {t('common.cancel')}
         </button>
         <button className="btn btn-danger" style={{ flex: 1 }} onClick={handleDelete} disabled={loading}>
-          {loading ? 'Suppression…' : 'Supprimer'}
+          {loading ? t('profile.deleting') : t('profile.delete')}
         </button>
       </div>
     </div>

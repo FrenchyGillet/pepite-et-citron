@@ -10,6 +10,7 @@ import { useAllVotes, useMatches, useTeams, useCurrentSeason } from '@/hooks/que
 import { computeSeasonStats } from '@/utils/season';
 import { track, EVENTS } from '@/utils/analytics';
 import type { Player } from '@/types';
+import { t } from '@/i18n';
 
 interface Props {
   orgId?: string | null;
@@ -58,7 +59,7 @@ export function SeasonTeaser({ orgId, players, onUpgrade }: Props) {
       }}>
         <div>
           <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--label)' }}>
-            🏆 Classement de saison
+            {t('seasonTeaser.title')}
           </div>
           <div style={{ fontSize: 11, color: 'var(--label3)', marginTop: 2 }}>
             {totalMatches} match{totalMatches > 1 ? 's' : ''} · Saison {currentSeason}
@@ -84,13 +85,13 @@ export function SeasonTeaser({ orgId, players, onUpgrade }: Props) {
             {leader.name}
           </div>
           <div style={{ fontSize: 11, color: 'var(--label3)', marginTop: 1 }}>
-            {leader.matchesPlayed} match{leader.matchesPlayed > 1 ? 's' : ''} joué{leader.matchesPlayed > 1 ? 's' : ''}
+            {t('seasonTeaser.played', { count: leader.matchesPlayed })}
           </div>
         </div>
         {/* Score blurred */}
         <div style={{ filter: 'blur(6px)', userSelect: 'none', pointerEvents: 'none' }}>
           <span style={{ fontSize: 16, fontWeight: 800, color: 'var(--gold)' }}>
-            {leader.bestPts} pts
+            {t('statsLocked.pts', { count: leader.bestPts })}
           </span>
         </div>
       </div>
@@ -112,7 +113,7 @@ export function SeasonTeaser({ orgId, players, onUpgrade }: Props) {
           </div>
           <div style={{ filter: 'blur(5px)', userSelect: 'none', pointerEvents: 'none' }}>
             <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--label3)' }}>
-              {p.bestPts} pts
+              {t('statsLocked.pts', { count: p.bestPts })}
             </span>
           </div>
         </div>
@@ -134,7 +135,7 @@ export function SeasonTeaser({ orgId, players, onUpgrade }: Props) {
           }}
         >
           <span>🔓</span>
-          Débloquer le classement complet →
+          {t('seasonTeaser.unlock')}
         </button>
       </div>
     </div>

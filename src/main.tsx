@@ -8,6 +8,7 @@ import { createSyncStoragePersister } from '@tanstack/query-sync-storage-persist
 import * as Sentry from '@sentry/react';
 import App from '@/App';
 import { trackAppLaunch } from '@/utils/analytics';
+import { t } from '@/i18n';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -130,11 +131,11 @@ createRoot(document.getElementById('root')!).render(
           }}>
             <div style={{ fontSize: 36, marginBottom: 12 }}>💥</div>
             <div style={{ fontSize: 17, fontWeight: 700, color: '#fff', marginBottom: 8 }}>
-              Quelque chose s'est mal passé
+              {t('crash.title')}
             </div>
             <div style={{ fontSize: 13, color: '#888', marginBottom: 20, lineHeight: 1.6 }}>
-              L'erreur a été signalée automatiquement.<br />
-              Recharge la page pour continuer.
+              {t('crash.reported')}<br />
+              {t('crash.reload')}
             </div>
             <button
               // A full reload: resetError alone re-renders the same broken tree.
@@ -145,7 +146,7 @@ createRoot(document.getElementById('root')!).render(
                 fontSize: 15, border: 'none', cursor: 'pointer',
               }}
             >
-              Recharger
+              {t('common.reload')}
             </button>
           </div>
         </div>

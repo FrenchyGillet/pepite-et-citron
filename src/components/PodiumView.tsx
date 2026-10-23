@@ -4,6 +4,7 @@ import { rankWithTies, type RankGroup, type Tiebreakers } from '@/utils/scoring'
 import { displayName, initials, avatarColor } from '@/utils/player';
 import { AnimatedNumber } from './AnimatedNumber';
 import type { Vote, Player } from '@/types';
+import { t } from '@/i18n';
 
 interface PodiumViewProps {
   votes: Vote[];
@@ -69,7 +70,7 @@ function PodiumSlot({ group, isTop, height, delay, ready, color, colorDim }: Pod
           {isTop && <div aria-hidden="true" style={{ fontSize: 26, lineHeight: 1, marginBottom: 5 }}>👑</div>}
           {tied && (
             <div style={{ fontSize: 10, fontWeight: 700, color: nameColor, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 2 }}>
-              Ex-aequo
+              {t('podium.tie')}
             </div>
           )}
           <div style={{ fontSize: isTop ? 15 : 13, fontWeight: 700, color: nameColor, textAlign: 'center', lineHeight: 1.2, marginBottom: 2, padding: '0 4px', overflowWrap: 'anywhere' }}>
@@ -132,7 +133,7 @@ export function PodiumView({ votes, present, allPlayers, tiebreakers = {}, pepit
   return (
     <>
       <div style={{ display: 'flex', background: 'var(--bg2)', borderRadius: 'var(--radius-lg)', padding: 4, marginBottom: 20 }}>
-        {([{ id: 'pepite', label: '⭐  Pépites' }, { id: 'citron', label: '🍋  Citrons' }] as const).map(({ id, label }) => (
+        {([{ id: 'pepite', label: t('podium.pepites') }, { id: 'citron', label: t('podium.citrons') }] as const).map(({ id, label }) => (
           <button key={id} onClick={() => setPodiumTab(id)} aria-pressed={podiumTab === id} style={{
             flex: 1, padding: '10px', borderRadius: 10, fontSize: 14, fontWeight: 700,
             background: podiumTab === id ? 'var(--bg3)' : 'transparent',
@@ -144,7 +145,7 @@ export function PodiumView({ votes, present, allPlayers, tiebreakers = {}, pepit
 
       {groups.length === 0 ? (
         <div className="group" style={{ marginBottom: 16 }}>
-          <div className="row"><span style={{ color: 'var(--label3)', fontSize: 14 }}>Aucun vote.</span></div>
+          <div className="row"><span style={{ color: 'var(--label3)', fontSize: 14 }}>{t('podium.noVote')}</span></div>
         </div>
       ) : (
         <>
@@ -158,7 +159,7 @@ export function PodiumView({ votes, present, allPlayers, tiebreakers = {}, pepit
 
           {winners.filter(w => w.comments.length > 0).map(w => (
             <div key={String(w.id)}>
-              <p className="section-label mb-4">Commentaires sur {displayName(w)}</p>
+              <p className="section-label mb-4">{t('podium.commentsOn', { name: displayName(w) })}</p>
               <div className="group" style={{ marginBottom: 16 }}>
                 {w.comments.map((c, i) => (
                   <div key={i} style={{ padding: '12px 16px', borderBottom: '1px solid var(--separator)' }}>
@@ -171,7 +172,7 @@ export function PodiumView({ votes, present, allPlayers, tiebreakers = {}, pepit
 
           {rest.length > 0 && (
             <>
-              <p className="section-label mb-4">Suite du classement</p>
+              <p className="section-label mb-4">{t('podium.rest')}</p>
               <div className="group" style={{ marginBottom: 16 }}>
                 {rest.flatMap(g => g.players.map(p => ({ p, rank: g.rank }))).map(({ p, rank }, i) => (
                   <div key={String(p.id)} className="row">

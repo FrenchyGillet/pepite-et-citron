@@ -4,6 +4,8 @@ import { isAbandonedVote, isDeadlinePassed } from '@/utils/deadline';
 import type {
   API, EntityId, Player, Match, Vote, GuestToken, Org, OrgMember, Team, UserSession,
 } from '@/types';
+import { t } from '@/i18n';
+import { UserError } from '@/utils/errors';
 
 export const DEMO_MODE = SUPABASE_URL.includes("VOTRE_PROJET");
 
@@ -330,7 +332,7 @@ export const realAPI: API = {
       const isDuplicate = error.message?.includes("unique") || error.message?.includes("duplicate") || (error as { code?: string }).code === "23505";
       if (!isDuplicate) throw new Error(error.message);
     }
-    if (!finalSlug) throw new Error("Impossible de créer l'équipe, réessayez.");
+    if (!finalSlug) throw new UserError(t('errors.teamCreateFailed'));
 
     const { data: rows, error: fetchErr } = await supabase.from("organizations").select("*").eq("slug", finalSlug);
     if (fetchErr) throw new Error(fetchErr.message);

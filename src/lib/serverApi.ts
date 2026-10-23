@@ -1,4 +1,6 @@
 import { supabase } from '@/lib/supabase';
+import { t } from '@/i18n';
+import { UserError } from '@/utils/errors';
 
 /**
  * POSTs JSON to one of our serverless functions (/api/*) with the user's
@@ -14,7 +16,7 @@ export async function postToApi(path: string, body: unknown): Promise<Response> 
   });
 
   const { data: { session } } = await supabase.auth.getSession();
-  if (!session?.access_token) throw new Error('Session expirée, reconnecte-toi.');
+  if (!session?.access_token) throw new UserError(t('errors.sessionExpiredShort'));
 
   const res = await send(session.access_token);
   if (res.status !== 401) return res;

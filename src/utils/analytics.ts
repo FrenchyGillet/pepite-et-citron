@@ -92,6 +92,7 @@ export const EVENTS = {
   PLAYER_CLAIMED:             'player_claimed',
   NICKNAME_SAVED:             'nickname_saved',
   EMAIL_NOTIFICATIONS_TOGGLED:'email_notifications_toggled',
+  LANGUAGE_CHANGED:           'language_changed',
   PUSH_ENABLED:               'push_enabled',
   PUSH_DENIED:                'push_denied',
   PUSH_FAILED:                'push_failed',

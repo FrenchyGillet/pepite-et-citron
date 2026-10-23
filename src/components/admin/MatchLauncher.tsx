@@ -5,6 +5,7 @@ import { VOTE_DURATIONS, deadlineFrom } from '@/utils/deadline';
 import { useCreateMatch } from '@/hooks/mutations';
 import type { EntityId, Player, Team } from '@/types';
 import { activeTeamPlayerIds, type Notify } from './shared';
+import { t } from '@/i18n';
 
 interface MatchLauncherProps {
   activePlayers: Player[];
@@ -60,7 +61,7 @@ export function MatchLauncher({ activePlayers, teams, currentSeason, orgId, noti
         onSuccess: () => {
           track(EVENTS.MATCH_CREATED, { playerCount: presentIds.length, pepiteCount, voteDuration: voteDuration ?? 0 });
           setMatchLabel(''); setPresentIds([]); setSelectedTeamId(null);
-          notify('Match ouvert !');
+          notify(t('launcher.opened'));
           onLaunched();
         },
       }
@@ -69,15 +70,15 @@ export function MatchLauncher({ activePlayers, teams, currentSeason, orgId, noti
 
   return (
     <div className="group" style={{ padding: '14px 16px' }}>
-      <label htmlFor="admin-match-label" style={{ display: 'block', fontSize: 13, color: 'var(--label3)', marginBottom: 8 }}>Nom du match ou de l'adversaire</label>
-      <input id="admin-match-label" ref={labelInputRef} placeholder="ex : vs Dragons, Entraînement…" value={matchLabel}
+      <label htmlFor="admin-match-label" style={{ display: 'block', fontSize: 13, color: 'var(--label3)', marginBottom: 8 }}>{t('launcher.labelLabel')}</label>
+      <input id="admin-match-label" ref={labelInputRef} placeholder={t('launcher.labelPlaceholder')} value={matchLabel}
         onChange={e => { setMatchLabel(e.target.value); setMatchError(null); }}
         style={{ marginBottom: matchError ? 4 : 16, borderColor: matchError ? 'var(--red)' : undefined }} />
       {matchError && <p style={{ fontSize: 12, color: 'var(--red)', marginBottom: 12 }}>{matchError}</p>}
 
       {teams.length > 0 && (
         <>
-          <p style={{ fontSize: 13, color: 'var(--label3)', marginBottom: 8 }}>Charger une équipe</p>
+          <p style={{ fontSize: 13, color: 'var(--label3)', marginBottom: 8 }}>{t('launcher.loadTeam')}</p>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 16 }}>
             {teams.map(t => {
               const ids      = activeTeamPlayerIds(t, activePlayers);
@@ -99,12 +100,12 @@ export function MatchLauncher({ activePlayers, teams, currentSeason, orgId, noti
 
       <div className="flex-between" style={{ marginBottom: 8 }}>
         <p style={{ fontSize: 13, color: 'var(--label3)' }}>
-          Qui est présent ce soir ?
-          {presentIds.length > 0 && <span style={{ color: 'var(--label2)', marginLeft: 6 }}>{presentIds.length} sélectionné{presentIds.length > 1 ? 's' : ''}</span>}
+          {t('launcher.whoIsHere')}
+          {presentIds.length > 0 && <span style={{ color: 'var(--label2)', marginLeft: 6 }}>{t('launcher.selected', { count: presentIds.length })}</span>}
         </p>
         <div className="flex gap-8">
-          <button className="tag tag-dim" onClick={() => setPresentIds(activePlayers.map(p => p.id))}>Tous</button>
-          <button className="tag tag-dim" onClick={() => setPresentIds([])}>Aucun</button>
+          <button className="tag tag-dim" onClick={() => setPresentIds(activePlayers.map(p => p.id))}>{t('launcher.all')}</button>
+          <button className="tag tag-dim" onClick={() => setPresentIds([])}>{t('launcher.none')}</button>
         </div>
       </div>
       <div className="player-grid" style={{ marginBottom: 16 }}>
@@ -115,10 +116,10 @@ export function MatchLauncher({ activePlayers, teams, currentSeason, orgId, noti
       </div>
       {presentIds.length > 0 && presentIds.length < minPlayersForVote && (
         <p style={{ fontSize: 12, color: 'var(--label3)', marginBottom: 10 }}>
-          Sélectionne au moins {minPlayersForVote} joueurs pour ce mode.
+          {t('launcher.minPlayers', { min: minPlayersForVote })}
         </p>
       )}
-      <p style={{ fontSize: 13, color: 'var(--label3)', marginBottom: 8 }}>Mode pépite</p>
+      <p style={{ fontSize: 13, color: 'var(--label3)', marginBottom: 8 }}>{t('launcher.mode')}</p>
       <div style={{ display: 'flex', gap: 8, marginBottom: pepiteCount === 3 ? 6 : 16 }}>
         {([2, 3] as const).map(n => (
           <button key={n} onClick={() => setPepiteCount(n)} style={{
@@ -127,16 +128,16 @@ export function MatchLauncher({ activePlayers, teams, currentSeason, orgId, noti
             background: pepiteCount === n ? 'var(--gold-fill)' : 'var(--bg3)',
             color: pepiteCount === n ? '#000' : 'var(--label2)',
           }}>
-            {n === 2 ? '⭐ ⭐  2 pépites' : '⭐ ⭐ ⭐  3 pépites'}
+            {t(n === 2 ? 'launcher.two' : 'launcher.three')}
           </button>
         ))}
       </div>
       {pepiteCount === 3 && (
         <p style={{ fontSize: 11, color: 'var(--label3)', marginBottom: 16 }}>
-          Classement 3-2-1 pts · Recommandé pour les grandes équipes
+          {t('launcher.threeHint')}
         </p>
       )}
-      <p id="vote-duration-label" style={{ fontSize: 13, color: 'var(--label3)', marginBottom: 8 }}>Fermeture du vote</p>
+      <p id="vote-duration-label" style={{ fontSize: 13, color: 'var(--label3)', marginBottom: 8 }}>{t('launcher.closing')}</p>
       <div role="group" aria-labelledby="vote-duration-label" style={{ display: 'flex', gap: 6, marginBottom: 16 }}>
         {VOTE_DURATIONS.map(d => (
           <button key={d.label} onClick={() => setVoteDuration(d.minutes)} aria-pressed={voteDuration === d.minutes} style={{
@@ -145,14 +146,14 @@ export function MatchLauncher({ activePlayers, teams, currentSeason, orgId, noti
             background: voteDuration === d.minutes ? 'var(--gold-fill)' : 'var(--bg3)',
             color: voteDuration === d.minutes ? '#000' : 'var(--label2)',
           }}>
-            {d.label}
+            {t(d.label)}
           </button>
         ))}
       </div>
       <button className="btn btn-primary btn-full"
         disabled={presentIds.length < minPlayersForVote || createMatchMutation.isPending}
         onClick={createMatch}>
-        {createMatchMutation.isPending ? 'Lancement…' : `Lancer le vote · ${presentIds.length} joueur${presentIds.length !== 1 ? 's' : ''}`}
+        {createMatchMutation.isPending ? t('launcher.launching') : t('launcher.launch', { count: presentIds.length })}
       </button>
     </div>
   );

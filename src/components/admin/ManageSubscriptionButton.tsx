@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { humanizeError } from '@/utils/errors';
 import { postToApi } from '@/lib/serverApi';
 import { track, EVENTS } from '@/utils/analytics';
+import { t } from '@/i18n';
 
 // ── Manage subscription (Stripe billing portal) ───────────────────────────────
 export function ManageSubscriptionButton({ orgId }: { orgId: string }) {
@@ -19,7 +20,7 @@ export function ManageSubscriptionButton({ orgId }: { orgId: string }) {
       const data = await res.json().catch(() => ({})) as { url?: string; error?: string; detail?: string };
       if (!res.ok || !data.url) {
         setDetail(data.detail ?? `HTTP ${res.status}`);
-        throw new Error(data.error || 'Erreur inattendue');
+        throw new Error(data.error || t('subscription.unexpected'));
       }
       window.location.href = data.url;
     } catch (err) {
@@ -36,12 +37,12 @@ export function ManageSubscriptionButton({ orgId }: { orgId: string }) {
         onClick={openPortal}
         disabled={loading}
       >
-        {loading ? 'Redirection…' : '💳 Gérer mon abonnement'}
+        {loading ? t('subscription.redirecting') : t('subscription.manage')}
       </button>
       {error && (
         <p role="alert" style={{ fontSize: 12, color: 'var(--red)', marginTop: 4 }}>
           {error}
-          {detail && <span style={{ display: 'block', fontSize: 11, color: 'var(--label3)', marginTop: 2 }}>Détail : {detail}</span>}
+          {detail && <span style={{ display: 'block', fontSize: 11, color: 'var(--label3)', marginTop: 2 }}>{t('upgrade.detail', { detail })}</span>}
         </p>
       )}
     </div>

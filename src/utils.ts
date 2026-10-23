@@ -1,4 +1,5 @@
 import type { Vote, Player, ScoreMap, Scores } from '@/types';
+import { dateLocale } from '@/i18n';
 
 /**
  * Points attribués à chaque rang de Pépite (index 0 = 1er choix), par mode.
@@ -51,5 +52,5 @@ export function computeScores(votes: Vote[], presentPlayers: Player[], allPlayer
 }
 
 export function formatDate(iso: string): string {
-  return new Date(iso).toLocaleDateString("fr-BE", { day: "numeric", month: "short", year: "numeric" });
+  return new Date(iso).toLocaleDateString(dateLocale(), { day: "numeric", month: "short", year: "numeric" });
 }

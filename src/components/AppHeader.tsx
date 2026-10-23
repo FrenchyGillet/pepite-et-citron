@@ -9,6 +9,7 @@ import { initials, avatarColor } from '@/utils/player';
 import { track, EVENTS } from '@/utils/analytics';
 import { canRunMatches, roleLabel } from '@/utils/roles';
 import type { Org, OrgRole } from '@/types';
+import { t } from '@/i18n';
 
 export function AppHeader() {
   const currentOrg = useAppStore(s => s.currentOrg);
@@ -55,7 +56,7 @@ export function AppHeader() {
             />
           )}
           <div className="header-sub">
-            {activeMatch ? activeMatch.label : 'Aucun match en cours'}
+            {activeMatch ? activeMatch.label : t('header.noMatch')}
           </div>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -88,7 +89,7 @@ function OrgPicker({ currentOrg, myOrgs, open, setOpen, onSwitch }: OrgPickerPro
     <div style={{ position: 'relative' }} data-org-picker="">
       {myOrgs.length > 1 ? (
         <button onClick={() => setOpen(!open)} aria-expanded={open} aria-haspopup="menu"
-          aria-label={`Équipe : ${currentOrg.name}. Changer d'équipe`} style={{
+          aria-label={t('header.teamPicker', { team: currentOrg.name })} style={{
           background: 'none', border: 'none', padding: 0,
           cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 5,
         }}>
@@ -154,9 +155,9 @@ function RoleBadge({ role }: { role: OrgRole }) {
 function ProCrown() {
   return (
     <span
-      title="Plan Pro"
+      title={t('header.proPlan')}
       role="img"
-      aria-label="Plan Pro"
+      aria-label={t('header.proPlan')}
       style={{
         fontSize: 12,
         lineHeight: 1,
@@ -173,8 +174,8 @@ function FeedbackButton() {
     <a
       href="mailto:feedback@pepite-citron.com"
       onClick={() => track(EVENTS.FEEDBACK_CLICKED)}
-      aria-label="Envoyer un feedback"
-      title="Envoyer un feedback"
+      aria-label={t('header.feedback')}
+      title={t('header.feedback')}
       style={{
         background: 'var(--bg3)', border: 'none', borderRadius: '10px', padding: '8px',
         cursor: 'pointer', color: 'var(--label2)', display: 'flex', alignItems: 'center',
@@ -194,8 +195,8 @@ function ProfileButton({ email, onNavigate }: { email: string; onNavigate: () =>
   return (
     <button
       onClick={onNavigate}
-      aria-label="Mon profil"
-      title="Mon profil"
+      aria-label={t('header.profile')}
+      title={t('header.profile')}
       style={{
         background: avatarColor(seed), border: 'none', borderRadius: '50%', padding: 0,
         cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
@@ -209,7 +210,7 @@ function ProfileButton({ email, onNavigate }: { email: string; onNavigate: () =>
 }
 
 function ThemeToggle({ theme, onToggle }: { theme: string; onToggle: () => void }) {
-  const label = theme === 'dark' ? 'Passer en thème clair' : 'Passer en thème sombre';
+  const label = t(theme === 'dark' ? 'header.lightTheme' : 'header.darkTheme');
   return (
     <button onClick={onToggle} aria-label={label} title={label} style={{
       background: 'var(--bg3)', border: 'none', borderRadius: '10px', padding: '8px',

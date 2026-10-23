@@ -9,6 +9,8 @@ import { formatClockTime, formatDeadline, isDeadlinePassed } from '@/utils/deadl
 import { useAppStore } from '@/store/appStore';
 import { track, EVENTS } from '@/utils/analytics';
 import type { Player, Match, EntityId } from '@/types';
+import { t } from '@/i18n';
+import { LanguagePicker } from '@/components/LanguagePicker';
 
 // Server-side cap in submit_vote (20260014).
 const COMMENT_MAX_LENGTH = 280;
@@ -162,7 +164,7 @@ export function VoteView({ players, match, onVoted, guestName = null, onGuestVot
       // Réseau instable (vestiaire) — ne pas bloquer le votant sur
       // « Vérification… ». submit_vote dédoublonne de toute façon.
       setChecking(false);
-      setCheckError('Connexion instable. Touche ton prénom pour réessayer.');
+      setCheckError(t('vote.unstable'));
       return;
     }
     setChecking(false);
@@ -236,29 +238,29 @@ export function VoteView({ players, match, onVoted, guestName = null, onGuestVot
   };
 
   if (!match.is_open || (match.phase && match.phase !== 'voting')) return (
-    <div className="content"><div className="empty">🔒 Vote clôturé.<br />Consulte les résultats.</div></div>
+    <div className="content"><div className="empty">{t('vote.closed')}<br />{t('vote.seeResults')}</div></div>
   );
 
   // submit_vote refuses ballots after the deadline; say so before they start.
   if (match.vote_deadline && isDeadlinePassed(match.vote_deadline, now)) return (
     <div className="content"><div className="empty">
-      ⏰ Le vote a fermé à {formatClockTime(match.vote_deadline)}.<br />Les résultats arrivent au dépouillement.
+      {t('vote.deadlinePassed', { time: formatClockTime(match.vote_deadline) })}<br />{t('vote.resultsAtReveal')}
     </div></div>
   );
 
   const summaryRows = [
     { key: 'best1', player: best1, comment: best1Comment, setComment: setBest1Comment,
       icon: '⭐', iconClass: 'row-icon gold', iconStyle: undefined,
-      tagClass: 'tag tag-gold', tag: pepiteCount === 3 ? '3 pts' : '2 pts' },
+      tagClass: 'tag tag-gold', tag: t('vote.pts', { count: pepiteCount === 3 ? 3 : 2 }) },
     { key: 'best2', player: best2, comment: best2Comment, setComment: setBest2Comment,
       icon: '⭐', iconClass: 'row-icon', iconStyle: { background: 'var(--gold-subtle)', opacity: 0.7 },
-      tagClass: 'tag tag-dim', tag: pepiteCount === 3 ? '2 pts' : '1 pt' },
+      tagClass: 'tag tag-dim', tag: t('vote.pts', { count: pepiteCount === 3 ? 2 : 1 }) },
     ...(pepiteCount === 3 ? [{ key: 'best3', player: best3, comment: best3Comment, setComment: setBest3Comment,
       icon: '⭐', iconClass: 'row-icon', iconStyle: { background: 'var(--gold-subtle)', opacity: 0.4 },
-      tagClass: 'tag tag-dim', tag: '1 pt' }] : []),
+      tagClass: 'tag tag-dim', tag: t('vote.pts', { count: 1 }) }] : []),
     { key: 'lemon', player: lemon, comment: lemonComment, setComment: setLemonComment,
       icon: '🍋', iconClass: 'row-icon lemon', iconStyle: undefined,
-      tagClass: 'tag tag-lemon', tag: 'Citron' },
+      tagClass: 'tag tag-lemon', tag: t('vote.citron') },
   ];
 
   return (
@@ -276,8 +278,8 @@ export function VoteView({ players, match, onVoted, guestName = null, onGuestVot
         <div style={{ background: 'var(--gold-subtle)', border: '1px solid var(--gold-dim)', borderRadius: 'var(--radius-lg)', padding: '12px 16px', marginBottom: 16, display: 'flex', alignItems: 'center', gap: 12 }}>
           <span style={{ fontSize: 22 }}>👋</span>
           <div>
-            <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--gold)' }}>Bienvenu(e), {guestName} !</div>
-            <div style={{ fontSize: 12, color: 'var(--label3)', marginTop: 2 }}>Tu votes en tant que supporter.</div>
+            <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--gold)' }}>{t('vote.welcomeGuest', { name: guestName })}</div>
+            <div style={{ fontSize: 12, color: 'var(--label3)', marginTop: 2 }}>{t('vote.guestHint')}</div>
           </div>
         </div>
       )}
@@ -291,7 +293,7 @@ export function VoteView({ players, match, onVoted, guestName = null, onGuestVot
               background: 'var(--bg3)', color: 'var(--label2)',
               fontSize: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em',
             }}>
-              Avant de voter
+              {t('vote.beforeVoting')}
             </div>
             <div aria-hidden="true" style={{
               width: 56, height: 56, borderRadius: '50%', margin: '0 auto 12px',
@@ -299,10 +301,10 @@ export function VoteView({ players, match, onVoted, guestName = null, onGuestVot
               fontSize: 26,
             }}>👤</div>
             <h2 style={{ fontSize: 26, fontWeight: 800, color: 'var(--label)', letterSpacing: '-0.4px', margin: '0 0 6px' }}>
-              Qui es-tu ?
+              {t('vote.whoAreYou')}
             </h2>
             <p style={{ fontSize: 15, color: 'var(--label2)', lineHeight: 1.45, margin: 0 }}>
-              Touche <strong style={{ color: 'var(--label)' }}>ton prénom</strong>. Le vote commence juste après.
+              {t('vote.tapYourNameBefore')} <strong style={{ color: 'var(--label)' }}>{t('vote.yourName')}</strong>{t('vote.tapYourNameAfter')}
             </p>
             <p style={{ fontSize: 12, color: 'var(--label3)', margin: '8px 0 0' }}>
               {orgName ? `${orgName} · ${match.label}` : match.label}
@@ -317,11 +319,11 @@ export function VoteView({ players, match, onVoted, guestName = null, onGuestVot
           </div>
           <div aria-live="polite">
             {checking && (
-              <div style={{ color: 'var(--label3)', fontSize: 13, marginTop: 8 }}>Vérification…</div>
+              <div style={{ color: 'var(--label3)', fontSize: 13, marginTop: 8 }}>{t('vote.checking')}</div>
             )}
             {alreadyVoted && (
               <div style={{ color: 'var(--red)', fontSize: 13, marginTop: 8 }}>
-                Tu as déjà voté pour ce match.
+                {t('vote.alreadyVoted')}
               </div>
             )}
             {checkError && (
@@ -332,7 +334,7 @@ export function VoteView({ players, match, onVoted, guestName = null, onGuestVot
           </div>
 
           <p style={{ fontSize: 12, color: 'var(--label3)', textAlign: 'center', margin: '12px 0 0', lineHeight: 1.5 }}>
-            Ton prénom sert à compter les votes. Ton vote reste anonyme pour l'équipe.
+            {t('vote.nameCountsVotes')}
           </p>
 
           {/* Vote progress on identity step */}
@@ -343,10 +345,12 @@ export function VoteView({ players, match, onVoted, guestName = null, onGuestVot
                 background: 'var(--green)', animation: 'livePulse 2s ease-in-out infinite',
               }} />
               <span style={{ fontSize: 12, color: 'var(--label3)' }}>
-                <strong style={{ color: 'var(--label2)' }}>{voteCount}</strong> / {presentCount} ont déjà voté
+                <strong style={{ color: 'var(--label2)' }}>{voteCount}</strong> {t('vote.alreadyVotedCount', { present: presentCount })}
               </span>
             </div>
           )}
+          {/* Players arrive from a link, often on a phone in another language. */}
+          <LanguagePicker compact />
         </>
       )}
 
@@ -362,7 +366,7 @@ export function VoteView({ players, match, onVoted, guestName = null, onGuestVot
             }}>
               <span style={{ fontSize: 15 }}>👤</span>
               <span style={{ fontSize: 13, color: 'var(--label2)', flex: 1 }}>
-                Tu votes en tant que <strong style={{ color: 'var(--label)' }}>{voterName}</strong>
+                {t('vote.votingAs')} <strong style={{ color: 'var(--label)' }}>{voterName}</strong>
               </span>
               <button
                 onClick={() => { clearVoteDraft(match.id); setVoterName(''); setSelectedVoterPlayer(null); setStep(0); }}
@@ -372,12 +376,12 @@ export function VoteView({ players, match, onVoted, guestName = null, onGuestVot
                   textDecoration: 'underline',
                 }}
               >
-                Changer
+                {t('vote.change')}
               </button>
             </div>
           )}
 
-          <div className="step-bar mt-8" role="progressbar" aria-label="Progression du vote"
+          <div className="step-bar mt-8" role="progressbar" aria-label={t('vote.progress')}
             aria-valuemin={1} aria-valuemax={stepBarCount} aria-valuenow={step}>
             {Array.from({ length: stepBarCount }, (_, i) => i + 1).map(i => (
               <div key={i} className={`step-seg ${step > i ? 'done' : step === i ? 'active' : ''}`} />
@@ -397,7 +401,7 @@ export function VoteView({ players, match, onVoted, guestName = null, onGuestVot
               }} />
               <span style={{ fontSize: 12, color: 'var(--label3)' }}>
                 <strong style={{ color: 'var(--label2)' }}>{voteCount}</strong>
-                {' '}/ {presentCount} ont voté
+                {' '}{t('vote.votedCount', { present: presentCount })}
               </span>
             </div>
           )}
@@ -407,11 +411,11 @@ export function VoteView({ players, match, onVoted, guestName = null, onGuestVot
               <div style={{ background: 'var(--gold-subtle)', border: '1px solid var(--gold-dim)', borderRadius: 'var(--radius-lg)', padding: '14px 16px', marginBottom: 14, display: 'flex', alignItems: 'center', gap: 14 }}>
                 <div style={{ fontSize: 34, lineHeight: 1, flexShrink: 0 }}>⭐</div>
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontSize: 20, fontWeight: 800, color: 'var(--gold)', letterSpacing: '-0.3px', lineHeight: 1.1 }}>La Pépite</div>
-                  <div style={{ fontSize: 12, color: 'var(--label3)', marginTop: 3 }}>Qui a tout déchiré aujourd'hui ?</div>
+                  <div style={{ fontSize: 20, fontWeight: 800, color: 'var(--gold)', letterSpacing: '-0.3px', lineHeight: 1.1 }}>{t('vote.pepiteTitle')}</div>
+                  <div style={{ fontSize: 12, color: 'var(--label3)', marginTop: 3 }}>{t('vote.pepiteHint')}</div>
                 </div>
                 <div style={{ background: 'var(--gold-fill)', color: '#000', borderRadius: 20, padding: '4px 11px', fontSize: 13, fontWeight: 800, flexShrink: 0 }}>
-                  {pepiteCount === 3 ? '3 pts' : '2 pts'}
+                  {t('vote.pts', { count: pepiteCount === 3 ? 3 : 2 })}
                 </div>
               </div>
               <div className="player-grid">
@@ -429,11 +433,11 @@ export function VoteView({ players, match, onVoted, guestName = null, onGuestVot
               <div style={{ background: 'rgba(255,214,10,0.04)', border: '1px solid rgba(255,214,10,0.12)', borderRadius: 'var(--radius-lg)', padding: '14px 16px', marginBottom: 14, display: 'flex', alignItems: 'center', gap: 14 }}>
                 <div style={{ fontSize: 28, lineHeight: 1, flexShrink: 0, opacity: 0.6 }}>⭐</div>
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontSize: 20, fontWeight: 800, color: 'rgba(255,214,10,0.7)', letterSpacing: '-0.3px', lineHeight: 1.1 }}>2ème meilleur</div>
-                  <div style={{ fontSize: 12, color: 'var(--label3)', marginTop: 3 }}>Et son fidèle dauphin du soir ?</div>
+                  <div style={{ fontSize: 20, fontWeight: 800, color: 'rgba(255,214,10,0.7)', letterSpacing: '-0.3px', lineHeight: 1.1 }}>{t('vote.secondTitle')}</div>
+                  <div style={{ fontSize: 12, color: 'var(--label3)', marginTop: 3 }}>{t('vote.secondHint')}</div>
                 </div>
                 <div style={{ background: 'rgba(255,214,10,0.15)', color: 'var(--gold)', borderRadius: 20, padding: '4px 11px', fontSize: 13, fontWeight: 800, flexShrink: 0 }}>
-                  {pepiteCount === 3 ? '2 pts' : '1 pt'}
+                  {t('vote.pts', { count: pepiteCount === 3 ? 2 : 1 })}
                 </div>
               </div>
               <div className="player-grid">
@@ -443,7 +447,7 @@ export function VoteView({ players, match, onVoted, guestName = null, onGuestVot
                     onClick={() => pickBest2(p)}>{p.name}</button>
                 ))}
               </div>
-              <button className="btn btn-secondary btn-full mt-12" onClick={() => goToStep(1)}>Retour</button>
+              <button className="btn btn-secondary btn-full mt-12" onClick={() => goToStep(1)}>{t('vote.back')}</button>
             </>
           )}
 
@@ -452,11 +456,11 @@ export function VoteView({ players, match, onVoted, guestName = null, onGuestVot
               <div style={{ background: 'rgba(255,214,10,0.02)', border: '1px solid rgba(255,214,10,0.08)', borderRadius: 'var(--radius-lg)', padding: '14px 16px', marginBottom: 14, display: 'flex', alignItems: 'center', gap: 14 }}>
                 <div style={{ fontSize: 22, lineHeight: 1, flexShrink: 0, opacity: 0.4 }}>⭐</div>
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontSize: 20, fontWeight: 800, color: 'rgba(255,214,10,0.5)', letterSpacing: '-0.3px', lineHeight: 1.1 }}>3ème meilleur</div>
-                  <div style={{ fontSize: 12, color: 'var(--label3)', marginTop: 3 }}>Et la troisième pépite ?</div>
+                  <div style={{ fontSize: 20, fontWeight: 800, color: 'rgba(255,214,10,0.5)', letterSpacing: '-0.3px', lineHeight: 1.1 }}>{t('vote.thirdTitle')}</div>
+                  <div style={{ fontSize: 12, color: 'var(--label3)', marginTop: 3 }}>{t('vote.thirdHint')}</div>
                 </div>
                 <div style={{ background: 'rgba(255,214,10,0.08)', color: 'rgba(255,214,10,0.5)', borderRadius: 20, padding: '4px 11px', fontSize: 13, fontWeight: 800, flexShrink: 0 }}>
-                  1 pt
+                  {t('vote.pts', { count: 1 })}
                 </div>
               </div>
               <div className="player-grid">
@@ -466,7 +470,7 @@ export function VoteView({ players, match, onVoted, guestName = null, onGuestVot
                     onClick={() => pickBest3(p)}>{p.name}</button>
                 ))}
               </div>
-              <button className="btn btn-secondary btn-full mt-12" onClick={() => goToStep(2)}>Retour</button>
+              <button className="btn btn-secondary btn-full mt-12" onClick={() => goToStep(2)}>{t('vote.back')}</button>
             </>
           )}
 
@@ -475,10 +479,10 @@ export function VoteView({ players, match, onVoted, guestName = null, onGuestVot
               <div style={{ background: 'var(--lemon-subtle)', border: '1px solid var(--lemon-dim)', borderRadius: 'var(--radius-lg)', padding: '14px 16px', marginBottom: 14, display: 'flex', alignItems: 'center', gap: 14 }}>
                 <div style={{ fontSize: 34, lineHeight: 1, flexShrink: 0 }}>🍋</div>
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontSize: 20, fontWeight: 800, color: 'var(--lemon)', letterSpacing: '-0.3px', lineHeight: 1.1 }}>Le Citron</div>
-                  <div style={{ fontSize: 12, color: 'var(--label3)', marginTop: 3 }}>Qui a souffert ce soir ?</div>
+                  <div style={{ fontSize: 20, fontWeight: 800, color: 'var(--lemon)', letterSpacing: '-0.3px', lineHeight: 1.1 }}>{t('vote.citronTitle')}</div>
+                  <div style={{ fontSize: 12, color: 'var(--label3)', marginTop: 3 }}>{t('vote.citronHint')}</div>
                 </div>
-                <div style={{ background: 'var(--lemon-dim)', color: 'var(--lemon)', borderRadius: 20, padding: '4px 11px', fontSize: 13, fontWeight: 800, flexShrink: 0 }}>1 pt</div>
+                <div style={{ background: 'var(--lemon-dim)', color: 'var(--lemon)', borderRadius: 20, padding: '4px 11px', fontSize: 13, fontWeight: 800, flexShrink: 0 }}>{t('vote.pts', { count: 1 })}</div>
               </div>
               <div className="player-grid">
                 {present.map(p => (
@@ -507,7 +511,7 @@ export function VoteView({ players, match, onVoted, guestName = null, onGuestVot
                     >
                       <polyline points="4 2 9 6 4 10" />
                     </svg>
-                    Absents · {absent.length}
+                    {t('vote.absents', { count: absent.length })}
                   </button>
                   {absentOpen && (
                     <div className="player-grid">
@@ -524,7 +528,7 @@ export function VoteView({ players, match, onVoted, guestName = null, onGuestVot
                   )}
                 </>
               )}
-              <button className="btn btn-secondary btn-full mt-12" onClick={() => goToStep(lemonStep - 1)}>Retour</button>
+              <button className="btn btn-secondary btn-full mt-12" onClick={() => goToStep(lemonStep - 1)}>{t('vote.back')}</button>
             </>
           )}
         </>
@@ -532,7 +536,7 @@ export function VoteView({ players, match, onVoted, guestName = null, onGuestVot
 
       {step === summaryStep && (
         <>
-          <p className="section-label mt-8 mb-4">Récapitulatif</p>
+          <p className="section-label mt-8 mb-4">{t('vote.summary')}</p>
           <div className="group">
             {summaryRows.map(r => (
               <div key={r.key} className="row" style={{ flexWrap: 'wrap' }}>
@@ -542,8 +546,8 @@ export function VoteView({ players, match, onVoted, guestName = null, onGuestVot
                 </div>
                 <span className={r.tagClass}>{r.tag}</span>
                 <input
-                  aria-label={`Commentaire sur ${r.player?.name ?? ''} (optionnel)`}
-                  placeholder={`Pourquoi ${r.player?.name ?? ''} ? (optionnel)`}
+                  aria-label={t('vote.commentAria', { name: r.player?.name ?? '' })}
+                  placeholder={t('vote.commentPlaceholder', { name: r.player?.name ?? '' })}
                   value={r.comment}
                   maxLength={COMMENT_MAX_LENGTH}
                   onChange={e => r.setComment(e.target.value)}
@@ -553,7 +557,7 @@ export function VoteView({ players, match, onVoted, guestName = null, onGuestVot
             ))}
           </div>
           <p style={{ fontSize: 12, color: 'var(--label3)', textAlign: 'center', marginBottom: 12 }}>
-            Ton vote reste anonyme pour l'équipe.
+            {t('vote.anonymous')}
           </p>
           {submitError && (
             <div role="alert" style={{
@@ -565,9 +569,9 @@ export function VoteView({ players, match, onVoted, guestName = null, onGuestVot
             </div>
           )}
           <div className="flex gap-8">
-            <button className="btn btn-secondary" onClick={() => goToStep(lemonStep)}>Modifier</button>
+            <button className="btn btn-secondary" onClick={() => goToStep(lemonStep)}>{t('vote.edit')}</button>
             <button className="btn btn-primary" style={{ flex: 1 }} disabled={submitting} onClick={submit}>
-              {submitting ? 'Envoi…' : submitError ? 'Réessayer' : 'Rendre mon verdict →'}
+              {submitting ? t('vote.sending') : submitError ? t('common.retry') : t('vote.submit')}
             </button>
           </div>
         </>

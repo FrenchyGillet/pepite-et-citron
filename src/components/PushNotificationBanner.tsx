@@ -13,6 +13,7 @@
 import { useState } from 'react';
 import { usePushNotifications } from '@/hooks/usePushNotifications';
 import { track, EVENTS } from '@/utils/analytics';
+import { t } from '@/i18n';
 
 const DISMISS_KEY = 'pepite_push_banner_dismissed';
 
@@ -54,10 +55,10 @@ export function PushNotificationBanner({ orgId }: Props) {
 
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--label, #fff)', marginBottom: 2 }}>
-          Notifier l'équipe automatiquement
+          {t('push.title')}
         </div>
         <div style={{ fontSize: 12, color: 'var(--label3, rgba(235,235,245,0.4))', lineHeight: 1.4 }}>
-          Reçois une notif quand un vote est ouvert ou les résultats prêts.
+          {t('push.hint')}
         </div>
       </div>
 
@@ -72,9 +73,9 @@ export function PushNotificationBanner({ orgId }: Props) {
             padding: '6px 8px',
             cursor: 'pointer',
           }}
-          aria-label="Ignorer"
+          aria-label={t('push.dismiss')}
         >
-          Plus tard
+          {t('push.later')}
         </button>
 
         <button
@@ -92,7 +93,7 @@ export function PushNotificationBanner({ orgId }: Props) {
             opacity: status === 'loading' ? 0.7 : 1,
           }}
         >
-          {status === 'loading' ? '…' : 'Activer'}
+          {status === 'loading' ? '…' : t('push.enable')}
         </button>
       </div>
     </div>

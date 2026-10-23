@@ -1,5 +1,6 @@
 import { track, EVENTS } from '@/utils/analytics';
 import type { Player } from '@/types';
+import { t } from '@/i18n';
 
 interface Props {
   onUpgrade: () => void;
@@ -39,7 +40,7 @@ export function StatsLockedView({ onUpgrade, players }: Props) {
           opacity: 0.7,
         }}>
           <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--label3)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 16 }}>
-            Classement saison
+            {t('statsLocked.preview')}
           </div>
           {previewRows.map(({ name, pct }, i) => (
             <div key={name} style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
@@ -52,7 +53,7 @@ export function StatsLockedView({ onUpgrade, players }: Props) {
                   <div style={{ height: '100%', width: `${pct}%`, background: i === 0 ? '#FFD700' : 'var(--label4)', borderRadius: 3 }} />
                 </div>
               </div>
-              <div style={{ fontSize: 12, fontWeight: 700, color: i === 0 ? 'var(--gold)' : 'var(--label3)', minWidth: 36, textAlign: 'right' }}>{pct} pts</div>
+              <div style={{ fontSize: 12, fontWeight: 700, color: i === 0 ? 'var(--gold)' : 'var(--label3)', minWidth: 36, textAlign: 'right' }}>{t('statsLocked.pts', { count: pct })}</div>
             </div>
           ))}
         </div>
@@ -68,16 +69,16 @@ export function StatsLockedView({ onUpgrade, players }: Props) {
             display: 'flex', alignItems: 'center', gap: 8,
           }}>
             <span style={{ fontSize: 18 }}>🔒</span>
-            <span style={{ fontSize: 13, fontWeight: 700, color: '#fff' }}>Réservé au plan Pro</span>
+            <span style={{ fontSize: 13, fontWeight: 700, color: '#fff' }}>{t('statsLocked.proOnly')}</span>
           </div>
         </div>
       </div>
 
       <div style={{ fontSize: 20, fontWeight: 800, marginBottom: 10, letterSpacing: -0.4 }}>
-        Stats de saison
+        {t('statsLocked.title')}
       </div>
       <div style={{ fontSize: 15, color: 'var(--label2)', lineHeight: 1.6, maxWidth: 280, marginBottom: 28 }}>
-        Le classement cumulé de la saison, l'historique de tous vos matchs et les tendances par joueur, réservés au plan Pro.
+        {t('statsLocked.text')}
       </div>
 
       <button
@@ -94,11 +95,11 @@ export function StatsLockedView({ onUpgrade, players }: Props) {
           marginBottom: 12,
         }}
       >
-        Passer Pro : dès 12,99 €/an →
+        {t('statsLocked.cta')}
       </button>
 
       <div style={{ fontSize: 12, color: 'var(--label3)' }}>
-        Résiliation en un clic · Paiement sécurisé Stripe
+        {t('upgrade.reassurance')}
       </div>
     </div>
   );

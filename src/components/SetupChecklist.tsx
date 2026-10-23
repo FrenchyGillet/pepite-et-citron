@@ -7,6 +7,7 @@
  */
 import { useState, useEffect } from 'react';
 import { track, EVENTS } from '@/utils/analytics';
+import { t } from '@/i18n';
 
 interface Props {
   orgId:         string;
@@ -33,10 +34,10 @@ export function SetupChecklist({ orgId, playerCount, teamCount, matchCount, onCo
   // A vote needs at least 3 present players (2-pépite mode). Saved line-ups
   // only speed up later matches, so they never block the first vote.
   const steps: Step[] = [
-    { id: 'players', label: 'Ajouter au moins 3 joueurs à l\'effectif',     done: playerCount >= 3 },
-    { id: 'match',   label: 'Lancer le premier vote',                        done: matchCount  >= 1 },
-    { id: 'link',    label: 'Partager le lien de vote avec l\'équipe',       done: onCopiedLink },
-    { id: 'team',    label: 'Enregistrer une composition d\'équipe',         done: teamCount   >= 1, optional: true },
+    { id: 'players', label: t('checklist.players'),     done: playerCount >= 3 },
+    { id: 'match',   label: t('checklist.match'),                        done: matchCount  >= 1 },
+    { id: 'link',    label: t('checklist.link'),       done: onCopiedLink },
+    { id: 'team',    label: t('checklist.team'),         done: teamCount   >= 1, optional: true },
   ];
 
   const required       = steps.filter(s => !s.optional);
@@ -75,7 +76,7 @@ export function SetupChecklist({ orgId, playerCount, teamCount, matchCount, onCo
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
         <div>
           <span style={{ fontSize: 14, fontWeight: 700, color: 'var(--label)' }}>
-            {allDone ? '🎉 C\'est parti !' : '🚀 Première mise en route'}
+            {allDone ? t('checklist.allDone') : t('checklist.title')}
           </span>
           <span style={{ fontSize: 12, color: 'var(--label3)', marginLeft: 8 }}>
             {completedCount}/{required.length}
@@ -83,7 +84,7 @@ export function SetupChecklist({ orgId, playerCount, teamCount, matchCount, onCo
         </div>
         <button
           onClick={handleDismiss}
-          aria-label="Masquer la checklist"
+          aria-label={t('checklist.hide')}
           style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 16, color: 'var(--label4)', padding: '2px 6px' }}
         >
           ✕
@@ -123,7 +124,7 @@ export function SetupChecklist({ orgId, playerCount, teamCount, matchCount, onCo
               transition: 'color 0.3s',
             }}>
               {step.label}
-              {step.optional && <span style={{ color: 'var(--label3)' }}> (facultatif)</span>}
+              {step.optional && <span style={{ color: 'var(--label3)' }}> {t('checklist.optional')}</span>}
             </span>
           </div>
         ))}

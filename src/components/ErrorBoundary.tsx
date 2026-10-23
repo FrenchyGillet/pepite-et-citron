@@ -1,5 +1,6 @@
 import { Component, type ReactNode, type ErrorInfo } from 'react';
 import { track, EVENTS } from '@/utils/analytics';
+import { t } from '@/i18n';
 
 interface ErrorBoundaryProps {
   label?: string;
@@ -51,11 +52,11 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
           </div>
           <div>
             <div style={{ fontSize: 16, fontWeight: 700, color: 'var(--label)', marginBottom: 6 }}>
-              Quelque chose a planté
+              {t('app.crashTitle')}
             </div>
             {/* The technical detail stays in the console (componentDidCatch). */}
             <div style={{ fontSize: 13, color: 'var(--label3)', lineHeight: 1.5, maxWidth: 260 }}>
-              Réessaie. Si ça recommence, recharge la page.
+              {t('app.crashHint')}
             </div>
           </div>
           <div style={{ display: 'flex', gap: 8 }}>
@@ -67,7 +68,7 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
                 borderRadius: 12, fontSize: 14, fontWeight: 600,
                 cursor: 'pointer', color: 'var(--label)',
               }}>
-              Réessayer
+              {t('common.retry')}
             </button>
             <button
               onClick={() => window.location.reload()}
@@ -77,7 +78,7 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
                 borderRadius: 12, fontSize: 14, fontWeight: 600,
                 cursor: 'pointer', color: 'var(--label2)',
               }}>
-              Recharger
+              {t('common.reload')}
             </button>
           </div>
         </div>

@@ -2,6 +2,7 @@ import { useEmailNotifications } from '@/hooks/queries';
 import { useSetEmailNotifications } from '@/hooks/mutations';
 import { humanizeError } from '@/utils/errors';
 import { track, EVENTS } from '@/utils/analytics';
+import { t } from '@/i18n';
 
 /** Profil → "Emails de vote": the member's own preference for this team (F10). */
 export function EmailPreferences({ orgId, orgName }: { orgId: string; orgName: string }) {
@@ -15,11 +16,11 @@ export function EmailPreferences({ orgId, orgName }: { orgId: string; orgName: s
       background: 'var(--bg2)', borderRadius: 'var(--radius)', padding: '12px 16px', marginTop: 16,
     }}>
       <div style={{ flex: 1 }}>
-        <div style={{ fontSize: 15, fontWeight: 600, color: 'var(--label)' }}>Emails de vote</div>
+        <div style={{ fontSize: 15, fontWeight: 600, color: 'var(--label)' }}>{t('emailPrefs.title')}</div>
         <div style={{ fontSize: 12, color: 'var(--label3)', marginTop: 2, lineHeight: 1.4 }}>
           {isError
-            ? 'Impossible de charger ta préférence pour le moment.'
-            : `Un email quand un vote est ouvert dans ${orgName}.`}
+            ? t('emailPrefs.loadFailed')
+            : t('emailPrefs.hint', { team: orgName })}
         </div>
         {setPreference.isError && (
           <div role="alert" style={{ fontSize: 12, color: 'var(--red)', marginTop: 4 }}>
@@ -30,7 +31,7 @@ export function EmailPreferences({ orgId, orgName }: { orgId: string; orgName: s
       <input
         type="checkbox"
         role="switch"
-        aria-label="Recevoir les emails de vote"
+        aria-label={t('emailPrefs.toggle')}
         checked={checked}
         disabled={isLoading || isError || setPreference.isPending}
         onChange={e => {

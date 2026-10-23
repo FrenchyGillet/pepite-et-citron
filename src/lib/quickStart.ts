@@ -1,6 +1,8 @@
 import { setCurrentOrgId } from '@/api';
 import { defaultMatchLabel, quickStartPepiteCount, teamSlug } from '@/utils/quickStart';
 import type { API, Match, Org, Player } from '@/types';
+import { t } from '@/i18n';
+import { UserError } from '@/utils/errors';
 
 export type QuickStartStep = 'account' | 'team' | 'players' | 'match';
 
@@ -54,7 +56,7 @@ export async function runQuickStart(
       // Email confirmation must stay off in Supabase: no session means the
       // user has to confirm first, and cannot run the rest of this flow.
       if (!(await api.getSession())) {
-        throw new Error('Compte créé : confirme ton adresse email puis connecte-toi pour lancer le vote.');
+        throw new UserError(t('quickStart.confirmEmail'));
       }
     }
     progress.signedUp = true;

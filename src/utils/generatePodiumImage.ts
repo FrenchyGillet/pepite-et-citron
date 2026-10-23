@@ -1,3 +1,4 @@
+import { t } from '@/i18n';
 // ── Canvas-local helpers (no external imports needed) ─────────────────────────
 
 /** Deterministic HSL color from a seed string (matches avatarColor in player.ts) */
@@ -135,7 +136,7 @@ export async function generatePodiumImage({
   ctx.textAlign = 'center';
   ctx.font = `700 28px ${FONT}`;
   ctx.fillStyle = c.gold;
-  ctx.fillText('⭐  PÉPITES DU MATCH', W / 2, 265);
+  ctx.fillText(t('podiumImage.pepites'), W / 2, 265);
 
   // Podium — BOTTOM is pushed to 900 to leave room for avatar circles above names
   const BOTTOM = 900;
@@ -199,7 +200,7 @@ export async function generatePodiumImage({
 
     ctx.font = `400 28px ${FONT}`;
     ctx.fillStyle = c.t3;
-    ctx.fillText(`${player.pts} pt${player.pts > 1 ? 's' : ''}`, cx, nameY + 34);
+    ctx.fillText(t('vote.pts', { count: player.pts }), cx, nameY + 34);
   });
 
   // Citron section
@@ -227,7 +228,7 @@ export async function generatePodiumImage({
     ctx.textAlign = 'left';
     ctx.font = `600 26px ${FONT}`;
     ctx.fillStyle = c.t3;
-    ctx.fillText(lemonWinners.length > 1 ? 'Citrons ex-aequo' : 'Le Citron', PAD + 112, CITRON_Y + 38);
+    ctx.fillText(t(lemonWinners.length > 1 ? 'podiumImage.citronsTie' : 'podiumImage.citron'), PAD + 112, CITRON_Y + 38);
 
     const lName = fitText(
       lemonWinners.length > 1
@@ -243,7 +244,7 @@ export async function generatePodiumImage({
     ctx.textAlign = 'right';
     ctx.font = `700 34px ${FONT}`;
     ctx.fillStyle = c.lemon;
-    ctx.fillText(`${lemonWinner.pts} pt${lemonWinner.pts > 1 ? 's' : ''}`, W - PAD, CITRON_Y + 68);
+    ctx.fillText(t('vote.pts', { count: lemonWinner.pts }), W - PAD, CITRON_Y + 68);
   }
 
   // Footer — the image travels through team chats: say where it comes from.
@@ -254,7 +255,7 @@ export async function generatePodiumImage({
   ctx.fillText('pepite-citron.com', W / 2, H - 75);
   ctx.font = `400 24px ${FONT}`;
   ctx.fillStyle = c.t3;
-  ctx.fillText('Votez la pépite et le citron de votre équipe', W / 2, H - 38);
+  ctx.fillText(t('podiumImage.tagline'), W / 2, H - 38);
 
   return new Promise((resolve, reject) => {
     canvas.toBlob(blob => {

@@ -9,6 +9,8 @@ import { humanizeError } from '@/utils/errors';
 import { parseUpgradePlan, saveUpgradeIntent } from '@/utils/signupIntent';
 import { useAppStore } from '@/store/appStore';
 import type { UserSession } from '@/types';
+import { useT } from '@/i18n';
+import { LanguagePicker } from '@/components/LanguagePicker';
 
 interface AuthViewProps {
   onAuth: (session: UserSession) => void;
@@ -25,6 +27,7 @@ export function AuthView({ onAuth }: AuthViewProps) {
   // team is sent to /start, which also opens their first vote.
   const [searchParams] = useSearchParams();
   const navigate       = useNavigate();
+  const t              = useT();
   const pendingOrgId   = useAppStore(s => s.pendingOrgId);
   const [mode,      setMode]      = useState<AuthMode>(() => searchParams.get('mode') === 'signup' ? 'signup' : 'login');
   const [apiError,  setApiError]  = useState<string | null>(null);
@@ -91,7 +94,7 @@ export function AuthView({ onAuth }: AuthViewProps) {
         onAuth(session);
       } else {
         // Email confirmation on in Supabase: nothing to sign in with yet.
-        setApiError('Compte créé : confirme ton adresse email puis connecte-toi.');
+        setApiError(t('auth.confirmEmail'));
       }
     } catch (err) {
       track(EVENTS.AUTH_FAILED, { mode });
@@ -112,7 +115,7 @@ export function AuthView({ onAuth }: AuthViewProps) {
           <span className="header-citron">Citron</span>
         </div>
         <div style={{ fontSize: 13, color: 'var(--label3)', marginTop: 6 }}>
-          Votre app de vote pour le match
+          {t('auth.tagline')}
         </div>
       </div>
 
@@ -121,14 +124,14 @@ export function AuthView({ onAuth }: AuthViewProps) {
         {mode !== 'forgot' && (
           /* Mode toggle — login / signup */
           <div style={{ display: 'flex', gap: 4, marginBottom: 24, background: 'var(--bg3)', borderRadius: 'var(--radius-sm)', padding: 4 }}>
-            {([{ id: 'login', label: 'Se connecter' }, { id: 'signup', label: 'Créer un compte' }] as const).map(t => (
-              <button key={t.id} onClick={() => switchMode(t.id)} style={{
+            {([{ id: 'login', label: t('auth.tabLogin') }, { id: 'signup', label: t('auth.tabSignup') }] as const).map(tab => (
+              <button key={tab.id} onClick={() => switchMode(tab.id)} style={{
                 flex: 1, padding: '8px 0', borderRadius: 'var(--radius-sm)', border: 'none',
                 fontSize: 13, fontWeight: 600, cursor: 'pointer',
-                background: mode === t.id ? 'var(--bg)' : 'transparent',
-                color: mode === t.id ? 'var(--label)' : 'var(--label3)',
-                boxShadow: mode === t.id ? '0 1px 3px rgba(0,0,0,.3)' : 'none',
-              }}>{t.label}</button>
+                background: mode === tab.id ? 'var(--bg)' : 'transparent',
+                color: mode === tab.id ? 'var(--label)' : 'var(--label3)',
+                boxShadow: mode === tab.id ? '0 1px 3px rgba(0,0,0,.3)' : 'none',
+              }}>{tab.label}</button>
             ))}
           </div>
         )}
@@ -146,13 +149,13 @@ export function AuthView({ onAuth }: AuthViewProps) {
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M15 18l-6-6 6-6"/>
               </svg>
-              Retour
+              {t('auth.back')}
             </button>
             <div style={{ fontSize: 17, fontWeight: 700, color: 'var(--label)', marginBottom: 4 }}>
-              Mot de passe oublié
+              {t('auth.forgotTitle')}
             </div>
             <div style={{ fontSize: 13, color: 'var(--label3)', lineHeight: 1.5 }}>
-              Saisis ton adresse email. Tu recevras un lien pour créer un nouveau mot de passe.
+              {t('auth.forgotIntro')}
             </div>
           </div>
         )}
@@ -166,10 +169,10 @@ export function AuthView({ onAuth }: AuthViewProps) {
           }}>
             <div style={{ fontSize: 28, marginBottom: 8 }}>📬</div>
             <div style={{ fontSize: 14, fontWeight: 600, color: '#32D74B', marginBottom: 6 }}>
-              Email envoyé !
+              {t('auth.resetSent')}
             </div>
             <div style={{ fontSize: 13, color: 'var(--label3)', lineHeight: 1.5 }}>
-              Vérifie ta boîte mail et clique sur le lien pour réinitialiser ton mot de passe.
+              {t('auth.resetSentHint')}
             </div>
             <button
               onClick={() => switchMode('login')}
@@ -179,20 +182,20 @@ export function AuthView({ onAuth }: AuthViewProps) {
                 textDecoration: 'underline', textDecorationColor: 'var(--label4)',
               }}
             >
-              Retour à la connexion
+              {t('auth.backToLogin')}
             </button>
           </div>
         ) : (
           <form onSubmit={onSubmit} noValidate style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
             <div>
               <label htmlFor="auth-email" style={{ fontSize: 12, fontWeight: 600, color: 'var(--label3)', display: 'block', marginBottom: 6 }}>
-                Adresse email
+                {t('auth.emailLabel')}
               </label>
               <input
                 id="auth-email"
                 type="email"
                 autoComplete="email"
-                placeholder="vous@exemple.com"
+                placeholder={t('auth.emailPlaceholder')}
                 style={{ width: '100%', boxSizing: 'border-box', borderColor: errors.email ? 'var(--red)' : undefined }}
                 {...register('email')}
               />
@@ -202,12 +205,12 @@ export function AuthView({ onAuth }: AuthViewProps) {
             {mode !== 'forgot' && (
               <div>
                 <label htmlFor="auth-password" style={{ fontSize: 12, fontWeight: 600, color: 'var(--label3)', display: 'block', marginBottom: 6 }}>
-                  Mot de passe
+                  {t('auth.passwordLabel')}
                 </label>
                 <input
                   id="auth-password"
                   type="password"
-                  placeholder={mode === 'signup' ? '8 caractères minimum' : 'Votre mot de passe'}
+                  placeholder={t(mode === 'signup' ? 'auth.passwordPlaceholderSignup' : 'auth.passwordPlaceholderLogin')}
                   autoComplete={mode === 'signup' ? 'new-password' : 'current-password'}
                   style={{ width: '100%', boxSizing: 'border-box', borderColor: errors.password ? 'var(--red)' : undefined }}
                   {...register('password')}
@@ -228,7 +231,7 @@ export function AuthView({ onAuth }: AuthViewProps) {
                     textUnderlineOffset: 2, padding: 0,
                   }}
                 >
-                  Mot de passe oublié ?
+                  {t('auth.forgotLink')}
                 </button>
               </div>
             )}
@@ -245,8 +248,8 @@ export function AuthView({ onAuth }: AuthViewProps) {
 
             <button type="submit" className="btn btn-primary" disabled={isSubmitting} style={{ marginTop: 4 }}>
               {isSubmitting
-                ? (mode === 'signup' ? 'Création…' : mode === 'forgot' ? 'Envoi…' : 'Connexion…')
-                : (mode === 'signup' ? 'Créer mon compte' : mode === 'forgot' ? 'Envoyer le lien' : 'Se connecter')
+                ? t(mode === 'signup' ? 'auth.creating' : mode === 'forgot' ? 'auth.sending' : 'auth.signingIn')
+                : t(mode === 'signup' ? 'auth.createAccount' : mode === 'forgot' ? 'auth.sendLink' : 'common.signIn')
               }
             </button>
           </form>
@@ -263,35 +266,37 @@ export function AuthView({ onAuth }: AuthViewProps) {
             textUnderlineOffset: 3,
           }}
         >
-          📖 Comment ça marche ?
+          {t('auth.howItWorks')}
         </button>
         <p style={{ fontSize: 12, color: 'var(--label4)', lineHeight: 1.6 }}>
-          Vous souhaitez voter ?{' '}
+          {t('auth.wantToVote')}{' '}
           <span style={{ color: 'var(--label3)' }}>
-            Utilisez le lien partagé par votre capitaine.
+            {t('auth.useCaptainLink')}
           </span>
         </p>
         <p style={{ marginTop: 12, fontSize: 11, color: 'var(--label4)' }}>
-          En créant un compte, vous acceptez nos{' '}
+          {t('auth.acceptPrefix')}{' '}
           <a
             href="/terms.html"
             target="_blank"
             rel="noopener noreferrer"
             style={{ color: 'var(--label3)', textDecoration: 'underline', textUnderlineOffset: 2 }}
           >
-            CGU
+            {t('common.terms')}
           </a>
-          {' '}et notre{' '}
+          {' '}{t('quickStart.acceptAnd')}{' '}
           <a
             href="/privacy.html"
             target="_blank"
             rel="noopener noreferrer"
             style={{ color: 'var(--label3)', textDecoration: 'underline', textUnderlineOffset: 2 }}
           >
-            politique de confidentialité
+            {t('quickStart.privacyPolicy')}
           </a>.
         </p>
       </div>
+
+      <LanguagePicker compact />
 
       {showGuide && <OnboardingModal onClose={() => setShowGuide(false)} />}
     </div>

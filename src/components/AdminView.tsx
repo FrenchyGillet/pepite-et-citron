@@ -17,6 +17,7 @@ import type { Player, Match, Org } from '@/types';
 import { Toast } from './Toast';
 import { SetupChecklist } from './SetupChecklist';
 import { PushNotificationBanner } from './PushNotificationBanner';
+import { t } from '@/i18n';
 
 interface AdminViewProps {
   /** false for a captain: match of the day only, no roster or settings. */
@@ -68,7 +69,7 @@ export function AdminView({ isAdmin = true, players, activeMatch, currentOrg, on
     if (!currentOrg) return;
     await copyToClipboard(`${window.location.origin}/vote?org=${currentOrg.slug}`);
     track(EVENTS.ORG_LINK_COPIED);
-    setToast('Lien copié !');
+    setToast(t('common.copied'));
     markLinkShared();
   };
 
@@ -96,11 +97,10 @@ export function AdminView({ isAdmin = true, players, activeMatch, currentOrg, on
           padding: '14px 16px', margin: '8px 0 12px',
         }}>
           <div style={{ fontSize: 16, fontWeight: 800, color: 'var(--gold)', marginBottom: 4 }}>
-            🎉 Ton premier vote est ouvert !
+            {t('admin.firstVoteOpen')}
           </div>
           <p style={{ fontSize: 13, color: 'var(--label2)', lineHeight: 1.5 }}>
-            Fais scanner le QR code ou envoie le lien dans le groupe. Quand tout le monde a voté,
-            lance le dépouillement : les votes se révèlent un par un.
+            {t('admin.firstVoteHint')}
           </p>
         </div>
       )}
@@ -120,10 +120,10 @@ export function AdminView({ isAdmin = true, players, activeMatch, currentOrg, on
       <div style={{ marginBottom: 4 }}>
         <div style={{ marginBottom: 10, paddingTop: 4 }}>
           <div style={{ fontSize: 18, fontWeight: 700, color: 'var(--label)', letterSpacing: '-0.02em', marginBottom: 2 }}>
-            Match du soir
+            {t('admin.tonight')}
           </div>
           <p style={{ fontSize: 13, color: 'var(--label3)' }}>
-            {activeMatch ? 'Un vote est en cours.' : 'Lance le vote en quelques secondes.'}
+            {activeMatch ? t('admin.voteInProgress') : t('admin.launchInSeconds')}
           </p>
         </div>
 
@@ -143,9 +143,9 @@ export function AdminView({ isAdmin = true, players, activeMatch, currentOrg, on
           <div className="group">
             <div className="row">
               <div className="row-body">
-                <div className="row-title" style={{ color: 'var(--label3)' }}>Aucun joueur enregistré</div>
+                <div className="row-title" style={{ color: 'var(--label3)' }}>{t('admin.noPlayers')}</div>
                 <div className="row-sub">
-                  {isAdmin ? 'Ajoute tes joueurs dans "Effectif" ci-dessous ↓' : "L'admin doit d'abord ajouter les joueurs."}
+                  {isAdmin ? t('admin.addPlayersBelow') : t('admin.adminMustAdd')}
                 </div>
               </div>
             </div>
@@ -170,9 +170,9 @@ export function AdminView({ isAdmin = true, players, activeMatch, currentOrg, on
       {/* ── ZONE 2 : Effectif ──────────────────────────────────────────── */}
       {isAdmin && (<>
         <CollapsibleSection
-          title="Effectif"
+          title={t('admin.squad')}
           badge={activePlayers.length}
-          subtitle="Joueurs et équipes de l'organisation."
+          subtitle={t('admin.squadHint')}
           isOpen={effectifOpen}
           onToggle={() => setEffectifOpen(v => !v)}
         >
@@ -182,8 +182,8 @@ export function AdminView({ isAdmin = true, players, activeMatch, currentOrg, on
 
         {/* ── ZONE 3 : Paramètres ────────────────────────────────────────── */}
         <CollapsibleSection
-          title="Paramètres"
-          subtitle="Compte, saison et membres."
+          title={t('admin.settings')}
+          subtitle={t('admin.settingsHint')}
           isOpen={settingsOpen}
           onToggle={() => setSettingsOpen(v => !v)}
         >
@@ -208,9 +208,9 @@ export function AdminView({ isAdmin = true, players, activeMatch, currentOrg, on
         marginTop: 8,
       }}>
         {[
-          { label: 'Confidentialité', href: '/privacy.html' },
-          { label: 'CGU', href: '/terms.html' },
-          { label: 'Contact', href: 'mailto:contact@pepite-citron.com' },
+          { label: t('common.privacy'), href: '/privacy.html' },
+          { label: t('common.terms'), href: '/terms.html' },
+          { label: t('common.contact'), href: 'mailto:contact@pepite-citron.com' },
         ].map(link => (
           <a
             key={link.href}

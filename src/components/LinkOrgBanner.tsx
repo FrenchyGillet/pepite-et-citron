@@ -3,12 +3,14 @@ import { useOrg } from '@/hooks/useOrg';
 import { useJoinOrg } from '@/hooks/mutations';
 import { humanizeError } from '@/utils/errors';
 import { track, EVENTS } from '@/utils/analytics';
+import { useT } from '@/i18n';
 
 /**
  * Shown to a signed-in user who opened the vote link of a team other than
  * their usual one: says which team they are voting for, and how to go back.
  */
 export function LinkOrgBanner() {
+  const t = useT();
   const session    = useAppStore(s => s.session);
   const linkOrg    = useAppStore(s => s.linkOrg);
   const usualOrg   = useAppStore(s => s.usualOrg);
@@ -34,15 +36,15 @@ export function LinkOrgBanner() {
         <span aria-hidden="true" style={{ fontSize: 20 }}>🔀</span>
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--label)' }}>
-            Tu votes pour {currentOrg.name || 'une autre équipe'}
+            {t('linkOrg.votingFor', { team: currentOrg.name || t('linkOrg.anotherTeam') })}
           </div>
           <div style={{ fontSize: 12, color: 'var(--label3)', marginTop: 2 }}>
-            Ce n'est pas ton équipe habituelle ({usualOrg.name}).
+            {t('linkOrg.notUsual', { team: usualOrg.name })}
           </div>
         </div>
         <button className="btn btn-secondary" onClick={leave}
           style={{ fontSize: 13, padding: '8px 12px', minHeight: 44, flexShrink: 0 }}>
-          Revenir à {usualOrg.name}
+          {t('linkOrg.backTo', { team: usualOrg.name })}
         </button>
       </div>
     </div>
@@ -54,6 +56,7 @@ export function LinkOrgBanner() {
  * are not a member of can add it to their teams. Never automatic.
  */
 export function JoinLinkOrgOffer() {
+  const t = useT();
   const session    = useAppStore(s => s.session);
   const linkOrg    = useAppStore(s => s.linkOrg);
   const currentOrg = useAppStore(s => s.currentOrg);
@@ -67,7 +70,7 @@ export function JoinLinkOrgOffer() {
   if (isMember) {
     return join.isSuccess ? (
       <p role="status" style={{ textAlign: 'center', fontSize: 14, color: 'var(--green)', margin: '0 24px' }}>
-        {currentOrg.name} fait maintenant partie de tes équipes ✓
+        {t('linkOrg.joined', { team: currentOrg.name })}
       </p>
     ) : null;
   }
@@ -76,7 +79,7 @@ export function JoinLinkOrgOffer() {
     <div style={{ textAlign: 'center', padding: '0 24px' }}>
       <button className="btn btn-secondary" disabled={join.isPending}
         onClick={() => join.mutate(currentOrg.id, { onSuccess: () => track(EVENTS.LINK_ORG_JOINED) })}>
-        {join.isPending ? 'Ajout…' : `Ajouter ${currentOrg.name} à mes équipes`}
+        {join.isPending ? t('linkOrg.adding') : t('linkOrg.add', { team: currentOrg.name })}
       </button>
       {join.isError && (
         <p role="alert" style={{ fontSize: 13, color: 'var(--red)', marginTop: 8 }}>

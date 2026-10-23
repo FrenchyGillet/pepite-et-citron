@@ -2,9 +2,12 @@ import "@testing-library/jest-dom";
 import { afterAll, afterEach, beforeAll, vi } from "vitest";
 import { cleanup } from "@testing-library/react";
 import { resetAppStore } from "@/store/appStore";
+import { useLangStore } from "@/i18n";
 import { server } from "./server";
 
 beforeAll(() => {
+  // jsdom reports an English browser: tests run in French unless they switch.
+  useLangStore.setState({ lang: "fr" });
   Object.assign(navigator, {
     clipboard: { writeText: vi.fn().mockResolvedValue(undefined) },
   });
@@ -19,6 +22,7 @@ afterEach(() => {
   cleanup();
   localStorage.clear();
   resetAppStore();
+  useLangStore.setState({ lang: "fr" });
   server.resetHandlers();
 });
 

@@ -4,6 +4,7 @@ import { track, EVENTS } from '@/utils/analytics';
 import { sharedLandingUrl } from '@/utils/share';
 import type { RankedPlayer, RankedLemonPlayer } from '@/utils/scoring';
 import type { Match } from '@/types';
+import { dateLocale, t } from '@/i18n';
 
 interface SharePodiumButtonProps {
   match: Match;
@@ -22,7 +23,7 @@ export function SharePodiumButton({ match, pepiteRanked, lemonRanked, isDark }: 
     setState('generating');
 
     try {
-      const matchDate = new Date(match.created_at).toLocaleDateString('fr-BE', {
+      const matchDate = new Date(match.created_at).toLocaleDateString(dateLocale(), {
         day: 'numeric', month: 'short', year: 'numeric',
       });
 
@@ -32,8 +33,8 @@ export function SharePodiumButton({ match, pepiteRanked, lemonRanked, isDark }: 
       if (navigator.canShare?.({ files: [file] })) {
         await navigator.share({
           files: [file],
-          title: `Podium : ${match.label}`,
-          text:  `Podium via Pépite & Citron 🏆 ${sharedLandingUrl('podium')}`,
+          title: t('share.title', { match: match.label }),
+          text:  t('share.text', { url: sharedLandingUrl('podium') }),
         });
         track(EVENTS.PODIUM_SHARED, { method: 'share' });
         setState('done');
@@ -62,10 +63,10 @@ export function SharePodiumButton({ match, pepiteRanked, lemonRanked, isDark }: 
   };
 
   const label: Record<ShareState, string> = {
-    idle:       'Partager le podium',
-    generating: 'Génération…',
-    done:       '✓ Image prête',
-    error:      'Erreur, réessaie',
+    idle:       t('share.idle'),
+    generating: t('share.generating'),
+    done:       t('share.done'),
+    error:      t('share.error'),
   };
 
   return (

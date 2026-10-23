@@ -1,5 +1,6 @@
 import { useCallback, useState } from 'react';
 import { useModalA11y } from '@/hooks/useModalA11y';
+import { t } from '@/i18n';
 
 /**
  * Promise-based confirmation modal — replaces window.confirm(), which is
@@ -49,8 +50,8 @@ export function useConfirm() {
 
 function ConfirmModal({
   message,
-  confirmLabel = 'Confirmer',
-  cancelLabel = 'Annuler',
+  confirmLabel = t('confirm.confirm'),
+  cancelLabel = t('common.cancel'),
   danger = false,
   onConfirm,
   onCancel,

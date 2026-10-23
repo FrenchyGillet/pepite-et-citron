@@ -1,6 +1,7 @@
 import { signupSchema } from '@/schemas';
 import { parsePlayerNames } from '@/utils/player';
 import { toSlug } from '@/utils/slug';
+import { dateLocale, t } from '@/i18n';
 
 /** A vote needs at least 3 present players (each voter picks 2 others). */
 export const QUICK_START_MIN_PLAYERS = 3;
@@ -12,7 +13,7 @@ export function quickStartPepiteCount(playerCount: number): 2 | 3 {
 
 /** "Match du 6 oct." — the first match is named for the organiser. */
 export function defaultMatchLabel(date: Date = new Date()): string {
-  return `Match du ${date.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })}`;
+  return t('quickStart.matchLabel', { date: date.toLocaleDateString(dateLocale(), { day: 'numeric', month: 'short' }) });
 }
 
 /** Slug of the vote link; a name with no usable letters still gets one. */
@@ -40,20 +41,20 @@ export function validateQuickStart(form: QuickStartForm, { needsAccount = true }
 } {
   const errors: Partial<Record<QuickStartField, string>> = {};
   const teamName = form.teamName.trim();
-  if (teamName.length < 2) errors.teamName = "Donne un nom à ton équipe.";
-  else if (teamName.length > 60) errors.teamName = 'Trop long (60 caractères max).';
+  if (teamName.length < 2) errors.teamName = t('quickStart.teamNameMissing');
+  else if (teamName.length > 60) errors.teamName = t('quickStart.teamNameTooLong');
 
   const { toAdd: names, tooLong } = parsePlayerNames(form.playersText, []);
-  if (tooLong.length) errors.playersText = `Prénom trop long : ${tooLong[0]}`;
+  if (tooLong.length) errors.playersText = t('quickStart.nameTooLong', { name: tooLong[0] });
   else if (names.length < QUICK_START_MIN_PLAYERS) {
-    errors.playersText = `Ajoute au moins ${QUICK_START_MIN_PLAYERS} joueurs pour lancer un vote.`;
+    errors.playersText = t('quickStart.minPlayers', { min: QUICK_START_MIN_PLAYERS });
   }
 
   if (needsAccount) {
     const email = signupSchema.shape.email.safeParse(form.email.trim());
-    if (!email.success) errors.email = 'Adresse email invalide.';
+    if (!email.success) errors.email = t('quickStart.emailInvalid');
     const password = signupSchema.shape.password.safeParse(form.password);
-    if (!password.success) errors.password = 'Au moins 8 caractères.';
+    if (!password.success) errors.password = t('quickStart.passwordShort');
   }
 
   return { errors, names };

@@ -1,13 +1,14 @@
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
 import { useModalA11y } from '@/hooks/useModalA11y';
 import { track, EVENTS } from '@/utils/analytics';
+import { useT, type TKey } from '@/i18n';
 
 interface Step {
   color: string;
   bg: string;
   icon: ReactNode;
-  title: string;
-  desc: string;
+  title: TKey;
+  desc: TKey;
 }
 
 const STEPS: Step[] = [
@@ -17,8 +18,8 @@ const STEPS: Step[] = [
     icon: (
       <path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2M9 11a4 4 0 100-8 4 4 0 000 8zM23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75"/>
     ),
-    title: 'Ajoute tes joueurs',
-    desc: "Dans Admin → Effectif, saisis le prénom de chaque membre de l'équipe. Tu n'auras à le faire qu'une seule fois.",
+    title: 'onboarding.playersTitle',
+    desc: 'onboarding.playersDesc',
   },
   {
     color: '#34C759',
@@ -30,8 +31,8 @@ const STEPS: Step[] = [
         <path d="M8 14h.01M12 14h.01M16 14h.01"/>
       </>
     ),
-    title: 'Ouvre le vote',
-    desc: "Avant chaque match, sélectionne les joueurs présents et lance le vote. L'accès se fait instantanément depuis leur téléphone.",
+    title: 'onboarding.voteTitle',
+    desc: 'onboarding.voteDesc',
   },
   {
     color: '#007AFF',
@@ -42,8 +43,8 @@ const STEPS: Step[] = [
         <path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71"/>
       </>
     ),
-    title: 'Partage le lien',
-    desc: "Envoie le lien d'équipe dans ton groupe de discussion. Chaque joueur vote depuis son téléphone, sans app à installer.",
+    title: 'onboarding.shareTitle',
+    desc: 'onboarding.shareDesc',
   },
   {
     color: 'var(--lemon)',
@@ -54,8 +55,8 @@ const STEPS: Step[] = [
         <path d="M15.477 12.89L17 22l-5-3-5 3 1.523-9.11"/>
       </>
     ),
-    title: 'Dévoile les résultats',
-    desc: "Lance le dépouillement depuis le match en cours. Les votes se révèlent un par un pour créer la surprise. La Pépite et le Citron sont couronnés !",
+    title: 'onboarding.revealTitle',
+    desc: 'onboarding.revealDesc',
   },
 ];
 
@@ -64,6 +65,7 @@ interface OnboardingModalProps {
 }
 
 export function OnboardingModal({ onClose }: OnboardingModalProps) {
+  const t = useT();
   const [step, setStep] = useState(0);
   const isLast = step === STEPS.length - 1;
   const s = STEPS[step];
@@ -93,7 +95,7 @@ export function OnboardingModal({ onClose }: OnboardingModalProps) {
         ref={dialogRef}
         role="dialog"
         aria-modal="true"
-        aria-label={`Guide de démarrage, étape ${step + 1} sur ${STEPS.length} : ${s.title}`}
+        aria-label={t('onboarding.ariaLabel', { step: step + 1, total: STEPS.length, title: t(s.title) })}
         style={{
           background: 'var(--bg2)', borderRadius: '24px 24px 0 0',
           width: '100%', maxWidth: 480, padding: '8px 24px 32px',
@@ -124,10 +126,10 @@ export function OnboardingModal({ onClose }: OnboardingModalProps) {
 
         <div style={{ textAlign: 'center', marginBottom: 32 }}>
           <div style={{ fontSize: 22, fontWeight: 800, color: 'var(--label)', letterSpacing: '-0.02em', marginBottom: 10 }}>
-            {s.title}
+            {t(s.title)}
           </div>
           <div style={{ fontSize: 15, color: 'var(--label3)', lineHeight: 1.6, maxWidth: 320, margin: '0 auto' }}>
-            {s.desc}
+            {t(s.desc)}
           </div>
         </div>
 
@@ -137,14 +139,14 @@ export function OnboardingModal({ onClose }: OnboardingModalProps) {
               flex: 1, padding: '13px', background: 'var(--bg3)', border: 'none',
               borderRadius: 14, fontSize: 15, fontWeight: 600, color: 'var(--label3)', cursor: 'pointer',
             }}>
-              Passer
+              {t('onboarding.skip')}
             </button>
           ) : (
             <button onClick={() => setStep(s => s - 1)} style={{
               flex: 1, padding: '13px', background: 'var(--bg3)', border: 'none',
               borderRadius: 14, fontSize: 15, fontWeight: 600, color: 'var(--label3)', cursor: 'pointer',
             }}>
-              ← Retour
+              {t('common.back')}
             </button>
           )}
           <button onClick={() => isLast ? close() : setStep(s => s + 1)} style={{
@@ -152,7 +154,7 @@ export function OnboardingModal({ onClose }: OnboardingModalProps) {
             borderRadius: 14, fontSize: 15, fontWeight: 700,
             color: step === 1 || step === 2 ? '#fff' : '#000', cursor: 'pointer',
           }}>
-            {isLast ? "C'est parti ! 🚀" : 'Suivant →'}
+            {isLast ? t('onboarding.go') : t('onboarding.next')}
           </button>
         </div>
       </div>

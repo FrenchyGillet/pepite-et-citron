@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { api } from '@/api';
 import { useAppStore } from '@/store/appStore';
 import { track, EVENTS } from '@/utils/analytics';
+import { useT } from '@/i18n';
 
 interface JoinOrgViewProps {
   orgId:   string;
@@ -15,6 +16,7 @@ interface JoinOrgViewProps {
  * rendering this view until pendingOrgId is cleared.
  */
 export function JoinOrgView({ orgId, orgName }: JoinOrgViewProps) {
+  const t = useT();
   const [status,  setStatus]  = useState<'joining' | 'done' | 'error'>('joining');
   const [attempt, setAttempt] = useState(0);
 
@@ -86,12 +88,12 @@ export function JoinOrgView({ orgId, orgName }: JoinOrgViewProps) {
           )}
         </div>
         <div style={{ fontSize: 19, fontWeight: 700, color: 'var(--label)', marginBottom: 8, textAlign: 'center' }}>
-          {status === 'done' ? `Bienvenue dans ${orgName} ! 🎉` : 'Connexion à l\'équipe…'}
+          {status === 'done' ? t('joinOrg.welcome', { team: orgName }) : t('joinOrg.joining')}
         </div>
         <div style={{ fontSize: 14, color: 'var(--label3)', textAlign: 'center', lineHeight: 1.6 }}>
           {status === 'done'
-            ? 'Tu peux maintenant voter et suivre tes stats de saison.'
-            : `Liaison de ton compte à ${orgName}…`}
+            ? t('joinOrg.doneHint')
+            : t('joinOrg.linking', { team: orgName })}
         </div>
       </div>
     );
@@ -112,18 +114,17 @@ export function JoinOrgView({ orgId, orgName }: JoinOrgViewProps) {
       }}>
         <div style={{ fontSize: 36, marginBottom: 12 }}>✅</div>
         <div style={{ fontSize: 18, fontWeight: 700, color: 'var(--label)', marginBottom: 8 }}>
-          Compte créé !
+          {t('joinOrg.accountCreated')}
         </div>
         <p style={{ fontSize: 14, color: 'var(--label3)', lineHeight: 1.6, marginBottom: 20 }}>
-          On n&apos;a pas réussi à te relier à l&apos;équipe{' '}
-          <strong style={{ color: 'var(--label)' }}>{orgName}</strong>. Réessaie, ou demande à ton
-          capitaine de t&apos;ajouter pour accéder aux stats de saison.
+          {t('joinOrg.failedBefore')}{' '}
+          <strong style={{ color: 'var(--label)' }}>{orgName}</strong>. {t('joinOrg.failedAfter')}
         </p>
         <button className="btn btn-primary btn-full" onClick={() => setAttempt(a => a + 1)}>
-          Réessayer
+          {t('common.retry')}
         </button>
         <button className="btn btn-secondary btn-full" style={{ marginTop: 10 }} onClick={continueWithoutTeam}>
-          Continuer sans équipe
+          {t('joinOrg.continueWithout')}
         </button>
       </div>
     </div>

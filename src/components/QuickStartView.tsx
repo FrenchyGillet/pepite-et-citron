@@ -15,12 +15,14 @@ import {
   saveQuickStartDraft, validateQuickStart, type QuickStartField, type QuickStartForm,
 } from '@/utils/quickStart';
 import type { Org } from '@/types';
+import { useT, type TKey } from '@/i18n';
+import { LanguagePicker } from '@/components/LanguagePicker';
 
-const STEP_LABELS: Record<QuickStartStep, string> = {
-  account: 'Création du compte…',
-  team:    "Création de l'équipe…",
-  players: 'Ajout des joueurs…',
-  match:   'Ouverture du vote…',
+const STEP_LABELS: Record<QuickStartStep, TKey> = {
+  account: 'quickStart.stepAccount',
+  team:    'quickStart.stepTeam',
+  players: 'quickStart.stepPlayers',
+  match:   'quickStart.stepMatch',
 };
 
 const labelStyle: CSSProperties = {
@@ -51,6 +53,7 @@ export function QuickStartView({ onSignOut }: QuickStartViewProps = {}) {
   const navigate       = useNavigate();
   const [searchParams] = useSearchParams();
   const queryClient    = useQueryClient();
+  const t              = useT();
 
   const session = useAppStore(s => s.session);
   const myOrgs  = useAppStore(s => s.myOrgs);
@@ -177,10 +180,10 @@ export function QuickStartView({ onSignOut }: QuickStartViewProps = {}) {
           <span className="header-citron">Citron</span>
         </div>
         <h1 style={{ fontSize: 20, fontWeight: 800, color: 'var(--label)', marginTop: 14, letterSpacing: '-0.02em' }}>
-          Lance ton premier vote
+          {t('quickStart.title')}
         </h1>
         <p style={{ fontSize: 13, color: 'var(--label3)', marginTop: 4 }}>
-          Une minute, puis toute l'équipe vote depuis son téléphone.
+          {t('quickStart.subtitle')}
         </p>
       </div>
 
@@ -189,17 +192,17 @@ export function QuickStartView({ onSignOut }: QuickStartViewProps = {}) {
         padding: 20, display: 'flex', flexDirection: 'column', gap: 14,
       }}>
         <div>
-          <label htmlFor="qs-team" style={labelStyle}>Nom de l'équipe</label>
-          <input id="qs-team" placeholder="ex : FC Les Lions" value={form.teamName} disabled={!!step}
+          <label htmlFor="qs-team" style={labelStyle}>{t('quickStart.teamLabel')}</label>
+          <input id="qs-team" placeholder={t('quickStart.teamPlaceholder')} value={form.teamName} disabled={!!step}
             onChange={e => update('teamName', e.target.value)}
             style={{ width: '100%', boxSizing: 'border-box', borderColor: errors.teamName ? 'var(--red)' : undefined }} />
           <FieldError msg={errors.teamName} />
         </div>
 
         <div>
-          <label htmlFor="qs-players" style={labelStyle}>Les joueurs</label>
+          <label htmlFor="qs-players" style={labelStyle}>{t('quickStart.playersLabel')}</label>
           <textarea id="qs-players" rows={6} value={form.playersText} disabled={!!step}
-            placeholder={'Un prénom par ligne, ou colle la liste du groupe\nAntoine\nBaptiste\nClément'}
+            placeholder={t('quickStart.playersPlaceholder')}
             onChange={e => update('playersText', e.target.value)}
             style={{
               width: '100%', boxSizing: 'border-box', resize: 'vertical', fontFamily: 'inherit', fontSize: 15,
@@ -209,17 +212,17 @@ export function QuickStartView({ onSignOut }: QuickStartViewProps = {}) {
             }} />
           <p aria-live="polite" style={{ fontSize: 12, color: 'var(--label3)', marginTop: 4 }}>
             {names.length === 0
-              ? `Au moins ${QUICK_START_MIN_PLAYERS} joueurs. Tu pourras en ajouter plus tard.`
+              ? t('quickStart.playersHintEmpty', { min: QUICK_START_MIN_PLAYERS })
               : names.length < QUICK_START_MIN_PLAYERS
-                ? `${names.length} joueur${names.length > 1 ? 's' : ''} · encore ${QUICK_START_MIN_PLAYERS - names.length} pour lancer un vote`
-                : `${names.length} joueurs · vote à ${pepiteCount} pépites + 1 citron`}
+                ? t('quickStart.playersHintFew', { count: names.length, missing: QUICK_START_MIN_PLAYERS - names.length })
+                : t('quickStart.playersHintReady', { count: names.length, pepites: pepiteCount })}
           </p>
           <FieldError msg={errors.playersText} />
         </div>
 
         {names.length > 0 && (
           <div>
-            <p id="qs-me-label" style={labelStyle}>Et toi, c'est lequel ? <span style={{ fontWeight: 400 }}>(pour voter aussi)</span></p>
+            <p id="qs-me-label" style={labelStyle}>{t('quickStart.meLabel')} <span style={{ fontWeight: 400 }}>{t('quickStart.meHint')}</span></p>
             <div role="group" aria-labelledby="qs-me-label" style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
               {names.map(n => (
                 <button key={n} type="button" aria-pressed={me === n} disabled={!!step}
@@ -235,21 +238,20 @@ export function QuickStartView({ onSignOut }: QuickStartViewProps = {}) {
         {!signedIn && <>
         <div style={{ height: 1, background: 'var(--separator)', margin: '4px 0' }} />
         <p style={{ fontSize: 12, color: 'var(--label3)', marginBottom: -4 }}>
-          Ton compte organisateur, pour gérer l'équipe et dévoiler les résultats.
-          Les joueurs, eux, votent sans compte.
+          {t('quickStart.accountIntro')}
         </p>
 
         <div>
-          <label htmlFor="qs-email" style={labelStyle}>Adresse email</label>
-          <input id="qs-email" type="email" autoComplete="email" placeholder="toi@exemple.com"
+          <label htmlFor="qs-email" style={labelStyle}>{t('quickStart.emailLabel')}</label>
+          <input id="qs-email" type="email" autoComplete="email" placeholder={t('quickStart.emailPlaceholder')}
             value={form.email} disabled={!!step} onChange={e => update('email', e.target.value)}
             style={{ width: '100%', boxSizing: 'border-box', borderColor: errors.email ? 'var(--red)' : undefined }} />
           <FieldError msg={errors.email} />
         </div>
 
         <div>
-          <label htmlFor="qs-password" style={labelStyle}>Mot de passe</label>
-          <input id="qs-password" type="password" autoComplete="new-password" placeholder="8 caractères minimum"
+          <label htmlFor="qs-password" style={labelStyle}>{t('quickStart.passwordLabel')}</label>
+          <input id="qs-password" type="password" autoComplete="new-password" placeholder={t('quickStart.passwordPlaceholder')}
             value={form.password} disabled={!!step} onChange={e => update('password', e.target.value)}
             style={{ width: '100%', boxSizing: 'border-box', borderColor: errors.password ? 'var(--red)' : undefined }} />
           <FieldError msg={errors.password} />
@@ -264,43 +266,44 @@ export function QuickStartView({ onSignOut }: QuickStartViewProps = {}) {
             {apiError}
             {progress.current.signedUp && (
               <div style={{ marginTop: 4 }}>
-                {signedIn ? 'Réessaie' : 'Ton compte est créé : réessaie'}, on reprend où ça s'est arrêté.
+                {t(signedIn ? 'quickStart.retrySignedIn' : 'quickStart.retryAccountCreated')}
               </div>
             )}
           </div>
         )}
 
         <button type="submit" className="btn btn-primary" disabled={!!step} style={{ fontSize: 16, fontWeight: 800, padding: '14px' }}>
-          {step ? STEP_LABELS[step]
-            : names.length >= QUICK_START_MIN_PLAYERS ? `Lancer le vote · ${names.length} joueurs` : 'Lancer le vote'}
+          {step ? t(STEP_LABELS[step])
+            : names.length >= QUICK_START_MIN_PLAYERS ? t('quickStart.launchWithCount', { count: names.length }) : t('quickStart.launch')}
         </button>
       </form>
 
       <div style={{ marginTop: 20, textAlign: 'center', maxWidth: 360, fontSize: 13, color: 'var(--label3)' }}>
         {!signedIn ? (
           <p>
-            Déjà un compte ?{' '}
-            <button type="button" style={linkStyle} onClick={() => navigate('/login')}>Se connecter</button>
+            {t('quickStart.haveAccount')}{' '}
+            <button type="button" style={linkStyle} onClick={() => navigate('/login')}>{t('common.signIn')}</button>
           </p>
         ) : myOrgs.length > 0 ? (
-          <button type="button" style={linkStyle} disabled={!!step} onClick={() => navigate('/profile')}>← Retour</button>
+          <button type="button" style={linkStyle} disabled={!!step} onClick={() => navigate('/profile')}>{t('common.back')}</button>
         ) : (
           <p>
-            Connecté avec {session?.user?.email}
+            {t('quickStart.signedInAs', { email: session?.user?.email ?? '' })}
             {onSignOut && <>
               {' · '}
-              <button type="button" style={linkStyle} disabled={!!step} onClick={onSignOut}>Se déconnecter</button>
+              <button type="button" style={linkStyle} disabled={!!step} onClick={onSignOut}>{t('common.signOut')}</button>
             </>}
           </p>
         )}
         {!signedIn && (
         <p style={{ marginTop: 12, fontSize: 11, color: 'var(--label4)', lineHeight: 1.6 }}>
-          En créant un compte, tu acceptes nos{' '}
-          <a href="/terms.html" target="_blank" rel="noopener noreferrer" style={{ color: 'var(--label3)', textDecoration: 'underline' }}>CGU</a>
-          {' '}et notre{' '}
-          <a href="/privacy.html" target="_blank" rel="noopener noreferrer" style={{ color: 'var(--label3)', textDecoration: 'underline' }}>politique de confidentialité</a>.
+          {t('quickStart.acceptPrefix')}{' '}
+          <a href="/terms.html" target="_blank" rel="noopener noreferrer" style={{ color: 'var(--label3)', textDecoration: 'underline' }}>{t('common.terms')}</a>
+          {' '}{t('quickStart.acceptAnd')}{' '}
+          <a href="/privacy.html" target="_blank" rel="noopener noreferrer" style={{ color: 'var(--label3)', textDecoration: 'underline' }}>{t('quickStart.privacyPolicy')}</a>.
         </p>
         )}
+        <LanguagePicker compact />
       </div>
     </div>
   );

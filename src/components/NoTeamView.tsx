@@ -1,3 +1,4 @@
+import { useT } from '@/i18n';
 interface NoTeamViewProps {
   onCreate: () => void;
   onRetry: () => void;
@@ -10,6 +11,7 @@ interface NoTeamViewProps {
  * "Réessayer", in case an existing team simply failed to load.
  */
 export function NoTeamView({ onCreate, onRetry, onSignOut }: NoTeamViewProps) {
+  const t = useT();
   return (
     <div style={{
       minHeight: '100dvh', display: 'flex', flexDirection: 'column',
@@ -30,19 +32,19 @@ export function NoTeamView({ onCreate, onRetry, onSignOut }: NoTeamViewProps) {
       }}>
         <div style={{ fontSize: 36, marginBottom: 12 }}>⭐</div>
         <h1 style={{ fontSize: 19, fontWeight: 700, color: 'var(--label)', margin: '0 0 8px' }}>
-          Pas encore d'équipe
+          {t('noTeam.title')}
         </h1>
         <p style={{ fontSize: 14, color: 'var(--label2)', lineHeight: 1.6, margin: '0 0 8px' }}>
-          Crée ton équipe pour lancer tes premiers votes après les matchs.
+          {t('noTeam.intro')}
         </p>
         <p style={{ fontSize: 13, color: 'var(--label3)', lineHeight: 1.6, margin: '0 0 20px' }}>
-          Tu es joueur ? Pas besoin d'équipe ni de compte : ouvre le lien de vote envoyé par ton capitaine.
+          {t('noTeam.playerHint')}
         </p>
         <button className="btn btn-primary btn-full" onClick={onCreate}>
-          Créer mon équipe
+          {t('noTeam.create')}
         </button>
         <button className="btn btn-secondary btn-full" style={{ marginTop: 10 }} onClick={onRetry}>
-          J'ai déjà une équipe, réessayer
+          {t('noTeam.retry')}
         </button>
         <button
           onClick={onSignOut}
@@ -51,7 +53,7 @@ export function NoTeamView({ onCreate, onRetry, onSignOut }: NoTeamViewProps) {
             fontSize: 13, color: 'var(--label3)', textDecoration: 'underline',
           }}
         >
-          Se déconnecter
+          {t('common.signOut')}
         </button>
       </div>
     </div>

@@ -4,6 +4,7 @@ import { track, EVENTS } from '@/utils/analytics';
 import { useCreateTeam, useUpdateTeam, useDeleteTeam } from '@/hooks/mutations';
 import type { EntityId, Player, Team } from '@/types';
 import { activeTeamPlayerIds, sectionLabelStyle, type ConfirmFn, type Notify } from './shared';
+import { t } from '@/i18n';
 
 interface TeamsSectionProps {
   activePlayers: Player[];
@@ -39,57 +40,57 @@ export function TeamsSection({ activePlayers, teams, orgId, notify, confirm }: T
       { name: result.data.name, playerIds: teamIds },
       { onSuccess: () => {
         track(EVENTS.LINEUP_CREATED, { players: teamIds.length });
-        setTeamName(''); setTeamIds([]); notify('Équipe sauvegardée !');
+        setTeamName(''); setTeamIds([]); notify(t('teams.saved'));
       } },
     );
   };
 
   const deleteTeam = async (id: EntityId, name: string) => {
-    if (!(await confirm({ message: `Supprimer l'équipe "${name}" ?`, confirmLabel: 'Supprimer', danger: true }))) return;
+    if (!(await confirm({ message: t('teams.deleteConfirm', { name }), confirmLabel: t('teams.delete'), danger: true }))) return;
     deleteTeamMutation.mutate(id);
   };
 
-  const startEditTeam = (t: Team) => {
-    if (editingTeamId === t.id) { setEditingTeamId(null); return; } // toggle off
-    setEditingTeamId(t.id);
-    setEditingPlayerIds(activeTeamPlayerIds(t, activePlayers));
+  const startEditTeam = (team: Team) => {
+    if (editingTeamId === team.id) { setEditingTeamId(null); return; } // toggle off
+    setEditingTeamId(team.id);
+    setEditingPlayerIds(activeTeamPlayerIds(team, activePlayers));
   };
 
   const saveTeamEdit = () => {
     if (!editingTeamId || editingPlayerIds.length < 2) return;
     updateTeamMutation.mutate(
       { id: editingTeamId, playerIds: editingPlayerIds },
-      { onSuccess: () => { setEditingTeamId(null); notify('Équipe mise à jour !'); } },
+      { onSuccess: () => { setEditingTeamId(null); notify(t('teams.updated')); } },
     );
   };
 
   return (
     <div>
-      <p style={sectionLabelStyle}>Équipes · {teams.length}</p>
+      <p style={sectionLabelStyle}>{t('teams.title', { count: teams.length })}</p>
       {teams.length > 0 && (
         <div className="group" style={{ marginBottom: 12 }}>
-          {teams.map((t, i) => {
-            const isEditing = editingTeamId === t.id;
+          {teams.map((team, i) => {
+            const isEditing = editingTeamId === team.id;
             return (
-              <div key={String(t.id)}>
+              <div key={String(team.id)}>
                 {i > 0 && <div style={{ height: 1, background: 'var(--separator)', margin: '0 16px' }} />}
                 <div className="row">
                   <div className="row-body">
-                    <div className="row-title">{t.name}</div>
+                    <div className="row-title">{team.name}</div>
                     <div className="row-sub" style={{ marginTop: 3 }}>
-                      {activePlayers.filter(p => t.player_ids.includes(p.id)).map(p => p.name).join(' · ')}
+                      {activePlayers.filter(p => team.player_ids.includes(p.id)).map(p => p.name).join(' · ')}
                     </div>
                   </div>
                   <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
                     <button
                       className="btn btn-secondary"
                       style={{ padding: '5px 12px', fontSize: 13, color: isEditing ? 'var(--gold)' : undefined }}
-                      onClick={() => startEditTeam(t)}
+                      onClick={() => startEditTeam(team)}
                     >
-                      {isEditing ? 'Annuler' : 'Modifier'}
+                      {isEditing ? t('common.cancel') : t('teams.edit')}
                     </button>
                     <button className="btn btn-danger" style={{ padding: '5px 12px', fontSize: 13 }}
-                      onClick={() => void deleteTeam(t.id, t.name)}>Supprimer</button>
+                      onClick={() => void deleteTeam(team.id, team.name)}>{t('teams.delete')}</button>
                   </div>
                 </div>
 
@@ -98,14 +99,14 @@ export function TeamsSection({ activePlayers, teams, orgId, notify, confirm }: T
                   <div style={{ padding: '14px 16px', borderTop: '1px solid var(--separator)', background: 'var(--bg3)' }}>
                     <div className="flex-between" style={{ marginBottom: 8 }}>
                       <p style={{ fontSize: 13, color: 'var(--label3)' }}>
-                        Joueurs
+                        {t('teams.players')}
                         <span style={{ color: 'var(--label2)', marginLeft: 6 }}>
-                          {editingPlayerIds.length} sélectionné{editingPlayerIds.length !== 1 ? 's' : ''}
+                          {t('teams.selected', { count: editingPlayerIds.length })}
                         </span>
                       </p>
                       <div className="flex gap-8">
-                        <button className="tag tag-dim" onClick={() => setEditingPlayerIds(activePlayers.map(p => p.id))}>Tous</button>
-                        <button className="tag tag-dim" onClick={() => setEditingPlayerIds([])}>Aucun</button>
+                        <button className="tag tag-dim" onClick={() => setEditingPlayerIds(activePlayers.map(p => p.id))}>{t('launcher.all')}</button>
+                        <button className="tag tag-dim" onClick={() => setEditingPlayerIds([])}>{t('launcher.none')}</button>
                       </div>
                     </div>
                     <div className="player-grid" style={{ marginBottom: 12 }}>
@@ -121,7 +122,7 @@ export function TeamsSection({ activePlayers, teams, orgId, notify, confirm }: T
                     </div>
                     {editingPlayerIds.length < 2 && (
                       <p style={{ fontSize: 12, color: 'var(--label3)', marginBottom: 8 }}>
-                        Sélectionne au moins 2 joueurs.
+                        {t('teams.minTwo')}
                       </p>
                     )}
                     <button
@@ -129,7 +130,7 @@ export function TeamsSection({ activePlayers, teams, orgId, notify, confirm }: T
                       disabled={editingPlayerIds.length < 2 || updateTeamMutation.isPending}
                       onClick={saveTeamEdit}
                     >
-                      {updateTeamMutation.isPending ? 'Sauvegarde…' : `Enregistrer · ${editingPlayerIds.length} joueur${editingPlayerIds.length !== 1 ? 's' : ''}`}
+                      {updateTeamMutation.isPending ? t('teams.saving') : t('teams.saveCount', { count: editingPlayerIds.length })}
                     </button>
                   </div>
                 )}
@@ -141,24 +142,24 @@ export function TeamsSection({ activePlayers, teams, orgId, notify, confirm }: T
       <div style={{ marginBottom: 8 }}>
         <button className="tag tag-dim" style={{ fontSize: 13, padding: '7px 12px' }}
           onClick={() => setShowNewTeam(v => !v)}>
-          {showNewTeam ? '▲ Masquer' : '＋ Créer une équipe'}
+          {showNewTeam ? t('teams.hide') : t('teams.create')}
         </button>
       </div>
       {showNewTeam && (
         <div className="group" style={{ padding: '14px 16px' }}>
-          <label htmlFor="admin-team-name" style={{ display: 'block', fontSize: 13, color: 'var(--label3)', marginBottom: 8 }}>Nom de l'équipe</label>
-          <input id="admin-team-name" placeholder="ex : Équipe championnat, Coupe, Tournoi…" value={teamName}
+          <label htmlFor="admin-team-name" style={{ display: 'block', fontSize: 13, color: 'var(--label3)', marginBottom: 8 }}>{t('teams.nameLabel')}</label>
+          <input id="admin-team-name" placeholder={t('teams.namePlaceholder')} value={teamName}
             onChange={e => { setTeamName(e.target.value); setTeamError(null); }}
             style={{ marginBottom: teamError ? 4 : 16, borderColor: teamError ? 'var(--red)' : undefined }} />
           {teamError && <p style={{ fontSize: 12, color: 'var(--red)', marginBottom: 12 }}>{teamError}</p>}
           <div className="flex-between" style={{ marginBottom: 8 }}>
             <p style={{ fontSize: 13, color: 'var(--label3)' }}>
-              Joueurs à inclure
-              {teamIds.length > 0 && <span style={{ color: 'var(--label2)', marginLeft: 6 }}>{teamIds.length} sélectionné{teamIds.length > 1 ? 's' : ''}</span>}
+              {t('teams.include')}
+              {teamIds.length > 0 && <span style={{ color: 'var(--label2)', marginLeft: 6 }}>{t('teams.selected', { count: teamIds.length })}</span>}
             </p>
             <div className="flex gap-8">
-              <button className="tag tag-dim" onClick={() => setTeamIds(activePlayers.map(p => p.id))}>Tous</button>
-              <button className="tag tag-dim" onClick={() => setTeamIds([])}>Aucun</button>
+              <button className="tag tag-dim" onClick={() => setTeamIds(activePlayers.map(p => p.id))}>{t('launcher.all')}</button>
+              <button className="tag tag-dim" onClick={() => setTeamIds([])}>{t('launcher.none')}</button>
             </div>
           </div>
           <div className="player-grid" style={{ marginBottom: 12 }}>
@@ -170,7 +171,7 @@ export function TeamsSection({ activePlayers, teams, orgId, notify, confirm }: T
           <button className="btn btn-primary btn-full"
             disabled={!teamName.trim() || teamIds.length < 2 || createTeamMutation.isPending}
             onClick={saveTeam}>
-            {createTeamMutation.isPending ? 'Création…' : `Créer l'équipe · ${teamIds.length} joueur${teamIds.length !== 1 ? 's' : ''}`}
+            {createTeamMutation.isPending ? t('teams.creating') : t('teams.createCount', { count: teamIds.length })}
           </button>
         </div>
       )}

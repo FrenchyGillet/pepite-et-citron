@@ -29,6 +29,7 @@ import { canRunMatches as roleCanRunMatches } from '@/utils/roles';
 import { usePlayers }        from '@/hooks/queries';
 import { useAppStore }       from '@/store/appStore';
 import { useSearchParams }   from 'react-router-dom';
+import { useT } from '@/i18n';
 
 // Screens most voters never open are loaded on demand: someone arriving from
 // a vote link downloads the vote screen, not Admin, Saison or Profil.
@@ -39,9 +40,10 @@ const ProfileView     = lazy(() => import('@/components/ProfileView').then(m => 
 const OnboardingModal = lazy(() => import('@/components/OnboardingModal').then(m => ({ default: m.OnboardingModal })));
 const UpgradeModal    = lazy(() => import('@/components/UpgradeModal').then(m => ({ default: m.UpgradeModal })));
 
-const screenFallback = (
-  <div className="content"><div className="empty" role="status">Chargement…</div></div>
-);
+function ScreenFallback() {
+  const t = useT();
+  return <div className="content"><div className="empty" role="status">{t('common.loading')}</div></div>;
+}
 
 function FakeProgressBar({ loading }: { loading: boolean }) {
   const [progress, setProgress] = useState(0);
@@ -78,6 +80,7 @@ export default function App() {
   const navigate       = useNavigate();
   const location       = useLocation();
   const [searchParams] = useSearchParams();
+  const t              = useT();
 
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
   const [upgradePlan,      setUpgradePlan]      = useState<UpgradePlan>('annual');
@@ -121,9 +124,9 @@ export default function App() {
 
   // ── Offline vote sync ───────────────────────────────────────────────────
   useOfflineSync(
-    () => { setOfflineToast('✅ Vote synchronisé !'); setTimeout(() => setOfflineToast(null), 3000); },
+    () => { setOfflineToast(t('app.voteSynced')); setTimeout(() => setOfflineToast(null), 3000); },
     () => { /* still offline — keep queued, no toast */ },
-    (msg) => { setOfflineToast(`⚠️ Vote non enregistré : ${msg}`); setTimeout(() => setOfflineToast(null), 6000); },
+    (msg) => { setOfflineToast(t('app.voteNotSaved', { message: msg })); setTimeout(() => setOfflineToast(null), 6000); },
   );
 
   // ── Pull-to-refresh ─────────────────────────────────────────────────────
@@ -199,7 +202,7 @@ export default function App() {
         <GlobalStyle />
         <FakeProgressBar loading={true} />
         <div style={{ minHeight: '100dvh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--bg)' }}>
-          <div style={{ fontSize: 14, color: 'var(--label3)' }}>Chargement…</div>
+          <div style={{ fontSize: 14, color: 'var(--label3)' }}>{t('common.loading')}</div>
         </div>
       </>
     );
@@ -231,7 +234,7 @@ export default function App() {
         <GlobalStyle />
         <FakeProgressBar loading={true} />
         <div style={{ minHeight: '100dvh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--bg)' }}>
-          <div style={{ fontSize: 14, color: 'var(--label3)' }}>Chargement…</div>
+          <div style={{ fontSize: 14, color: 'var(--label3)' }}>{t('common.loading')}</div>
         </div>
       </>
     );
@@ -244,15 +247,15 @@ export default function App() {
         <div style={{ minHeight: '100dvh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--bg)', padding: 24 }}>
           <div style={{ background: 'var(--bg2)', borderRadius: 16, padding: '32px 24px', maxWidth: 360, width: '100%', textAlign: 'center' }}>
             <div style={{ fontSize: 36, marginBottom: 12 }}>⚠️</div>
-            <div style={{ fontSize: 17, fontWeight: 700, marginBottom: 8, color: 'var(--label)' }}>Impossible de charger tes équipes</div>
+            <div style={{ fontSize: 17, fontWeight: 700, marginBottom: 8, color: 'var(--label)' }}>{t('app.teamsLoadFailed')}</div>
             <div style={{ fontSize: 14, color: 'var(--label3)', marginBottom: 24, lineHeight: 1.6 }}>
-              Erreur de connexion au serveur.<br />Vérifie ta connexion et réessaie.
+              {t('app.serverError')}<br />{t('app.checkConnection')}
             </div>
             <button className="btn btn-primary btn-full" onClick={() => { setOrgsResolved(false); void loadOrgs(); }}>
-              Réessayer
+              {t('common.retry')}
             </button>
             <button className="btn btn-secondary btn-full" style={{ marginTop: 10 }} onClick={handleSignOut}>
-              Se déconnecter
+              {t('common.signOut')}
             </button>
           </div>
         </div>
@@ -306,10 +309,10 @@ export default function App() {
 
   // ── Main app ────────────────────────────────────────────────────────────
   const tabs: Array<{ id: string; label: string; icon: React.ReactNode; locked: boolean }> = [
-    { id: 'vote',    label: 'Vote',      locked: false, icon: <><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></> },
-    { id: 'results', label: 'Résultats', locked: false, icon: <path d="M18 20V10M12 20V4M6 20v-6"/> },
-    { id: 'stats',   label: 'Saison',    locked: !isPro, icon: <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/> },
-    ...(canRunMatches ? [{ id: 'admin', label: isAdmin ? 'Admin' : 'Capitaine', locked: false, icon: <><circle cx="12" cy="8" r="4"/><path d="M20 21a8 8 0 10-16 0"></path></> }] : []),
+    { id: 'vote',    label: t('app.tabVote'), locked: false, icon: <><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></> },
+    { id: 'results', label: t('app.tabResults'), locked: false, icon: <path d="M18 20V10M12 20V4M6 20v-6"/> },
+    { id: 'stats',   label: t('app.tabSeason'), locked: !isPro, icon: <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/> },
+    ...(canRunMatches ? [{ id: 'admin', label: t(isAdmin ? 'app.tabAdmin' : 'app.tabCaptain'), locked: false, icon: <><circle cx="12" cy="8" r="4"/><path d="M20 21a8 8 0 10-16 0"></path></> }] : []),
   ];
 
   return (
@@ -318,16 +321,16 @@ export default function App() {
       <PullToRefreshIndicator pullY={pullY} isRefreshing={isRefreshing} />
       <div className="app-wrapper">
         <AppHeader />
-        {DEMO_MODE && <div className="demo-banner">Mode démo · Configure Supabase pour le multi-device</div>}
+        {DEMO_MODE && <div className="demo-banner">{t('app.demoBanner')}</div>}
 
         {/* Post-upgrade success banner */}
         {upgradeSuccess && (
           <div style={{ background: '#32D74B', color: '#000', textAlign: 'center', padding: '10px 16px', fontSize: 14, fontWeight: 700 }}>
-            🎉 Bienvenue dans Pro ! Toutes les fonctionnalités sont débloquées.
+            {t('app.welcomePro')}
           </div>
         )}
 
-        <Suspense fallback={screenFallback}>
+        <Suspense fallback={<ScreenFallback />}>
         <Routes>
           <Route index element={<Navigate to={`/vote${location.search}`} replace />} />
           {/* Reached after a successful sign-in (URL is still /login) or by an
@@ -393,25 +396,25 @@ export default function App() {
         )}
       </div>
 
-      <nav className="tab-bar" aria-label="Navigation principale">
-        {tabs.map(t => (
+      <nav className="tab-bar" aria-label={t('app.mainNav')}>
+        {tabs.map(tab => (
           <button
-            key={t.id}
-            className={`tab-bar-item ${location.pathname === `/${t.id}` ? 'active' : ''}`}
-            aria-current={location.pathname === `/${t.id}` ? 'page' : undefined}
-            aria-label={t.locked ? `${t.label} (réservé à Pro)` : undefined}
+            key={tab.id}
+            className={`tab-bar-item ${location.pathname === `/${tab.id}` ? 'active' : ''}`}
+            aria-current={location.pathname === `/${tab.id}` ? 'page' : undefined}
+            aria-label={tab.locked ? t('app.proOnly', { label: tab.label }) : undefined}
             onClick={() => {
-              if (!t.locked) { navigate(`/${t.id}`); return; }
+              if (!tab.locked) { navigate(`/${tab.id}`); return; }
               track(EVENTS.UPGRADE_CLICKED, { source: 'tab_bar' });
               setShowUpgradeModal(true);
             }}
-            style={t.locked ? { opacity: 0.6 } : undefined}
+            style={tab.locked ? { opacity: 0.6 } : undefined}
           >
             <div aria-hidden="true" style={{ position: 'relative', display: 'inline-flex' }}>
               <svg width="24" height="24" viewBox="0 0 24 24" fill="none" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" stroke="currentColor">
-                {t.icon}
+                {tab.icon}
               </svg>
-              {t.locked && (
+              {tab.locked && (
                 <div style={{
                   position: 'absolute', top: -4, right: -6,
                   background: '#FFD700', borderRadius: '50%',
@@ -421,7 +424,7 @@ export default function App() {
                 }}>🔒</div>
               )}
             </div>
-            <span>{t.label}</span>
+            <span>{tab.label}</span>
           </button>
         ))}
       </nav>
