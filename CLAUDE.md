@@ -134,6 +134,7 @@ Les contrastes texte/fond sont vérifiés (WCAG AA) par `src/utils/contrast.test
 
 1. **Toute logique métier pure** va dans `src/utils/` — jamais dans les composants
 2. **Toute interaction Supabase** passe par `src/api.ts` (via `demoAPI` / `realAPI`)
+   - Chaque appel lié à une équipe reçoit son `orgId` en paramètre (la queryFn passe celui de sa clé) : jamais d'« équipe courante » globale, sinon une requête lancée pour une équipe peut charger l'autre (joueur dans deux équipes, lien ouvert pendant un chargement)
 3. **Aucun `fetch` direct** dans les composants — utiliser les hooks de `src/hooks/`
 4. **Données serveur** : TanStack Query (`src/hooks/queries.ts`, `src/hooks/mutations.ts`)
 5. **État global client** : Zustand (`src/store/appStore.ts`) — ne pas y dupliquer des données serveur

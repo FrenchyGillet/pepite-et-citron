@@ -1,6 +1,6 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { api, DEMO_MODE } from '@/api';
-import { queryKeys } from './queries';
+import { queryKeys, scope } from './queries';
 import { useAppStore } from '@/store/appStore';
 import type { EntityId, Vote, Match, Player, ManualMatchInput, MatchScheduleInput, OrgRole } from '@/types';
 
@@ -37,7 +37,7 @@ export function useDeleteVote(matchId: EntityId | null | undefined) {
 export function useAddPlayer(orgId?: string | null) {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (name: string) => api.addPlayer(name),
+    mutationFn: (name: string) => api.addPlayer(scope(orgId), name),
     onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.players(orgId) }),
   });
 }
@@ -45,7 +45,7 @@ export function useAddPlayer(orgId?: string | null) {
 export function useAddPlayers(orgId?: string | null) {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (names: string[]) => api.addPlayers(names),
+    mutationFn: (names: string[]) => api.addPlayers(scope(orgId), names),
     onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.players(orgId) }),
   });
 }
@@ -89,7 +89,7 @@ export function useCreateMatch(orgId?: string | null) {
     mutationFn: ({ label, presentIds, teamId, season, pepiteCount, voteDeadline }: {
       label: string; presentIds: EntityId[]; teamId: EntityId | null; season: number; pepiteCount?: 2 | 3;
       voteDeadline?: string | null;
-    }) => api.createMatch(label, presentIds, teamId, season, pepiteCount, voteDeadline),
+    }) => api.createMatch(scope(orgId), label, presentIds, teamId, season, pepiteCount, voteDeadline),
     onSuccess: (_match, vars) => {
       qc.invalidateQueries({ queryKey: queryKeys.activeMatch(orgId) });
       // Fire-and-forget email + push notifications — failures are silently ignored
@@ -106,8 +106,8 @@ export function useCreateSchedule(orgId?: string | null) {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async ({ input, delayMinutes }: { input: MatchScheduleInput; delayMinutes?: number }) => {
-      if (delayMinutes != null) await api.setVoteOpenDelay(delayMinutes);
-      await api.createSchedule(input);
+      if (delayMinutes != null) await api.setVoteOpenDelay(scope(orgId), delayMinutes);
+      await api.createSchedule(scope(orgId), input);
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: queryKeys.schedules(orgId) });
@@ -143,7 +143,7 @@ export function useDeleteSchedule(orgId?: string | null) {
 export function useSetVoteOpenDelay(orgId?: string | null) {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (minutes: number) => api.setVoteOpenDelay(minutes),
+    mutationFn: (minutes: number) => api.setVoteOpenDelay(scope(orgId), minutes),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: queryKeys.voteOpenDelay(orgId) });
       qc.invalidateQueries({ queryKey: queryKeys.schedules(orgId) });
@@ -155,7 +155,7 @@ export function useSetVoteOpenDelay(orgId?: string | null) {
 export function useCreateManualMatch(orgId?: string | null) {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (input: ManualMatchInput) => api.createManualMatch(input),
+    mutationFn: (input: ManualMatchInput) => api.createManualMatch(scope(orgId), input),
     onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.matches(orgId) }),
   });
 }
@@ -282,7 +282,7 @@ export function useCreateTeam(orgId?: string | null) {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: ({ name, playerIds }: { name: string; playerIds: EntityId[] }) =>
-      api.createTeam(name, playerIds),
+      api.createTeam(scope(orgId), name, playerIds),
     onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.teams(orgId) }),
   });
 }
@@ -304,11 +304,11 @@ export function useDeleteTeam(orgId?: string | null) {
   });
 }
 
-export function useCreateGuestToken(matchId: EntityId | null | undefined) {
+export function useCreateGuestToken(orgId: string | null | undefined, matchId: EntityId | null | undefined) {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: ({ name, id }: { name: string; id: EntityId }) =>
-      api.createGuestToken(name, id),
+      api.createGuestToken(scope(orgId), name, id),
     onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.guestTokens(matchId) }),
   });
 }
@@ -341,17 +341,17 @@ export function useRemoveMember(orgId: string | null | undefined) {
 export function useAdvanceSeason(orgId?: string | null) {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: () => api.advanceSeason(),
+    mutationFn: () => api.advanceSeason(scope(orgId)),
     onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.currentSeason(orgId) }),
   });
 }
 
-export function useSetSeasonName() {
+export function useSetSeasonName(orgId: string | null | undefined) {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: ({ season, name }: { season: number; name: string }) =>
-      api.setSeasonName(season, name),
+      api.setSeasonName(scope(orgId), season, name),
     onSuccess: (_data, vars) =>
-      qc.invalidateQueries({ queryKey: queryKeys.seasonName(vars.season) }),
+      qc.invalidateQueries({ queryKey: queryKeys.seasonName(orgId, vars.season) }),
   });
 }

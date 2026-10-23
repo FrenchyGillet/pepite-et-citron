@@ -1,10 +1,10 @@
-import { describe, it, expect, beforeAll, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach } from 'vitest';
 import { http, HttpResponse } from 'msw';
 import { server } from './server';
 import { BASE, AUTH, RPC } from './handlers';
 import {
   realAPI, demoAPI, demoState,
-  setCurrentOrgId, __resetDemoState as resetDemo, __withRetry,
+  __resetDemoState as resetDemo, __withRetry,
 } from '@/api';
 import type { Match } from '@/types';
 
@@ -17,55 +17,55 @@ describe('demoAPI', () => {
   // ── Players ──
 
   it('getPlayers returns the initial 10 players', async () => {
-    const p = await demoAPI.getPlayers();
+    const p = await demoAPI.getPlayers('org-123');
     expect(p).toHaveLength(10);
     expect(p[0].name).toBe('Antoine');
   });
 
   it('addPlayer adds a player and returns it', async () => {
-    const p = await demoAPI.addPlayer('Zara');
+    const p = await demoAPI.addPlayer('org-123', 'Zara');
     expect(p.name).toBe('Zara');
-    expect((await demoAPI.getPlayers())).toHaveLength(11);
+    expect((await demoAPI.getPlayers('org-123'))).toHaveLength(11);
   });
 
   it('removePlayer removes a player by id', async () => {
     await demoAPI.removePlayer(1);
-    expect((await demoAPI.getPlayers())).toHaveLength(9);
-    expect((await demoAPI.getPlayers()).find(p => p.id === 1)).toBeUndefined();
+    expect((await demoAPI.getPlayers('org-123'))).toHaveLength(9);
+    expect((await demoAPI.getPlayers('org-123')).find(p => p.id === 1)).toBeUndefined();
   });
 
   it('addPlayers adds a whole list at once', async () => {
-    const added = await demoAPI.addPlayers(['Zoé', 'Léo']);
+    const added = await demoAPI.addPlayers('org-123', ['Zoé', 'Léo']);
     expect(added.map(p => p.name)).toEqual(['Zoé', 'Léo']);
-    expect((await demoAPI.getPlayers())).toHaveLength(12);
+    expect((await demoAPI.getPlayers('org-123'))).toHaveLength(12);
   });
 
   it('setPlayerArchived archives and reactivates without deleting', async () => {
     await demoAPI.setPlayerArchived(1, true);
-    expect((await demoAPI.getPlayers()).find(p => p.id === 1)?.archived_at).toBeTruthy();
+    expect((await demoAPI.getPlayers('org-123')).find(p => p.id === 1)?.archived_at).toBeTruthy();
     await demoAPI.setPlayerArchived(1, false);
-    expect((await demoAPI.getPlayers()).find(p => p.id === 1)?.archived_at).toBeNull();
-    expect((await demoAPI.getPlayers())).toHaveLength(10);
+    expect((await demoAPI.getPlayers('org-123')).find(p => p.id === 1)?.archived_at).toBeNull();
+    expect((await demoAPI.getPlayers('org-123'))).toHaveLength(10);
   });
 
   it('updatePlayer updates the nickname of an existing player', async () => {
-    const added = await demoAPI.addPlayer('TestPlayer');
+    const added = await demoAPI.addPlayer('org-123', 'TestPlayer');
     await demoAPI.updatePlayer(added.id, { nickname: 'TP' });
-    const players = await demoAPI.getPlayers();
+    const players = await demoAPI.getPlayers('org-123');
     expect(players.find(p => p.id === added.id)?.nickname).toBe('TP');
   });
 
   it('updatePlayer can clear a nickname by setting it to null', async () => {
-    const added = await demoAPI.addPlayer('TestPlayer');
+    const added = await demoAPI.addPlayer('org-123', 'TestPlayer');
     await demoAPI.updatePlayer(added.id, { nickname: 'TP' });
     await demoAPI.updatePlayer(added.id, { nickname: null });
-    const players = await demoAPI.getPlayers();
+    const players = await demoAPI.getPlayers('org-123');
     expect(players.find(p => p.id === added.id)?.nickname).toBeNull();
   });
 
   it('updatePlayer does not affect other players', async () => {
     await demoAPI.updatePlayer(1, { nickname: 'Tony' });
-    const players = await demoAPI.getPlayers();
+    const players = await demoAPI.getPlayers('org-123');
     // player id=2 (Baptiste) should be unchanged
     expect(players.find(p => p.id === 2)?.nickname).toBeUndefined();
   });
@@ -77,11 +77,11 @@ describe('demoAPI', () => {
   // ── Matches ──
 
   it('getActiveMatch returns null when no match exists', async () => {
-    expect(await demoAPI.getActiveMatch()).toBeNull();
+    expect(await demoAPI.getActiveMatch('org-123')).toBeNull();
   });
 
   it('createMatch creates an open voting match', async () => {
-    const m = await demoAPI.createMatch('vs Dragons', [1, 2], null, 1);
+    const m = await demoAPI.createMatch('org-123', 'vs Dragons', [1, 2], null, 1);
     expect(m.label).toBe('vs Dragons');
     expect(m.is_open).toBe(true);
     expect(m.phase).toBe('voting');
@@ -89,12 +89,12 @@ describe('demoAPI', () => {
   });
 
   it('getActiveMatch returns the open match', async () => {
-    await demoAPI.createMatch('vs Dragons', [1, 2], null, 1);
-    expect((await demoAPI.getActiveMatch())?.label).toBe('vs Dragons');
+    await demoAPI.createMatch('org-123', 'vs Dragons', [1, 2], null, 1);
+    expect((await demoAPI.getActiveMatch('org-123'))?.label).toBe('vs Dragons');
   });
 
   it('getMatchById returns the match for a known id', async () => {
-    const m = await demoAPI.createMatch('test', [1, 2], null, 1);
+    const m = await demoAPI.createMatch('org-123', 'test', [1, 2], null, 1);
     expect((await demoAPI.getMatchById(m.id))?.label).toBe('test');
   });
 
@@ -103,75 +103,75 @@ describe('demoAPI', () => {
   });
 
   it('closeMatch marks match as closed', async () => {
-    const m = await demoAPI.createMatch('test', [1, 2], null, 1);
+    const m = await demoAPI.createMatch('org-123', 'test', [1, 2], null, 1);
     await demoAPI.closeMatch(m.id);
-    expect(await demoAPI.getActiveMatch()).toBeNull();
-    expect((await demoAPI.getMatches())[0].phase).toBe('closed');
+    expect(await demoAPI.getActiveMatch('org-123')).toBeNull();
+    expect((await demoAPI.getMatches('org-123'))[0].phase).toBe('closed');
   });
 
   it('deletes a vote left without a ballot for 24 h, and refuses ballots for it', async () => {
-    const m = await demoAPI.createMatch('test', [1, 2, 3], null, 1);
+    const m = await demoAPI.createMatch('org-123', 'test', [1, 2, 3], null, 1);
     m.created_at = new Date(Date.now() - 25 * 3_600_000).toISOString();
     await expect(demoAPI.submitVote({ match_id: m.id, voter_name: 'Antoine', best1_id: 2, best2_id: 3, lemon_id: 2 }))
       .rejects.toThrow('Le vote est clôturé pour ce match.');
     expect(await demoAPI.getMatchById(m.id)).toBeNull();
-    expect(await demoAPI.getActiveMatch()).toBeNull();
-    expect(await demoAPI.getMatches()).toHaveLength(0);
+    expect(await demoAPI.getActiveMatch('org-123')).toBeNull();
+    expect(await demoAPI.getMatches('org-123')).toHaveLength(0);
   });
 
   it('keeps an old vote that received a ballot', async () => {
-    const m = await demoAPI.createMatch('test', [1, 2, 3], null, 1);
+    const m = await demoAPI.createMatch('org-123', 'test', [1, 2, 3], null, 1);
     await demoAPI.submitVote({ match_id: m.id, voter_name: 'Antoine', best1_id: 2, best2_id: 3, lemon_id: 2 });
     m.created_at = new Date(Date.now() - 48 * 3_600_000).toISOString();
-    expect((await demoAPI.getActiveMatch())?.id).toBe(m.id);
+    expect((await demoAPI.getActiveMatch('org-123'))?.id).toBe(m.id);
   });
 
   it('startCounting switches to counting phase with reveal order', async () => {
-    const m = await demoAPI.createMatch('test', [1, 2], null, 1);
+    const m = await demoAPI.createMatch('org-123', 'test', [1, 2], null, 1);
     await demoAPI.startCounting(m.id, [10, 11]);
-    const active = await demoAPI.getActiveMatch();
+    const active = await demoAPI.getActiveMatch('org-123');
     expect(active?.phase).toBe('counting');
     expect(active?.reveal_order).toEqual([10, 11]);
     expect(active?.revealed_count).toBe(0);
   });
 
   it('revealNext updates revealed_count', async () => {
-    const m = await demoAPI.createMatch('test', [1, 2], null, 1);
+    const m = await demoAPI.createMatch('org-123', 'test', [1, 2], null, 1);
     await demoAPI.startCounting(m.id, [10, 11]);
     await demoAPI.revealNext(m.id, 1);
-    expect((await demoAPI.getMatches())[0].revealed_count).toBe(1);
+    expect((await demoAPI.getMatches('org-123'))[0].revealed_count).toBe(1);
   });
 
   it('updateMatch updates arbitrary fields', async () => {
-    const m = await demoAPI.createMatch('old', [1, 2], null, 1);
+    const m = await demoAPI.createMatch('org-123', 'old', [1, 2], null, 1);
     await demoAPI.updateMatch(m.id, { label: 'new label' });
-    expect((await demoAPI.getMatches())[0].label).toBe('new label');
+    expect((await demoAPI.getMatches('org-123'))[0].label).toBe('new label');
   });
 
   it('deleteMatch removes the match and all its votes', async () => {
-    const m = await demoAPI.createMatch('test', [1, 2], null, 1);
+    const m = await demoAPI.createMatch('org-123', 'test', [1, 2], null, 1);
     await demoAPI.submitVote({ match_id: m.id, voter_name: 'Alice', best1_id: 1, lemon_id: 2 });
     await demoAPI.deleteMatch(m.id);
-    expect(await demoAPI.getMatches()).toHaveLength(0);
+    expect(await demoAPI.getMatches('org-123')).toHaveLength(0);
     expect(demoState.votes).toHaveLength(0);
   });
 
   // ── Votes ──
 
   it('hasVoted returns false before voting', async () => {
-    const m = await demoAPI.createMatch('test', [1, 2], null, 1);
+    const m = await demoAPI.createMatch('org-123', 'test', [1, 2], null, 1);
     expect(await demoAPI.hasVoted(m.id, 'Alice')).toBe(false);
   });
 
   it('submitVote records the vote and hasVoted returns true', async () => {
-    const m = await demoAPI.createMatch('test', [1, 2], null, 1);
+    const m = await demoAPI.createMatch('org-123', 'test', [1, 2], null, 1);
     await demoAPI.submitVote({ match_id: m.id, voter_name: 'Alice', best1_id: 1, lemon_id: 2 });
     expect(await demoAPI.hasVoted(m.id, 'Alice')).toBe(true);
     expect(await demoAPI.hasVoted(m.id, 'Bob')).toBe(false);
   });
 
   it('hasVoted keys on voter_player_id so two same-name voters do not collide (B9)', async () => {
-    const m = await demoAPI.createMatch('test', [1, 2, 3], null, 1);
+    const m = await demoAPI.createMatch('org-123', 'test', [1, 2, 3], null, 1);
     // "Thomas" #1 (player 1) votes
     await demoAPI.submitVote({ match_id: m.id, voter_name: 'Thomas', voter_player_id: 1, best1_id: 2, lemon_id: 3 });
     // "Thomas" #2 (player 2) has NOT voted
@@ -180,14 +180,14 @@ describe('demoAPI', () => {
   });
 
   it('hasVoted still catches a legacy name-only vote when a player is selected (B9)', async () => {
-    const m = await demoAPI.createMatch('test', [1, 2], null, 1);
+    const m = await demoAPI.createMatch('org-123', 'test', [1, 2], null, 1);
     await demoAPI.submitVote({ match_id: m.id, voter_name: 'Alice', best1_id: 1, lemon_id: 2 }); // no player id
     expect(await demoAPI.hasVoted(m.id, 'Alice', 1)).toBe(true);
   });
 
   it('getVoteCount returns the number of votes for the match', async () => {
-    const m1 = await demoAPI.createMatch('m1', [1, 2, 3], null, 1);
-    const m2 = await demoAPI.createMatch('m2', [1, 2, 3], null, 1);
+    const m1 = await demoAPI.createMatch('org-123', 'm1', [1, 2, 3], null, 1);
+    const m2 = await demoAPI.createMatch('org-123', 'm2', [1, 2, 3], null, 1);
     await demoAPI.submitVote({ match_id: m1.id, voter_name: 'A', best1_id: 1, lemon_id: 2 });
     await demoAPI.submitVote({ match_id: m1.id, voter_name: 'B', best1_id: 2, lemon_id: 1 });
     await demoAPI.submitVote({ match_id: m2.id, voter_name: 'C', best1_id: 1, lemon_id: 2 });
@@ -196,8 +196,8 @@ describe('demoAPI', () => {
   });
 
   it('getVotes returns only votes for the given match', async () => {
-    const m1 = await demoAPI.createMatch('m1', [1, 2], null, 1);
-    const m2 = await demoAPI.createMatch('m2', [1, 2], null, 1);
+    const m1 = await demoAPI.createMatch('org-123', 'm1', [1, 2], null, 1);
+    const m2 = await demoAPI.createMatch('org-123', 'm2', [1, 2], null, 1);
     await demoAPI.submitVote({ match_id: m1.id, voter_name: 'Alice', best1_id: 1, lemon_id: 2 });
     await demoAPI.submitVote({ match_id: m2.id, voter_name: 'Bob',   best1_id: 2, lemon_id: 1 });
     expect(await demoAPI.getVotes(m1.id)).toHaveLength(1);
@@ -205,75 +205,75 @@ describe('demoAPI', () => {
   });
 
   it('getAllVotes returns votes across all matches', async () => {
-    const m1 = await demoAPI.createMatch('m1', [1, 2], null, 1);
-    const m2 = await demoAPI.createMatch('m2', [1, 2], null, 1);
+    const m1 = await demoAPI.createMatch('org-123', 'm1', [1, 2], null, 1);
+    const m2 = await demoAPI.createMatch('org-123', 'm2', [1, 2], null, 1);
     await demoAPI.submitVote({ match_id: m1.id, voter_name: 'Alice', best1_id: 1, lemon_id: 2 });
     await demoAPI.submitVote({ match_id: m2.id, voter_name: 'Bob',   best1_id: 2, lemon_id: 1 });
-    expect(await demoAPI.getAllVotes()).toHaveLength(2);
+    expect(await demoAPI.getAllVotes('org-123')).toHaveLength(2);
   });
 
   // ── Teams ──
 
   it('getTeams returns empty initially', async () => {
-    expect(await demoAPI.getTeams()).toHaveLength(0);
+    expect(await demoAPI.getTeams('org-123')).toHaveLength(0);
   });
 
   it('createTeam creates a team with correct player_ids', async () => {
-    const t = await demoAPI.createTeam('Team A', [1, 2, 3]);
+    const t = await demoAPI.createTeam('org-123', 'Team A', [1, 2, 3]);
     expect(t.name).toBe('Team A');
     expect(t.player_ids).toEqual([1, 2, 3]);
   });
 
   it('updateTeam replaces player_ids of an existing team', async () => {
-    const t = await demoAPI.createTeam('Team A', [1, 2, 3]);
+    const t = await demoAPI.createTeam('org-123', 'Team A', [1, 2, 3]);
     await demoAPI.updateTeam(t.id, [1, 4]);
-    const teams = await demoAPI.getTeams();
+    const teams = await demoAPI.getTeams('org-123');
     expect(teams[0].player_ids).toEqual([1, 4]);
   });
 
   it('updateTeam does not affect other teams', async () => {
-    const t1 = await demoAPI.createTeam('Team A', [1, 2]);
-    const t2 = await demoAPI.createTeam('Team B', [3, 4]);
+    const t1 = await demoAPI.createTeam('org-123', 'Team A', [1, 2]);
+    const t2 = await demoAPI.createTeam('org-123', 'Team B', [3, 4]);
     await demoAPI.updateTeam(t1.id, [1, 5]);
-    const teams = await demoAPI.getTeams();
+    const teams = await demoAPI.getTeams('org-123');
     expect(teams.find(t => t.id === t2.id)?.player_ids).toEqual([3, 4]);
   });
 
   it('deleteTeam removes the team', async () => {
-    const t = await demoAPI.createTeam('Team A', [1, 2]);
+    const t = await demoAPI.createTeam('org-123', 'Team A', [1, 2]);
     await demoAPI.deleteTeam(t.id);
-    expect(await demoAPI.getTeams()).toHaveLength(0);
+    expect(await demoAPI.getTeams('org-123')).toHaveLength(0);
   });
 
   // ── Season ──
 
   it('getCurrentSeason returns 1 initially', async () => {
-    expect(await demoAPI.getCurrentSeason()).toBe(1);
+    expect(await demoAPI.getCurrentSeason('org-123')).toBe(1);
   });
 
   it('advanceSeason increments and returns the new season', async () => {
-    expect(await demoAPI.advanceSeason()).toBe(2);
-    expect(await demoAPI.getCurrentSeason()).toBe(2);
+    expect(await demoAPI.advanceSeason('org-123')).toBe(2);
+    expect(await demoAPI.getCurrentSeason('org-123')).toBe(2);
   });
 
   it('setSeasonName and getSeasonName round-trip', async () => {
-    await demoAPI.setSeasonName(1, 'Hiver 2024');
-    expect(await demoAPI.getSeasonName(1)).toBe('Hiver 2024');
-    expect(await demoAPI.getSeasonName(2)).toBeNull();
+    await demoAPI.setSeasonName('org-123', 1, 'Hiver 2024');
+    expect(await demoAPI.getSeasonName('org-123', 1)).toBe('Hiver 2024');
+    expect(await demoAPI.getSeasonName('org-123', 2)).toBeNull();
   });
 
   // ── Guest tokens ──
 
   it('createGuestToken returns a non-empty token string', async () => {
-    const m = await demoAPI.createMatch('test', [1, 2], null, 1);
-    const token = await demoAPI.createGuestToken('Marc', m.id);
+    const m = await demoAPI.createMatch('org-123', 'test', [1, 2], null, 1);
+    const token = await demoAPI.createGuestToken('org-123', 'Marc', m.id);
     expect(typeof token).toBe('string');
     expect(token.length).toBeGreaterThan(0);
   });
 
   it('validateGuestToken returns the GuestToken object', async () => {
-    const m = await demoAPI.createMatch('test', [1, 2], null, 1);
-    const token = await demoAPI.createGuestToken('Marc', m.id);
+    const m = await demoAPI.createMatch('org-123', 'test', [1, 2], null, 1);
+    const token = await demoAPI.createGuestToken('org-123', 'Marc', m.id);
     const gt = await demoAPI.validateGuestToken(token);
     expect(gt?.name).toBe('Marc');
     expect(gt?.used).toBe(false);
@@ -284,23 +284,23 @@ describe('demoAPI', () => {
   });
 
   it('submitVote with a guest link consumes the token', async () => {
-    const m = await demoAPI.createMatch('test', [1, 2, 3], null, 1);
-    const token = await demoAPI.createGuestToken('Marc', m.id);
+    const m = await demoAPI.createMatch('org-123', 'test', [1, 2, 3], null, 1);
+    const token = await demoAPI.createGuestToken('org-123', 'Marc', m.id);
     await demoAPI.submitVote({ match_id: m.id, voter_name: 'Marc', best1_id: 1, best2_id: 2, lemon_id: 3, guest_token: token });
     expect((await demoAPI.validateGuestToken(token))?.used).toBe(true);
     expect(demoState.votes[0]).not.toHaveProperty('guest_token');
   });
 
   it('getGuestTokens returns tokens for the match', async () => {
-    const m = await demoAPI.createMatch('test', [1, 2], null, 1);
-    await demoAPI.createGuestToken('Marc', m.id);
-    await demoAPI.createGuestToken('Julie', m.id);
+    const m = await demoAPI.createMatch('org-123', 'test', [1, 2], null, 1);
+    await demoAPI.createGuestToken('org-123', 'Marc', m.id);
+    await demoAPI.createGuestToken('org-123', 'Julie', m.id);
     expect(await demoAPI.getGuestTokens(m.id)).toHaveLength(2);
   });
 
   it('deleteGuestToken removes the token', async () => {
-    const m = await demoAPI.createMatch('test', [1, 2], null, 1);
-    await demoAPI.createGuestToken('Marc', m.id);
+    const m = await demoAPI.createMatch('org-123', 'test', [1, 2], null, 1);
+    await demoAPI.createGuestToken('org-123', 'Marc', m.id);
     const [gt] = await demoAPI.getGuestTokens(m.id);
     await demoAPI.deleteGuestToken(gt.id);
     expect(await demoAPI.getGuestTokens(m.id)).toHaveLength(0);
@@ -335,7 +335,6 @@ describe('demoAPI', () => {
 // Uses MSW to intercept REST calls to the Supabase placeholder URL.
 
 describe('realAPI', () => {
-  beforeAll(() => setCurrentOrgId('org-123'));
 
   const mockPlayer = { id: 'p1', name: 'Alice', org_id: 'org-123' };
 
@@ -350,7 +349,7 @@ describe('realAPI', () => {
   describe('getPlayers', () => {
     it('returns the player list from the server', async () => {
       server.use(http.get(`${BASE}/players`, () => HttpResponse.json([mockPlayer])));
-      const players = await realAPI.getPlayers();
+      const players = await realAPI.getPlayers('org-123');
       expect(players).toHaveLength(1);
       expect(players[0].name).toBe('Alice');
     });
@@ -359,21 +358,21 @@ describe('realAPI', () => {
       server.use(http.get(`${BASE}/players`, () =>
         HttpResponse.json({ message: 'Erreur 500' }, { status: 500 }),
       ));
-      await expect(realAPI.getPlayers()).rejects.toThrow('Erreur 500');
+      await expect(realAPI.getPlayers('org-123')).rejects.toThrow('Erreur 500');
     });
   });
 
   describe('addPlayer', () => {
     it('POSTs the player and returns the created record', async () => {
       server.use(http.post(`${BASE}/players`, () => HttpResponse.json([mockPlayer])));
-      const p = await realAPI.addPlayer('Alice');
+      const p = await realAPI.addPlayer('org-123', 'Alice');
       expect(p.name).toBe('Alice');
     });
 
     it('does not retry the INSERT on a network error (would duplicate the player)', async () => {
       let attempts = 0;
       server.use(http.post(`${BASE}/players`, () => { attempts++; return HttpResponse.error(); }));
-      await expect(realAPI.addPlayer('Alice')).rejects.toThrow();
+      await expect(realAPI.addPlayer('org-123', 'Alice')).rejects.toThrow();
       expect(attempts).toBe(1);
     });
   });
@@ -394,7 +393,7 @@ describe('realAPI', () => {
         body = await request.json();
         return HttpResponse.json([{ id: 'a', name: 'Zoé' }, { id: 'b', name: 'Léo' }]);
       }));
-      const added = await realAPI.addPlayers(['Zoé', 'Léo']);
+      const added = await realAPI.addPlayers('org-123', ['Zoé', 'Léo']);
       expect(calls).toBe(1);
       expect(body).toEqual([{ name: 'Zoé', org_id: 'org-123' }, { name: 'Léo', org_id: 'org-123' }]);
       expect(added).toHaveLength(2);
@@ -403,7 +402,7 @@ describe('realAPI', () => {
     it('does not retry the INSERT on a network error', async () => {
       let calls = 0;
       server.use(http.post(`${BASE}/players`, () => { calls++; return HttpResponse.error(); }));
-      await expect(realAPI.addPlayers(['Zoé'])).rejects.toThrow();
+      await expect(realAPI.addPlayers('org-123', ['Zoé'])).rejects.toThrow();
       expect(calls).toBe(1);
     });
   });
@@ -460,12 +459,12 @@ describe('realAPI', () => {
   describe('getActiveMatch', () => {
     it('returns the first active match', async () => {
       server.use(http.get(`${BASE}/matches`, () => HttpResponse.json([mockMatch])));
-      expect((await realAPI.getActiveMatch())?.label).toBe('vs Bruxelles');
+      expect((await realAPI.getActiveMatch('org-123'))?.label).toBe('vs Bruxelles');
     });
 
     it('returns null when server sends empty array', async () => {
       server.use(http.get(`${BASE}/matches`, () => HttpResponse.json([])));
-      expect(await realAPI.getActiveMatch()).toBeNull();
+      expect(await realAPI.getActiveMatch('org-123')).toBeNull();
     });
 
     it('deletes abandoned votes first, and never returns one', async () => {
@@ -477,7 +476,7 @@ describe('realAPI', () => {
           { ...mockMatch, label: 'Abandonné', is_open: true, phase: 'voting', vote_count: 0, created_at: twoDaysAgo },
         ])),
       );
-      expect(await realAPI.getActiveMatch()).toBeNull();
+      expect(await realAPI.getActiveMatch('org-123')).toBeNull();
       expect(expired).toBe(true);
     });
 
@@ -488,7 +487,7 @@ describe('realAPI', () => {
         http.post(`${RPC}/delete_abandoned_votes`, () => { calls.push('expire'); return HttpResponse.json(0); }),
         http.get(`${BASE}/matches`, () => { calls.push('read'); return HttpResponse.json([mockMatch]); }),
       );
-      expect((await realAPI.getActiveMatch())?.label).toBe('vs Bruxelles');
+      expect((await realAPI.getActiveMatch('org-123'))?.label).toBe('vs Bruxelles');
       expect(calls).toEqual(['open', 'expire', 'read']);
     });
 
@@ -497,7 +496,7 @@ describe('realAPI', () => {
         http.post(`${RPC}/delete_abandoned_votes`, () => HttpResponse.json({ message: 'not found' }, { status: 404 })),
         http.get(`${BASE}/matches`, () => HttpResponse.json([mockMatch])),
       );
-      expect((await realAPI.getActiveMatch())?.label).toBe('vs Bruxelles');
+      expect((await realAPI.getActiveMatch('org-123'))?.label).toBe('vs Bruxelles');
     });
   });
 
@@ -509,7 +508,7 @@ describe('realAPI', () => {
       });
       server.use(http.post(`${RPC}/get_upcoming_schedules`, () =>
         HttpResponse.json([row(2, '2026-11-03T20:30:00Z'), row(1, '2026-10-28T20:30:00Z')])));
-      const list = await realAPI.getUpcomingSchedules();
+      const list = await realAPI.getUpcomingSchedules('org-123');
       expect(list.map(s => s.id)).toEqual([1, 2]);
       expect(list[0].start_time).toBe('20:00');
     });
@@ -518,7 +517,7 @@ describe('realAPI', () => {
   describe('getMatches', () => {
     it('returns all matches', async () => {
       server.use(http.get(`${BASE}/matches`, () => HttpResponse.json([mockMatch])));
-      const ms = await realAPI.getMatches();
+      const ms = await realAPI.getMatches('org-123');
       expect(ms).toHaveLength(1);
       expect(ms[0].label).toBe('vs Bruxelles');
     });
@@ -527,7 +526,7 @@ describe('realAPI', () => {
   describe('createMatch', () => {
     it('POSTs match data and returns the new match', async () => {
       server.use(http.post(`${BASE}/matches`, () => HttpResponse.json([mockMatch])));
-      const m = await realAPI.createMatch('vs Bruxelles', ['p1', 'p2'], null, 1);
+      const m = await realAPI.createMatch('org-123', 'vs Bruxelles', ['p1', 'p2'], null, 1);
       expect(m.label).toBe('vs Bruxelles');
       expect(m.phase).toBe('voting');
     });
@@ -535,7 +534,7 @@ describe('realAPI', () => {
     it('does not retry the INSERT on a network error (would open a second match)', async () => {
       let attempts = 0;
       server.use(http.post(`${BASE}/matches`, () => { attempts++; return HttpResponse.error(); }));
-      await expect(realAPI.createMatch('vs Bruxelles', ['p1', 'p2'], null, 1)).rejects.toThrow();
+      await expect(realAPI.createMatch('org-123', 'vs Bruxelles', ['p1', 'p2'], null, 1)).rejects.toThrow();
       expect(attempts).toBe(1);
     });
   });
@@ -726,7 +725,7 @@ describe('realAPI', () => {
     it('returns teams from the server', async () => {
       const t = { id: 't1', name: 'Team A', player_ids: ['p1', 'p2'], org_id: 'org-123' };
       server.use(http.get(`${BASE}/teams`, () => HttpResponse.json([t])));
-      const teams = await realAPI.getTeams();
+      const teams = await realAPI.getTeams('org-123');
       expect(teams).toHaveLength(1);
       expect(teams[0].name).toBe('Team A');
     });
@@ -736,7 +735,7 @@ describe('realAPI', () => {
     it('POSTs team data and returns the created team', async () => {
       const t = { id: 't1', name: 'Team A', player_ids: ['p1', 'p2'] };
       server.use(http.post(`${BASE}/teams`, () => HttpResponse.json([t])));
-      const team = await realAPI.createTeam('Team A', ['p1', 'p2']);
+      const team = await realAPI.createTeam('org-123', 'Team A', ['p1', 'p2']);
       expect(team.name).toBe('Team A');
     });
   });
@@ -767,36 +766,36 @@ describe('realAPI', () => {
   describe('getCurrentSeason', () => {
     it('reads organizations.current_season', async () => {
       server.use(http.get(`${BASE}/organizations`, () => HttpResponse.json([{ current_season: 3 }])));
-      expect(await realAPI.getCurrentSeason()).toBe(3);
+      expect(await realAPI.getCurrentSeason('org-123')).toBe(3);
     });
 
     it('returns 1 when the org row has no season yet', async () => {
       server.use(http.get(`${BASE}/organizations`, () => HttpResponse.json([])));
-      expect(await realAPI.getCurrentSeason()).toBe(1);
+      expect(await realAPI.getCurrentSeason('org-123')).toBe(1);
     });
 
     it('returns 1 on server error (graceful fallback)', async () => {
       server.use(http.get(`${BASE}/organizations`, () =>
         HttpResponse.json({ message: 'Erreur 500' }, { status: 500 }),
       ));
-      expect(await realAPI.getCurrentSeason()).toBe(1);
+      expect(await realAPI.getCurrentSeason('org-123')).toBe(1);
     });
   });
 
   describe('getSeasonName', () => {
     it('returns the season name when found', async () => {
       server.use(http.get(`${BASE}/season_names`, () => HttpResponse.json([{ name: 'Hiver 2024' }])));
-      expect(await realAPI.getSeasonName(1)).toBe('Hiver 2024');
+      expect(await realAPI.getSeasonName('org-123', 1)).toBe('Hiver 2024');
     });
 
     it('returns null when no row exists', async () => {
       server.use(http.get(`${BASE}/season_names`, () => HttpResponse.json([])));
-      expect(await realAPI.getSeasonName(1)).toBeNull();
+      expect(await realAPI.getSeasonName('org-123', 1)).toBeNull();
     });
 
     it('returns null on network error', async () => {
       server.use(http.get(`${BASE}/season_names`, () => HttpResponse.error()));
-      expect(await realAPI.getSeasonName(1)).toBeNull();
+      expect(await realAPI.getSeasonName('org-123', 1)).toBeNull();
     });
   });
 
@@ -835,13 +834,13 @@ describe('realAPI', () => {
   describe('getAllVotes', () => {
     it('returns [] when the get_all_votes RPC returns null', async () => {
       server.use(http.post(`${RPC}/get_all_votes`, () => HttpResponse.json(null)));
-      expect(await realAPI.getAllVotes()).toEqual([]);
+      expect(await realAPI.getAllVotes('org-123')).toEqual([]);
     });
 
     it('returns the org votes from the get_all_votes RPC', async () => {
       const v = { id: 'v1', match_id: 'm1', voter_name: 'Alice' };
       server.use(http.post(`${RPC}/get_all_votes`, () => HttpResponse.json([v])));
-      const votes = await realAPI.getAllVotes();
+      const votes = await realAPI.getAllVotes('org-123');
       expect(votes).toHaveLength(1);
       expect(votes[0].voter_name).toBe('Alice');
     });
@@ -856,7 +855,7 @@ describe('realAPI', () => {
         body = await request.json();
         return HttpResponse.json([{}]);
       }));
-      const token = await realAPI.createGuestToken('Marc', 'm1');
+      const token = await realAPI.createGuestToken('org-123', 'Marc', 'm1');
       expect(typeof token).toBe('string');
       expect(token.length).toBe(24); // 12 bytes → 24 hex chars
       expect(body).toMatchObject({ name: 'Marc', match_id: 'm1' });
@@ -875,7 +874,7 @@ describe('realAPI', () => {
           return HttpResponse.json([{ current_season: 3 }]);
         }),
       );
-      expect(await realAPI.advanceSeason()).toBe(3);
+      expect(await realAPI.advanceSeason('org-123')).toBe(3);
       expect(patched).toMatchObject({ current_season: 3 });
     });
 
@@ -884,7 +883,7 @@ describe('realAPI', () => {
         http.get(`${BASE}/organizations`, () => HttpResponse.json([])),
         http.patch(`${BASE}/organizations`, () => HttpResponse.json([{ current_season: 2 }])),
       );
-      expect(await realAPI.advanceSeason()).toBe(2);
+      expect(await realAPI.advanceSeason('org-123')).toBe(2);
     });
   });
 
@@ -899,7 +898,7 @@ describe('realAPI', () => {
           return HttpResponse.json([{}]);
         }),
       );
-      await realAPI.setSeasonName(1, 'Hiver 2025');
+      await realAPI.setSeasonName('org-123', 1, 'Hiver 2025');
       expect(body).toMatchObject({ season: 1, name: 'Hiver 2025' });
     });
 
@@ -909,7 +908,7 @@ describe('realAPI', () => {
           HttpResponse.json({ message: 'Erreur 500' }, { status: 500 }),
         ),
       );
-      await expect(realAPI.setSeasonName(1, 'Hiver 2025')).rejects.toThrow();
+      await expect(realAPI.setSeasonName('org-123', 1, 'Hiver 2025')).rejects.toThrow();
     });
   });
 
@@ -1116,14 +1115,14 @@ describe('realAPI', () => {
           return attempts < 2 ? HttpResponse.error() : HttpResponse.json([mockPlayer]);
         }),
       );
-      const players = await realAPI.getPlayers();
+      const players = await realAPI.getPlayers('org-123');
       expect(players[0].name).toBe('Alice');
       expect(attempts).toBe(2);
     }, 5000);
 
     it('throws after exhausting all retries', async () => {
       server.use(http.get(`${BASE}/players`, () => HttpResponse.error()));
-      await expect(realAPI.getPlayers()).rejects.toThrow();
+      await expect(realAPI.getPlayers('org-123')).rejects.toThrow();
     }, 12000);
 
     it('retries on a 5xx and succeeds on the next attempt', async () => {
@@ -1136,7 +1135,7 @@ describe('realAPI', () => {
             : HttpResponse.json([mockPlayer]);
         }),
       );
-      expect((await realAPI.getPlayers())[0].name).toBe('Alice');
+      expect((await realAPI.getPlayers('org-123'))[0].name).toBe('Alice');
       expect(attempts).toBe(2);
     }, 5000);
 
@@ -1148,7 +1147,7 @@ describe('realAPI', () => {
           return HttpResponse.json({ message: 'nope' }, { status: 400 });
         }),
       );
-      await expect(realAPI.getPlayers()).rejects.toThrow();
+      await expect(realAPI.getPlayers('org-123')).rejects.toThrow();
       expect(attempts).toBe(1);
     });
 

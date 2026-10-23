@@ -1,7 +1,7 @@
 import { useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
-import { api, setCurrentOrgId, DEMO_MODE } from '@/api';
+import { api, DEMO_MODE } from '@/api';
 import { clearLocalPersonalData, unsubscribeDeviceFromPush } from '@/utils/localData';
 import { useAppStore, clearOrgsCache } from '@/store/appStore';
 import { track, EVENTS } from '@/utils/analytics';
@@ -29,7 +29,6 @@ export function useAuth() {
     setSession(null);
     useAppStore.getState().clearLinkOrg();
     setCurrentOrg(null);
-    setCurrentOrgId(null);
     queryClient.clear();
     // Shared phones: leave nothing of this account behind (ballots in the
     // persisted cache, voter identity, drafts, push notifications).
@@ -85,7 +84,6 @@ export function useAuth() {
         // Signed out (explicit or session expired) — clear everything.
         clearOrgsCache();
         setCurrentOrg(null);
-        setCurrentOrgId(null);
             queryClient.clear();
       } else if (event === 'SIGNED_IN') {
         // Explicit sign-in: reload orgs (bootstrap handles the initial load).

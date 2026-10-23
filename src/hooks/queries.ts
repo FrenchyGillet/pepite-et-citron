@@ -14,7 +14,7 @@ export const queryKeys = {
   teams:         (orgId?: string | null)               => ['teams',         orgId]    as const,
   guestTokens:   (matchId: EntityId | null | undefined) => ['guestTokens', matchId]  as const,
   currentSeason: (orgId?: string | null)               => ['currentSeason', orgId]    as const,
-  seasonName:    (season: number)                      => ['seasonName',    season]   as const,
+  seasonName:    (orgId: string | null | undefined, season: number) => ['seasonName', orgId, season] as const,
   orgMembers:    (orgId: string | null | undefined)    => ['orgMembers',    orgId]    as const,
   emailNotifications: (orgId: string | null | undefined) => ['emailNotifications', orgId] as const,
   schedules:     (orgId?: string | null)               => ['schedules',     orgId]    as const,
@@ -22,11 +22,13 @@ export const queryKeys = {
 } as const;
 
 const orgEnabled = (orgId?: string | null) => DEMO_MODE || !!orgId;
+/** The team a query loads: the one in its key, never another (the demo ignores it). */
+export const scope = (orgId?: string | null) => orgId ?? '';
 
 export function usePlayers(orgId?: string | null) {
   return useQuery({
     queryKey: queryKeys.players(orgId),
-    queryFn: () => api.getPlayers(),
+    queryFn: () => api.getPlayers(scope(orgId)),
     enabled: orgEnabled(orgId),
     staleTime: 30_000,
   });
@@ -35,7 +37,7 @@ export function usePlayers(orgId?: string | null) {
 export function useActiveMatch(orgId?: string | null) {
   return useQuery({
     queryKey: queryKeys.activeMatch(orgId),
-    queryFn: () => api.getActiveMatch(),
+    queryFn: () => api.getActiveMatch(scope(orgId)),
     enabled: orgEnabled(orgId),
     // staleTime: 0 — always considered stale so window-focus (or useWakeUp)
     // triggers an immediate refetch.  This is the safety net when Realtime
@@ -83,7 +85,7 @@ export function useVoteCount(matchId: EntityId | null | undefined) {
 export function useAllVotes(orgId?: string | null) {
   return useQuery({
     queryKey: queryKeys.allVotes(orgId),
-    queryFn: () => api.getAllVotes(),
+    queryFn: () => api.getAllVotes(scope(orgId)),
     enabled: orgEnabled(orgId),
   });
 }
@@ -91,7 +93,7 @@ export function useAllVotes(orgId?: string | null) {
 export function useMatches(orgId?: string | null) {
   return useQuery({
     queryKey: queryKeys.matches(orgId),
-    queryFn: () => api.getMatches(),
+    queryFn: () => api.getMatches(scope(orgId)),
     enabled: orgEnabled(orgId),
   });
 }
@@ -99,7 +101,7 @@ export function useMatches(orgId?: string | null) {
 export function useTeams(orgId?: string | null) {
   return useQuery({
     queryKey: queryKeys.teams(orgId),
-    queryFn: () => api.getTeams(),
+    queryFn: () => api.getTeams(scope(orgId)),
     enabled: orgEnabled(orgId),
     staleTime: 30_000,
   });
@@ -116,7 +118,7 @@ export function useGuestTokens(matchId: EntityId | null | undefined) {
 export function useCurrentSeason(orgId?: string | null) {
   return useQuery({
     queryKey: queryKeys.currentSeason(orgId),
-    queryFn: () => api.getCurrentSeason(),
+    queryFn: () => api.getCurrentSeason(scope(orgId)),
     enabled: orgEnabled(orgId),
     staleTime: 60_000,
   });
@@ -126,7 +128,7 @@ export function useCurrentSeason(orgId?: string | null) {
 export function useUpcomingSchedules(orgId?: string | null) {
   return useQuery({
     queryKey: queryKeys.schedules(orgId),
-    queryFn: () => api.getUpcomingSchedules(),
+    queryFn: () => api.getUpcomingSchedules(scope(orgId)),
     enabled: orgEnabled(orgId),
     staleTime: 60_000,
   });
@@ -136,7 +138,7 @@ export function useUpcomingSchedules(orgId?: string | null) {
 export function useVoteOpenDelay(orgId?: string | null) {
   return useQuery({
     queryKey: queryKeys.voteOpenDelay(orgId),
-    queryFn: () => api.getVoteOpenDelay(),
+    queryFn: () => api.getVoteOpenDelay(scope(orgId)),
     enabled: orgEnabled(orgId),
     staleTime: 60_000,
   });
@@ -159,11 +161,12 @@ export function useOrgMembers(orgId: string | null | undefined) {
   });
 }
 
-export function useSeasonNames(seasons: number[]) {
+export function useSeasonNames(orgId: string | null | undefined, seasons: number[]) {
   const results = useQueries({
     queries: seasons.map(s => ({
-      queryKey: queryKeys.seasonName(s),
-      queryFn: () => api.getSeasonName(s),
+      queryKey: queryKeys.seasonName(orgId, s),
+      queryFn: () => api.getSeasonName(scope(orgId), s),
+      enabled: orgEnabled(orgId),
       staleTime: 60_000,
     })),
   });

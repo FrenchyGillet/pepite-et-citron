@@ -1,6 +1,5 @@
 import { useCallback } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
-import { setCurrentOrgId } from '@/api';
 import { useAppStore } from '@/store/appStore';
 import type { Org } from '@/types';
 
@@ -16,7 +15,6 @@ export function useOrg() {
     // An explicit choice ends the vote-link visit.
     clearLinkOrg();
     setCurrentOrg(org);
-    setCurrentOrgId(org.id);
     setLastMatchId(null);
     setVotedThisSession(false);
     queryClient.clear();

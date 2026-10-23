@@ -10,13 +10,13 @@ import type { ConfirmFn, Notify } from './shared';
 import { t } from '@/i18n';
 
 /** Single-use invite links for supporters, during the voting phase. */
-export function GuestLinksSection({ matchId, notify, confirm }: { matchId: EntityId; notify: Notify; confirm: ConfirmFn }) {
+export function GuestLinksSection({ orgId, matchId, notify, confirm }: { orgId?: string; matchId: EntityId; notify: Notify; confirm: ConfirmFn }) {
   const [guestInput,  setGuestInput]  = useState('');
   const [guestError,  setGuestError]  = useState<string | null>(null);
   const [copiedToken, setCopiedToken] = useState<string | null>(null);
 
   const { data: guestTokens = [] } = useGuestTokens(matchId);
-  const createGuestTokenMutation = useCreateGuestToken(matchId);
+  const createGuestTokenMutation = useCreateGuestToken(orgId, matchId);
   const deleteGuestTokenMutation = useDeleteGuestToken(matchId);
 
   const createGuestLink = () => {

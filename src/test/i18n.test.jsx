@@ -41,7 +41,7 @@ describe("English", () => {
 
   it("a voter switches language from the vote screen: the whole app follows, and it is remembered", async () => {
     __resetDemoState();
-    await __demoAPI.createMatch("Match du soir", [1, 2, 3, 4], null, 1);
+    await __demoAPI.createMatch('org-123', "Match du soir", [1, 2, 3, 4], null, 1);
     renderApp({ initialPath: "/vote" });
     expect(await screen.findByText("Qui es-tu ?")).toBeInTheDocument();
 

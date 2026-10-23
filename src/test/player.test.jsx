@@ -10,7 +10,7 @@ let matchId;
 
 beforeEach(async () => {
   __resetDemoState();
-  const match = await __demoAPI.createMatch("Match test", [1, 2, 3, 4, 5], null, 1);
+  const match = await __demoAPI.createMatch('org-123', "Match test", [1, 2, 3, 4, 5], null, 1);
   matchId = match.id;
 });
 

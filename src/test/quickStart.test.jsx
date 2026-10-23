@@ -184,8 +184,8 @@ describe("/start draft", () => {
 
 describe("Vote ouvert après /start", () => {
   it("shows the welcome and the QR code straight away", async () => {
-    const match = await __demoAPI.createMatch("Match du 6 oct.", [1, 2, 3, 4], null, 1, 3);
-    const players = await __demoAPI.getPlayers();
+    const match = await __demoAPI.createMatch('org-123', "Match du 6 oct.", [1, 2, 3, 4], null, 1, 3);
+    const players = await __demoAPI.getPlayers('org-123');
     const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
     render(
       <MemoryRouter initialEntries={[{ pathname: "/admin", state: { firstVote: true } }]}>

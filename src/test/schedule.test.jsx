@@ -68,7 +68,7 @@ describe("Programmer un match (Admin)", () => {
   });
 
   it("cancels a scheduled match after confirmation", async () => {
-    await __demoAPI.createSchedule(schedule({ starts_at: new Date(Date.now() + 86_400_000).toISOString() }));
+    await __demoAPI.createSchedule('org-123', schedule({ starts_at: new Date(Date.now() + 86_400_000).toISOString() }));
     renderAdmin();
     const user = userEvent.setup();
     const list = (await screen.findByText("Prochains matchs · 1")).parentElement;
@@ -84,7 +84,7 @@ describe("Programmer un match (Admin)", () => {
 describe("Ouvrir maintenant (le match finit plus tôt)", () => {
   it("opens this occurrence now, dated at kick-off, and not again at the usual time", async () => {
     // Kick-off 60 min ago, vote planned 30 min from now.
-    await __demoAPI.createSchedule(schedule({ starts_at: minutesAgo(60) }));
+    await __demoAPI.createSchedule('org-123', schedule({ starts_at: minutesAgo(60) }));
     demoState.schedules[0].created_at = minutesAgo(24 * 60);
     renderAdmin();
     const user = userEvent.setup();
@@ -94,34 +94,34 @@ describe("Ouvrir maintenant (le match finit plus tôt)", () => {
     expect(demoState.matches).toHaveLength(1);
     expect(demoState.matches[0]).toMatchObject({ label: "vs Dragons", is_open: true, created_at: demoState.schedules[0].starts_at });
     await __demoAPI.closeMatch(demoState.matches[0].id);
-    await __demoAPI.getActiveMatch();
+    await __demoAPI.getActiveMatch('org-123');
     expect(demoState.matches).toHaveLength(1);
   });
 
   it("is not offered while a vote is in progress", async () => {
-    await __demoAPI.createSchedule(schedule({ starts_at: minutesAgo(-24 * 60) }));
-    const active = await __demoAPI.createMatch("En cours", [1, 2, 3], null, 1);
+    await __demoAPI.createSchedule('org-123', schedule({ starts_at: minutesAgo(-24 * 60) }));
+    const active = await __demoAPI.createMatch('org-123', "En cours", [1, 2, 3], null, 1);
     renderAdmin(active);
     expect(await screen.findByText("Prochains matchs · 1")).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Ouvrir maintenant" })).toBeNull();
   });
 
   it("a vote launched by hand during the match stands for it", async () => {
-    await __demoAPI.createSchedule(schedule({ starts_at: minutesAgo(60) }));
+    await __demoAPI.createSchedule('org-123', schedule({ starts_at: minutesAgo(60) }));
     demoState.schedules[0].created_at = minutesAgo(24 * 60);
-    await __demoAPI.createMatch("À la main", [1, 2, 3], null, 1);
-    expect(await __demoAPI.getUpcomingSchedules()).toHaveLength(0);
+    await __demoAPI.createMatch('org-123', "À la main", [1, 2, 3], null, 1);
+    expect(await __demoAPI.getUpcomingSchedules('org-123')).toHaveLength(0);
     // Its vote time passes: still one vote, no second one after the reveal.
     demoState.schedules[0].starts_at = minutesAgo(100);
     demoState.matches[0].created_at = minutesAgo(30);
     await __demoAPI.closeMatch(demoState.matches[0].id);
-    await __demoAPI.getActiveMatch();
+    await __demoAPI.getActiveMatch('org-123');
     expect(demoState.matches).toHaveLength(1);
   });
 
   it("explains a refusal in the user's language", async () => {
-    await __demoAPI.createSchedule(schedule({ starts_at: minutesAgo(-24 * 60) }));
-    await __demoAPI.createMatch("En cours", [1, 2, 3], null, 1);
+    await __demoAPI.createSchedule('org-123', schedule({ starts_at: minutesAgo(-24 * 60) }));
+    await __demoAPI.createMatch('org-123', "En cours", [1, 2, 3], null, 1);
     await expect(__demoAPI.openScheduleNow(demoState.schedules[0].id)).rejects.toThrow("Un vote est déjà en cours.");
     const { humanizeError } = await import("@/utils/errors");
     const { setLang } = await import("@/i18n");
@@ -133,31 +133,31 @@ describe("Ouvrir maintenant (le match finit plus tôt)", () => {
 describe("Ouverture automatique (règles du serveur, mode démo)", () => {
   it("opens a due vote, dated at kick-off, with the active players", async () => {
     // Created yesterday, kick-off 100 min ago, default delay 90 min: due.
-    await __demoAPI.createSchedule(schedule());
+    await __demoAPI.createSchedule('org-123', schedule());
     demoState.schedules[0].created_at = minutesAgo(24 * 60);
     demoState.players[9].archived_at = minutesAgo(1);
 
-    const match = await __demoAPI.getActiveMatch();
+    const match = await __demoAPI.getActiveMatch('org-123');
     expect(match).toMatchObject({ label: "vs Dragons", phase: "voting", is_open: true, pepite_count: 3 });
     expect(match.created_at).toBe(demoState.schedules[0].starts_at);
     expect(match.present_ids).toHaveLength(9);
     // Never twice.
-    await __demoAPI.getActiveMatch();
+    await __demoAPI.getActiveMatch('org-123');
     expect(demoState.matches).toHaveLength(1);
   });
 
   it("waits while the previous vote is not revealed", async () => {
-    await __demoAPI.createMatch("Ancien", [1, 2, 3], null, 1);
-    await __demoAPI.createSchedule(schedule());
+    await __demoAPI.createMatch('org-123', "Ancien", [1, 2, 3], null, 1);
+    await __demoAPI.createSchedule('org-123', schedule());
     demoState.schedules[0].created_at = minutesAgo(24 * 60);
-    expect((await __demoAPI.getActiveMatch()).label).toBe("Ancien");
+    expect((await __demoAPI.getActiveMatch('org-123')).label).toBe("Ancien");
     expect(demoState.matches).toHaveLength(1);
   });
 
   it("a link voter sees when the next vote opens", async () => {
     vi.useFakeTimers({ shouldAdvanceTime: true, now: new Date(2026, 9, 27, 18, 0) });
     try {
-      await __demoAPI.createSchedule(schedule({ starts_at: new Date(2026, 9, 27, 20, 0).toISOString() }));
+      await __demoAPI.createSchedule('org-123', schedule({ starts_at: new Date(2026, 9, 27, 20, 0).toISOString() }));
       renderApp({ initialPath: "/vote" });
       expect(await screen.findByText(/Prochain match : mar\. 27 oct\. · 20:00/)).toBeInTheDocument();
       expect(screen.getByText(/Le vote ouvre à 21:30/)).toBeInTheDocument();

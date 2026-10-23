@@ -48,8 +48,8 @@ beforeEach(() => {
 describe('VoteView — player tracking', () => {
   it('calls onVoted with (name, playerId) when voter selects from the step-0 grid', async () => {
     const onVoted = vi.fn();
-    const match   = await __demoAPI.createMatch('Match test', [1, 2, 3, 4, 5], null, 1);
-    const players = await __demoAPI.getPlayers();
+    const match   = await __demoAPI.createMatch('org-123', 'Match test', [1, 2, 3, 4, 5], null, 1);
+    const players = await __demoAPI.getPlayers('org-123');
     const user    = userEvent.setup();
 
     renderWithProviders(
@@ -81,8 +81,8 @@ describe('VoteView — player tracking', () => {
 
   it('calls onVoted with undefined playerId when guestName bypasses step 0', async () => {
     const onVoted = vi.fn();
-    const match   = await __demoAPI.createMatch('Match test', [1, 2, 3, 4, 5], null, 1);
-    const players = await __demoAPI.getPlayers();
+    const match   = await __demoAPI.createMatch('org-123', 'Match test', [1, 2, 3, 4, 5], null, 1);
+    const players = await __demoAPI.getPlayers('org-123');
     const user    = userEvent.setup();
 
     renderWithProviders(
@@ -107,8 +107,8 @@ describe('VoteView — player tracking', () => {
   });
 
   it('shows "Qui es-tu ?" at step 0 and hides it for guest voters', async () => {
-    const match   = await __demoAPI.createMatch('Match test', [1, 2, 3], null, 1);
-    const players = await __demoAPI.getPlayers();
+    const match   = await __demoAPI.createMatch('org-123', 'Match test', [1, 2, 3], null, 1);
+    const players = await __demoAPI.getPlayers('org-123');
 
     // Anonymous voter sees step 0
     const { unmount } = renderWithProviders(
@@ -125,8 +125,8 @@ describe('VoteView — player tracking', () => {
   });
 
   it('tapping your name at step 0 starts the vote (no "Continuer" step)', async () => {
-    const match   = await __demoAPI.createMatch('Match test', [1, 2, 3], null, 1);
-    const players = await __demoAPI.getPlayers();
+    const match   = await __demoAPI.createMatch('org-123', 'Match test', [1, 2, 3], null, 1);
+    const players = await __demoAPI.getPlayers('org-123');
     const user    = userEvent.setup();
 
     renderWithProviders(

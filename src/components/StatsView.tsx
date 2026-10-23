@@ -89,7 +89,7 @@ export function StatsView({ players, activeMatch, isAdmin, canRunMatches = isAdm
   const { data: currentSeason = 1 }            = useCurrentSeason(orgId);
 
   const seasons     = [...new Set(allMatches.map(m => m.season || 1))].sort((a, b) => a - b);
-  const seasonNames = useSeasonNames(seasons);
+  const seasonNames = useSeasonNames(orgId, seasons);
 
   const deleteMatchMutation = useDeleteMatch(orgId);
   const updateMatchMutation = useUpdateMatch(orgId);

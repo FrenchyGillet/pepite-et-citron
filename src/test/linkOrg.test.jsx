@@ -2,7 +2,7 @@ import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { api, getCurrentOrgId } from "@/api";
+import { api } from "@/api";
 import { useAppStore } from "@/store/appStore";
 import { LinkOrgBanner, JoinLinkOrgOffer } from "@/components/LinkOrgBanner";
 import { getStoredVoterIdentity, saveVoterIdentity } from "@/utils/vote";
@@ -33,7 +33,6 @@ describe("Vote link of another team while signed in", () => {
     const { currentOrg, usualOrg } = useAppStore.getState();
     expect(currentOrg).toMatchObject({ id: "org-b", role: null });
     expect(usualOrg).toMatchObject({ id: "org-a" });
-    expect(getCurrentOrgId()).toBe("org-b");
   });
 
   it("the link's team wins when it resolves after the user's teams", async () => {
@@ -49,7 +48,6 @@ describe("Vote link of another team while signed in", () => {
     // nothing of team A's match leaks into team B's vote screen
     expect(s.lastMatchId).toBeNull();
     expect(s.votedThisSession).toBe(false);
-    expect(getCurrentOrgId()).toBe("org-b");
   });
 
   it("the next launch without a link opens the usual team again", async () => {
@@ -95,7 +93,6 @@ describe("Vote link of another team while signed in", () => {
     const s = useAppStore.getState();
     expect(s.currentOrg).toMatchObject({ id: "org-a" });
     expect(s.linkOrg).toBeNull();
-    expect(getCurrentOrgId()).toBe("org-a");
     expect(screen.queryByText("Tu votes pour FC B")).toBeNull();
   });
 

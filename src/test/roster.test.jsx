@@ -33,7 +33,7 @@ describe("Admin — roster management", () => {
     await user.click(screen.getByRole("button", { name: "Ajouter 2 joueurs" }));
 
     expect(await screen.findByText(/2 joueurs ajoutés · déjà dans l'effectif : Antoine/)).toBeInTheDocument();
-    const names = (await __demoAPI.getPlayers()).map(p => p.name);
+    const names = (await __demoAPI.getPlayers('org-123')).map(p => p.name);
     expect(names).toEqual(expect.arrayContaining(["Zoé", "Léo"]));
     expect(names.filter(n => n === "Antoine")).toHaveLength(1);
   });
@@ -47,7 +47,7 @@ describe("Admin — roster management", () => {
   });
 
   it("archives a player (out of the pickers, history kept) and reactivates them", async () => {
-    const m = await __demoAPI.createMatch("Ancien match", [1, 2, 3, 4], null, 1);
+    const m = await __demoAPI.createMatch('org-123', "Ancien match", [1, 2, 3, 4], null, 1);
     await __demoAPI.submitVote({ match_id: m.id, voter_name: "Antoine", best1_id: 2, best2_id: 3, lemon_id: 4 });
     await __demoAPI.closeMatch(m.id);
 
@@ -62,7 +62,7 @@ describe("Admin — roster management", () => {
     // gone from the "who's here tonight" picker…
     expect(screen.queryByRole("button", { name: "Baptiste" })).toBeNull();
     // …but still in the data, with the ballots that name him
-    expect((await __demoAPI.getPlayers()).find(p => p.name === "Baptiste")?.archived_at).toBeTruthy();
+    expect((await __demoAPI.getPlayers('org-123')).find(p => p.name === "Baptiste")?.archived_at).toBeTruthy();
     expect((await __demoAPI.getVotes(m.id))[0].best1_id).toBe(2);
 
     await user.click(screen.getByRole("button", { name: /Archivés · 1/ }));
@@ -84,6 +84,6 @@ describe("Admin — roster management", () => {
     await user.click(within(dialog).getByRole("button", { name: "Supprimer" }));
 
     expect(await screen.findByText("Baptiste supprimé")).toBeInTheDocument();
-    expect((await __demoAPI.getPlayers()).find(p => p.id === 2)).toBeUndefined();
+    expect((await __demoAPI.getPlayers('org-123')).find(p => p.id === 2)).toBeUndefined();
   });
 });

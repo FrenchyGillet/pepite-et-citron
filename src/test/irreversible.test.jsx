@@ -14,8 +14,8 @@ afterEach(() => vi.restoreAllMocks());
 // U7: revoking a guest link is irreversible — the ✕ asks first.
 describe("Guest link revoke", () => {
   async function setup() {
-    const match = await __demoAPI.createMatch("Match actif", [1, 2, 3, 4], null, 1);
-    await __demoAPI.createGuestToken("Tonton", match.id);
+    const match = await __demoAPI.createMatch('org-123', "Match actif", [1, 2, 3, 4], null, 1);
+    await __demoAPI.createGuestToken('org-123', "Tonton", match.id);
     renderApp({ initialPath: "/admin" });
     const user = userEvent.setup();
     await user.click(await screen.findByRole("button", { name: "Révoquer le lien de Tonton" }));

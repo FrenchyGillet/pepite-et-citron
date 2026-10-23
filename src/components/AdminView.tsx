@@ -189,7 +189,7 @@ export function AdminView({ isAdmin = true, players, activeMatch, currentOrg, on
 
       {/* Supporters invités — only during voting phase */}
       {activeMatch && (activeMatch.phase || 'voting') === 'voting' && (
-        <GuestLinksSection {...shared} matchId={activeMatch.id} />
+        <GuestLinksSection {...shared} orgId={currentOrg?.id} matchId={activeMatch.id} />
       )}
 
       {/* ── ZONE 2 : Effectif ──────────────────────────────────────────── */}

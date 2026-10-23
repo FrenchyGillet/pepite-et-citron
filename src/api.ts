@@ -65,10 +65,11 @@ async function run<T>(
 // Demo: email preference per team (real API: org_members.email_notifications)
 const demoEmailPrefs = new Map<string, boolean>();
 
-// Org courante (défini au login ou via ?org=slug)
-let _orgId: string | null = null;
-export function setCurrentOrgId(id: string | null): void { _orgId = id; }
-export function getCurrentOrgId(): string | null { return _orgId; }
+/** The team a team-scoped call works on; never empty (see API in types.ts). */
+function team(orgId: string): string {
+  if (!orgId) throw new UserError(t('errors.noTeam'));
+  return orgId;
+}
 
 // ─── Demo state ───────────────────────────────────────────────────────────────
 export const demoState = {
@@ -149,12 +150,12 @@ export const demoAPI: API = {
 
   // Données
   getPlayers:     () => Promise.resolve([...demoState.players]),
-  addPlayer:      (name) => {
+  addPlayer:      (_orgId, name) => {
     const p: Player = { id: demoState.nextId++, name };
     demoState.players.push(p);
     return Promise.resolve(p);
   },
-  addPlayers:     (names) => {
+  addPlayers:     (_orgId, names) => {
     const added: Player[] = names.map(name => ({ id: demoState.nextId++, name }));
     demoState.players.push(...added);
     return Promise.resolve(added);
@@ -180,7 +181,7 @@ export const demoAPI: API = {
     return Promise.resolve(demoState.matches.find(m => m.is_open || m.phase === "counting") ?? null);
   },
   getMatches:     () => Promise.resolve([...demoState.matches].reverse()),
-  createMatch: (label, presentIds, teamId, season, pepiteCount, voteDeadline) => {
+  createMatch: (_orgId, label, presentIds, teamId, season, pepiteCount, voteDeadline) => {
     const m: Match = {
       id: demoState.nextId++, label, present_ids: presentIds,
       is_open: true, phase: "voting", reveal_order: [], revealed_count: 0,
@@ -192,7 +193,7 @@ export const demoAPI: API = {
     demoState.matches.push(m);
     return Promise.resolve(m);
   },
-  createManualMatch: ({ label, presentIds, teamId, season, pepiteCount, playedAt, result }) => {
+  createManualMatch: (_orgId, { label, presentIds, teamId, season, pepiteCount, playedAt, result }) => {
     const m: Match = {
       id: demoState.nextId++, label, present_ids: presentIds,
       is_open: false, phase: "closed", reveal_order: [], revealed_count: 0,
@@ -239,7 +240,7 @@ export const demoAPI: API = {
     });
     return Promise.resolve(upcoming.sort((a, b) => a.opens_at.localeCompare(b.opens_at)));
   },
-  createSchedule: (input) => {
+  createSchedule: (_orgId, input) => {
     demoState.schedules.push({ ...input, id: demoState.nextId++, created_at: new Date().toISOString(), last_opened_on: null });
     return Promise.resolve();
   },
@@ -260,11 +261,11 @@ export const demoAPI: API = {
     return Promise.resolve(demoCreateScheduledMatch(s, kickOff, new Date(Math.min(kickOff.getTime(), Date.now()))));
   },
   getVoteOpenDelay: () => Promise.resolve(demoState.voteOpenDelay),
-  setVoteOpenDelay: (minutes) => { demoState.voteOpenDelay = minutes; return Promise.resolve(); },
+  setVoteOpenDelay: (_orgId, minutes) => { demoState.voteOpenDelay = minutes; return Promise.resolve(); },
   getCurrentSeason: () => Promise.resolve(demoState.currentSeason),
   advanceSeason:    () => { demoState.currentSeason++; return Promise.resolve(demoState.currentSeason); },
-  getSeasonName:    (season) => Promise.resolve(demoState.seasonNames[season] ?? null),
-  setSeasonName:    (season, name) => { demoState.seasonNames[season] = name; return Promise.resolve(); },
+  getSeasonName:    (_orgId, season) => Promise.resolve(demoState.seasonNames[season] ?? null),
+  setSeasonName:    (_orgId, season, name) => { demoState.seasonNames[season] = name; return Promise.resolve(); },
   hasVoted:         (matchId, voterName, voterPlayerId) => Promise.resolve(
     demoState.votes.some(v => v.match_id === matchId && (
       voterPlayerId != null
@@ -299,7 +300,7 @@ export const demoAPI: API = {
     return Promise.resolve();
   },
   getTeams:         () => Promise.resolve([...demoState.teams]),
-  createTeam:       (name, playerIds) => {
+  createTeam:       (_orgId, name, playerIds) => {
     const t: Team = { id: demoState.nextId++, name, player_ids: playerIds };
     demoState.teams.push(t);
     return Promise.resolve(t);
@@ -312,7 +313,7 @@ export const demoAPI: API = {
     demoState.teams = demoState.teams.filter(t => t.id !== id);
     return Promise.resolve(true);
   },
-  createGuestToken: (name, matchId) => {
+  createGuestToken: (_orgId, name, matchId) => {
     const token = Math.random().toString(36).slice(2) + Math.random().toString(36).slice(2);
     demoState.guestTokens.push({ id: demoState.nextId++, token, name, match_id: matchId, used: false, created_at: new Date().toISOString() });
     return Promise.resolve(token);
@@ -509,19 +510,19 @@ export const realAPI: API = {
   },
 
   // ── Joueurs ───────────────────────────────────────────────────────────────
-  getPlayers: () =>
+  getPlayers: (orgId) =>
     withRetry(async () => {
-      return await run<Player[]>(supabase.from("players").select("*").eq("org_id", _orgId).order("name"));
+      return await run<Player[]>(supabase.from("players").select("*").eq("org_id", team(orgId)).order("name"));
     }),
   // No withRetry: a retried INSERT after a timeout would duplicate the player.
-  addPlayer: async (name) => {
-    const rows = await run<Player[]>(supabase.from("players").insert({ name, org_id: _orgId }).select());
+  addPlayer: async (orgId, name) => {
+    const rows = await run<Player[]>(supabase.from("players").insert({ name, org_id: team(orgId) }).select());
     return rows[0];
   },
   // One INSERT for a pasted roster. No withRetry (INSERT — see addPlayer).
-  addPlayers: async (names) => {
+  addPlayers: async (orgId, names) => {
     return await run<Player[]>(
-      supabase.from("players").insert(names.map(name => ({ name, org_id: _orgId }))).select(),
+      supabase.from("players").insert(names.map(name => ({ name, org_id: team(orgId) }))).select(),
     );
   },
   removePlayer: async (id) => {
@@ -550,35 +551,35 @@ export const realAPI: API = {
     }),
 
   // ── Matchs ────────────────────────────────────────────────────────────────
-  getActiveMatch: () =>
+  getActiveMatch: (orgId) =>
     withRetry(async () => {
       // A scheduled vote that is due opens first (20260021), and an open vote
       // left without a ballot for 24 h is deleted (20260020). Best effort:
       // without these migrations the select below still answers.
-      const { error: openErr } = await supabase.rpc("open_due_scheduled_matches", { p_org_id: _orgId });
+      const { error: openErr } = await supabase.rpc("open_due_scheduled_matches", { p_org_id: team(orgId) });
       if (openErr) console.warn("open_due_scheduled_matches:", openErr.message);
-      const { error: expireErr } = await supabase.rpc("delete_abandoned_votes", { p_org_id: _orgId });
+      const { error: expireErr } = await supabase.rpc("delete_abandoned_votes", { p_org_id: team(orgId) });
       if (expireErr) console.warn("delete_abandoned_votes:", expireErr.message);
       const { data, error } = await supabase.from("matches").select("*")
         .or("is_open.eq.true,phase.eq.counting")
-        .eq("org_id", _orgId)
+        .eq("org_id", team(orgId))
         .order("created_at", { ascending: false });
       if (error) throw new Error(error.message);
       const matches = (data as Match[] | null) ?? [];
       return matches.find(m => !isAbandonedVote(m, m.vote_count ?? 0)) ?? null;
     }),
-  getMatches: () =>
+  getMatches: (orgId) =>
     withRetry(async () => {
       return await run<Match[]>(
-        supabase.from("matches").select("*").eq("org_id", _orgId).order("created_at", { ascending: false })
+        supabase.from("matches").select("*").eq("org_id", team(orgId)).order("created_at", { ascending: false })
       );
     }),
   // No withRetry: a retried INSERT after a timeout would open a second match.
-  createMatch: async (label, presentIds, teamId, season, pepiteCount, voteDeadline) => {
+  createMatch: async (orgId, label, presentIds, teamId, season, pepiteCount, voteDeadline) => {
     const rows = await run<Match[]>(
       supabase.from("matches").insert({
         label, present_ids: presentIds, is_open: true, phase: "voting",
-        team_id: teamId ?? null, season: season || 1, org_id: _orgId,
+        team_id: teamId ?? null, season: season || 1, org_id: team(orgId),
         ...(pepiteCount === 3 ? { pepite_count: 3 } : {}),
         ...(voteDeadline ? { vote_deadline: voteDeadline } : {}),
       }).select()
@@ -587,11 +588,11 @@ export const realAPI: API = {
   },
   // Closed from the start: matches_manual_result_check (20260019) forbids
   // reopening it. No withRetry (INSERT — see createMatch).
-  createManualMatch: async ({ label, presentIds, teamId, season, pepiteCount, playedAt, result }) => {
+  createManualMatch: async (orgId, { label, presentIds, teamId, season, pepiteCount, playedAt, result }) => {
     const rows = await run<Match[]>(
       supabase.from("matches").insert({
         label, present_ids: presentIds, is_open: false, phase: "closed",
-        team_id: teamId ?? null, season: season || 1, org_id: _orgId,
+        team_id: teamId ?? null, season: season || 1, org_id: team(orgId),
         pepite_count: pepiteCount, created_at: playedAt, manual_result: result,
       }).select()
     );
@@ -642,17 +643,17 @@ export const realAPI: API = {
   // saison sur la table season_names (org_id, season, name). Cf. migration
   // 20260004_seasons.sql.
   // ── Matchs programmés (20260021) ──────────────────────────────────────────
-  getUpcomingSchedules: () =>
+  getUpcomingSchedules: (orgId) =>
     withRetry(async () => {
-      const { data, error } = await supabase.rpc("get_upcoming_schedules", { p_org_id: _orgId });
+      const { data, error } = await supabase.rpc("get_upcoming_schedules", { p_org_id: team(orgId) });
       if (error) throw new Error(error.message);
       return ((data as MatchSchedule[] | null) ?? [])
         .map(s => ({ ...s, start_time: s.start_time ? s.start_time.slice(0, 5) : null }))
         .sort((a, b) => a.opens_at.localeCompare(b.opens_at));
     }),
   // No withRetry: a retried INSERT after a timeout would schedule it twice.
-  createSchedule: async (input) => {
-    const { error } = await supabase.from("match_schedules").insert({ ...input, org_id: _orgId });
+  createSchedule: async (orgId, input) => {
+    const { error } = await supabase.from("match_schedules").insert({ ...input, org_id: team(orgId) });
     if (error) throw new Error(error.message);
   },
   deleteSchedule: async (id) => {
@@ -668,23 +669,23 @@ export const realAPI: API = {
     if (!match) throw new Error("Match programmé introuvable.");
     return match;
   },
-  getVoteOpenDelay: () =>
+  getVoteOpenDelay: (orgId) =>
     withRetry(async () => {
       const { data, error } = await supabase.from("organizations")
-        .select("vote_open_delay_minutes").eq("id", _orgId).maybeSingle();
+        .select("vote_open_delay_minutes").eq("id", team(orgId)).maybeSingle();
       if (error) throw new Error(error.message);
       return (data as { vote_open_delay_minutes?: number | null } | null)?.vote_open_delay_minutes ?? null;
     }),
   // Idempotent UPDATE: safe to retry.
-  setVoteOpenDelay: (minutes) =>
+  setVoteOpenDelay: (orgId, minutes) =>
     withRetry(async () => {
-      const { error } = await supabase.rpc("set_vote_open_delay", { p_org_id: _orgId, p_minutes: minutes });
+      const { error } = await supabase.rpc("set_vote_open_delay", { p_org_id: team(orgId), p_minutes: minutes });
       if (error) throw new Error(error.message);
     }),
-  getCurrentSeason: () =>
+  getCurrentSeason: (orgId) =>
     withRetry(async () => {
       const { data, error } = await supabase.from("organizations")
-        .select("current_season").eq("id", _orgId).maybeSingle();
+        .select("current_season").eq("id", team(orgId)).maybeSingle();
       if (error) throw new Error(error.message);
       return (data as { current_season: number } | null)?.current_season ?? 1;
     }).catch((err) => {
@@ -693,34 +694,34 @@ export const realAPI: API = {
       console.error("getCurrentSeason failed, defaulting to 1:", (err as Error).message);
       return 1;
     }),
-  advanceSeason: () =>
+  advanceSeason: (orgId) =>
     withRetry(async () => {
       // Un seul admin fait avancer une saison quelques fois par an :
       // read-modify-write acceptable (pas de contention réaliste).
-      const cur  = await realAPI.getCurrentSeason();
+      const cur  = await realAPI.getCurrentSeason(orgId);
       const rows = await run<{ current_season: number }[]>(
         supabase.from("organizations")
           .update({ current_season: cur + 1 })
-          .eq("id", _orgId)
+          .eq("id", team(orgId))
           .select("current_season"),
       );
       return rows[0]?.current_season ?? cur + 1;
     }),
-  getSeasonName: (season) =>
+  getSeasonName: (orgId, season) =>
     withRetry(async () => {
       const { data, error } = await supabase.from("season_names")
-        .select("name").eq("org_id", _orgId).eq("season", season).maybeSingle();
+        .select("name").eq("org_id", team(orgId)).eq("season", season).maybeSingle();
       if (error) throw new Error(error.message);
       return (data as { name: string } | null)?.name ?? null;
     }).catch((err) => {
       console.error("getSeasonName failed:", (err as Error).message);
       return null;
     }),
-  setSeasonName: (season, name) =>
+  setSeasonName: (orgId, season, name) =>
     withRetry(async () => {
       await run(
         supabase.from("season_names")
-          .upsert({ org_id: _orgId, season, name }, { onConflict: "org_id,season" }),
+          .upsert({ org_id: team(orgId), season, name }, { onConflict: "org_id,season" }),
       );
     }),
 
@@ -765,9 +766,9 @@ export const realAPI: API = {
     withRetry(() => run<Vote[]>(
       supabase.rpc("get_match_votes", { target_match_id: matchId, p_org_slug: orgSlug || null }),
     ).then(v => v ?? [])),
-  getAllVotes: () =>
+  getAllVotes: (orgId) =>
     withRetry(() => run<Vote[]>(
-      supabase.rpc("get_all_votes", { target_org_id: _orgId }),
+      supabase.rpc("get_all_votes", { target_org_id: team(orgId) }),
     ).then(v => v ?? [])),
   // Admin-only, voting phase only (delete_vote, 20260014): undo a vote cast
   // under someone else's name so the real player can vote.
@@ -777,13 +778,13 @@ export const realAPI: API = {
   },
 
   // ── Équipes ───────────────────────────────────────────────────────────────
-  getTeams: () =>
+  getTeams: (orgId) =>
     withRetry(() => run<Team[]>(
-      supabase.from("teams").select("*").eq("org_id", _orgId).order("name")
+      supabase.from("teams").select("*").eq("org_id", team(orgId)).order("name")
     )),
-  createTeam: async (name, playerIds) => {
+  createTeam: async (orgId, name, playerIds) => {
     const rows = await run<Team[]>(
-      supabase.from("teams").insert({ name, player_ids: playerIds, org_id: _orgId }).select()
+      supabase.from("teams").insert({ name, player_ids: playerIds, org_id: team(orgId) }).select()
     );
     return rows[0];
   },
@@ -799,10 +800,10 @@ export const realAPI: API = {
   },
 
   // ── Guest tokens ──────────────────────────────────────────────────────────
-  createGuestToken: async (name, matchId) => {
+  createGuestToken: async (orgId, name, matchId) => {
     const bytes = crypto.getRandomValues(new Uint8Array(12));
     const token = Array.from(bytes).map(b => b.toString(16).padStart(2, "0")).join("");
-    await run(supabase.from("guest_tokens").insert({ token, name, match_id: matchId, org_id: _orgId }));
+    await run(supabase.from("guest_tokens").insert({ token, name, match_id: matchId, org_id: team(orgId) }));
     return token;
   },
   getGuestTokens: (matchId) =>

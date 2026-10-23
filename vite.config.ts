@@ -171,6 +171,9 @@ export default defineConfig({
     globals: true,
     setupFiles: "./src/test/setup.js",
     css: false,
+    // Other Claude sessions keep their own checkouts in .claude/worktrees:
+    // their tests run against this checkout's src (the "@" alias) and fail.
+    exclude: ["**/node_modules/**", "**/dist/**", "**/.git/**", ".claude/**"],
     // Force demo mode for tests (avoids real Supabase)
     env: {
       VITE_SUPABASE_URL: "https://VOTRE_PROJET.supabase.co",

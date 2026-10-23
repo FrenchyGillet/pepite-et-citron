@@ -38,6 +38,7 @@ export const fr = {
     network: 'Erreur réseau : vérifie ta connexion et réessaie.',
     sendFailed: "Erreur lors de l'envoi, réessaie.",
     sessionExpiredShort: 'Session expirée, reconnecte-toi.',
+    noTeam: 'Équipe inconnue, recharge la page.',
     teamCreateFailed: "Impossible de créer l'équipe, réessayez.",
     // Messages raised by the database (supabase/migrations) and api/: matched
     // on their French text, shown in the user's language.

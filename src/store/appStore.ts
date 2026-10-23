@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { api, setCurrentOrgId, DEMO_MODE } from '@/api';
+import { api, DEMO_MODE } from '@/api';
 import type { UserSession, Org, EntityId } from '@/types';
 
 // ── Org cache (localStorage) ──────────────────────────────────────────────────
@@ -214,7 +214,6 @@ export const useAppStore = create<AppStore>((set, get) => ({
       // What was known about the previous team's match does not apply here.
       ...(switching ? { lastMatchId: null, votedThisSession: false } : {}),
     });
-    setCurrentOrgId(org.id);
   },
   clearLinkOrg: () => set({ linkOrg: null, usualOrg: null }),
 
@@ -235,7 +234,6 @@ export const useAppStore = create<AppStore>((set, get) => ({
         usualOrg: link && cachedUsual.id !== link.id ? cachedUsual : null,
         orgsResolved: true,       // unblock the UI right now
       });
-      setCurrentOrgId(cachedCurrent.id);
       restoredFromCache = true;
     }
 
@@ -255,14 +253,12 @@ export const useAppStore = create<AppStore>((set, get) => ({
         const usual   = orgs.find(o => o.id === usualId) || orgs[0];
         const current = link ? (orgs.find(o => o.id === link.id) ?? link) : usual;
         set({ currentOrg: current, usualOrg: link && usual.id !== link.id ? usual : null });
-        setCurrentOrgId(current.id);
         writeOrgsCache(orgs, usual.id);   // persist for next load
         return current;
       }
       writeOrgsCache([], null);
       if (link) {
         set({ currentOrg: link, usualOrg: null });
-        setCurrentOrgId(link.id);
       }
       return null;
     } catch (err) {
@@ -285,6 +281,5 @@ export const useAppStore = create<AppStore>((set, get) => ({
     await api.signOut();
     clearOrgsCache();
     set({ session: null, currentOrg: null, myOrgs: [], linkOrg: null, usualOrg: null });
-    setCurrentOrgId(null);
   },
 }));

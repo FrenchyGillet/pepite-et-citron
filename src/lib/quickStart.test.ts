@@ -45,8 +45,8 @@ describe('runQuickStart', () => {
 
   it('reuses players a timed-out insert committed anyway', async () => {
     const real = api.addPlayers;
-    vi.spyOn(api, 'addPlayers').mockImplementationOnce(async names => {
-      await real(names);                       // committed server-side…
+    vi.spyOn(api, 'addPlayers').mockImplementationOnce(async (orgId, names) => {
+      await real(orgId, names);                // committed server-side…
       throw new Error('Délai dépassé');        // …but the answer was lost
     });
     await expect(runQuickStart(api, input, {}, () => {})).rejects.toThrow();

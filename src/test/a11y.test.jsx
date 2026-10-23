@@ -46,8 +46,8 @@ describe("Accessibility — names and labels", () => {
   });
 
   it("the guest-link revoke button names the guest", async () => {
-    const match = await __demoAPI.createMatch("Match actif", [1, 2, 3, 4], null, 1);
-    await __demoAPI.createGuestToken("Tonton", match.id);
+    const match = await __demoAPI.createMatch('org-123', "Match actif", [1, 2, 3, 4], null, 1);
+    await __demoAPI.createGuestToken('org-123', "Tonton", match.id);
     renderApp({ initialPath: "/admin" });
     expect(await screen.findByRole("button", { name: "Révoquer le lien de Tonton" })).toBeInTheDocument();
   });

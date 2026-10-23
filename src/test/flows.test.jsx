@@ -122,7 +122,7 @@ describe('JoinOrgView', () => {
 describe('Vote counter', () => {
   it('shows pre-existing vote count on identity step (step 0)', async () => {
     // Create a match with 4 present players, then pre-submit one vote
-    const match = await __demoAPI.createMatch('Match du soir', [1, 2, 3, 4], null, 1);
+    const match = await __demoAPI.createMatch('org-123', 'Match du soir', [1, 2, 3, 4], null, 1);
     await __demoAPI.submitVote({
       match_id: match.id, voter_name: 'Baptiste',
       best1_id: 2, best2_id: 3, lemon_id: 4,
@@ -138,7 +138,7 @@ describe('Vote counter', () => {
   });
 
   it('shows vote count on steps 1+ (always visible when present > 0)', async () => {
-    const match = await __demoAPI.createMatch('Match du soir', [1, 2, 3, 4], null, 1);
+    const match = await __demoAPI.createMatch('org-123', 'Match du soir', [1, 2, 3, 4], null, 1);
     const user = userEvent.setup();
 
     renderApp({ initialPath: '/vote' });
@@ -157,7 +157,7 @@ describe('Vote counter', () => {
   });
 
   it('shows updated count after a vote is submitted', async () => {
-    const match = await __demoAPI.createMatch('Match', [1, 2, 3], null, 1);
+    const match = await __demoAPI.createMatch('org-123', 'Match', [1, 2, 3], null, 1);
     await __demoAPI.submitVote({ match_id: match.id, voter_name: 'Clément', best1_id: 2, best2_id: 3, lemon_id: 1 });
     await __demoAPI.submitVote({ match_id: match.id, voter_name: 'David',   best1_id: 1, best2_id: 3, lemon_id: 2 });
 
@@ -171,7 +171,7 @@ describe('Vote counter', () => {
 
   it('post-vote EmptyState shows X / Y count', async () => {
     // Create a match with 4 present players and pre-submit 2 votes
-    const match = await __demoAPI.createMatch('Match du soir', [1, 2, 3, 4], null, 1);
+    const match = await __demoAPI.createMatch('org-123', 'Match du soir', [1, 2, 3, 4], null, 1);
     await __demoAPI.submitVote({ match_id: match.id, voter_name: 'Clément', best1_id: 2, best2_id: 3, lemon_id: 4 });
     await __demoAPI.submitVote({ match_id: match.id, voter_name: 'David',   best1_id: 1, best2_id: 3, lemon_id: 4 });
 

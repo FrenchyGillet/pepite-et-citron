@@ -8,6 +8,7 @@ export default tseslint.config(
     ignores: [
       'dist/**', 'dev-dist/**', 'coverage/**', 'node_modules/**',
       'public/**', 'scripts/**', '*.config.js', '*.config.ts',
+      '.claude/**',   // other sessions' worktrees
     ],
   },
 

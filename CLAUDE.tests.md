@@ -96,19 +96,18 @@ describe('demoAPI', () => {
 ```ts
 import { http, HttpResponse } from 'msw';
 import { server } from './server';
-import { realAPI, setCurrentOrgId } from '../api';
+import { realAPI } from '@/api';
 
 const BASE = 'https://VOTRE_PROJET.supabase.co/rest/v1';
 const AUTH = 'https://VOTRE_PROJET.supabase.co/auth/v1';
 const RPC  = `${BASE}/rpc`;
 
 describe('realAPI', () => {
-  beforeAll(() => setCurrentOrgId('org-123'));
-
+  // Every team-scoped call names its team: no global "current team".
   describe('getPlayers', () => {
     it('retourne la liste depuis le serveur', async () => {
       server.use(http.get(`${BASE}/players`, () => HttpResponse.json([{ id: 'p1', name: 'Alice' }])));
-      const players = await realAPI.getPlayers();
+      const players = await realAPI.getPlayers('org-123');
       expect(players[0].name).toBe('Alice');
     });
 
@@ -116,7 +115,7 @@ describe('realAPI', () => {
       server.use(http.get(`${BASE}/players`, () =>
         HttpResponse.json({ message: 'Erreur 500' }, { status: 500 }),
       ));
-      await expect(realAPI.getPlayers()).rejects.toThrow('Erreur 500');
+      await expect(realAPI.getPlayers('org-123')).rejects.toThrow('Erreur 500');
     });
   });
 });

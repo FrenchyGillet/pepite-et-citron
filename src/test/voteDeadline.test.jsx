@@ -31,7 +31,7 @@ describe("F1 — vote deadline", () => {
     expect(screen.getByRole("button", { name: "30 min" })).toHaveAttribute("aria-pressed", "true");
     await user.click(screen.getByRole("button", { name: /Lancer le vote/i }));
 
-    const match = await __demoAPI.getActiveMatch();
+    const match = await __demoAPI.getActiveMatch('org-123');
     const minutesLeft = (new Date(match.vote_deadline).getTime() - Date.now()) / 60_000;
     expect(minutesLeft).toBeGreaterThan(29);
     expect(minutesLeft).toBeLessThanOrEqual(30);
@@ -49,12 +49,12 @@ describe("F1 — vote deadline", () => {
     }
     await user.click(screen.getByRole("button", { name: /Lancer le vote/i }));
     await screen.findByText("Match ouvert !");
-    expect((await __demoAPI.getActiveMatch()).vote_deadline).toBeNull();
+    expect((await __demoAPI.getActiveMatch('org-123')).vote_deadline).toBeNull();
     expect(screen.queryByText(/Fermeture dans/)).not.toBeInTheDocument();
   });
 
   it("the admin can push the deadline back by 15 minutes", async () => {
-    await __demoAPI.createMatch("Match actif", [1, 2, 3, 4], null, 1, 2, inMinutes(10));
+    await __demoAPI.createMatch('org-123', "Match actif", [1, 2, 3, 4], null, 1, 2, inMinutes(10));
     renderApp({ initialPath: "/admin" });
     const user = userEvent.setup();
 
@@ -63,13 +63,13 @@ describe("F1 — vote deadline", () => {
   });
 
   it("voters see the countdown while the vote is open", async () => {
-    await __demoAPI.createMatch("Match actif", [1, 2, 3, 4], null, 1, 2, inMinutes(45));
+    await __demoAPI.createMatch('org-123', "Match actif", [1, 2, 3, 4], null, 1, 2, inMinutes(45));
     renderApp();
     expect(await screen.findByText(/Fermeture dans 45 min/)).toBeInTheDocument();
   });
 
   it("voters see a closed vote once the deadline has passed, and the ballot is refused", async () => {
-    const m = await __demoAPI.createMatch("Match actif", [1, 2, 3, 4], null, 1, 2, inMinutes(-1));
+    const m = await __demoAPI.createMatch('org-123', "Match actif", [1, 2, 3, 4], null, 1, 2, inMinutes(-1));
     renderApp();
     expect(await screen.findByText(/Le vote a fermé à/)).toBeInTheDocument();
     expect(screen.queryByText("Qui es-tu ?")).not.toBeInTheDocument();
@@ -89,7 +89,7 @@ describe("F1 — remind players who have not voted", () => {
   it("shares a message listing the missing voters with the vote link", async () => {
     const share = vi.fn().mockResolvedValue(undefined);
     navigator.share = share;
-    const m = await __demoAPI.createMatch("vs Dragons", [1, 2, 3, 4], null, 1);
+    const m = await __demoAPI.createMatch('org-123', "vs Dragons", [1, 2, 3, 4], null, 1);
     await __demoAPI.submitVote({
       match_id: m.id, voter_name: "Antoine", voter_player_id: 1, best1_id: 2, best2_id: 3, lemon_id: 4,
     });
@@ -106,7 +106,7 @@ describe("F1 — remind players who have not voted", () => {
   });
 
   it("copies the message when the share sheet is unavailable", async () => {
-    await __demoAPI.createMatch("vs Dragons", [1, 2, 3, 4], null, 1);
+    await __demoAPI.createMatch('org-123', "vs Dragons", [1, 2, 3, 4], null, 1);
 
     renderApp({ initialPath: "/admin" });
     const user = userEvent.setup(); // installs a clipboard stub
@@ -117,7 +117,7 @@ describe("F1 — remind players who have not voted", () => {
   });
 
   it("hides the reminder once everyone has voted", async () => {
-    const m = await __demoAPI.createMatch("vs Dragons", [1, 2, 3], null, 1);
+    const m = await __demoAPI.createMatch('org-123', "vs Dragons", [1, 2, 3], null, 1);
     for (const [id, name, b1, b2, l] of [[1, "Antoine", 2, 3, 4], [2, "Baptiste", 1, 3, 4], [3, "Clément", 1, 2, 4]]) {
       await __demoAPI.submitVote({ match_id: m.id, voter_name: name, voter_player_id: id, best1_id: b1, best2_id: b2, lemon_id: l });
     }

@@ -1,4 +1,3 @@
-import { setCurrentOrgId } from '@/api';
 import { defaultMatchLabel, quickStartPepiteCount, teamSlug } from '@/utils/quickStart';
 import type { API, Match, Org, Player } from '@/types';
 import { t } from '@/i18n';
@@ -70,14 +69,13 @@ export async function runQuickStart(
       ?? await api.createOrg(input.teamName.trim(), teamSlug(input.teamName));
   }
   const org = progress.org;
-  setCurrentOrgId(org.id);
 
   // ── 3. Players ───────────────────────────────────────────────────────────
   onStep('players');
   if (!progress.players) {
-    const existing = await api.getPlayers();
+    const existing = await api.getPlayers(org.id);
     const missing  = input.names.filter(n => !existing.some(p => sameName(p.name, n)));
-    const added    = missing.length ? await api.addPlayers(missing) : [];
+    const added    = missing.length ? await api.addPlayers(org.id, missing) : [];
     const all      = [...existing, ...added];
     progress.players = input.names
       .map(n => all.find(p => sameName(p.name, n)))
@@ -88,11 +86,12 @@ export async function runQuickStart(
   // ── 4. Open the vote ─────────────────────────────────────────────────────
   onStep('match');
   if (!progress.match) {
-    progress.match = await api.getActiveMatch() ?? await api.createMatch(
+    progress.match = await api.getActiveMatch(org.id) ?? await api.createMatch(
+      org.id,
       defaultMatchLabel(),
       players.map(p => p.id),
       null,
-      await api.getCurrentSeason(),
+      await api.getCurrentSeason(org.id),
       quickStartPepiteCount(players.length),
       null,
     );

@@ -16,7 +16,7 @@ async function openVoterTracking(user) {
 
 describe("Admin — cancel a vote (someone voted under another player's name)", () => {
   it("cancels the vote after confirmation and frees the player to vote again", async () => {
-    const m = await __demoAPI.createMatch("Match actif", [1, 2, 3, 4], null, 1);
+    const m = await __demoAPI.createMatch('org-123', "Match actif", [1, 2, 3, 4], null, 1);
     await __demoAPI.submitVote({
       match_id: m.id, voter_name: "Antoine", voter_player_id: 1,
       best1_id: 2, best2_id: 3, lemon_id: 4,
@@ -36,7 +36,7 @@ describe("Admin — cancel a vote (someone voted under another player's name)", 
   });
 
   it("keeps the vote when the admin dismisses the confirmation", async () => {
-    const m = await __demoAPI.createMatch("Match actif", [1, 2, 3, 4], null, 1);
+    const m = await __demoAPI.createMatch('org-123', "Match actif", [1, 2, 3, 4], null, 1);
     await __demoAPI.submitVote({
       match_id: m.id, voter_name: "Antoine", voter_player_id: 1,
       best1_id: 2, best2_id: 3, lemon_id: 4,
@@ -54,7 +54,7 @@ describe("Admin — cancel a vote (someone voted under another player's name)", 
   });
 
   it("shows no cancel button for players who have not voted", async () => {
-    const m = await __demoAPI.createMatch("Match actif", [1, 2, 3, 4], null, 1);
+    const m = await __demoAPI.createMatch('org-123', "Match actif", [1, 2, 3, 4], null, 1);
     await __demoAPI.submitVote({
       match_id: m.id, voter_name: "Antoine", voter_player_id: 1,
       best1_id: 2, best2_id: 3, lemon_id: 4,

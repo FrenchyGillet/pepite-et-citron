@@ -89,11 +89,11 @@ describe("Saison — résultat saisi à la main", () => {
   });
 
   it("lets a captain edit a hand-entered result but not delete it", async () => {
-    await __demoAPI.createManualMatch({
+    await __demoAPI.createManualMatch('org-123', {
       label: "vs Loups", presentIds: [1, 2, 3], teamId: null, season: 1, pepiteCount: 2,
       playedAt: "2026-10-01T12:00:00.000Z", result: { best_ids: [1], lemon_id: 3 },
     });
-    const players = await __demoAPI.getPlayers();
+    const players = await __demoAPI.getPlayers('org-123');
     renderWithProviders(
       <StatsView players={players} activeMatch={null} isAdmin={false} canRunMatches orgId="demo-org" />,
     );
@@ -114,7 +114,7 @@ describe("Saison — résultat saisi à la main", () => {
   });
 
   it("hides the entry for a plain voter", async () => {
-    const players = await __demoAPI.getPlayers();
+    const players = await __demoAPI.getPlayers('org-123');
     renderWithProviders(
       <StatsView players={players} activeMatch={null} isAdmin={false} canRunMatches={false} orgId="demo-org" />,
     );
@@ -125,7 +125,7 @@ describe("Saison — résultat saisi à la main", () => {
 
 describe("Capitaine — onglet du match", () => {
   it("shows the match of the day only: no roster, no settings", async () => {
-    const players = await __demoAPI.getPlayers();
+    const players = await __demoAPI.getPlayers('org-123');
     renderWithProviders(
       <AdminView isAdmin={false} players={players} activeMatch={null} currentOrg={ORG} onShowGuide={() => {}} />,
     );
@@ -136,8 +136,8 @@ describe("Capitaine — onglet du match", () => {
   });
 
   it("runs an open vote without seeing who voted", async () => {
-    const match = await __demoAPI.createMatch("vs Dragons", [1, 2, 3, 4], null, 1);
-    const players = await __demoAPI.getPlayers();
+    const match = await __demoAPI.createMatch('org-123', "vs Dragons", [1, 2, 3, 4], null, 1);
+    const players = await __demoAPI.getPlayers('org-123');
     renderWithProviders(
       <AdminView isAdmin={false} players={players} activeMatch={match} currentOrg={ORG} onShowGuide={() => {}} />,
     );
@@ -146,8 +146,8 @@ describe("Capitaine — onglet du match", () => {
   });
 
   it("an admin still sees who voted", async () => {
-    const match = await __demoAPI.createMatch("vs Dragons", [1, 2, 3, 4], null, 1);
-    const players = await __demoAPI.getPlayers();
+    const match = await __demoAPI.createMatch('org-123', "vs Dragons", [1, 2, 3, 4], null, 1);
+    const players = await __demoAPI.getPlayers('org-123');
     renderWithProviders(
       <AdminView players={players} activeMatch={match} currentOrg={{ ...ORG, role: "admin" }} onShowGuide={() => {}} />,
     );

@@ -16,8 +16,8 @@ afterEach(() => {
 
 describe("Guest token flow", () => {
   it("valid token skips step 0 and shows welcome banner", async () => {
-    const match = await __demoAPI.createMatch("Match test", [1, 2, 3, 4, 5], null, 1);
-    const token = await __demoAPI.createGuestToken("Tonton", match.id);
+    const match = await __demoAPI.createMatch('org-123', "Match test", [1, 2, 3, 4, 5], null, 1);
+    const token = await __demoAPI.createGuestToken('org-123', "Tonton", match.id);
 
     renderApp({ initialPath: `/vote?guest=${token}` });
 
@@ -36,8 +36,8 @@ describe("Guest token flow", () => {
   });
 
   it("network failure while validating a token falls back to the error screen (B4)", async () => {
-    const match = await __demoAPI.createMatch("Match test", [1, 2, 3, 4, 5], null, 1);
-    const token = await __demoAPI.createGuestToken("Tonton", match.id);
+    const match = await __demoAPI.createMatch('org-123', "Match test", [1, 2, 3, 4, 5], null, 1);
+    const token = await __demoAPI.createGuestToken('org-123', "Tonton", match.id);
     // The token is valid but resolving the match throws (flaky network).
     vi.spyOn(api, "getMatchById").mockRejectedValueOnce(new Error("network"));
 
@@ -51,8 +51,8 @@ describe("Guest token flow", () => {
   });
 
   it("used/consumed token shows error", async () => {
-    const match = await __demoAPI.createMatch("Match test", [1, 2, 3, 4, 5], null, 1);
-    const token = await __demoAPI.createGuestToken("Tonton", match.id);
+    const match = await __demoAPI.createMatch('org-123', "Match test", [1, 2, 3, 4, 5], null, 1);
+    const token = await __demoAPI.createGuestToken('org-123', "Tonton", match.id);
     // Consumed the way the app does it: by a vote cast with the link.
     await __demoAPI.submitVote({
       match_id: match.id, voter_name: "Tonton", best1_id: 1, best2_id: 2, lemon_id: 3, guest_token: token,
@@ -66,8 +66,8 @@ describe("Guest token flow", () => {
   });
 
   it("guest completes vote and token is marked used", async () => {
-    const match = await __demoAPI.createMatch("Match test", [1, 2, 3, 4, 5], null, 1);
-    const token = await __demoAPI.createGuestToken("Tonton", match.id);
+    const match = await __demoAPI.createMatch('org-123', "Match test", [1, 2, 3, 4, 5], null, 1);
+    const token = await __demoAPI.createGuestToken('org-123', "Tonton", match.id);
 
     renderApp({ initialPath: `/vote?guest=${token}` });
     const user = userEvent.setup();
@@ -102,8 +102,8 @@ describe("Guest token flow", () => {
   // so we verify the equivalent: that guestStatus is set to 'valid' in the
   // store (the value isVoterLink now relies on) before navigate fires.
   it("sets guestStatus=valid in store before navigating away from guest URL", async () => {
-    const match = await __demoAPI.createMatch("Match test", [1, 2, 3, 4, 5], null, 1);
-    const token = await __demoAPI.createGuestToken("Tonton", match.id);
+    const match = await __demoAPI.createMatch('org-123', "Match test", [1, 2, 3, 4, 5], null, 1);
+    const token = await __demoAPI.createGuestToken('org-123', "Tonton", match.id);
 
     renderApp({ initialPath: `/vote?guest=${token}` });
 
@@ -123,8 +123,8 @@ describe("Guest token flow", () => {
 describe("3-pépite mode", () => {
   it("shows 4 vote steps and submits best3 without error", async () => {
     // pepiteCount=3 → 4 steps (pépite 1, pépite 2, pépite 3, citron)
-    const match = await __demoAPI.createMatch("Match 3P", [1, 2, 3, 4, 5, 6], null, 1, 3);
-    const token = await __demoAPI.createGuestToken("Joueur", match.id);
+    const match = await __demoAPI.createMatch('org-123', "Match 3P", [1, 2, 3, 4, 5, 6], null, 1, 3);
+    const token = await __demoAPI.createGuestToken('org-123', "Joueur", match.id);
 
     renderApp({ initialPath: `/vote?guest=${token}` });
     const user = userEvent.setup();
@@ -162,8 +162,8 @@ describe("3-pépite mode", () => {
   });
 
   it("does NOT show 3ème meilleur step in standard 2-pépite mode", async () => {
-    const match = await __demoAPI.createMatch("Match 2P", [1, 2, 3, 4, 5], null, 1);
-    const token = await __demoAPI.createGuestToken("Joueur", match.id);
+    const match = await __demoAPI.createMatch('org-123', "Match 2P", [1, 2, 3, 4, 5], null, 1);
+    const token = await __demoAPI.createGuestToken('org-123', "Joueur", match.id);
 
     renderApp({ initialPath: `/vote?guest=${token}` });
     const user = userEvent.setup();

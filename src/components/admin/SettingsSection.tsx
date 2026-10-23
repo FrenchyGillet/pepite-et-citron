@@ -133,10 +133,10 @@ function SeasonSettings({ currentSeason, orgId, notify, confirm }: { currentSeas
   const [seasonNameDraft, setSeasonNameDraft] = useState('');
   const [editingSeason,   setEditingSeason]   = useState(false);
 
-  const seasonNamesMap        = useSeasonNames([currentSeason]);
+  const seasonNamesMap        = useSeasonNames(orgId, [currentSeason]);
   const seasonName            = seasonNamesMap[currentSeason] ?? '';
   const advanceSeasonMutation = useAdvanceSeason(orgId);
-  const setSeasonNameMutation = useSetSeasonName();
+  const setSeasonNameMutation = useSetSeasonName(orgId);
 
   const saveSeasonName = () => {
     setSeasonNameMutation.mutate({ season: currentSeason, name: seasonNameDraft.trim() }, {

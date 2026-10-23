@@ -41,6 +41,7 @@ export const nl: Messages = {
     network: 'Netwerkfout: controleer je verbinding en probeer opnieuw.',
     sendFailed: 'Versturen mislukt, probeer opnieuw.',
     sessionExpiredShort: 'Sessie verlopen, meld je opnieuw aan.',
+    noTeam: 'Onbekende ploeg, herlaad de pagina.',
     teamCreateFailed: 'De ploeg aanmaken is mislukt, probeer opnieuw.',
     server: {
       playerAbsent: 'Deze speler was niet aanwezig op de match.',

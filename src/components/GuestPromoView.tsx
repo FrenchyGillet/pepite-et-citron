@@ -1,5 +1,4 @@
 import { useNavigate } from 'react-router-dom';
-import { setCurrentOrgId } from '@/api';
 import { useAppStore } from '@/store/appStore';
 import { track, EVENTS } from '@/utils/analytics';
 import { useT } from '@/i18n';
@@ -33,7 +32,6 @@ export function GuestPromoView({ canSeeResults, voterName, orgName }: GuestPromo
     setGuestToken(null);
     clearLinkOrg();
     setCurrentOrg(null);
-    setCurrentOrgId(null);
     navigate('/login?mode=signup', { replace: true });
   }
 

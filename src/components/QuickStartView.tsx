@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type CSSProperties } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
-import { api, setCurrentOrgId } from '@/api';
+import { api } from '@/api';
 import { runQuickStart, type QuickStartProgress, type QuickStartStep } from '@/lib/quickStart';
 import { useAppStore } from '@/store/appStore';
 import { humanizeError } from '@/utils/errors';
@@ -105,7 +105,6 @@ export function QuickStartView({ onSignOut }: QuickStartViewProps = {}) {
     // Their other teams stay in the switcher (a second team made from Profil).
     const others = useAppStore.getState().myOrgs.filter(o => o.id !== org.id);
     clearLinkOrg();
-    setCurrentOrgId(org.id);
     setCurrentOrg(orgWithRole);
     setMyOrgs([...others, orgWithRole]);
     setLastMatchId(null);

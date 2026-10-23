@@ -25,7 +25,7 @@ beforeEach(() => {
 
 describe("Results view phases", () => {
   it("voting phase shows masked results", async () => {
-    await __demoAPI.createMatch("Match test", [1, 2, 3, 4, 5], null, 1);
+    await __demoAPI.createMatch('org-123', "Match test", [1, 2, 3, 4, 5], null, 1);
 
     renderApp();
     const user = userEvent.setup();
@@ -37,7 +37,7 @@ describe("Results view phases", () => {
   });
 
   it("counting phase shows reveal interface", async () => {
-    const match = await __demoAPI.createMatch("Match test", [1, 2, 3, 4, 5], null, 1);
+    const match = await __demoAPI.createMatch('org-123', "Match test", [1, 2, 3, 4, 5], null, 1);
 
     // Submit 1 vote
     await __demoAPI.submitVote({
@@ -63,7 +63,7 @@ describe("Results view phases", () => {
   });
 
   it("counting: admin can reveal next vote and scoreboard updates", async () => {
-    const match = await __demoAPI.createMatch("Match test", [1, 2, 3, 4, 5], null, 1);
+    const match = await __demoAPI.createMatch('org-123', "Match test", [1, 2, 3, 4, 5], null, 1);
 
     // Submit 1 vote: Antoine votes Baptiste as best
     await __demoAPI.submitVote({
@@ -96,7 +96,7 @@ describe("Results view phases", () => {
   });
 
   it("counting: 3-pépite mode shows the 3-2-1 scale and the 3rd pick (B5)", async () => {
-    const match = await __demoAPI.createMatch("Match 3 pépites", [1, 2, 3, 4, 5], null, 1, 3);
+    const match = await __demoAPI.createMatch('org-123', "Match 3 pépites", [1, 2, 3, 4, 5], null, 1, 3);
     await __demoAPI.submitVote({
       match_id: match.id,
       voter_name: "Antoine",
@@ -120,7 +120,7 @@ describe("Results view phases", () => {
   });
 
   it("counting: an unknown vote id in reveal_order never blocks the dépouillement (B6)", async () => {
-    const match = await __demoAPI.createMatch("Match test", [1, 2, 3, 4, 5], null, 1);
+    const match = await __demoAPI.createMatch('org-123', "Match test", [1, 2, 3, 4, 5], null, 1);
     // reveal_order points at a vote that does not exist
     await __demoAPI.startCounting(match.id, [999]);
 

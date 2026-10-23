@@ -39,6 +39,7 @@ export const en: Messages = {
     network: 'Network error: check your connection and try again.',
     sendFailed: "Couldn't send it, try again.",
     sessionExpiredShort: 'Session expired, please sign in again.',
+    noTeam: 'Unknown team, reload the page.',
     teamCreateFailed: "Couldn't create the team, try again.",
     server: {
       playerAbsent: "This player wasn't at the match.",

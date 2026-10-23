@@ -59,14 +59,14 @@ describe("Admin flow", () => {
     await user.click(launchBtn);
 
     // Verify match was created via API
-    const activeMatch = await __demoAPI.getActiveMatch();
+    const activeMatch = await __demoAPI.getActiveMatch('org-123');
     expect(activeMatch).not.toBeNull();
     expect(activeMatch.label).toBe("Match test");
   });
 
   it("shows guest section when match is active", async () => {
     // Create a match via API directly
-    await __demoAPI.createMatch("Match actif", [1, 2, 3, 4, 5], null, 1);
+    await __demoAPI.createMatch('org-123', "Match actif", [1, 2, 3, 4, 5], null, 1);
 
     renderApp();
     const user = userEvent.setup();
@@ -78,7 +78,7 @@ describe("Admin flow", () => {
   });
 
   it("can create a guest token", async () => {
-    await __demoAPI.createMatch("Match actif", [1, 2, 3, 4, 5], null, 1);
+    await __demoAPI.createMatch('org-123', "Match actif", [1, 2, 3, 4, 5], null, 1);
 
     renderApp();
     const user = userEvent.setup();
@@ -113,7 +113,7 @@ describe("Destructive actions use the confirm modal (not window.confirm)", () =>
     await user.click(screen.getByRole("button", { name: "Archiver" }));
 
     await screen.findByText("Antoine archivé");
-    const players = await __demoAPI.getPlayers();
+    const players = await __demoAPI.getPlayers('org-123');
     expect(players).toHaveLength(10); // kept, for the history
     expect(players.find(p => p.id === 1)?.archived_at).toBeTruthy();
   });
@@ -127,7 +127,7 @@ describe("Destructive actions use the confirm modal (not window.confirm)", () =>
     await user.click(await screen.findByRole("button", { name: "Archiver Antoine" }));
 
     await user.click(await screen.findByRole("button", { name: "Annuler" }));
-    const players = await __demoAPI.getPlayers();
+    const players = await __demoAPI.getPlayers('org-123');
     expect(players).toHaveLength(10);
     expect(players.find(p => p.id === 1)?.archived_at).toBeFalsy();
   });
@@ -142,7 +142,7 @@ describe("Close match without reveal (confirmation dialog)", () => {
   }
 
   it("asks for confirmation before closing, naming the match", async () => {
-    await __demoAPI.createMatch("Match actif", [1, 2, 3, 4, 5], null, 1);
+    await __demoAPI.createMatch('org-123', "Match actif", [1, 2, 3, 4, 5], null, 1);
     const user = await openAdmin();
 
     await user.click(await screen.findByRole("button", { name: /clore sans dépouiller/i }));
@@ -150,22 +150,22 @@ describe("Close match without reveal (confirmation dialog)", () => {
     const dialog = await screen.findByRole("alertdialog");
     expect(within(dialog).getByText(/Match actif/)).toBeInTheDocument();
     expect(within(dialog).getByText(/ne seront jamais révélés/)).toBeInTheDocument();
-    expect(await __demoAPI.getActiveMatch()).not.toBeNull();
+    expect(await __demoAPI.getActiveMatch('org-123')).not.toBeNull();
   });
 
   it("keeps the vote open when the admin cancels", async () => {
-    await __demoAPI.createMatch("Match actif", [1, 2, 3, 4, 5], null, 1);
+    await __demoAPI.createMatch('org-123', "Match actif", [1, 2, 3, 4, 5], null, 1);
     const user = await openAdmin();
 
     await user.click(await screen.findByRole("button", { name: /clore sans dépouiller/i }));
     await user.click(within(await screen.findByRole("alertdialog")).getByRole("button", { name: "Annuler" }));
 
     expect(screen.queryByRole("alertdialog")).not.toBeInTheDocument();
-    expect(await __demoAPI.getActiveMatch()).not.toBeNull();
+    expect(await __demoAPI.getActiveMatch('org-123')).not.toBeNull();
   });
 
   it("closes the match and shows a toast once confirmed", async () => {
-    await __demoAPI.createMatch("Match actif", [1, 2, 3, 4, 5], null, 1);
+    await __demoAPI.createMatch('org-123', "Match actif", [1, 2, 3, 4, 5], null, 1);
     const user = await openAdmin();
 
     await user.click(await screen.findByRole("button", { name: /clore sans dépouiller/i }));
@@ -294,7 +294,7 @@ describe("Copy link buttons", () => {
   });
 
   it("'Copier' (match section) shows 'Lien copié !' toast after click", async () => {
-    await __demoAPI.createMatch("CopyOrgTest", [1, 2, 3, 4, 5], null, 1);
+    await __demoAPI.createMatch('org-123', "CopyOrgTest", [1, 2, 3, 4, 5], null, 1);
     // The "Copier" button requires currentOrg.slug — set it in the store
     useAppStore.setState({ currentOrg: DEMO_ORG });
 
@@ -312,7 +312,7 @@ describe("Copy link buttons", () => {
   });
 
   it("'Copier le lien' (guest token) switches button label to 'Copié !'", async () => {
-    await __demoAPI.createMatch("CopyGuestTest", [1, 2, 3, 4, 5], null, 1);
+    await __demoAPI.createMatch('org-123', "CopyGuestTest", [1, 2, 3, 4, 5], null, 1);
 
     renderApp();
     const user = userEvent.setup();
@@ -336,7 +336,7 @@ describe("Copy link buttons", () => {
   });
 
   it("shows toast even when clipboard API is unavailable (graceful fallback)", async () => {
-    await __demoAPI.createMatch("CopyFallbackTest", [1, 2, 3, 4, 5], null, 1);
+    await __demoAPI.createMatch('org-123', "CopyFallbackTest", [1, 2, 3, 4, 5], null, 1);
     useAppStore.setState({ currentOrg: DEMO_ORG });
 
     // Simulate permission denied / non-HTTPS context where writeText rejects.

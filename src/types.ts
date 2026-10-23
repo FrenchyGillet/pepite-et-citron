@@ -180,6 +180,11 @@ export interface UserSession {
 
 // ─── API interface ────────────────────────────────────────────────────────────
 
+/**
+ * Data access. Every team-scoped call names its team (`orgId`): a request
+ * made for one team can never load another, whatever the screen shows by the
+ * time it runs (two teams on one phone, a vote link opened while loading).
+ */
 export interface API {
   // Auth
   signUp(email: string, password: string): Promise<unknown>;
@@ -204,21 +209,21 @@ export interface API {
   selfJoinOrg(orgId: string): Promise<void>;
 
   // Players
-  getPlayers(): Promise<Player[]>;
-  addPlayer(name: string): Promise<Player>;
-  addPlayers(names: string[]): Promise<Player[]>;
+  getPlayers(orgId: string): Promise<Player[]>;
+  addPlayer(orgId: string, name: string): Promise<Player>;
+  addPlayers(orgId: string, names: string[]): Promise<Player[]>;
   removePlayer(id: EntityId): Promise<unknown>;
   setPlayerArchived(id: EntityId, archived: boolean): Promise<void>;
   updatePlayer(id: EntityId, data: Partial<Pick<Player, 'nickname' | 'avatar_url'>>): Promise<unknown>;
   linkPlayer(playerId: EntityId): Promise<unknown>;
 
   // Matches
-  getActiveMatch(): Promise<Match | null>;
-  getMatches(): Promise<Match[]>;
+  getActiveMatch(orgId: string): Promise<Match | null>;
+  getMatches(orgId: string): Promise<Match[]>;
   getMatchById(id: EntityId): Promise<Match | null>;
-  createMatch(label: string, presentIds: EntityId[], teamId: EntityId | null, season: number, pepiteCount?: 2 | 3, voteDeadline?: string | null): Promise<Match>;
+  createMatch(orgId: string, label: string, presentIds: EntityId[], teamId: EntityId | null, season: number, pepiteCount?: 2 | 3, voteDeadline?: string | null): Promise<Match>;
   /** A closed match carrying a hand-entered result (no vote). */
-  createManualMatch(input: ManualMatchInput): Promise<Match>;
+  createManualMatch(orgId: string, input: ManualMatchInput): Promise<Match>;
   closeMatch(id: EntityId): Promise<unknown>;
   startCounting(id: EntityId, order: EntityId[]): Promise<unknown>;
   revealNext(id: EntityId, count: number): Promise<unknown>;
@@ -227,37 +232,37 @@ export interface API {
 
   // Scheduled matches (20260021)
   /** Upcoming scheduled matches of the current team, soonest first. */
-  getUpcomingSchedules(): Promise<MatchSchedule[]>;
-  createSchedule(input: MatchScheduleInput): Promise<void>;
+  getUpcomingSchedules(orgId: string): Promise<MatchSchedule[]>;
+  createSchedule(orgId: string, input: MatchScheduleInput): Promise<void>;
   deleteSchedule(id: EntityId): Promise<void>;
   /** « Ouvrir maintenant »: opens the schedule's next occurrence now. */
   openScheduleNow(id: EntityId): Promise<Match>;
   /** Minutes between kick-off and the vote opening; null = never set (90). */
-  getVoteOpenDelay(): Promise<number | null>;
-  setVoteOpenDelay(minutes: number): Promise<void>;
+  getVoteOpenDelay(orgId: string): Promise<number | null>;
+  setVoteOpenDelay(orgId: string, minutes: number): Promise<void>;
 
   // Season
-  getCurrentSeason(): Promise<number>;
-  advanceSeason(): Promise<number>;
-  getSeasonName(season: number): Promise<string | null>;
-  setSeasonName(season: number, name: string): Promise<void>;
+  getCurrentSeason(orgId: string): Promise<number>;
+  advanceSeason(orgId: string): Promise<number>;
+  getSeasonName(orgId: string, season: number): Promise<string | null>;
+  setSeasonName(orgId: string, season: number, name: string): Promise<void>;
 
   // Votes
   hasVoted(matchId: EntityId, voterName: string, voterPlayerId?: EntityId | null): Promise<boolean>;
   getVoteCount(matchId: EntityId): Promise<number>;
   submitVote(vote: Vote): Promise<void>;
   getVotes(matchId: EntityId, orgSlug?: string | null): Promise<Vote[]>;
-  getAllVotes(): Promise<Vote[]>;
+  getAllVotes(orgId: string): Promise<Vote[]>;
   deleteVote(voteId: EntityId): Promise<void>;
 
   // Teams
-  getTeams(): Promise<Team[]>;
-  createTeam(name: string, playerIds: EntityId[]): Promise<Team>;
+  getTeams(orgId: string): Promise<Team[]>;
+  createTeam(orgId: string, name: string, playerIds: EntityId[]): Promise<Team>;
   updateTeam(id: EntityId, playerIds: EntityId[]): Promise<unknown>;
   deleteTeam(id: EntityId): Promise<unknown>;
 
   // Guest tokens
-  createGuestToken(name: string, matchId: EntityId): Promise<string>;
+  createGuestToken(orgId: string, name: string, matchId: EntityId): Promise<string>;
   getGuestTokens(matchId: EntityId): Promise<GuestToken[]>;
   validateGuestToken(token: string): Promise<GuestToken | null>;
   deleteGuestToken(id: EntityId): Promise<unknown>;
