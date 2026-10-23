@@ -28,3 +28,5 @@ export const checkoutSessionSchema = z.object({
 });
 
 export const portalSessionSchema = z.object({ orgId });
+
+export const welcomeEmailSchema = z.object({ orgId });

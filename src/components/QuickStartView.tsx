@@ -7,6 +7,7 @@ import { useAppStore } from '@/store/appStore';
 import { humanizeError } from '@/utils/errors';
 import { parsePlayerNames } from '@/utils/player';
 import { saveVoterIdentity } from '@/utils/vote';
+import { sendWelcomeEmail } from '@/hooks/mutations';
 import { parseUpgradePlan, saveUpgradeIntent } from '@/utils/signupIntent';
 import { track, EVENTS } from '@/utils/analytics';
 import {
@@ -152,6 +153,7 @@ export function QuickStartView({ onSignOut }: QuickStartViewProps = {}) {
       // "Voter moi aussi" then opens straight on the organiser's ballot.
       const mePlayer = me ? players.find(p => p.name === me) : undefined;
       if (mePlayer) saveVoterIdentity(mePlayer.name, mePlayer.id);
+      void sendWelcomeEmail(org.id);
       finish(org);
     } catch (err) {
       track(EVENTS.QUICK_START_FAILED, { step: current });

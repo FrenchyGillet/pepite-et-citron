@@ -26,7 +26,7 @@ pepite-citron/
 ├── vercel.json                ← rewrites (/ → landing, /* → app.html), en-têtes de sécurité
 ├── api/                       ← fonctions serverless Vercel (+ tests *.test.ts)
 │   ├── _lib/                  ← auth (requireOrgAdmin), validation zod, email, unsubscribe…
-│   ├── send-match-notification.ts, send-push-notification.ts, unsubscribe.ts
+│   ├── send-match-notification.ts, send-push-notification.ts, send-welcome-email.ts, unsubscribe.ts
 │   ├── create-checkout-session.ts, create-portal-session.ts, stripe-webhook.ts
 │   └── delete-account.ts
 ├── supabase/

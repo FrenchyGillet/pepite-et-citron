@@ -1,5 +1,5 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { api } from '@/api';
+import { api, DEMO_MODE } from '@/api';
 import { queryKeys } from './queries';
 import { useAppStore } from '@/store/appStore';
 import type { EntityId, Vote, Match, Player, ManualMatchInput, OrgRole } from '@/types';
@@ -145,6 +145,20 @@ export function useSendVoteReminder(orgId?: string | null) {
     mutationFn: ({ matchId, matchLabel }: { matchId: EntityId; matchLabel: string }) =>
       orgId ? sendPushNotification(orgId, 'vote_reminder', matchLabel, matchId) : Promise.resolve(null),
   });
+}
+
+/**
+ * Welcome email to the organiser once /start has created their team (vote
+ * link, how to reveal, app link). Best effort: never blocks or throws.
+ */
+export async function sendWelcomeEmail(orgId: string): Promise<void> {
+  if (DEMO_MODE) return;
+  try {
+    const { postToApi } = await import('@/lib/serverApi');
+    await postToApi('/api/send-welcome-email', { orgId });
+  } catch {
+    // Best-effort — never throw
+  }
 }
 
 async function sendMatchNotification(orgId: string, matchLabel: string): Promise<void> {
