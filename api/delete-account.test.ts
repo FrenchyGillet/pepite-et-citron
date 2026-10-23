@@ -187,7 +187,7 @@ describe('POST /api/delete-account', () => {
     expect(chains.votes.every(c => c.delete.mock.calls.length === 0)).toBe(true);
 
     const unlink = chains.players.find(c => c.update.mock.calls.length > 0);
-    expect(unlink?.update).toHaveBeenCalledWith({ user_id: null, avatar_url: null, nickname: null });
+    expect(unlink?.update).toHaveBeenCalledWith({ user_id: null, avatar_url: null, avatar_emoji: null, avatar_color: null, nickname: null });
   });
 
   it('skips ballots when the user has no linked player', async () => {

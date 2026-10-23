@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
 import { computeScores } from '@/utils';
 import { rankWithTies, type RankGroup, type Tiebreakers } from '@/utils/scoring';
-import { displayName, initials, avatarColor } from '@/utils/player';
+import { displayName } from '@/utils/player';
+import { PlayerAvatar } from './PlayerAvatar';
 import { AnimatedNumber } from './AnimatedNumber';
 import type { Vote, Player } from '@/types';
 import { t } from '@/i18n';
@@ -55,16 +56,9 @@ function PodiumSlot({ group, isTop, height, delay, ready, color, colorDim }: Pod
         <>
           <div style={{ display: 'flex', marginBottom: isTop ? 3 : 4 }}>
             {players.slice(0, 3).map((p, i) => (
-              <div key={String(p.id)} aria-hidden="true" style={{
-                width: avatarSize, height: avatarSize, borderRadius: '50%',
-                background: avatarColor(p.name),
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                fontSize: Math.round(avatarSize * 0.38), fontWeight: 800,
-                color: '#fff', letterSpacing: '-0.3px', flexShrink: 0, userSelect: 'none',
+              <PlayerAvatar key={String(p.id)} player={p} size={avatarSize} style={{
                 marginLeft: i > 0 ? -8 : 0, border: tied ? '2px solid var(--bg)' : 'none',
-              }}>
-                {initials(displayName(p))}
-              </div>
+              }} />
             ))}
           </div>
           {isTop && <div aria-hidden="true" style={{ fontSize: 26, lineHeight: 1, marginBottom: 5 }}>👑</div>}

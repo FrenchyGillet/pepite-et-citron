@@ -122,7 +122,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       // Keep the roster entry for match-history integrity, but strip the link
       // and any profile data that belongs to the person.
       await must('unlink players',
-        supabase.from('players').update({ user_id: null, avatar_url: null, nickname: null })
+        supabase.from('players').update({ user_id: null, avatar_url: null, avatar_emoji: null, avatar_color: null, nickname: null })
           .in('id', linked.map(p => p.id)));
     }
 

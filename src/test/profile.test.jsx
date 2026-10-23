@@ -249,3 +249,24 @@ describe('ProfileView — support link', () => {
     expect(screen.getByText(/Ton équipe est déjà en Pro/i)).toBeInTheDocument();
   });
 });
+
+describe('ProfileView — avatar', () => {
+  it('saves the emoji and colour picked for the claimed player', async () => {
+    useAppStore.setState({
+      session:    { user: { id: 'user-abc', email: 'test@example.com' } },
+      currentOrg: null,
+    });
+    const user = userEvent.setup();
+    renderWithProviders(<ProfileView />);
+
+    await user.click(await screen.findByRole('button', { name: /Antoine/i }));
+    await user.click(await screen.findByRole('button', { name: '🐐' }));
+    await waitFor(() => expect(screen.getByRole('button', { name: '🐐' })).toHaveAttribute('aria-pressed', 'true'));
+    await user.click(screen.getByRole('button', { name: 'Bleu' }));
+
+    await waitFor(async () => {
+      const antoine = (await __demoAPI.getPlayers()).find(p => p.id === 1);
+      expect(antoine).toMatchObject({ avatar_emoji: '🐐', avatar_color: 'blue' });
+    });
+  });
+});

@@ -562,6 +562,23 @@ export const en: Messages = {
     delete: 'Delete',
   },
 
+  avatar: {
+    emojiLabel: 'YOUR AVATAR (shown on the podium)',
+    noEmoji: 'No emoji, my initials',
+    colorLabel: 'COLOUR',
+    colors: {
+      red: 'Red',
+      orange: 'Orange',
+      gold: 'Gold',
+      green: 'Green',
+      teal: 'Teal',
+      blue: 'Blue',
+      purple: 'Purple',
+      pink: 'Pink',
+      grey: 'Grey',
+    },
+  },
+
   admin: {
     firstVoteOpen: '🎉 Your first vote is open!',
     firstVoteHint: 'Have the team scan the QR code or send the link to the group. When everyone has voted, start the reveal: votes come out one by one.',

@@ -91,6 +91,7 @@ export const EVENTS = {
   // Profile & notifications
   PLAYER_CLAIMED:             'player_claimed',
   NICKNAME_SAVED:             'nickname_saved',
+  AVATAR_SAVED:               'avatar_saved',
   EMAIL_NOTIFICATIONS_TOGGLED:'email_notifications_toggled',
   LANGUAGE_CHANGED:           'language_changed',
   MATCH_SCHEDULED:            'match_scheduled',

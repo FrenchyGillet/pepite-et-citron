@@ -1,4 +1,5 @@
 import { t } from '@/i18n';
+import { isAvatarColor, playerAvatar } from '@/utils/avatar';
 // ── Canvas-local helpers (no external imports needed) ─────────────────────────
 
 /** Deterministic HSL color from a seed string (matches avatarColor in player.ts) */
@@ -20,6 +21,8 @@ function playerInitials(name: string): string {
 interface RankedEntry {
   name: string;
   nickname?: string | null;
+  avatar_emoji?: string | null;
+  avatar_color?: string | null;
   pts: number;
   absent?: boolean;
   /** Competition rank from rankWithTies — ex-aequo share rank 1. */
@@ -183,15 +186,23 @@ export async function generatePodiumImage({
     // Avatar circle — centered above the name with an 8px gap
     const avatarR  = isFirst ? 42 : 33;
     const avatarCY = nameY - nameFontSz - 8 - avatarR;
+    // A picked emoji / colour wins; else the image keeps its own brighter
+    // initials colours.
+    const look = playerAvatar(player);
     ctx.beginPath();
     ctx.arc(cx, avatarCY, avatarR, 0, Math.PI * 2);
-    ctx.fillStyle = seedHSL(player.name);
+    ctx.fillStyle = isAvatarColor(player.avatar_color) ? look.background : seedHSL(player.name);
     ctx.fill();
-    ctx.font = `800 ${Math.round(avatarR * 0.75)}px ${FONT}`;
-    ctx.fillStyle = '#FFFFFF';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    ctx.fillText(playerInitials(displayedName), cx, avatarCY + 2);
+    if (look.isEmoji) {
+      ctx.font = `${Math.round(avatarR * 1.1)}px serif`;
+      ctx.fillText(look.label, cx, avatarCY + 3);
+    } else {
+      ctx.font = `800 ${Math.round(avatarR * 0.75)}px ${FONT}`;
+      ctx.fillStyle = '#FFFFFF';
+      ctx.fillText(playerInitials(displayedName), cx, avatarCY + 2);
+    }
 
     ctx.font = nameFont;
     ctx.fillStyle = isFirst ? c.gold : c.t1;

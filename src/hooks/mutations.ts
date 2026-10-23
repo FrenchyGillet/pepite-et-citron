@@ -69,7 +69,7 @@ export function useSetPlayerArchived(orgId?: string | null) {
 export function useUpdatePlayer(orgId?: string | null) {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: ({ id, data }: { id: EntityId; data: Partial<Pick<Player, 'nickname' | 'avatar_url'>> }) =>
+    mutationFn: ({ id, data }: { id: EntityId; data: Partial<Pick<Player, 'nickname' | 'avatar_url' | 'avatar_emoji' | 'avatar_color'>> }) =>
       api.updatePlayer(id, data),
     onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.players(orgId) }),
   });

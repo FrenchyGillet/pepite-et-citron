@@ -564,6 +564,23 @@ export const nl: Messages = {
     delete: 'Verwijderen',
   },
 
+  avatar: {
+    emojiLabel: 'JE AVATAR (te zien op het podium)',
+    noEmoji: 'Geen emoji, mijn initialen',
+    colorLabel: 'KLEUR',
+    colors: {
+      red: 'Rood',
+      orange: 'Oranje',
+      gold: 'Goud',
+      green: 'Groen',
+      teal: 'Turquoise',
+      blue: 'Blauw',
+      purple: 'Paars',
+      pink: 'Roze',
+      grey: 'Grijs',
+    },
+  },
+
   admin: {
     firstVoteOpen: '🎉 Je eerste stemming is open!',
     firstVoteHint: 'Laat de QR-code scannen of stuur de link in de groep. Heeft iedereen gestemd, start dan de onthulling: de stemmen komen één voor één tevoorschijn.',

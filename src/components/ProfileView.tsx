@@ -12,6 +12,8 @@ import { useAuth } from '@/hooks/useAuth';
 import { usePlayers } from '@/hooks/queries';
 import { useUpdatePlayer, useLinkPlayer } from '@/hooks/mutations';
 import { displayName, avatarColor, initials } from '@/utils/player';
+import { PlayerAvatar } from '@/components/PlayerAvatar';
+import { AvatarPicker } from '@/components/AvatarPicker';
 import type { Player } from '@/types';
 import { t } from '@/i18n';
 import { LanguagePicker } from '@/components/LanguagePicker';
@@ -49,6 +51,7 @@ export function ProfileView() {
     try {
       await linkPlayer.mutateAsync(player.id);
       track(EVENTS.PLAYER_CLAIMED);
+      setAvatarDraft(null);
       setSelectedPlayer(player);
       setNickname(player.nickname?.trim() ?? '');
       setStep('edit');
@@ -74,8 +77,27 @@ export function ProfileView() {
     }
   }
 
-  const avatarPlayer = selectedPlayer ?? (myPlayer ?? null);
+  // Latest copy from the query, so a saved avatar shows without a reload.
+  const avatarPlayer = (selectedPlayer && players.find(p => p.id === selectedPlayer.id)) ?? selectedPlayer ?? myPlayer ?? null;
   const avatarLabel  = avatarPlayer ? displayName(avatarPlayer) : session?.user.email ?? '?';
+
+  // Saved on tap; shown at once, the query catches up after the save.
+  const [avatarDraft, setAvatarDraft] = useState<{ avatar_emoji: string | null; avatar_color: string | null } | null>(null);
+  const shownAvatar = avatarPlayer && { ...avatarPlayer, ...avatarDraft };
+
+  async function handleAvatarChange(next: { avatar_emoji: string | null; avatar_color: string | null }) {
+    if (!avatarPlayer) return;
+    setError(null);
+    const previous = avatarDraft;
+    setAvatarDraft(next);
+    try {
+      await updatePlayer.mutateAsync({ id: avatarPlayer.id, data: next });
+      track(EVENTS.AVATAR_SAVED, { emoji: !!next.avatar_emoji, color: !!next.avatar_color });
+    } catch {
+      setAvatarDraft(previous);
+      setError(t('profile.saveFailed'));
+    }
+  }
 
   // ── No session ────────────────────────────────────────────────────────────
   if (!session) {
@@ -124,15 +146,16 @@ export function ProfileView() {
 
       {/* Avatar */}
       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', marginBottom: 32, gap: 10 }}>
-        <div style={{
-          width: 80, height: 80, borderRadius: '50%',
-          background: avatarPlayer ? avatarColor(avatarLabel) : 'var(--bg3)',
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          fontSize: 28, fontWeight: 700, color: '#fff', letterSpacing: '-0.02em',
-          flexShrink: 0,
-        }}>
-          {initials(avatarLabel)}
-        </div>
+        {shownAvatar ? <PlayerAvatar player={shownAvatar} size={80} /> : (
+          <div style={{
+            width: 80, height: 80, borderRadius: '50%', background: 'var(--bg3)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            fontSize: 28, fontWeight: 700, color: '#fff', letterSpacing: '-0.02em',
+            flexShrink: 0,
+          }}>
+            {initials(avatarLabel)}
+          </div>
+        )}
         <div style={{ textAlign: 'center' }}>
           <div style={{ fontSize: 17, fontWeight: 600, color: 'var(--label)' }}>
             {avatarPlayer ? displayName(avatarPlayer) : session.user.email}
@@ -195,6 +218,15 @@ export function ProfileView() {
       {/* Step: edit nickname */}
       {step === 'edit' && selectedPlayer && (
         <div>
+          {shownAvatar && (
+            <AvatarPicker
+              name={displayName(shownAvatar)}
+              emoji={shownAvatar.avatar_emoji ?? null}
+              color={shownAvatar.avatar_color ?? null}
+              disabled={updatePlayer.isPending}
+              onChange={next => { void handleAvatarChange(next); }}
+            />
+          )}
           <div style={{
             background: 'var(--bg2)', borderRadius: 16,
             padding: '20px 16px', marginBottom: 20,

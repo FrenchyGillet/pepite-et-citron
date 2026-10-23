@@ -563,6 +563,23 @@ export const fr = {
     delete: 'Supprimer',
   },
 
+  avatar: {
+    emojiLabel: 'TON AVATAR (affiché sur le podium)',
+    noEmoji: 'Sans emoji, mes initiales',
+    colorLabel: 'COULEUR',
+    colors: {
+      red: 'Rouge',
+      orange: 'Orange',
+      gold: 'Or',
+      green: 'Vert',
+      teal: 'Turquoise',
+      blue: 'Bleu',
+      purple: 'Violet',
+      pink: 'Rose',
+      grey: 'Gris',
+    },
+  },
+
   admin: {
     firstVoteOpen: '🎉 Ton premier vote est ouvert !',
     firstVoteHint: 'Fais scanner le QR code ou envoie le lien dans le groupe. Quand tout le monde a voté, lance le dépouillement : les votes se révèlent un par un.',

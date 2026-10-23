@@ -4,11 +4,12 @@ import { DEMO_MODE } from '@/api';
 import { useAppStore } from '@/store/appStore';
 import { useOrg } from '@/hooks/useOrg';
 import { useTheme } from '@/hooks/useTheme';
-import { useActiveMatch } from '@/hooks/queries';
+import { useActiveMatch, usePlayers } from '@/hooks/queries';
 import { initials, avatarColor } from '@/utils/player';
 import { track, EVENTS } from '@/utils/analytics';
 import { canRunMatches, roleLabel } from '@/utils/roles';
-import type { Org, OrgRole } from '@/types';
+import { PlayerAvatar } from '@/components/PlayerAvatar';
+import type { Org, OrgRole, Player } from '@/types';
 import { t } from '@/i18n';
 
 export function AppHeader() {
@@ -20,6 +21,8 @@ export function AppHeader() {
   const { switchOrg }          = useOrg();
   const { theme, toggleTheme } = useTheme();
   const { data: activeMatch }  = useActiveMatch(currentOrg?.id);
+  const { data: players = [] } = usePlayers(currentOrg?.id);
+  const myPlayer = session ? players.find(p => p.user_id === session.user.id) ?? null : null;
 
   const [orgPickerOpen, setOrgPickerOpen] = useState(false);
 
@@ -66,7 +69,7 @@ export function AppHeader() {
             toggleTheme();
           }} />
           {session && !DEMO_MODE && (
-            <ProfileButton email={session.user.email ?? ''} onNavigate={() => navigate('/profile')} />
+            <ProfileButton email={session.user.email ?? ''} player={myPlayer} onNavigate={() => navigate('/profile')} />
           )}
         </div>
       </div>
@@ -190,7 +193,8 @@ function FeedbackButton() {
   );
 }
 
-function ProfileButton({ email, onNavigate }: { email: string; onNavigate: () => void }) {
+// The player's avatar once they have claimed one in this team, else the email's initials.
+function ProfileButton({ email, player, onNavigate }: { email: string; player: Player | null; onNavigate: () => void }) {
   const seed = email || '?';
   return (
     <button
@@ -204,7 +208,7 @@ function ProfileButton({ email, onNavigate }: { email: string; onNavigate: () =>
         fontSize: 13, fontWeight: 700, letterSpacing: '-0.01em',
       }}
     >
-      {initials(seed)}
+      {player ? <PlayerAvatar player={player} size={36} /> : initials(seed)}
     </button>
   );
 }

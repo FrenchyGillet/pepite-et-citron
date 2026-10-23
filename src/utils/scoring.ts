@@ -5,6 +5,8 @@ export interface RankedPlayer {
   id: EntityId;
   name: string;
   nickname?: string | null;
+  avatar_emoji?: string | null;
+  avatar_color?: string | null;
   pts: number;
   /** Competition rank from rankWithTies (ex-aequo share it). */
   rank?: number;
@@ -114,11 +116,11 @@ export function computeResultsSummary(
   );
 
   const pepiteGroups = rankWithTies(
-    present.map(p => ({ id: p.id, name: p.name, nickname: p.nickname, pts: bestScores[p.id]?.pts || 0 })),
+    present.map(p => ({ id: p.id, name: p.name, nickname: p.nickname, avatar_emoji: p.avatar_emoji, avatar_color: p.avatar_color, pts: bestScores[p.id]?.pts || 0 })),
     tiebreakers.best_id,
   );
   const lemonGroups = rankWithTies(
-    everyone.map(p => ({ id: p.id, name: p.name, nickname: p.nickname, pts: lemonScores[p.id]?.pts || 0, absent: !presentIds.has(p.id) })),
+    everyone.map(p => ({ id: p.id, name: p.name, nickname: p.nickname, avatar_emoji: p.avatar_emoji, avatar_color: p.avatar_color, pts: lemonScores[p.id]?.pts || 0, absent: !presentIds.has(p.id) })),
     tiebreakers.lemon_id,
   );
 
