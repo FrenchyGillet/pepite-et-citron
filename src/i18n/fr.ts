@@ -564,6 +564,7 @@ export const fr = {
   },
 
   avatar: {
+    toggle: 'Personnaliser mon avatar',
     emojiLabel: 'TON AVATAR (affiché sur le podium)',
     noEmoji: 'Sans emoji, mes initiales',
     colorLabel: 'COULEUR',

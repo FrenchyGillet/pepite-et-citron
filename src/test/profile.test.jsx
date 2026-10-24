@@ -260,6 +260,9 @@ describe('ProfileView — avatar', () => {
     renderWithProviders(<ProfileView />);
 
     await user.click(await screen.findByRole('button', { name: /Antoine/i }));
+    // Folded until asked for
+    expect(screen.queryByRole('button', { name: '🐐' })).not.toBeInTheDocument();
+    await user.click(await screen.findByRole('button', { name: /Personnaliser mon avatar/i }));
     await user.click(await screen.findByRole('button', { name: '🐐' }));
     await waitFor(() => expect(screen.getByRole('button', { name: '🐐' })).toHaveAttribute('aria-pressed', 'true'));
     await user.click(screen.getByRole('button', { name: 'Bleu' }));

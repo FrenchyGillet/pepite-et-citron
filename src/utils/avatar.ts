@@ -3,15 +3,14 @@ import type { Player } from '@/types';
 
 /**
  * Emojis a player can pick as avatar. Same list as the players_avatar_emoji
- * check constraint (20260023), which avatar.test.ts compares: nothing but one
+ * check constraint (20260024), which avatar.test.ts compares: nothing but one
  * of these can reach the team's podium. ⭐ and 🍋 are left out (they mean
  * Pépite and Citron), 👑 too (the podium's winner).
  */
 export const AVATAR_EMOJIS = [
-  '⚽', '🏀', '🏐', '🏉', '🏒', '🎾', '🧤', '🏆',
-  '🐐', '🦁', '🐺', '🦅', '🐯', '🐻', '🦊', '🦈',
-  '🐉', '🐝', '🔥', '⚡', '💪', '🚀', '💎', '🎯',
-  '😎', '🤠', '🥶', '🤖', '👽', '🍀',
+  '⚽', '🏀', '🏐', '🏉', '🏈', '⚾', '🏑', '🏒', '🥍', '🎾', '🏸', '🏓', '🧤', '🏆',
+  '🐐', '🦁', '🐺', '🦅', '🐯', '🐻', '🦊', '🦈', '🐉', '🐝', '🐱', '🐈‍⬛', '😼', '🐶', '🐼',
+  '🔥', '⚡', '💪', '🚀', '💎', '🎯', '😎', '🤠', '🥶', '🤖', '👽', '🍀',
 ] as const;
 
 /**

@@ -1,23 +1,24 @@
 import { describe, expect, it } from 'vitest';
-import migration from '../../supabase/migrations/20260023_player_avatar.sql?raw';
+import firstMigration from '../../supabase/migrations/20260023_player_avatar.sql?raw';
+import emojiMigration from '../../supabase/migrations/20260024_player_avatar_more_emojis.sql?raw';
 import { AVATAR_COLORS, AVATAR_EMOJIS, playerAvatar } from './avatar';
 import { contrastRatio } from './contrast';
 import { avatarColor } from './player';
 
-// The values listed in one check constraint of the migration.
-function constraintValues(name: string): string[] {
+// The values listed in a check constraint, as its latest migration sets it.
+function constraintValues(migration: string, name: string): string[] {
   const start = migration.indexOf(`add constraint ${name}`);
   const body  = migration.slice(start, migration.indexOf(');', start));
   return [...body.matchAll(/'([^']+)'/g)].map(m => m[1]);
 }
 
 describe('avatar lists match the database', () => {
-  it('emojis: same as players_avatar_emoji_check', () => {
-    expect(constraintValues('players_avatar_emoji_check')).toEqual([...AVATAR_EMOJIS]);
+  it('emojis: same as players_avatar_emoji_check (20260024)', () => {
+    expect(constraintValues(emojiMigration, 'players_avatar_emoji_check')).toEqual([...AVATAR_EMOJIS]);
   });
 
   it('colours: same keys as players_avatar_color_check', () => {
-    expect(constraintValues('players_avatar_color_check')).toEqual(Object.keys(AVATAR_COLORS));
+    expect(constraintValues(firstMigration, 'players_avatar_color_check')).toEqual(Object.keys(AVATAR_COLORS));
   });
 });
 

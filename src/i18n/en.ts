@@ -563,6 +563,7 @@ export const en: Messages = {
   },
 
   avatar: {
+    toggle: 'Customise my avatar',
     emojiLabel: 'YOUR AVATAR (shown on the podium)',
     noEmoji: 'No emoji, my initials',
     colorLabel: 'COLOUR',

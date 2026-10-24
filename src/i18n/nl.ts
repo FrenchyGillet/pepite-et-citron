@@ -565,6 +565,7 @@ export const nl: Messages = {
   },
 
   avatar: {
+    toggle: 'Mijn avatar aanpassen',
     emojiLabel: 'JE AVATAR (te zien op het podium)',
     noEmoji: 'Geen emoji, mijn initialen',
     colorLabel: 'KLEUR',
