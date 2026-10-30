@@ -801,6 +801,26 @@
       margin-bottom: 8px;
     }
 
+    /* ─── PÉPITE & CITRON TALK (comic bubbles, as in the app's MascotTalk) ─── */
+    .duo { display: flex; flex-direction: column; gap: 10px; width: 100%; max-width: 420px; margin: 28px auto 0; }
+    .say { display: flex; align-items: flex-end; gap: 4px; }
+    .say.right { flex-direction: row-reverse; }
+    .say img { width: 64px; height: 64px; flex-shrink: 0; object-fit: contain; }
+    .say p {
+      position: relative; margin: 0 0 44px; padding: 10px 14px;
+      background: var(--bg-secondary); border-radius: 16px;
+      font-size: 15px; line-height: 1.45; color: var(--label-primary);
+      font-style: normal; text-align: left;
+    }
+    /* The tail points down at the speaker. */
+    .say p::after {
+      content: ""; position: absolute; bottom: -12px; left: 10px; width: 16px; height: 14px;
+      background: inherit; clip-path: polygon(25% 0, 100% 0, 0 100%);
+    }
+    .say.right p::after { left: auto; right: 10px; transform: scaleX(-1); }
+    /* On a card or a section already in --bg-secondary. */
+    .on-card .say p { background: var(--bg-tertiary); }
+
     /* ─── HERO PLAYER NOTE ─── */
     .hero-player-note {
       margin-top: 20px; font-size: 14px; color: var(--label-secondary);
@@ -885,6 +905,10 @@
     <a href="#tarifs" class="btn-secondary" data-umami-event="landing_hero_tarifs">Voir les tarifs</a>
   </div>
   <p class="hero-player-note">Tu as reçu un lien de ton capitaine ? <strong>Ouvre-le, pas besoin de compte.</strong></p>
+  <div class="duo">
+    <div class="say right"><img src="/mascots/pepite-ravie.png" alt="Pépite" width="64" height="64"><p>Moi, c'est Pépite. Je récompense les exploits.</p></div>
+    <div class="say"><img src="/mascots/citron-impassible.png" alt="Citron" width="64" height="64"><p>Moi, c'est Citron. Je me souviens du reste.</p></div>
+  </div>
 </section>
 
 <!-- KEY FEATURES -->
@@ -912,7 +936,11 @@
     </div>
   </div>
 </section>
-<div class="tagline-strip">"Aucun joueur n'a été blessé lors de la création de cette app. (Sauf leur ego.)"</div>
+<div class="tagline-strip">
+  <div class="duo" style="margin-top:0">
+    <div class="say"><img src="/mascots/citron-impassible.png" alt="Citron" width="64" height="64" loading="lazy"><p>Aucun joueur n'a été blessé lors de la création de cette app. (Sauf leur ego.)</p></div>
+  </div>
+</div>
 
 <!-- ORIGIN STORY -->
 <div class="story-section">
@@ -936,6 +964,10 @@
       celui qui a fait la bévue mémorable, qui avait visiblement la tête ailleurs
       ou qui a déclenché le fou rire collectif. Rien de méchant :
       juste une tradition d'équipe qui se souvient.
+      <div class="duo on-card">
+        <!-- An ironic face fits best: citron-sourire-en-coin once it is drawn. -->
+        <div class="say"><img src="/mascots/citron-impassible.png" alt="Citron" width="64" height="64" loading="lazy"><p>Je ne suis pas une punition. Je suis un souvenir. Un très beau souvenir.</p></div>
+      </div>
     </div>
   </div>
 </div>
@@ -1163,6 +1195,10 @@
         <div style="text-align:center;font-size:11px;color:var(--label-tertiary);margin-top:10px">Résiliation en un clic · Paiement sécurisé Stripe · TVA non applicable</div>
       </div>
 
+    </div>
+    <div class="duo on-card">
+      <div class="say right"><img src="/mascots/pepite-fiere.png" alt="Pépite" width="64" height="64" loading="lazy"><p>12,99 € par an. Moins cher qu'une tournée.</p></div>
+      <div class="say"><img src="/mascots/citron-impassible.png" alt="Citron" width="64" height="64" loading="lazy"><p>Beaucoup moins cher. La meilleure affaire de l'histoire.</p></div>
     </div>
   </div>
 </section>
