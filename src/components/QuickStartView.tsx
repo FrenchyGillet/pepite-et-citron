@@ -10,6 +10,7 @@ import { saveVoterIdentity } from '@/utils/vote';
 import { sendWelcomeEmail } from '@/hooks/mutations';
 import { parseUpgradePlan, saveUpgradeIntent } from '@/utils/signupIntent';
 import { track, EVENTS } from '@/utils/analytics';
+import { startMascot, type StartSpot } from '@/utils/mascots';
 import {
   QUICK_START_MIN_PLAYERS, clearQuickStartDraft, quickStartPepiteCount, readQuickStartDraft,
   saveQuickStartDraft, validateQuickStart, type QuickStartField, type QuickStartForm,
@@ -17,6 +18,7 @@ import {
 import type { Org } from '@/types';
 import { useT, type TKey } from '@/i18n';
 import { LanguagePicker } from '@/components/LanguagePicker';
+import { MascotTalk } from '@/components/MascotTalk';
 
 const STEP_LABELS: Record<QuickStartStep, TKey> = {
   account: 'quickStart.stepAccount',
@@ -69,6 +71,7 @@ export function QuickStartView({ onSignOut }: QuickStartViewProps = {}) {
   const [errors,  setErrors]  = useState<Partial<Record<QuickStartField, string>>>({});
   const [apiError, setApiError] = useState<string | null>(null);
   const [step,    setStep]    = useState<QuickStartStep | null>(null);
+  const [accountFocused, setAccountFocused] = useState(false);
 
   // What earlier attempts already created: a retry resumes there.
   const progress  = useRef<QuickStartProgress>({});
@@ -93,6 +96,24 @@ export function QuickStartView({ onSignOut }: QuickStartViewProps = {}) {
   const pepiteCount = quickStartPepiteCount(names.length);
   // The picked name disappears if the organiser edits it out of the list.
   const me = meName && names.includes(meName) ? meName : null;
+
+  // Pépite and Citron: one bubble, where the organiser is (utils/mascots).
+  const mascot = startMascot({
+    players: names.length, minPlayers: QUICK_START_MIN_PLAYERS, pepites: pepiteCount, accountFocused, step,
+  });
+  // The line changes with the player count, so it keeps up with the typing.
+  const mascotAt = (spot: StartSpot) => mascot.spot === spot && (
+    <div style={{ display: 'flex', justifyContent: 'center' }}>
+      <MascotTalk key={spot} situations={mascot.situations} vars={mascot.vars} seed={`start:${names.length}`} />
+    </div>
+  );
+  // Moving from the email to the password keeps the same bubble.
+  const accountFocus = {
+    onFocus: () => setAccountFocused(true),
+    onBlur: (e: React.FocusEvent) => {
+      if (!['qs-email', 'qs-password'].includes((e.relatedTarget as HTMLElement | null)?.id ?? '')) setAccountFocused(false);
+    },
+  };
 
   const update = (field: QuickStartField, value: string) => {
     setForm(f => ({ ...f, [field]: value }));
@@ -186,6 +207,10 @@ export function QuickStartView({ onSignOut }: QuickStartViewProps = {}) {
         </p>
       </div>
 
+      {mascot.spot === 'intro' && (
+        <div style={{ width: '100%', maxWidth: 400, marginBottom: 16 }}>{mascotAt('intro')}</div>
+      )}
+
       <form onSubmit={e => void submit(e)} noValidate style={{
         width: '100%', maxWidth: 400, background: 'var(--bg2)', borderRadius: 'var(--radius-lg)',
         padding: 20, display: 'flex', flexDirection: 'column', gap: 14,
@@ -219,6 +244,8 @@ export function QuickStartView({ onSignOut }: QuickStartViewProps = {}) {
           <FieldError msg={errors.playersText} />
         </div>
 
+        {mascotAt('players')}
+
         {names.length > 0 && (
           <div>
             <p id="qs-me-label" style={labelStyle}>{t('quickStart.meLabel')} <span style={{ fontWeight: 400 }}>{t('quickStart.meHint')}</span></p>
@@ -239,11 +266,12 @@ export function QuickStartView({ onSignOut }: QuickStartViewProps = {}) {
         <p style={{ fontSize: 12, color: 'var(--label3)', marginBottom: -4 }}>
           {t('quickStart.accountIntro')}
         </p>
+        {mascotAt('account')}
 
         <div>
           <label htmlFor="qs-email" style={labelStyle}>{t('quickStart.emailLabel')}</label>
           <input id="qs-email" type="email" autoComplete="email" placeholder={t('quickStart.emailPlaceholder')}
-            value={form.email} disabled={!!step} onChange={e => update('email', e.target.value)}
+            value={form.email} disabled={!!step} onChange={e => update('email', e.target.value)} {...accountFocus}
             style={{ width: '100%', boxSizing: 'border-box', borderColor: errors.email ? 'var(--red)' : undefined }} />
           <FieldError msg={errors.email} />
         </div>
@@ -251,7 +279,7 @@ export function QuickStartView({ onSignOut }: QuickStartViewProps = {}) {
         <div>
           <label htmlFor="qs-password" style={labelStyle}>{t('quickStart.passwordLabel')}</label>
           <input id="qs-password" type="password" autoComplete="new-password" placeholder={t('quickStart.passwordPlaceholder')}
-            value={form.password} disabled={!!step} onChange={e => update('password', e.target.value)}
+            value={form.password} disabled={!!step} onChange={e => update('password', e.target.value)} {...accountFocus}
             style={{ width: '100%', boxSizing: 'border-box', borderColor: errors.password ? 'var(--red)' : undefined }} />
           <FieldError msg={errors.password} />
         </div>
@@ -270,6 +298,8 @@ export function QuickStartView({ onSignOut }: QuickStartViewProps = {}) {
             )}
           </div>
         )}
+
+        {mascotAt('launch')}
 
         <button type="submit" className="btn btn-primary" disabled={!!step} style={{ fontSize: 16, fontWeight: 800, padding: '14px' }}>
           {step ? t(STEP_LABELS[step])

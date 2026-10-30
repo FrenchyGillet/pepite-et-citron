@@ -142,6 +142,34 @@ Les deux mascottes commentent chaque écran. Version relue et validée ligne par
 
 ---
 
+## Parcours /start (création d'équipe)
+
+Les gens découvrent l'app et ne connaissent pas encore les personnages : répliques courtes, compréhensibles sans connaître le Citron. Une seule bulle à la fois, là où se trouve l'organisateur. Pas de mascotte sur les messages d'erreur.
+
+### En haut, avant de taper les joueurs
+- ⭐ *ravie* Ce soir, quelqu'un devient une légende. / 🍋 *sourire en coin* Et quelqu'un d'autre, un citron. Un très beau citron.
+
+### Joueurs : pas assez pour voter
+- 🍋 *soupçonneux* Trop peu pour voter. On ne peut pas truquer une élection à {n}. Enfin, je crois.
+
+### Joueurs : assez
+- ⭐ *ravie* {n} joueurs. {p} pépites, un citron. Le compte est bon.
+- 🍋 *triomphant* {n} joueurs. Une équipe magnifique. Peut-être la meilleure.
+
+### Joueurs : liste longue (15 et plus)
+- 🍋 *triomphant* {n} joueurs. Une foule énorme. La plus grande jamais vue. Les photos le prouvent.
+
+### Compte organisateur (pendant la saisie)
+- 🍋 *ému* Toi, tu as un compte. Les autres votent sans. Un vrai leader. Je t'aime beaucoup.
+
+### Lancement, une réplique par étape
+- ⭐ *ravie* On t'ouvre le vestiaire.
+- 🍋 *triomphant* On grave le nom sur le trophée. Un trophée énorme. En or, peut-être.
+- 🍋 *soupçonneux* J'enregistre les suspects. Il y en a beaucoup. Beaucoup trop.
+- 🍋 *triomphant* Ce sera l'élection la plus juste de l'histoire. Probablement.
+
+---
+
 ## Erreurs et hors ligne
 
 - 🍋 *impassible* Petit pépin de connexion. On réessaie.
@@ -152,6 +180,7 @@ Les deux mascottes commentent chaque écran. Version relue et validée ligne par
 
 ## Mis de côté
 - « À court d'agrumes » : trop blague de tonton.
+- /start : « Une minute de formulaire. Une saison de rancunes. », « Bienvenue dans le vestiaire / Essuie tes crampons », « J'ai vérifié. Moi-même. » (incompréhensible sans connaître le Citron), « un traître » dans l'équipe.
 - Le braqueur au jus de citron de 1995 : personne ne connaît l'histoire.
 - « Je répète mon discours », « tenue de gala » : pas assez drôles.
 - Menton et ses 500 000 élastiques : remplacé par le Citron flatteur. À recaser ailleurs ?

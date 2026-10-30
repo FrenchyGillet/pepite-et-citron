@@ -84,6 +84,31 @@ const fr: MascotCatalogue = {
   attendanceTie: [
     [C('impassible', "{count} joueurs à égalité. L'assiduité, ça ne départage personne.")],
   ],
+  // /start: people discover the app and do not know the characters yet, so
+  // the lines must read right without knowing Citron.
+  startIntro: [
+    [
+      P('ravie', "Ce soir, quelqu'un devient une légende."),
+      C('sourire-en-coin', "Et quelqu'un d'autre, un citron. Un très beau citron."),
+    ],
+  ],
+  startFew: [
+    [C('soupconneux', "Trop peu pour voter. On ne peut pas truquer une élection à {count}. Enfin, je crois.")],
+  ],
+  startReady: [
+    [P('ravie', "{count} joueurs. {pepites} pépites, un citron. Le compte est bon.")],
+    [C('triomphant', "{count} joueurs. Une équipe magnifique. Peut-être la meilleure.")],
+  ],
+  startMany: [
+    [C('triomphant', "{count} joueurs. Une foule énorme. La plus grande jamais vue. Les photos le prouvent.")],
+  ],
+  startAccount: [
+    [C('emu', "Toi, tu as un compte. Les autres votent sans. Un vrai leader. Je t'aime beaucoup.")],
+  ],
+  startStepAccount: [[P('ravie', "On t'ouvre le vestiaire.")]],
+  startStepTeam: [[C('triomphant', "On grave le nom sur le trophée. Un trophée énorme. En or, peut-être.")]],
+  startStepPlayers: [[C('soupconneux', "J'enregistre les suspects. Il y en a beaucoup. Beaucoup trop.")]],
+  startStepMatch: [[C('triomphant', "Ce sera l'élection la plus juste de l'histoire. Probablement.")]],
 };
 
 export const MASCOT_LINES: Partial<Record<Lang, MascotCatalogue>> = { fr };

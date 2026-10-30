@@ -45,11 +45,17 @@ describe("/start — premier vote en une minute", () => {
     renderAt("/start", <QuickStartView />);
     const user = userEvent.setup();
 
+    // Pépite and Citron: one bubble, following the organiser down the form.
+    expect(screen.getByText("Ce soir, quelqu'un devient une légende.")).toBeInTheDocument();
     await user.type(screen.getByLabelText("Nom de l'équipe"), "FC Lions");
     await user.type(screen.getByLabelText("Les joueurs"), "Zoé\nYann\nXavier\nWilly");
     expect(screen.getByText("4 joueurs · vote à 3 pépites + 1 citron")).toBeInTheDocument();
+    expect(screen.queryByText("Ce soir, quelqu'un devient une légende.")).toBeNull();
+    expect(screen.getByText(/^4 joueurs\. (3 pépites, un citron|Une équipe magnifique)/)).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Yann" }));
     await user.type(screen.getByLabelText("Adresse email"), "coach@club.fr");
+    expect(screen.getByText(/^Toi, tu as un compte\./)).toBeInTheDocument();
+    expect(screen.queryByText(/^4 joueurs\. (3 pépites, un citron|Une équipe magnifique)/)).toBeNull();
     await user.type(screen.getByLabelText("Mot de passe"), "motdepasse");
     await user.click(screen.getByRole("button", { name: "Lancer le vote · 4 joueurs" }));
 

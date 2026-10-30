@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { MASCOT_LINES } from '@/i18n/mascots';
-import { hashSeed, MASCOT_MOODS, palmaresMascot, pickMascotLine, rankingMascot, type MascotCatalogue } from './mascots';
+import { hashSeed, MASCOT_MOODS, palmaresMascot, pickMascotLine, rankingMascot, startMascot, type MascotCatalogue } from './mascots';
 
 const catalogue: MascotCatalogue = {
   upcoming: [[{ who: 'citron', mood: 'impassible', text: 'Le vote ouvre à {time}.' }]],
@@ -12,6 +12,8 @@ const catalogue: MascotCatalogue = {
   seasonCitron: [[{ who: 'citron', mood: 'outre', text: 'C {citron}' }]],
   pepiteStreak: [], citronStreak: [], seasonRecord: [],
   attendanceLeader: [], attendancePerfect: [], attendanceTie: [],
+  startIntro: [], startFew: [], startReady: [], startMany: [], startAccount: [],
+  startStepAccount: [], startStepTeam: [], startStepPlayers: [], startStepMatch: [],
 };
 
 describe('pickMascotLine', () => {
@@ -91,5 +93,18 @@ describe('palmaresMascot', () => {
 
   it('says nothing without a streak or a record', () => {
     expect(palmaresMascot([], noRecords, name)).toBeNull();
+  });
+});
+
+describe('startMascot', () => {
+  const at = (o = {}) => startMascot({ players: 0, minPlayers: 3, pepites: 2, accountFocused: false, step: null, ...o });
+
+  it('follows the organiser down the form, one bubble at a time', () => {
+    expect(at()).toMatchObject({ spot: 'intro', situations: ['startIntro'] });
+    expect(at({ players: 2 })).toMatchObject({ spot: 'players', situations: ['startFew'], vars: { count: 2 } });
+    expect(at({ players: 3 })).toMatchObject({ spot: 'players', situations: ['startReady'] });
+    expect(at({ players: 15 })).toMatchObject({ spot: 'players', situations: ['startMany'] });
+    expect(at({ players: 8, accountFocused: true })).toMatchObject({ spot: 'account', situations: ['startAccount'] });
+    expect(at({ players: 8, accountFocused: true, step: 'team' })).toMatchObject({ spot: 'launch', situations: ['startStepTeam'] });
   });
 });

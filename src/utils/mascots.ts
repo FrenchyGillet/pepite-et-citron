@@ -38,7 +38,13 @@ export type MascotSituation =
   | 'seasonCitron'    // Saison → Citron tab, a single Citron de la saison
   | 'attendanceLeader'   // Saison → Assiduité tab, a single most present player
   | 'attendancePerfect'  // … who played every match
-  | 'attendanceTie';  // … several players share the top
+  | 'attendanceTie'   // … several players share the top
+  | 'startIntro'      // /start, nothing typed yet
+  | 'startFew'        // /start, not enough players to vote
+  | 'startReady'      // /start, enough players
+  | 'startMany'       // /start, a long list
+  | 'startAccount'    // /start, filling the organiser account
+  | 'startStepAccount' | 'startStepTeam' | 'startStepPlayers' | 'startStepMatch'; // /start, launching
 
 export type MascotCatalogue = Record<MascotSituation, MascotLine[]>;
 
@@ -122,5 +128,34 @@ export function rankingMascot(tab: RankingTab, season: SeasonTitles, nameOf: (id
   return {
     situations: perfect ? ['attendancePerfect', 'attendanceLeader'] : ['attendanceLeader'],
     vars: { name: nameOf(title.ids[0]), played: title.value, total: season.matches },
+  };
+}
+
+/** A list this long gets its own line on /start. */
+export const START_MANY_PLAYERS = 15;
+
+export type StartSpot = 'intro' | 'players' | 'account' | 'launch';
+export type StartStep = 'account' | 'team' | 'players' | 'match';
+
+const START_STEPS: Record<StartStep, MascotSituation> = {
+  account: 'startStepAccount', team: 'startStepTeam', players: 'startStepPlayers', match: 'startStepMatch',
+};
+
+/**
+ * /start shows one bubble at a time, where the organiser is: the intro until
+ * players are typed, then the player count, the account while they fill it,
+ * and the launch steps.
+ */
+export function startMascot(s: {
+  players: number; minPlayers: number; pepites: number; accountFocused: boolean; step: StartStep | null;
+}): MascotCue & { spot: StartSpot } {
+  const vars = { count: s.players, pepites: s.pepites };
+  if (s.step) return { spot: 'launch', situations: [START_STEPS[s.step]], vars };
+  if (s.accountFocused) return { spot: 'account', situations: ['startAccount'], vars };
+  if (s.players === 0) return { spot: 'intro', situations: ['startIntro'], vars };
+  return {
+    spot: 'players',
+    situations: [s.players < s.minPlayers ? 'startFew' : s.players >= START_MANY_PLAYERS ? 'startMany' : 'startReady'],
+    vars,
   };
 }
