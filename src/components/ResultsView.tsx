@@ -1,4 +1,4 @@
-import { useState, useEffect, type ReactNode } from 'react';
+import { lazy, Suspense, useState, useEffect, type ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { formatDate, PEPITE_POINTS } from '@/utils';
 import { computeResultsSummary } from '@/utils/scoring';
@@ -16,7 +16,9 @@ import { sharedLandingUrl } from '@/utils/share';
 import type { Player, Match, EntityId } from '@/types';
 import { t } from '@/i18n';
 import { RevealAnnouncements } from './RevealAnnouncements';
-import { NextMatchCard } from './NextMatchCard';
+
+// Organisers only, with the schedule form: kept out of the main bundle.
+const NextMatchCard = lazy(() => import('./NextMatchCard').then(m => ({ default: m.NextMatchCard })));
 
 interface ResultsViewProps {
   players: Player[];
@@ -483,7 +485,9 @@ export function ResultsView({ players, match, isAdmin, isDark, orgId, isPro, onU
           <RevealAnnouncements orgId={orgId} match={match} players={players} />
 
           {/* Organisers: line up the next vote while the team is still here. */}
-          {isAdmin && !match.manual_result && <NextMatchCard orgId={orgId} match={match} />}
+          {isAdmin && !match.manual_result && (
+            <Suspense fallback={null}><NextMatchCard orgId={orgId} match={match} /></Suspense>
+          )}
 
           {/* Pro: shortcut to season stats */}
           {isPro && (
