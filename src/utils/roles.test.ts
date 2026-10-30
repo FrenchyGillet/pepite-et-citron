@@ -11,8 +11,8 @@ describe('roles', () => {
   });
 
   it('labels each role in French', () => {
-    expect(roleLabel('admin')).toBe('Admin');
-    expect(roleLabel('captain')).toBe('Capitaine');
-    expect(roleLabel('voter')).toBe('Votant');
+    expect(roleLabel('admin')).toBe('Capitaine');
+    expect(roleLabel('captain')).toBe('Animateur');
+    expect(roleLabel('voter')).toBe('Joueur');
   });
 });

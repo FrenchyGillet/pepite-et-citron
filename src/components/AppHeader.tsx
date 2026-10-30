@@ -99,13 +99,13 @@ function OrgPicker({ currentOrg, myOrgs, open, setOpen, onSwitch }: OrgPickerPro
           <span className="header-sub" style={{ color: 'var(--gold)', fontWeight: 600 }}>{currentOrg.name}</span>
           {currentOrg.plan === 'pro' && <ProCrown />}
           <span aria-hidden="true" style={{ fontSize: 9, color: 'var(--gold)', opacity: 0.7, marginTop: 1 }}>▼</span>
-          {currentOrg.role && currentOrg.role !== 'admin' && <RoleBadge role={currentOrg.role} />}
+          {currentOrg.role && <RoleBadge role={currentOrg.role} />}
         </button>
       ) : (
         <div className="header-sub" style={{ color: 'var(--gold)', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 5 }}>
           {currentOrg.name}
           {currentOrg.plan === 'pro' && <ProCrown />}
-          {currentOrg.role && currentOrg.role !== 'admin' && <RoleBadge role={currentOrg.role} />}
+          {currentOrg.role && <RoleBadge role={currentOrg.role} />}
         </div>
       )}
       {open && myOrgs.length > 1 && (
@@ -142,16 +142,24 @@ function OrgPicker({ currentOrg, myOrgs, open, setOpen, onSwitch }: OrgPickerPro
   );
 }
 
+// The admin wears the captain's armband, the captain (who runs the vote) a
+// megaphone; a voter is just a player and gets nothing.
 function RoleBadge({ role }: { role: OrgRole }) {
-  const captain = role === 'captain';
+  if (role === 'voter') return null;
   return (
-    <span style={{
-      fontSize: 10, fontWeight: 700, borderRadius: 4, padding: '1px 5px',
-      background: captain ? 'rgba(255,214,10,0.12)' : 'rgba(170,221,0,0.15)',
-      color: captain ? 'var(--gold)' : 'var(--lemon)',
-    }}>
-      {roleLabel(role).toLowerCase()}
+    <span title={roleLabel(role)} role="img" aria-label={roleLabel(role)}
+      style={{ display: 'inline-flex', alignItems: 'center', fontSize: 12, lineHeight: 1 }}>
+      {role === 'admin' ? <CaptainArmband /> : '📣'}
     </span>
+  );
+}
+
+function CaptainArmband() {
+  return (
+    <svg aria-hidden="true" width="20" height="14" viewBox="0 0 20 14">
+      <path d="M1 3Q10 0 19 3V11Q10 14 1 11Z" fill="var(--gold-fill)" />
+      <path d="M12.1 4.9A3 3 0 1 0 12.1 9.1" fill="none" stroke="#000000" strokeWidth="1.7" strokeLinecap="round" />
+    </svg>
   );
 }
 
