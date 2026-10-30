@@ -3,10 +3,10 @@ import { getLang, t } from '@/i18n';
 import { track, EVENTS } from '@/utils/analytics';
 import { humanizeError } from '@/utils/errors';
 import {
-  DEFAULT_VOTE_OPEN_DELAY, VOTE_OPEN_DELAYS, buildScheduleInput, formatDelay, localDateKey, weekdayName,
+  DEFAULT_VOTE_OPEN_DELAY, VOTE_OPEN_DELAYS, buildScheduleInput, formatDelay, formatKickOff, localDateKey, weekdayName,
   type ScheduleForm,
 } from '@/utils/schedule';
-import { useVoteOpenDelay } from '@/hooks/queries';
+import { useUpcomingSchedules, useVoteOpenDelay } from '@/hooks/queries';
 import { useCreateSchedule } from '@/hooks/mutations';
 import type { Team } from '@/types';
 import type { Notify } from './shared';
@@ -43,6 +43,8 @@ export function ScheduleMatchForm({ teams, orgId, notify, initial, onScheduled }
   const [error,       setError]       = useState<string | null>(null);
 
   const { data: savedDelay, isLoading } = useVoteOpenDelay(orgId);
+  // A match already planned: a second one is a choice (friendly, other team), not a slip.
+  const { data: upcoming = [] } = useUpcomingSchedules(orgId);
   const createSchedule = useCreateSchedule(orgId);
   const mustAskDelay = !isLoading && savedDelay == null;
   const delay = savedDelay ?? askedDelay;
@@ -70,6 +72,14 @@ export function ScheduleMatchForm({ teams, orgId, notify, initial, onScheduled }
 
   return (
     <div className="group" style={{ padding: '14px 16px' }}>
+      {upcoming[0] && (
+        <p role="note" style={{
+          fontSize: 13, color: 'var(--label)', lineHeight: 1.5, marginBottom: 12,
+          background: 'var(--bg3)', borderRadius: 'var(--radius-sm)', padding: '10px 12px',
+        }}>
+          {t('schedule.alreadyPlanned', { when: formatKickOff(upcoming[0].next_kick_off) })}
+        </p>
+      )}
       <p style={{ fontSize: 13, color: 'var(--label2)', lineHeight: 1.5, marginBottom: 14 }}>{t('schedule.intro')}</p>
 
       <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>

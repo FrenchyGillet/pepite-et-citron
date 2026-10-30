@@ -46,7 +46,7 @@ describe("Programmer un match (Admin)", () => {
     await user.click(screen.getByRole("button", { name: "2 h" }));
     await user.click(screen.getByRole("button", { name: "Programmer le match" }));
 
-    expect(await screen.findByText("Prochains matchs · 1")).toBeInTheDocument();
+    expect(await screen.findByText("Prochain match")).toBeInTheDocument();
     expect(screen.getByText(/🔁 Entraînement/)).toBeInTheDocument();
     expect(screen.getByText(/vote à 22:00/)).toBeInTheDocument();
     expect(demoState.voteOpenDelay).toBe(120);
@@ -101,13 +101,38 @@ describe("Programmer un match (Admin)", () => {
     await __demoAPI.createSchedule('org-123', schedule({ starts_at: new Date(Date.now() + 86_400_000).toISOString() }));
     renderAdmin();
     const user = userEvent.setup();
-    const list = (await screen.findByText("Prochains matchs · 1")).parentElement;
+    const list = (await screen.findByText("Prochain match")).parentElement;
     await user.click(within(list).getByRole("button", { name: "Annuler" }));
     const dialog = await screen.findByRole("alertdialog");
     expect(within(dialog).getByRole("button", { name: "Garder" })).toBeInTheDocument();
     await user.click(within(dialog).getByRole("button", { name: "Annuler le match" }));
     expect(await screen.findByText("Match programmé annulé")).toBeInTheDocument();
     expect(demoState.schedules).toHaveLength(0);
+  });
+});
+
+describe("Prochain match en haut de l'Admin", () => {
+  it("shows only the nearest one; the others behind a link, still cancellable", async () => {
+    const inDays = (d) => new Date(Date.now() + d * 86_400_000).toISOString();
+    await __demoAPI.createSchedule('org-123', schedule({ label: "Plus tard", starts_at: inDays(10) }));
+    await __demoAPI.createSchedule('org-123', schedule({ label: "Bientôt", starts_at: inDays(2) }));
+    renderAdmin();
+    const user = userEvent.setup();
+
+    expect(await screen.findByText(/📅 Bientôt/)).toBeInTheDocument();
+    expect(screen.queryByText(/📅 Plus tard/)).toBeNull();
+    await user.click(screen.getByRole("button", { name: "+ 1 autre match programmé" }));
+    expect(screen.getByText(/📅 Plus tard/)).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Masquer les autres" }));
+    expect(screen.queryByText(/📅 Plus tard/)).toBeNull();
+  });
+
+  it("reminds the planned match before scheduling another one", async () => {
+    await __demoAPI.createSchedule('org-123', schedule({ starts_at: new Date(Date.now() + 2 * 86_400_000).toISOString() }));
+    renderAdmin();
+    const user = userEvent.setup();
+    await user.click(screen.getByRole("tab", { name: "Programmer" }));
+    expect(await screen.findByRole("note")).toHaveTextContent(/Déjà prévu : .+ · \d{2}:\d{2}\. Tu peux quand même/);
   });
 });
 
@@ -132,7 +157,7 @@ describe("Ouvrir maintenant (le match finit plus tôt)", () => {
     await __demoAPI.createSchedule('org-123', schedule({ starts_at: minutesAgo(-24 * 60) }));
     const active = await __demoAPI.createMatch('org-123', "En cours", [1, 2, 3], null, 1);
     renderAdmin(active);
-    expect(await screen.findByText("Prochains matchs · 1")).toBeInTheDocument();
+    expect(await screen.findByText("Prochain match")).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Ouvrir maintenant" })).toBeNull();
   });
 

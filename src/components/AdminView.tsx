@@ -132,6 +132,13 @@ export function AdminView({ isAdmin = true, players, activeMatch, currentOrg, on
           </p>
         </div>
 
+        {/* The next scheduled match first: nobody schedules it twice. During a
+            vote it comes after the vote panel. */}
+        {!activeMatch && (
+          <UpcomingMatches orgId={currentOrg?.id} notify={setToast} confirm={confirm} canManage
+            canOpenNow onOpened={markMatchLaunched} />
+        )}
+
         {activeMatch ? (
           <ActiveMatchPanel
             {...shared}
@@ -183,8 +190,10 @@ export function AdminView({ isAdmin = true, players, activeMatch, currentOrg, on
             )}
           </>
         )}
-        <UpcomingMatches orgId={currentOrg?.id} notify={setToast} confirm={confirm} canManage
-          canOpenNow={!activeMatch} onOpened={markMatchLaunched} />
+        {activeMatch && (
+          <UpcomingMatches orgId={currentOrg?.id} notify={setToast} confirm={confirm} canManage
+            canOpenNow={false} below />
+        )}
       </div>
 
       {/* Supporters invités — only during voting phase */}

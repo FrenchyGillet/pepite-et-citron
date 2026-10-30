@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { t } from '@/i18n';
 import { formatClockTime } from '@/utils/deadline';
 import { humanizeError } from '@/utils/errors';
@@ -18,10 +19,16 @@ interface UpcomingMatchesProps {
   canOpenNow: boolean;
   /** A vote was opened now (feeds the setup checklist). */
   onOpened?: () => void;
+  /** During a vote: shown after the vote panel instead of on top. */
+  below?: boolean;
 }
 
-/** Scheduled matches to come (20260021): next kick-off and vote opening. */
-export function UpcomingMatches({ orgId, notify, confirm, canManage, canOpenNow, onOpened }: UpcomingMatchesProps) {
+/**
+ * The next scheduled match (20260021), on top of the Admin so nobody
+ * schedules it twice; the others behind « + N autres », still cancellable.
+ */
+export function UpcomingMatches({ orgId, notify, confirm, canManage, canOpenNow, onOpened, below = false }: UpcomingMatchesProps) {
+  const [showOthers, setShowOthers] = useState(false);
   const { data: schedules = [] } = useUpcomingSchedules(orgId);
   const deleteSchedule = useDeleteSchedule(orgId);
   const openNow = useOpenScheduleNow(orgId);
@@ -67,10 +74,10 @@ export function UpcomingMatches({ orgId, notify, confirm, canManage, canOpenNow,
   };
 
   return (
-    <div style={{ marginTop: 16 }}>
-      <p style={sectionLabelStyle}>{t('schedule.upcoming', { count: schedules.length })}</p>
+    <div style={below ? { marginTop: 16 } : { marginBottom: 16 }}>
+      <p style={sectionLabelStyle}>{t('schedule.nextMatch')}</p>
       <div className="group">
-        {schedules.map(s => {
+        {(showOthers ? schedules : schedules.slice(0, 1)).map(s => {
           const weekly = s.weekday != null && s.start_time != null;
           const every = weekly
             ? t(s.interval_weeks === 2 ? 'schedule.everyOther' : 'schedule.weeklyEvery',
@@ -112,6 +119,15 @@ export function UpcomingMatches({ orgId, notify, confirm, canManage, canOpenNow,
           );
         })}
       </div>
+      {schedules.length > 1 && (
+        <button aria-expanded={showOthers} onClick={() => setShowOthers(o => !o)} style={{
+          display: 'block', margin: '-4px auto 0', padding: '8px 12px',
+          background: 'none', border: 'none', cursor: 'pointer',
+          fontSize: 13, color: 'var(--label3)', textDecoration: 'underline',
+        }}>
+          {showOthers ? t('schedule.hideOthers') : t('schedule.moreScheduled', { count: schedules.length - 1 })}
+        </button>
+      )}
     </div>
   );
 }
