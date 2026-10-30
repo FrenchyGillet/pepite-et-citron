@@ -1,11 +1,12 @@
 import { render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router-dom";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { beforeEach, describe, expect, it } from "vitest";
 import { __resetDemoState, demoState } from "@/api";
 import { SeasonAwards } from "@/components/SeasonAwards";
 import { RevealAnnouncements } from "@/components/RevealAnnouncements";
-import { monthKey } from "@/utils/awards";
+import { matchResults, monthKey, seasonTitles } from "@/utils/awards";
 
 const players = [1, 2, 3, 4].map(id => ({ id, name: ["Ana", "Ben", "Cid", "Dan"][id - 1] }));
 let voteId = 1;
@@ -40,21 +41,28 @@ beforeEach(() => {
   demoState.players = players;
 });
 
+/** SeasonAwards as StatsView renders it. */
+const awards = (matches, votes) => {
+  const results = matchResults(players, matches, votes);
+  return <SeasonAwards players={players} results={results} season={seasonTitles(results)} />;
+};
+
 describe("Saison → Palmarès", () => {
-  it("titles of the season and of the month, streaks and records", () => {
+  it("titles of the season up front, the month, streaks and records folded", async () => {
     const ms = [M1, M2, M3];
-    wrap(<SeasonAwards players={players} matches={ms.map(x => x.match)} votes={ms.flatMap(x => x.votes)} />);
+    wrap(awards(ms.map(x => x.match), ms.flatMap(x => x.votes)));
     expect(screen.getByText("Palmarès")).toBeInTheDocument();
     expect(screen.getByText("🏆 Pépite de la saison").nextSibling).toHaveTextContent("Ana");
     expect(screen.getByText("🍋 Citron de la saison").nextSibling).toHaveTextContent("Dan");
+    // Pépite or Citron comments a running streak or the season record.
+    const mascot = screen.getAllByRole("img", { name: /^(Pépite|Citron)$/ })[0];
+    expect(mascot.parentElement).toHaveTextContent(/3e pépite|3 pépites|3 d'affilée|2e citron|caractère|record/);
+
+    expect(screen.queryByText("🔥 Ana : 3 pépites d’affilée")).toBeNull();
+    await userEvent.setup().click(screen.getByRole("button", { name: "Plus de palmarès" }));
     expect(screen.getByText("🔥 Ana : 3 pépites d’affilée")).toBeInTheDocument();
     expect(screen.getByText("🍋 Dan : 2 citrons d’affilée")).toBeInTheDocument();
     expect(screen.getByText("Plus gros score : Ana, 7 pts (M3)")).toBeInTheDocument();
-    // Everybody played every match: counted, not listed.
-    expect(screen.getByText("📋 Le plus assidu").nextSibling).toHaveTextContent("4 joueurs ex aequo");
-    // Pépite or Citron comments one of the season titles.
-    const mascot = screen.getAllByRole("img", { name: /^(Pépite|Citron)$/ })[0];
-    expect(mascot.closest("section")).toHaveTextContent(/(Ana|Dan), \d+ points|Ana en tête|Dan\. C'est moi|4 joueurs à égalité/);
     // The three matches fall in this month unless today is the 1st or 2nd.
     if (ms.every(x => monthKey(new Date(x.match.created_at)) === monthKey(new Date()))) {
       expect(screen.getByText("⭐ Pépite du mois").nextSibling).toHaveTextContent("Ana");
@@ -62,7 +70,7 @@ describe("Saison → Palmarès", () => {
   });
 
   it("waits for 2 revealed matches", () => {
-    wrap(<SeasonAwards players={players} matches={[M1.match, { ...M2.match, reveal_order: [] }]} votes={[...M1.votes, ...M2.votes]} />);
+    wrap(awards([M1.match, { ...M2.match, reveal_order: [] }], [...M1.votes, ...M2.votes]));
     expect(screen.getByText("Le palmarès apparaît dès 2 matchs dévoilés.")).toBeInTheDocument();
   });
 });

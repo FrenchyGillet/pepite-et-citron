@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { MASCOT_LINES } from '@/i18n/mascots';
-import { hashSeed, MASCOT_MOODS, pickMascotLine, type MascotCatalogue } from './mascots';
+import { hashSeed, MASCOT_MOODS, palmaresMascot, pickMascotLine, rankingMascot, type MascotCatalogue } from './mascots';
 
 const catalogue: MascotCatalogue = {
   upcoming: [[{ who: 'citron', mood: 'impassible', text: 'Le vote ouvre à {time}.' }]],
@@ -10,7 +10,8 @@ const catalogue: MascotCatalogue = {
     [{ who: 'pepite', mood: 'fiere', text: 'B {pepite}' }],
   ],
   seasonCitron: [[{ who: 'citron', mood: 'outre', text: 'C {citron}' }]],
-  attendanceTie: [],
+  pepiteStreak: [], citronStreak: [], seasonRecord: [],
+  attendanceLeader: [], attendancePerfect: [], attendanceTie: [],
 };
 
 describe('pickMascotLine', () => {
@@ -54,5 +55,41 @@ describe('MASCOT_LINES', () => {
         expect(bubble.text, situation).not.toContain('!');
       }
     }
+  });
+});
+
+const name = (id: string) => `P${id}`;
+const titles = (o = {}) => ({ pepite: null, citron: null, attendance: null, matches: 4, ...o });
+
+describe('rankingMascot', () => {
+  it('names a single title holder, says nothing on a shared Pépite or Citron title', () => {
+    expect(rankingMascot('pepite', titles({ pepite: { ids: ['1'], value: 9 } }), name))
+      .toEqual({ situations: ['seasonPepite'], vars: { pepite: 'P1', pepitePts: 9 } });
+    expect(rankingMascot('citron', titles({ citron: { ids: ['1', '2'], value: 3 } }), name)).toBeNull();
+    expect(rankingMascot('citron', titles(), name)).toBeNull();
+  });
+
+  it('has a line for a tie, a leader and a perfect attendance', () => {
+    expect(rankingMascot('attendance', titles({ attendance: { ids: ['1', '2'], value: 4 } }), name)?.situations).toEqual(['attendanceTie']);
+    expect(rankingMascot('attendance', titles({ attendance: { ids: ['1'], value: 3 } }), name))
+      .toEqual({ situations: ['attendanceLeader'], vars: { name: 'P1', played: 3, total: 4 } });
+    expect(rankingMascot('attendance', titles({ attendance: { ids: ['1'], value: 4 } }), name)?.situations)
+      .toEqual(['attendancePerfect', 'attendanceLeader']);
+  });
+});
+
+describe('palmaresMascot', () => {
+  const noRecords = { bestMatch: null, pepiteStreak: null, citronStreak: null };
+
+  it('comments the longest streaks and the record', () => {
+    const cue = palmaresMascot(
+      [{ id: '1', kind: 'pepite', length: 3 }, { id: '2', kind: 'pepite', length: 2 }, { id: '3', kind: 'citron', length: 2 }],
+      { ...noRecords, bestMatch: { ids: ['1'], value: 7, label: 'M3' } }, name);
+    expect(cue?.situations).toEqual(['pepiteStreak', 'citronStreak', 'seasonRecord']);
+    expect(cue?.vars).toMatchObject({ pepite: 'P1', pepiteRun: 3, citron: 'P3', citronRun: 2 });
+  });
+
+  it('says nothing without a streak or a record', () => {
+    expect(palmaresMascot([], noRecords, name)).toBeNull();
   });
 });

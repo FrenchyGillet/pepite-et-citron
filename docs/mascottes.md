@@ -88,7 +88,7 @@ Les deux mascottes commentent chaque écran. Version relue et validée ligne par
 - 🍋 *vexé* {n} d'affilée. J'aurais pu le faire aussi. On ne m'a pas laissé.
 
 ### Série de citrons ({n} d'affilée)
-- 🍋 *ému* {citron}, {n}e citron d'affilée. Un loyal. Très loyal. J'adore les gens loyaux.
+- 🍋 *ému* {citron}, {n}e citron d'affilée. Loyauté totale. J'adore les gens loyaux. *(neutre en genre)*
 - ⭐ *consolante* Il paraît que ça forge le caractère. / 🍋 *triomphant* Un caractère énorme. Le plus grand. Des hommes adultes pleurent en le voyant.
 
 ### Un même joueur reçoit des voix pépite et citron
@@ -113,11 +113,20 @@ Les deux mascottes commentent chaque écran. Version relue et validée ligne par
 - 🍋 *fier* {citron}. C'est moi qui ai lancé sa carrière. Personne n'y croyait. Moi si.
 - 🍋 *outré* {citron}, {pts} points. On lui a volé la pépite. Tout le monde le sait.
 
+**Où ça s'affiche sur la page Saison** : le palmarès commente les séries en cours et le record de la saison ; chaque onglet de classement a sa bulle (Pépite de la saison, Citron de la saison, Assiduité).
+
+### Le plus assidu, un seul joueur en tête
+- 🍋 *impassible* {nom}, {n} matchs sur {total}. Une présence qui frise l'acharnement.
+- 🍋 *triomphant* {nom}, {n} sur {total}. Personne n'a jamais été aussi présent. Personne.
+
+### Le plus assidu, présence parfaite
+- ⭐ *fière* {nom}, présence parfaite. Le talent, c'est d'abord d'être là.
+
 ### Le plus assidu, plusieurs ex aequo
 - 🍋 *impassible* {n} joueurs à égalité. L'assiduité, ça ne départage personne.
 
 ### Record battu
-- ⭐ *émerveillée* Nouveau record. Je fais encadrer.
+- ⭐ *émerveillée* Le record de la saison. Je fais encadrer. *(palmarès)*
 - 🍋 *triomphant* Le plus grand record de l'histoire de ce club. Peut-être de tous les clubs.
 - 🍋 *vexé* Joli record. J'en ai de plus grands. Beaucoup plus grands. On n'en parle jamais.
 

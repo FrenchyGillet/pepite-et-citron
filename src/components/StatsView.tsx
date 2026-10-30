@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, type CSSProperties } from 'react';
 import { formatDate } from '@/utils';
 import { computeSeasonStats } from '@/utils/season';
 import { computeResultsSummary } from '@/utils/scoring';
@@ -13,7 +13,10 @@ import { useConfirm } from '@/hooks/useConfirm';
 import { track, EVENTS } from '@/utils/analytics';
 import type { Player, Match, EntityId, ManualResult } from '@/types';
 import { t } from '@/i18n';
-import { SeasonAwards } from '@/components/SeasonAwards';
+import { SeasonAwards, holderNames } from '@/components/SeasonAwards';
+import { matchResults, seasonTitles } from '@/utils/awards';
+import { rankingMascot, type RankingTab } from '@/utils/mascots';
+import { MascotTalk } from './MascotTalk';
 
 interface StatsViewProps {
   players: Player[];
@@ -59,20 +62,39 @@ function ManualResultSummary({ result, players }: { result: ManualResult; player
 }
 
 // Module-level so the buttons are not remounted on every StatsView render.
-function TabBar({ items, active, onChange }: { items: { id: number; label: string }[]; active: number; onChange: (id: number) => void }) {
+function Segmented<T extends string>({ items, active, onChange }: { items: { id: T; label: string }[]; active: T; onChange: (id: T) => void }) {
   return (
-    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginBottom: 4 }}>
+    <div style={{ display: 'flex', background: 'var(--bg2)', borderRadius: 'var(--radius-lg)', padding: 4, marginBottom: 8 }}>
       {items.map(({ id, label }) => (
-        <button key={id} onClick={() => onChange(id)} style={{
-          padding: '7px 14px', borderRadius: 'var(--radius-sm)', fontSize: 13, fontWeight: 600,
-          background: active === id ? 'var(--label)' : 'var(--bg3)',
-          color: active === id ? 'var(--bg)' : 'var(--label3)',
+        <button key={id} onClick={() => onChange(id)} aria-pressed={active === id} style={{
+          flex: 1, padding: '9px 4px', borderRadius: 10, fontSize: 13, fontWeight: 700,
+          background: active === id ? 'var(--bg3)' : 'transparent',
+          color: active === id ? 'var(--label)' : 'var(--label3)',
           border: 'none', cursor: 'pointer',
         }}>{label}</button>
       ))}
     </div>
   );
 }
+
+/** "Voir les 12 autres" at the foot of a folded list. */
+function ShowMoreRow({ label, onClick }: { label: string; onClick: () => void }) {
+  return (
+    <button onClick={onClick} style={{
+      width: '100%', padding: '12px 16px', background: 'none', border: 'none', cursor: 'pointer',
+      fontSize: 14, fontWeight: 600, color: 'var(--gold)',
+    }}>{label}</button>
+  );
+}
+
+const filterCaption: CSSProperties = { display: 'block', fontSize: 12, color: 'var(--label3)', marginBottom: 4 };
+const filterSelect: CSSProperties = {
+  width: '100%', background: 'var(--bg2)', color: 'var(--label)', border: 'none',
+  borderRadius: 'var(--radius-sm)', padding: '10px 12px', fontSize: 15, outline: 'none',
+};
+/** Rankings and the match list show this many before "Voir les … autres". */
+const TOP = 3;
+const RECENT_MATCHES = 5;
 
 export function StatsView({ players, activeMatch, isAdmin, canRunMatches = isAdmin, orgId }: StatsViewProps) {
   const [selectedSeason, setSelectedSeason] = useState<number | null>(null);
@@ -82,6 +104,9 @@ export function StatsView({ players, activeMatch, isAdmin, canRunMatches = isAdm
   // 'new' = adding a missing result; a match = editing a hand-entered one.
   const [manualForm,     setManualForm]     = useState<'new' | Match | null>(null);
   const [toast,          setToast]          = useState<string | null>(null);
+  const [rankingTab,     setRankingTab]     = useState<RankingTab>('pepite');
+  const [showAllRanks,   setShowAllRanks]   = useState(false);
+  const [showAllMatches, setShowAllMatches] = useState(false);
 
   const { data: allVotes   = [], isError: votesError,   refetch: refetchVotes }   = useAllVotes(orgId);
   const { data: allMatches = [], isLoading, isError: matchesError, refetch: refetchMatches } = useMatches(orgId);
@@ -130,6 +155,12 @@ export function StatsView({ players, activeMatch, isAdmin, canRunMatches = isAdm
   const filteredVotes = allVotes.filter(v => filteredMatchIds.has(v.match_id));
 
   const { rankedBest, rankedLemon, rankedAttendance, maxPts, maxLemonPts, totalMatches } = computeSeasonStats(players, filteredMatches, allVotes, allTeams);
+  // Season titles (revealed matches only): the palmarès and the mascots.
+  const results = matchResults(players, filteredMatches, allVotes);
+  const season  = seasonTitles(results);
+  const tabMascot = rankingMascot(rankingTab, season, id => holderNames([id], players));
+  const lastResultId = results[results.length - 1]?.matchId;
+  const visibleMatches = showAllMatches ? filteredMatches : filteredMatches.slice(0, RECENT_MATCHES);
 
   const handleDelete = async (match: Match) => {
     if (!(await confirm({
@@ -156,28 +187,40 @@ export function StatsView({ players, activeMatch, isAdmin, canRunMatches = isAdm
     <div className="content">
       {confirmDialog}
       {toast && <Toast msg={toast} onDone={() => setToast(null)} />}
-      {seasons.length > 0 && (
+      {(seasons.length > 0 || allTeams.length > 0) && (
         <div style={{ marginTop: 12, marginBottom: 16 }}>
-          <TabBar
-            items={seasons.map(s => ({ id: s, label: `${seasonNames[s] || t('stats.season', { n: s })}${s === currentSeason ? ' ·' : ''}` }))}
-            active={activeSeason}
-            onChange={s => { setSelectedSeason(s); setSelectedTeamId(null); setExpandedId(null); }}
-          />
-          <p style={{ fontSize: 11, color: 'var(--label4)', marginTop: 4 }}>
+          <div style={{ display: 'flex', gap: 8 }}>
+            {seasons.length > 0 && (
+              <label style={{ flex: 1, minWidth: 0 }}>
+                <span style={filterCaption}>{t(activeSeason === currentSeason ? 'stats.seasonCurrentLabel' : 'stats.seasonLabel')}</span>
+                <select style={filterSelect} value={activeSeason} onChange={e => {
+                  setSelectedSeason(Number(e.target.value)); setSelectedTeamId(null);
+                  setExpandedId(null); setShowAllRanks(false); setShowAllMatches(false);
+                }}>
+                  {[...seasons].reverse().map(s => (
+                    <option key={s} value={s}>{seasonNames[s] || t('stats.season', { n: s })}</option>
+                  ))}
+                </select>
+              </label>
+            )}
+            {allTeams.length > 0 && (
+              <label style={{ flex: 1, minWidth: 0 }}>
+                <span style={filterCaption}>{t('stats.teamLabel')}</span>
+                <select style={filterSelect} value={selectedTeamId != null ? String(selectedTeamId) : ''} onChange={e => {
+                  // Resolve back to the real team id (int today, could be uuid) — no parseInt.
+                  setSelectedTeamId(allTeams.find(tm => String(tm.id) === e.target.value)?.id ?? null);
+                  setShowAllRanks(false); setShowAllMatches(false);
+                }}>
+                  <option value="">{t('stats.allTeams')}</option>
+                  {allTeams.map(tm => <option key={String(tm.id)} value={String(tm.id)}>{tm.name}</option>)}
+                </select>
+              </label>
+            )}
+          </div>
+          <p style={{ fontSize: 11, color: 'var(--label4)', marginTop: 8 }}>
             {t('stats.matches', { count: filteredMatches.length })}
             {filteredVotes.length > 0 && ` · ${t('common.votes', { count: filteredVotes.length })}`}
           </p>
-        </div>
-      )}
-
-      {allTeams.length > 0 && (
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 16 }}>
-          <button className={`tag ${selectedTeamId === null ? 'tag-gold' : 'tag-dim'}`}
-            onClick={() => setSelectedTeamId(null)}>{t('stats.all')}</button>
-          {allTeams.map(t => (
-            <button key={String(t.id)} className={`tag ${selectedTeamId === t.id ? 'tag-gold' : 'tag-dim'}`}
-              onClick={() => setSelectedTeamId(t.id)}>{t.name}</button>
-          ))}
         </div>
       )}
 
@@ -204,13 +247,28 @@ export function StatsView({ players, activeMatch, isAdmin, canRunMatches = isAdm
         )
       ) : (
         <>
-          <SeasonAwards players={players} matches={filteredMatches} votes={allVotes} />
-          <p className="section-label mb-4">{t('stats.pepiteRanking')}</p>
-          {rankedBest.length === 0
-            ? <div className="group" style={{ marginBottom: 12 }}><div className="row"><span style={{ color: 'var(--label3)', fontSize: 14 }}>{t('stats.noVotes')}</span></div></div>
-            : (
+          <SeasonAwards players={players} results={results} season={season} />
+
+          <p className="section-label mb-4">{t('stats.rankings')}</p>
+          <Segmented<RankingTab>
+            items={[
+              { id: 'pepite', label: t('stats.tabPepite') },
+              { id: 'citron', label: t('stats.tabCitron') },
+              { id: 'attendance', label: t('stats.tabAttendance') },
+            ]}
+            active={rankingTab}
+            onChange={id => { setRankingTab(id); setShowAllRanks(false); }}
+          />
+          {(() => {
+            const ranked = rankingTab === 'pepite' ? rankedBest : rankingTab === 'citron' ? rankedLemon : rankedAttendance;
+            if (ranked.length === 0) return (
+              <div className="group" style={{ marginBottom: 12 }}><div className="row"><span style={{ color: 'var(--label3)', fontSize: 14 }}>{t('stats.noVotes')}</span></div></div>
+            );
+            const shown  = showAllRanks ? ranked : ranked.slice(0, TOP);
+            const hidden = ranked.length - TOP;
+            return (
               <div className="group" style={{ marginBottom: 12 }}>
-                {rankedBest.map((s, i) => (
+                {shown.map((s, i) => rankingTab === 'pepite' ? (
                   <div key={s.name} className="row">
                     <div style={{ width: 24, fontWeight: 700, fontSize: 13, flexShrink: 0, color: i === 0 ? 'var(--gold)' : 'var(--label3)' }}>{i + 1}</div>
                     <div className="row-body">
@@ -230,17 +288,7 @@ export function StatsView({ players, activeMatch, isAdmin, canRunMatches = isAdm
                       <div className="row-value gold" style={{ minWidth: 24, textAlign: 'right' }}>{s.bestPts}</div>
                     </div>
                   </div>
-                ))}
-              </div>
-            )
-          }
-
-          <p className="section-label mb-4">{t('stats.citronRanking')}</p>
-          {rankedLemon.length === 0
-            ? <div className="group" style={{ marginBottom: 12 }}><div className="row"><span style={{ color: 'var(--label3)', fontSize: 14 }}>{t('stats.noVotes')}</span></div></div>
-            : (
-              <div className="group" style={{ marginBottom: 12 }}>
-                {rankedLemon.map((s, i) => (
+                ) : rankingTab === 'citron' ? (
                   <div key={s.name} className="row">
                     <div style={{ width: 24, fontWeight: 700, fontSize: 13, flexShrink: 0, color: i === 0 ? '#f5c542' : 'var(--label3)' }}>{i + 1}</div>
                     <div className="row-body">
@@ -260,16 +308,7 @@ export function StatsView({ players, activeMatch, isAdmin, canRunMatches = isAdm
                       <div className="row-value" style={{ minWidth: 24, textAlign: 'right', color: '#f5c542' }}>{s.lemonPts}</div>
                     </div>
                   </div>
-                ))}
-              </div>
-            )
-          }
-
-          {rankedAttendance.length > 0 && (
-            <>
-              <p className="section-label mb-4">{t('stats.attendance')}</p>
-              <div className="group" style={{ marginBottom: 12 }}>
-                {rankedAttendance.map(s => {
+                ) : (() => {
                   const pct = totalMatches > 0 ? Math.round((s.matchesPlayed / totalMatches) * 100) : 0;
                   const isAbsent = s.absences > 0;
                   return (
@@ -293,9 +332,20 @@ export function StatsView({ players, activeMatch, isAdmin, canRunMatches = isAdm
                       </div>
                     </div>
                   );
-                })}
+                })())}
+                {hidden > 0 && (
+                  <ShowMoreRow onClick={() => setShowAllRanks(v => !v)}
+                    label={showAllRanks ? t('stats.showLess') : t('stats.showMore', { count: hidden })} />
+                )}
               </div>
-            </>
+            );
+          })()}
+          {tabMascot && (
+            // One line per tab, changing after each match.
+            <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 16 }}>
+              <MascotTalk situations={tabMascot.situations} vars={tabMascot.vars}
+                seed={`${rankingTab}:${lastResultId}`} />
+            </div>
           )}
 
           <div className="flex-between mb-8">
@@ -305,7 +355,7 @@ export function StatsView({ players, activeMatch, isAdmin, canRunMatches = isAdm
             )}
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 20 }}>
-            {filteredMatches.map(match => {
+            {visibleMatches.map(match => {
               const matchVotes   = allVotes.filter(v => v.match_id === match.id);
               const matchPresent = players.filter(p => (match.present_ids || []).includes(p.id));
               const isExpanded   = expandedId === match.id;
@@ -412,6 +462,12 @@ export function StatsView({ players, activeMatch, isAdmin, canRunMatches = isAdm
                 </div>
               );
             })}
+            {filteredMatches.length > RECENT_MATCHES && (
+              <div style={{ background: 'var(--bg2)', borderRadius: 'var(--radius-lg)' }}>
+                <ShowMoreRow onClick={() => setShowAllMatches(v => !v)}
+                  label={showAllMatches ? t('stats.showLess') : t('stats.moreMatches', { count: filteredMatches.length - RECENT_MATCHES })} />
+              </div>
+            )}
           </div>
         </>
       )}

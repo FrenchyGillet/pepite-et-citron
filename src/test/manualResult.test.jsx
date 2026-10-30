@@ -48,8 +48,16 @@ describe("Saison — résultat saisi à la main", () => {
 
     // Season titles, without points
     expect(await screen.findByText("⭐ ×1")).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "🍋 Citron" }));
     expect(screen.getByText("🍋 ×1")).toBeInTheDocument();
     expect(screen.getByText(/saisi à la main/)).toBeInTheDocument();
+
+    // Assiduité: the top 3, the 4th folded; the mascots comment the tie.
+    await user.click(screen.getByRole("button", { name: "📋 Assiduité" }));
+    expect(screen.getAllByText("1/1")).toHaveLength(3);
+    expect(screen.getByText("4 joueurs à égalité. L'assiduité, ça ne départage personne.")).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Voir 1 autre joueur" }));
+    expect(screen.getAllByText("1/1")).toHaveLength(4);
   });
 
   it("requires the Pépite and the Citron", async () => {

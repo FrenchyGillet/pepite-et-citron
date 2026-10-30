@@ -45,6 +45,23 @@ const fr: MascotCatalogue = {
     [C('impassible', "Pas de résultats. Personne n'a encore déçu personne.")],
     [P('bienveillante', "En attendant, je garde la place au chaud.")],
   ],
+  pepiteStreak: [
+    [P('ravie', "{pepite}, {pepiteRun}e pépite d'affilée. On tient un filon.")],
+    [C('soupconneux', "{pepiteRun} pépites d'affilée. Suspect. Très, très suspect. Des gens enquêtent.")],
+    [C('outre', "{pepiteRun} d'affilée. J'aurais pu le faire aussi. On ne m'a pas laissé.")],
+  ],
+  citronStreak: [
+    [C('emu', "{citron}, {citronRun}e citron d'affilée. Loyauté totale. J'adore les gens loyaux.")],
+    [
+      P('bienveillante', "Il paraît que ça forge le caractère."),
+      C('triomphant', "Un caractère énorme. Le plus grand. Des hommes adultes pleurent en le voyant."),
+    ],
+  ],
+  seasonRecord: [
+    [P('emerveillee', "Le record de la saison. Je fais encadrer.")],
+    [C('triomphant', "Le plus grand record de l'histoire de ce club. Peut-être de tous les clubs.")],
+    [C('outre', "Joli record. J'en ai de plus grands. Beaucoup plus grands. On n'en parle jamais.")],
+  ],
   seasonPepite: [
     [P('emerveillee', "{pepite}, {pepitePts} points. Ça commence à me faire de l'ombre.")],
     [
@@ -56,6 +73,13 @@ const fr: MascotCatalogue = {
     [C('triomphant', "{citron}, {citronPts} points. Une victoire écrasante. Historique. Les gens n'en reviennent pas.")],
     [C('triomphant', "{citron}. C'est moi qui ai lancé sa carrière. Personne n'y croyait. Moi si.")],
     [C('outre', "{citron}, {citronPts} points. On lui a volé la pépite. Tout le monde le sait.")],
+  ],
+  attendanceLeader: [
+    [C('impassible', "{name}, {played} matchs sur {total}. Une présence qui frise l'acharnement.")],
+    [C('triomphant', "{name}, {played} sur {total}. Personne n'a jamais été aussi présent. Personne.")],
+  ],
+  attendancePerfect: [
+    [P('fiere', "{name}, présence parfaite. Le talent, c'est d'abord d'être là.")],
   ],
   attendanceTie: [
     [C('impassible', "{count} joueurs à égalité. L'assiduité, ça ne départage personne.")],

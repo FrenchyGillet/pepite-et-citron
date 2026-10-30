@@ -1,18 +1,18 @@
-import type { CSSProperties } from 'react';
+import { useState, type CSSProperties } from 'react';
 import { dateLocale, t } from '@/i18n';
 import { displayName } from '@/utils/player';
 import {
-  currentStreaks, matchResults, monthKey, monthlyTitles, seasonRecords, seasonTitles, type Title,
+  currentStreaks, monthKey, monthlyTitles, seasonRecords, type MatchResult, type SeasonTitles, type Title,
 } from '@/utils/awards';
-import type { Match, Player, Vote } from '@/types';
-import type { MascotSituation } from '@/utils/mascots';
+import { palmaresMascot } from '@/utils/mascots';
+import type { Player } from '@/types';
 import { MascotTalk } from './MascotTalk';
 
 interface SeasonAwardsProps {
   players: Player[];
-  /** The season's matches (already filtered by season and line-up). */
-  matches: Match[];
-  votes: Vote[];
+  /** The season's counted matches (utils/awards matchResults), oldest first. */
+  results: MatchResult[];
+  season: SeasonTitles;
 }
 
 const card: CSSProperties = {
@@ -48,16 +48,15 @@ function Award({ label, holders, detail }: { label: string; holders: string | nu
 }
 
 /**
- * Saison → "Palmarès" (Pro): season titles, titles of the month, running
- * streaks and records, from the revealed matches (utils/awards).
+ * Saison → "Palmarès" (Pro): the season titles and the mascots' comment up
+ * front; titles of the month, streaks and records folded below.
  */
-export function SeasonAwards({ players, matches, votes }: SeasonAwardsProps) {
-  const results = matchResults(players, matches, votes);
+export function SeasonAwards({ players, results, season }: SeasonAwardsProps) {
+  const [showMore, setShowMore] = useState(false);
   if (results.length < 2) {
     return <p style={{ fontSize: 12, color: 'var(--label3)', margin: '0 0 16px' }}>{t('awards.minMatches')}</p>;
   }
 
-  const season  = seasonTitles(results);
   const months  = monthlyTitles(results);
   const streaks = currentStreaks(results);
   const records = seasonRecords(results);
@@ -65,16 +64,10 @@ export function SeasonAwards({ players, matches, votes }: SeasonAwardsProps) {
   const names = (title: Title | null) => !title ? t('awards.nobody')
     : title.ids.length > 3 ? t('awards.tied', { count: title.ids.length })
     : holderNames(title.ids, players);
-  // The mascots comment the season titles held by one player (a shared title
-  // would break the singular), and change their line after each match.
-  const single = (title: Title | null) => title?.ids.length === 1 ? holderNames(title.ids, players) : null;
-  const mascotSituations: MascotSituation[] = [
-    ...(single(season.pepite) ? ['seasonPepite' as const] : []),
-    ...(single(season.citron) ? ['seasonCitron' as const] : []),
-    ...((season.attendance?.ids.length ?? 0) > 1 ? ['attendanceTie' as const] : []),
-  ];
   const current = months[0]?.month === monthKey(new Date()) ? months[0] : null;
   const past    = months.filter(m => m !== current);
+  const hasMore = !!current || streaks.length > 0 || !!records.bestMatch || past.length > 0;
+  const mascot  = palmaresMascot(streaks, records, id => holderNames([id], players));
 
   return (
     <section aria-label={t('awards.palmares')} style={{ marginBottom: 20 }}>
@@ -82,20 +75,24 @@ export function SeasonAwards({ players, matches, votes }: SeasonAwardsProps) {
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 12 }}>
         <Award label={t('awards.seasonPepite')} holders={season.pepite && names(season.pepite)} detail={t('awards.pts', { count: season.pepite?.value ?? 0 })} />
         <Award label={t('awards.seasonCitron')} holders={season.citron && names(season.citron)} detail={t('awards.pts', { count: season.citron?.value ?? 0 })} />
-        <Award label={t('awards.attendance')} holders={season.attendance && names(season.attendance)}
-          detail={t('awards.attendanceValue', { count: season.attendance?.value ?? 0, total: season.matches })} />
       </div>
-      {mascotSituations.length > 0 && (
-        <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 16 }}>
-          <MascotTalk situations={mascotSituations} seed={String(results[results.length - 1].matchId)} vars={{
-            pepite: single(season.pepite) ?? '', pepitePts: season.pepite?.value ?? 0,
-            citron: single(season.citron) ?? '', citronPts: season.citron?.value ?? 0,
-            count: season.attendance?.ids.length ?? 0,
-          }} />
+
+      {mascot && (
+        // The line changes after each match.
+        <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 12 }}>
+          <MascotTalk situations={mascot.situations} vars={mascot.vars}
+            seed={`palmares:${results[results.length - 1].matchId}`} />
         </div>
       )}
 
-      {current && (
+      {hasMore && (
+        <button className="tag tag-dim" aria-expanded={showMore} onClick={() => setShowMore(v => !v)}
+          style={{ marginBottom: 12 }}>
+          {showMore ? t('stats.showLess') : t('awards.more')}
+        </button>
+      )}
+
+      {showMore && current && (
         <>
           <p style={{ ...caption, margin: '4px 0 6px' }}>{t('awards.thisMonth', { month: monthName(current.month) })}</p>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 12 }}>
@@ -105,7 +102,7 @@ export function SeasonAwards({ players, matches, votes }: SeasonAwardsProps) {
         </>
       )}
 
-      {(streaks.length > 0 || records.bestMatch || past.length > 0) && (
+      {showMore && (streaks.length > 0 || records.bestMatch || past.length > 0) && (
         <div className="group" style={{ marginBottom: 4 }}>
           {streaks.length > 0 && (
             <div className="row">
