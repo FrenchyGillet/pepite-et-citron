@@ -1,5 +1,5 @@
 import { dateLocale, type TKey } from '@/i18n';
-import type { MatchScheduleInput } from '@/types';
+import type { Match, MatchScheduleInput } from '@/types';
 
 /**
  * Scheduled matches (migration 20260021): the vote opens on its own at
@@ -44,6 +44,20 @@ export interface DemoSchedule extends MatchScheduleInput {
   last_opened_on: string | null;
 }
 
+/** Days from one local date to another, DST-proof. */
+function daysBetween(from: Date, to: Date): number {
+  return Math.round((Date.UTC(to.getFullYear(), to.getMonth(), to.getDate())
+    - Date.UTC(from.getFullYear(), from.getMonth(), from.getDate())) / 86_400_000);
+}
+
+/** Whether a day is one of a repeating schedule's match days (mirrors _is_schedule_day). */
+export function isScheduleDay(s: Pick<MatchScheduleInput, 'first_on' | 'interval_weeks'>, day: Date): boolean {
+  if (!s.first_on) return true;
+  const [y, m, d] = s.first_on.split('-').map(Number);
+  const days = daysBetween(new Date(y, m - 1, d), day);
+  return days >= 0 && Math.floor(days / 7) % (s.interval_weeks ?? 1) === 0;
+}
+
 /**
  * A vote launched by hand between kick-off and the vote opening is that match
  * (mirrors _manual_vote_in_window). `handVotes`: when such votes were opened.
@@ -66,6 +80,8 @@ export function dueOccurrence(s: DemoSchedule, delayMinutes: number, now: number
     day.setDate(day.getDate() - ((base.getDay() - (s.weekday ?? 0) + 7) % 7));
     kickOff = atTime(day, s.start_time ?? '00:00');
     if (kickOff.getTime() > base.getTime()) kickOff.setDate(kickOff.getDate() - 7);
+    if (!isScheduleDay(s, kickOff)) kickOff.setDate(kickOff.getDate() - 7);
+    if (!isScheduleDay(s, kickOff)) return null;
     if (s.last_opened_on && localDateKey(kickOff) <= s.last_opened_on) return null;
   }
   const opensAt = kickOff.getTime() + delay;
@@ -86,7 +102,8 @@ export function nextOccurrence(
   const day = new Date(now);
   day.setDate(day.getDate() + (((s.weekday ?? 0) - day.getDay() + 7) % 7));
   let kickOff = atTime(day, s.start_time ?? '00:00');
-  while (kickOff.getTime() + delay <= now || (s.last_opened_on && localDateKey(kickOff) <= s.last_opened_on)
+  while (kickOff.getTime() + delay <= now || !isScheduleDay(s, kickOff)
+         || (s.last_opened_on && localDateKey(kickOff) <= s.last_opened_on)
          || votedByHand(kickOff, delayMinutes, handVotes)) {
     kickOff = new Date(kickOff);
     kickOff.setDate(kickOff.getDate() + 7);
@@ -99,15 +116,16 @@ export interface ScheduleForm {
   date: string;
   /** "HH:MM" from <input type=time>. */
   time: string;
-  weekly: boolean;
+  /** Once (0), every week (1) or every other week (2). */
+  repeat: 0 | 1 | 2;
   label: string;
   teamId: string | number | null;
   pepiteCount: 2 | 3;
 }
 
 /**
- * The Admin form → what createSchedule sends. A weekly match repeats on the
- * chosen day's weekday. A match whose vote would already have opened is
+ * The Admin form → what createSchedule sends. A repeating match plays on the
+ * chosen day's weekday, from that day on. A match whose vote would already have opened is
  * refused (it would never open: no backfill).
  */
 export function buildScheduleInput(
@@ -122,22 +140,53 @@ export function buildScheduleInput(
   const label = form.label.trim();
   if (label.length > 100) return { input: null, error: 'schedule.labelTooLong' };
   const now = opts.now ?? Date.now();
-  if (!form.weekly && kickOff.getTime() + opts.delayMinutes * 60_000 <= now) {
+  const weekly = form.repeat > 0;
+  if (!weekly && kickOff.getTime() + opts.delayMinutes * 60_000 <= now) {
     return { input: null, error: 'schedule.inThePast' };
   }
   return {
     error: null,
     input: {
       label: label || null,
-      starts_at: form.weekly ? null : kickOff.toISOString(),
-      weekday: form.weekly ? kickOff.getDay() : null,
-      start_time: form.weekly ? form.time : null,
+      starts_at: weekly ? null : kickOff.toISOString(),
+      weekday: weekly ? kickOff.getDay() : null,
+      start_time: weekly ? form.time : null,
       timezone: opts.timezone ?? Intl.DateTimeFormat().resolvedOptions().timeZone ?? 'Europe/Brussels',
       team_id: form.teamId ?? null,
       pepite_count: form.pepiteCount,
       locale: opts.locale,
+      interval_weeks: form.repeat === 2 ? 2 : 1,
+      first_on: weekly ? form.date : null,
     },
   };
+}
+
+/**
+ * Kick-off of the match `weeks` after this one, for « Prochain match ? »
+ * under the podium. A scheduled vote is dated at kick-off; one launched by
+ * hand is dated when it opened, about the team's delay after kick-off
+ * (rounded to the quarter hour). Never one whose vote would already have
+ * opened.
+ */
+export function suggestNextKickOff(
+  match: Pick<Match, 'created_at' | 'schedule_id'>, weeks: 1 | 2, delayMinutes: number, now: number = Date.now(),
+): Date {
+  const quarter = 15 * 60_000;
+  const dated = new Date(match.created_at).getTime();
+  const kickOff = new Date(match.schedule_id != null
+    ? dated
+    : Math.round((dated - delayMinutes * 60_000) / quarter) * quarter);
+  do kickOff.setDate(kickOff.getDate() + 7 * weeks);
+  while (kickOff.getTime() + delayMinutes * 60_000 <= now);
+  return kickOff;
+}
+
+/** Every other week when the last two matches were about two weeks apart. */
+export function guessIntervalWeeks(matchDates: string[]): 1 | 2 {
+  const [last, previous] = matchDates.map(d => new Date(d)).sort((a, b) => b.getTime() - a.getTime());
+  if (!last || !previous) return 1;
+  const days = daysBetween(previous, last);
+  return days >= 11 && days <= 17 ? 2 : 1;
 }
 
 /** "mar. 28 oct. · 20:00" */

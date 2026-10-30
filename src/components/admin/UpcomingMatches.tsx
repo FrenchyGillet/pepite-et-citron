@@ -3,7 +3,7 @@ import { formatClockTime } from '@/utils/deadline';
 import { humanizeError } from '@/utils/errors';
 import { formatKickOff, weekdayName } from '@/utils/schedule';
 import { useUpcomingSchedules } from '@/hooks/queries';
-import { useDeleteSchedule, useOpenScheduleNow } from '@/hooks/mutations';
+import { useDeleteSchedule, useOpenScheduleNow, useSkipNextOccurrence } from '@/hooks/mutations';
 import { track, EVENTS } from '@/utils/analytics';
 import type { MatchSchedule } from '@/types';
 import { sectionLabelStyle, type ConfirmFn, type Notify } from './shared';
@@ -25,7 +25,24 @@ export function UpcomingMatches({ orgId, notify, confirm, canManage, canOpenNow,
   const { data: schedules = [] } = useUpcomingSchedules(orgId);
   const deleteSchedule = useDeleteSchedule(orgId);
   const openNow = useOpenScheduleNow(orgId);
+  const skipNext = useSkipNextOccurrence(orgId);
   if (schedules.length === 0) return null;
+
+  // Winter break, school holidays: no match that day, the next ones stay.
+  const skip = async (s: MatchSchedule) => {
+    const when = formatKickOff(s.next_kick_off);
+    if (!(await confirm({
+      message: t('schedule.skipConfirm', { when }),
+      confirmLabel: t('schedule.skipMatch'), cancelLabel: t('schedule.keep'),
+    }))) return;
+    skipNext.mutate(s.id, {
+      onSuccess: (next) => {
+        track(EVENTS.SCHEDULE_SKIPPED, { every_weeks: s.interval_weeks });
+        notify(next ? t('schedule.skippedNext', { when: formatKickOff(next) }) : t('schedule.skipped'));
+      },
+      onError: (err) => notify(humanizeError(err)),
+    });
+  };
 
   const open = (s: MatchSchedule) => openNow.mutate(s.id, {
     onSuccess: () => {
@@ -55,11 +72,13 @@ export function UpcomingMatches({ orgId, notify, confirm, canManage, canOpenNow,
       <div className="group">
         {schedules.map(s => {
           const weekly = s.weekday != null && s.start_time != null;
-          const title = s.label ?? (weekly
-            ? t('schedule.weeklyEvery', { day: weekdayName(s.weekday as number), time: s.start_time as string })
-            : formatKickOff(s.next_kick_off));
+          const every = weekly
+            ? t(s.interval_weeks === 2 ? 'schedule.everyOther' : 'schedule.weeklyEvery',
+                { day: weekdayName(s.weekday as number), time: s.start_time as string })
+            : null;
+          const title = s.label ?? every ?? formatKickOff(s.next_kick_off);
           const sub = [
-            weekly && s.label ? t('schedule.weeklyEvery', { day: weekdayName(s.weekday as number), time: s.start_time as string }) : null,
+            s.label ? every : null,
             weekly || s.label ? t('schedule.next', { when: formatKickOff(s.next_kick_off) }) : null,
             t('schedule.voteAt', { time: formatClockTime(s.opens_at) }),
           ].filter(Boolean).join(' · ');
@@ -75,6 +94,12 @@ export function UpcomingMatches({ orgId, notify, confirm, canManage, canOpenNow,
                     <button className="btn btn-primary" style={{ padding: '5px 12px', fontSize: 13 }}
                       disabled={openNow.isPending} onClick={() => open(s)}>
                       {t('schedule.openNow')}
+                    </button>
+                  )}
+                  {weekly && (
+                    <button className="btn btn-secondary" style={{ padding: '5px 12px', fontSize: 13 }}
+                      disabled={skipNext.isPending} onClick={() => void skip(s)}>
+                      {t('schedule.skip')}
                     </button>
                   )}
                   <button className="btn btn-secondary" style={{ padding: '5px 12px', fontSize: 13 }}

@@ -39,7 +39,7 @@ describe("Programmer un match (Admin)", () => {
     const day = `${tomorrow.getFullYear()}-${String(tomorrow.getMonth() + 1).padStart(2, "0")}-${String(tomorrow.getDate()).padStart(2, "0")}`;
     await user.clear(screen.getByLabelText("Date du match"));
     await user.type(screen.getByLabelText("Date du match"), day);
-    await user.click(screen.getByRole("checkbox", { name: /Chaque semaine/ }));
+    await user.click(screen.getByRole("button", { name: "Chaque semaine" }));
     await user.type(screen.getByLabelText(/Adversaire ou nom du match/), "Entraînement");
 
     expect(screen.getByText("Combien de temps après le début du match veux-tu ouvrir le vote ?")).toBeInTheDocument();
@@ -50,10 +50,40 @@ describe("Programmer un match (Admin)", () => {
     expect(screen.getByText(/🔁 Entraînement/)).toBeInTheDocument();
     expect(screen.getByText(/vote à 22:00/)).toBeInTheDocument();
     expect(demoState.voteOpenDelay).toBe(120);
-    expect(demoState.schedules[0]).toMatchObject({ weekday: tomorrow.getDay(), start_time: "20:00", starts_at: null });
+    expect(demoState.schedules[0]).toMatchObject({
+      weekday: tomorrow.getDay(), start_time: "20:00", starts_at: null, interval_weeks: 1, first_on: day,
+    });
     // Asked once: the next time only a hint.
     expect(screen.queryByText(/Combien de temps après le début/)).toBeNull();
     expect(screen.getByText(/Le vote ouvrira 2 h après le début du match/)).toBeInTheDocument();
+  });
+
+  it("schedules a match every other week", async () => {
+    renderAdmin();
+    const user = userEvent.setup();
+    await user.click(screen.getByRole("tab", { name: "Programmer" }));
+    await user.click(screen.getByRole("button", { name: "Toutes les 2 semaines" }));
+    await user.click(screen.getByRole("button", { name: "1 h 30" }));
+    await user.click(screen.getByRole("button", { name: "Programmer le match" }));
+
+    expect(await screen.findByText(/Un .+ sur deux à 20:00/)).toBeInTheDocument();
+    expect(demoState.schedules[0]).toMatchObject({ interval_weeks: 2, starts_at: null });
+  });
+
+  it("skips one occurrence of a repeating match (winter break)", async () => {
+    await __demoAPI.createSchedule('org-123', schedule({
+      label: null, starts_at: null, weekday: new Date(Date.now() + 2 * 86_400_000).getDay(), start_time: "20:00",
+    }));
+    renderAdmin();
+    const user = userEvent.setup();
+    const before = (await __demoAPI.getUpcomingSchedules('org-123'))[0].next_kick_off;
+    await user.click(await screen.findByRole("button", { name: "Pas ce jour-là" }));
+    const dialog = await screen.findByRole("alertdialog");
+    await user.click(within(dialog).getByRole("button", { name: "Pas de match ce jour-là" }));
+
+    expect(await screen.findByText(/Match sauté\. Prochain :/)).toBeInTheDocument();
+    const after = (await __demoAPI.getUpcomingSchedules('org-123'))[0].next_kick_off;
+    expect(new Date(after).getTime() - new Date(before).getTime()).toBeGreaterThanOrEqual(6 * 86_400_000);
   });
 
   it("refuses a match whose vote could no longer open", async () => {
@@ -152,6 +182,17 @@ describe("Ouverture automatique (règles du serveur, mode démo)", () => {
     demoState.schedules[0].created_at = minutesAgo(24 * 60);
     expect((await __demoAPI.getActiveMatch('org-123')).label).toBe("Ancien");
     expect(demoState.matches).toHaveLength(1);
+  });
+
+  it("closes a vote left in counting so the next one opens", async () => {
+    const old = await __demoAPI.createMatch('org-123', "Ancien", [1, 2, 3], null, 1);
+    await __demoAPI.startCounting(old.id, []);
+    demoState.matches[0].created_at = minutesAgo(3 * 24 * 60);
+    await __demoAPI.createSchedule('org-123', schedule());
+    demoState.schedules[0].created_at = minutesAgo(24 * 60);
+
+    expect((await __demoAPI.getActiveMatch('org-123')).label).toBe("vs Dragons");
+    expect(demoState.matches[0]).toMatchObject({ label: "Ancien", phase: "closed" });
   });
 
   it("a link voter sees when the next vote opens", async () => {

@@ -4,6 +4,7 @@ import { track, EVENTS } from '@/utils/analytics';
 import { humanizeError } from '@/utils/errors';
 import {
   DEFAULT_VOTE_OPEN_DELAY, VOTE_OPEN_DELAYS, buildScheduleInput, formatDelay, localDateKey, weekdayName,
+  type ScheduleForm,
 } from '@/utils/schedule';
 import { useVoteOpenDelay } from '@/hooks/queries';
 import { useCreateSchedule } from '@/hooks/mutations';
@@ -14,6 +15,9 @@ interface ScheduleMatchFormProps {
   teams: Team[];
   orgId?: string;
   notify: Notify;
+  /** Prefilled values (« Prochain match ? » under the podium). */
+  initial?: Partial<ScheduleForm>;
+  onScheduled?: () => void;
 }
 
 const fieldLabel = { display: 'block', fontSize: 13, color: 'var(--label3)', marginBottom: 8 } as const;
@@ -25,15 +29,16 @@ const chip = (on: boolean) => ({
 
 /**
  * "Programmer": a match whose vote opens on its own at kick-off + the team's
- * delay (20260021). The delay is asked the first time, then kept.
+ * delay (20260021), once or every one or two weeks (20260025). The delay is
+ * asked the first time, then kept.
  */
-export function ScheduleMatchForm({ teams, orgId, notify }: ScheduleMatchFormProps) {
-  const [date,        setDate]        = useState(() => localDateKey(new Date()));
-  const [time,        setTime]        = useState('20:00');
-  const [weekly,      setWeekly]      = useState(false);
-  const [label,       setLabel]       = useState('');
-  const [teamId,      setTeamId]      = useState<string | null>(null);
-  const [pepiteCount, setPepiteCount] = useState<2 | 3>(3);
+export function ScheduleMatchForm({ teams, orgId, notify, initial, onScheduled }: ScheduleMatchFormProps) {
+  const [date,        setDate]        = useState(() => initial?.date ?? localDateKey(new Date()));
+  const [time,        setTime]        = useState(initial?.time ?? '20:00');
+  const [repeat,      setRepeat]      = useState<0 | 1 | 2>(initial?.repeat ?? 0);
+  const [label,       setLabel]       = useState(initial?.label ?? '');
+  const [teamId,      setTeamId]      = useState<string | null>(initial?.teamId != null ? String(initial.teamId) : null);
+  const [pepiteCount, setPepiteCount] = useState<2 | 3>(initial?.pepiteCount ?? 3);
   const [askedDelay,  setAskedDelay]  = useState(DEFAULT_VOTE_OPEN_DELAY);
   const [error,       setError]       = useState<string | null>(null);
 
@@ -47,16 +52,17 @@ export function ScheduleMatchForm({ teams, orgId, notify }: ScheduleMatchFormPro
   const submit = () => {
     const team = teams.find(tm => String(tm.id) === teamId);
     const { input, error: problem } = buildScheduleInput(
-      { date, time, weekly, label, teamId: team?.id ?? null, pepiteCount },
+      { date, time, repeat, label, teamId: team?.id ?? null, pepiteCount },
       { delayMinutes: delay, locale: getLang() },
     );
     if (!input) { setError(problem ? t(problem) : null); return; }
     setError(null);
     createSchedule.mutate({ input, delayMinutes: mustAskDelay ? askedDelay : undefined }, {
       onSuccess: () => {
-        track(EVENTS.MATCH_SCHEDULED, { weekly, delay, lineup: !!team });
+        track(EVENTS.MATCH_SCHEDULED, { weekly: repeat > 0, every_weeks: repeat, delay, lineup: !!team });
         notify(t('schedule.scheduled'));
         setLabel('');
+        onScheduled?.();
       },
       onError: (err) => setError(humanizeError(err)),
     });
@@ -77,13 +83,16 @@ export function ScheduleMatchForm({ teams, orgId, notify }: ScheduleMatchFormPro
         </div>
       </div>
 
-      {day != null && (
-        <label style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 14, color: 'var(--label)', marginBottom: 14, cursor: 'pointer' }}>
-          <input type="checkbox" checked={weekly} onChange={e => { setWeekly(e.target.checked); setError(null); }}
-            style={{ width: 20, height: 20, accentColor: 'var(--gold-fill)' }} />
-          {t('schedule.weekly', { day: weekdayName(day) })}
-        </label>
-      )}
+      <p id="schedule-repeat-label" style={fieldLabel}>
+        {day != null ? t('schedule.repeatOn', { day: weekdayName(day) }) : t('schedule.repeat')}
+      </p>
+      <div role="group" aria-labelledby="schedule-repeat-label" style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 14 }}>
+        {([0, 1, 2] as const).map(n => (
+          <button key={n} type="button" aria-pressed={repeat === n} onClick={() => { setRepeat(n); setError(null); }} style={chip(repeat === n)}>
+            {t(n === 0 ? 'schedule.once' : n === 1 ? 'schedule.everyWeek' : 'schedule.everyTwoWeeks')}
+          </button>
+        ))}
+      </div>
 
       <label htmlFor="schedule-label" style={fieldLabel}>{t('schedule.labelLabel')}</label>
       <input id="schedule-label" placeholder={t('schedule.labelPlaceholder')} value={label} maxLength={100}

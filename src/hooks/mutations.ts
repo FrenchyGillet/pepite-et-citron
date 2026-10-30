@@ -132,6 +132,15 @@ export function useOpenScheduleNow(orgId?: string | null) {
   });
 }
 
+/** « Pas de match ce jour-là »: skips a repeating match's next occurrence. */
+export function useSkipNextOccurrence(orgId?: string | null) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: EntityId) => api.skipNextOccurrence(id),
+    onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.schedules(orgId) }),
+  });
+}
+
 export function useDeleteSchedule(orgId?: string | null) {
   const qc = useQueryClient();
   return useMutation({

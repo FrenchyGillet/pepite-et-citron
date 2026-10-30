@@ -16,6 +16,7 @@ import { sharedLandingUrl } from '@/utils/share';
 import type { Player, Match, EntityId } from '@/types';
 import { t } from '@/i18n';
 import { RevealAnnouncements } from './RevealAnnouncements';
+import { NextMatchCard } from './NextMatchCard';
 
 interface ResultsViewProps {
   players: Player[];
@@ -161,9 +162,13 @@ function TiebreakerCard({ title, color, field, tiedPlayers, step, disabled, onPi
 export function ResultsView({ players, match, isAdmin, isDark, orgId, isPro, onUpgrade }: ResultsViewProps) {
   const navigate = useNavigate();
   const [localRevealedCount, setLocalRevealedCount] = useState<number | null>(null);
-  const [podiumRevealed,     setPodiumRevealed]     = useState(false);
+  // Keyed by match: closing refetches the match (briefly null), which must
+  // not hide the podium the admin just opened.
+  const [podiumRevealedId,   setPodiumRevealedId]   = useState<EntityId | null>(null);
+  const podiumRevealed    = match != null && podiumRevealedId === match.id;
+  const setPodiumRevealed = () => { if (match) setPodiumRevealedId(match.id); };
 
-  useEffect(() => { setLocalRevealedCount(null); setPodiumRevealed(false); }, [match?.id]);
+  useEffect(() => { setLocalRevealedCount(null); }, [match?.id]);
 
   const { data: votes = [], isLoading } = useVotes(match?.id);
   // During the vote, non-admins get no ballot rows (get_match_votes) — only the
@@ -233,15 +238,23 @@ export function ResultsView({ players, match, isAdmin, isDark, orgId, isPro, onU
         ]
       : [];
 
+    // The admin who just revealed the ballots goes straight to the podium:
+    // once the provisional board is complete, a "Révéler" gate was where
+    // counting stopped, leaving the match stuck in counting.
+    const handleFinish = () => closeMatchMutation.mutate(match.id, {
+      onSuccess: () => {
+        track(EVENTS.COUNTING_FINISHED, { votes: revealOrder.length });
+        track(EVENTS.PODIUM_REVEALED, { admin: true });
+        setPodiumRevealed();
+      },
+    });
+
     const handleNext = () => {
       const next = revealedCount + 1;
+      if (next >= revealOrder.length) { handleFinish(); return; }
       setLocalRevealedCount(next);
       revealNextMutation.mutate({ id: match.id, count: next });
     };
-
-    const handleFinish = () => closeMatchMutation.mutate(match.id, {
-      onSuccess: () => track(EVENTS.COUNTING_FINISHED, { votes: revealOrder.length }),
-    });
 
     return (
       <div className="content">
@@ -311,7 +324,7 @@ export function ResultsView({ players, match, isAdmin, isDark, orgId, isPro, onU
             </div>
 
             <div style={{ padding: '12px 16px', borderTop: '1px solid var(--separator)' }}>
-              <button className="btn btn-primary btn-full" onClick={handleNext}>
+              <button className="btn btn-primary btn-full" onClick={handleNext} disabled={closeMatchMutation.isPending}>
                 {revealedCount + 1 < revealOrder.length ? t('results.nextVote') : t('results.seeFinal')}
               </button>
             </div>
@@ -321,7 +334,7 @@ export function ResultsView({ players, match, isAdmin, isDark, orgId, isPro, onU
             <div style={{ fontSize: 32, marginBottom: 8 }}>🎉</div>
             <div style={{ fontSize: 16, fontWeight: 700, marginBottom: 4 }}>{t('results.allRevealedBang')}</div>
             <div style={{ fontSize: 13, color: 'var(--label3)', marginBottom: 16 }}>{t('results.showFinalHint')}</div>
-            <button className="btn btn-primary btn-full" onClick={handleFinish}>{t('results.showFinal')}</button>
+            <button className="btn btn-primary btn-full" onClick={handleFinish} disabled={closeMatchMutation.isPending}>{t('results.showFinal')}</button>
           </div>
         ) : (
           // Vote référencé par reveal_order mais introuvable (supprimé, ou pas
@@ -330,7 +343,7 @@ export function ResultsView({ players, match, isAdmin, isDark, orgId, isPro, onU
             <div style={{ fontSize: 28, marginBottom: 8 }}>⏭️</div>
             <div style={{ fontSize: 15, fontWeight: 700, marginBottom: 4 }}>{t('results.voteGone')}</div>
             <div style={{ fontSize: 13, color: 'var(--label3)', marginBottom: 16 }}>{t('results.voteGoneHint')}</div>
-            <button className="btn btn-primary btn-full" onClick={handleNext}>
+            <button className="btn btn-primary btn-full" onClick={handleNext} disabled={closeMatchMutation.isPending}>
               {revealedCount + 1 < revealOrder.length ? t('results.nextVote') : t('results.seeFinal')}
             </button>
           </div>
@@ -418,7 +431,7 @@ export function ResultsView({ players, match, isAdmin, isDark, orgId, isPro, onU
           </div>
           <button
             className="btn btn-primary btn-full"
-            onClick={() => { track(EVENTS.PODIUM_REVEALED, { admin: isAdmin }); setPodiumRevealed(true); }}
+            onClick={() => { track(EVENTS.PODIUM_REVEALED, { admin: isAdmin }); setPodiumRevealed(); }}
             style={{ fontSize: 17, fontWeight: 800 }}
           >
             {t('results.reveal')}
@@ -468,6 +481,9 @@ export function ResultsView({ players, match, isAdmin, isDark, orgId, isPro, onU
       {podiumRevealed && (
         <div style={{ marginTop: 8, marginBottom: 20, display: 'flex', flexDirection: 'column', gap: 10 }}>
           <RevealAnnouncements orgId={orgId} match={match} players={players} />
+
+          {/* Organisers: line up the next vote while the team is still here. */}
+          {isAdmin && !match.manual_result && <NextMatchCard orgId={orgId} match={match} />}
 
           {/* Pro: shortcut to season stats */}
           {isPro && (

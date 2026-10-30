@@ -97,6 +97,16 @@ const demoVoteCount = (matchId: EntityId) => demoState.votes.filter(v => v.match
 const demoHandVotes = () => demoState.matches
   .filter(m => m.schedule_id == null && !m.manual_result).map(m => new Date(m.created_at).getTime());
 
+// Mirrors _close_stuck_counting (20260025): a vote whose podium was never
+// shown gives way to the next one.
+function demoCloseStuckCounting(kickOff: Date): void {
+  for (const m of demoState.matches) {
+    if (m.phase === "counting" && new Date(m.created_at).getTime() < kickOff.getTime()) {
+      m.is_open = false; m.phase = "closed";
+    }
+  }
+}
+
 // Mirrors open_due_scheduled_matches (20260021): never while a vote is pending,
 // never a second vote for a match already voted by hand.
 function demoOpenDueSchedules(): void {
@@ -105,6 +115,7 @@ function demoOpenDueSchedules(): void {
     const kickOff = dueOccurrence(s, delay);
     if (!kickOff) continue;
     if (votedByHand(kickOff, delay, demoHandVotes())) { s.last_opened_on = localDateKey(kickOff); continue; }
+    demoCloseStuckCounting(kickOff);
     if (demoState.matches.some(m => m.is_open || m.phase === "counting")) return;
     demoCreateScheduledMatch(s, kickOff, kickOff);
   }
@@ -234,7 +245,7 @@ export const demoAPI: API = {
       const kickOff = nextOccurrence(s, delay, Date.now(), demoHandVotes());
       return kickOff ? [{
         id: s.id, label: s.label, starts_at: s.starts_at, weekday: s.weekday, start_time: s.start_time,
-        timezone: s.timezone, team_id: s.team_id, pepite_count: s.pepite_count,
+        timezone: s.timezone, team_id: s.team_id, pepite_count: s.pepite_count, interval_weeks: s.interval_weeks,
         next_kick_off: kickOff.toISOString(), opens_at: new Date(kickOff.getTime() + delay * 60_000).toISOString(),
       }] : [];
     });
@@ -252,13 +263,26 @@ export const demoAPI: API = {
     // Mirrors open_schedule_now (20260021).
     const s = demoState.schedules.find(x => x.id === id);
     if (!s) return Promise.reject(new Error("Match programmé introuvable."));
-    if (demoState.matches.some(m => m.is_open || m.phase === "counting")) {
-      return Promise.reject(new Error("Un vote est déjà en cours."));
-    }
     const delay = demoState.voteOpenDelay ?? DEFAULT_VOTE_OPEN_DELAY;
     const kickOff = nextOccurrence(s, delay, Date.now(), demoHandVotes());
     if (!kickOff) return Promise.reject(new Error("Match programmé introuvable."));
-    return Promise.resolve(demoCreateScheduledMatch(s, kickOff, new Date(Math.min(kickOff.getTime(), Date.now()))));
+    const dated = new Date(Math.min(kickOff.getTime(), Date.now()));
+    demoCloseStuckCounting(dated);
+    if (demoState.matches.some(m => m.is_open || m.phase === "counting")) {
+      return Promise.reject(new Error("Un vote est déjà en cours."));
+    }
+    return Promise.resolve(demoCreateScheduledMatch(s, kickOff, dated));
+  },
+  skipNextOccurrence: (id) => {
+    // Mirrors skip_next_occurrence (20260025).
+    const s = demoState.schedules.find(x => x.id === id);
+    if (!s) return Promise.reject(new Error("Match programmé introuvable."));
+    if (s.starts_at) return Promise.reject(new Error("Seul un match qui se répète peut être sauté."));
+    const delay = demoState.voteOpenDelay ?? DEFAULT_VOTE_OPEN_DELAY;
+    const kickOff = nextOccurrence(s, delay, Date.now(), demoHandVotes());
+    if (!kickOff) return Promise.reject(new Error("Match programmé introuvable."));
+    s.last_opened_on = localDateKey(kickOff);
+    return Promise.resolve(nextOccurrence(s, delay, Date.now(), demoHandVotes())?.toISOString() ?? null);
   },
   getVoteOpenDelay: () => Promise.resolve(demoState.voteOpenDelay),
   setVoteOpenDelay: (_orgId, minutes) => { demoState.voteOpenDelay = minutes; return Promise.resolve(); },
@@ -648,7 +672,7 @@ export const realAPI: API = {
       const { data, error } = await supabase.rpc("get_upcoming_schedules", { p_org_id: team(orgId) });
       if (error) throw new Error(error.message);
       return ((data as MatchSchedule[] | null) ?? [])
-        .map(s => ({ ...s, start_time: s.start_time ? s.start_time.slice(0, 5) : null }))
+        .map(s => ({ ...s, start_time: s.start_time ? s.start_time.slice(0, 5) : null, interval_weeks: s.interval_weeks ?? 1 }))
         .sort((a, b) => a.opens_at.localeCompare(b.opens_at));
     }),
   // No withRetry: a retried INSERT after a timeout would schedule it twice.
@@ -668,6 +692,12 @@ export const realAPI: API = {
     const match = (data as Match[] | null)?.[0];
     if (!match) throw new Error("Match programmé introuvable.");
     return match;
+  },
+  // No withRetry: a replay would skip the occurrence after.
+  skipNextOccurrence: async (id) => {
+    const { data, error } = await rpcWithTimeout(() => supabase.rpc("skip_next_occurrence", { p_schedule_id: id }));
+    if (error) throw new Error(error.message);
+    return (data as string | null) ?? null;
   },
   getVoteOpenDelay: (orgId) =>
     withRetry(async () => {
