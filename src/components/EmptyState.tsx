@@ -10,16 +10,18 @@ interface EmptyStateProps {
   title: string;
   subtitle?: string;
   action?: EmptyStateAction | null;
+  /** Pépite / Citron commenting (MascotTalk): replaces the icon. */
+  mascot?: ReactNode;
 }
 
-export function EmptyState({ icon, title, subtitle, action }: EmptyStateProps) {
+export function EmptyState({ icon, title, subtitle, action, mascot }: EmptyStateProps) {
   return (
     <div style={{
       display: "flex", flexDirection: "column", alignItems: "center",
       justifyContent: "center", textAlign: "center",
       padding: "48px 32px", minHeight: "260px", gap: "16px",
     }}>
-      <div style={{
+      {!mascot && <div style={{
         width: 72, height: 72, borderRadius: "50%",
         background: "var(--bg3)", display: "flex",
         alignItems: "center", justifyContent: "center", flexShrink: 0,
@@ -28,7 +30,7 @@ export function EmptyState({ icon, title, subtitle, action }: EmptyStateProps) {
           stroke="var(--label3)" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
           {icon}
         </svg>
-      </div>
+      </div>}
 
       <div style={{ display: "flex", flexDirection: "column", gap: "6px", maxWidth: 280 }}>
         <div style={{ fontSize: 17, fontWeight: 600, color: "var(--label)", letterSpacing: "-0.01em", lineHeight: 1.3 }}>
@@ -40,6 +42,8 @@ export function EmptyState({ icon, title, subtitle, action }: EmptyStateProps) {
           </div>
         )}
       </div>
+
+      {mascot}
 
       {action && (
         <button

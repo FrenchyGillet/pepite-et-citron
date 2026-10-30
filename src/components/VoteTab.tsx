@@ -6,9 +6,10 @@ import { track, EVENTS } from '@/utils/analytics';
 import { hasVotedLocally } from '@/utils/vote';
 import { useUpcomingSchedules, useVoteCount } from '@/hooks/queries';
 import { formatClockTime } from '@/utils/deadline';
-import { formatKickOff } from '@/utils/schedule';
+import { formatKickOff, localDateKey } from '@/utils/schedule';
 import { VoteView } from './VoteView';
 import { EmptyState } from './EmptyState';
+import { MascotTalk } from './MascotTalk';
 import { GuestPromoView } from './GuestPromoView';
 import { LinkOrgBanner, JoinLinkOrgOffer } from './LinkOrgBanner';
 import type { Player, Match, EntityId } from '@/types';
@@ -84,6 +85,14 @@ function VoteTabContent({ isAdmin, activeMatch, lastMatch, players, isLoading = 
     subtitle: t('schedule.opensAt', { time: formatClockTime(next.opens_at) }),
   } : null;
   const presentCount = activeMatch?.present_ids?.length ?? 0;
+  const votedHere = votedThisSession || hasVotedLocally(activeMatch?.id);
+  // Between matches the line changes with the next kick-off, or once a day.
+  const betweenMatchesMascot = (
+    <MascotTalk
+      situations={[next ? 'upcoming' : 'noMatch']}
+      seed={next ? String(next.next_kick_off) : `${currentOrg?.id}:${localDateKey(new Date())}`}
+    />
+  );
 
   // Once the admin starts the reveal, take whoever voted on this device to the
   // results (Realtime delivers the phase change). Invite-link guests have no
@@ -131,6 +140,7 @@ function VoteTabContent({ isAdmin, activeMatch, lastMatch, players, isLoading = 
           canSeeResults={!guestToken && guestStatus !== 'valid'}
           voterName={voterName}
           orgName={currentOrg?.name ?? null}
+          matchId={activeMatch?.id}
         />
       );
     }
@@ -144,6 +154,7 @@ function VoteTabContent({ isAdmin, activeMatch, lastMatch, players, isLoading = 
               ? t('voteTab.savedProgress', { voted: voteCount, present: presentCount })
               : t('voteTab.savedHint')
           }
+          mascot={<MascotTalk situations={['voted']} seed={String(activeMatch?.id)} />}
         />
         <JoinLinkOrgOffer />
       </>
@@ -174,6 +185,7 @@ function VoteTabContent({ isAdmin, activeMatch, lastMatch, players, isLoading = 
               : t('voteTab.captainNotOpened')
         )}
         action={isAdmin && !nextMatch ? { label: t('voteTab.openMatch'), onClick: () => navigate('/admin') } : null}
+        mascot={betweenMatchesMascot}
       />
     );
   }
@@ -187,6 +199,11 @@ function VoteTabContent({ isAdmin, activeMatch, lastMatch, players, isLoading = 
           ? `${t(isVoterSession ? 'voteTab.closedVoter' : 'voteTab.closedHint')} ${nextMatch.title}. ${nextMatch.subtitle}`
           : t(isVoterSession ? 'voteTab.closedVoter' : 'voteTab.closedHint')}
         action={{ label: t('voteTab.seeResults'), onClick: () => navigate('/results') }}
+        // Just closed: tease whoever did not vote (nothing during the reveal
+        // for those who did). An older match: between matches.
+        mascot={!activeMatch ? betweenMatchesMascot
+          : !votedHere ? <MascotTalk situations={['closedNotVoted']} seed={String(activeMatch.id)} />
+          : undefined}
       />
     );
   }

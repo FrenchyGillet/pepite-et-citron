@@ -52,6 +52,9 @@ describe("Saison → Palmarès", () => {
     expect(screen.getByText("Plus gros score : Ana, 7 pts (M3)")).toBeInTheDocument();
     // Everybody played every match: counted, not listed.
     expect(screen.getByText("📋 Le plus assidu").nextSibling).toHaveTextContent("4 joueurs ex aequo");
+    // Pépite or Citron comments one of the season titles.
+    const mascot = screen.getAllByRole("img", { name: /^(Pépite|Citron)$/ })[0];
+    expect(mascot.closest("section")).toHaveTextContent(/(Ana|Dan), \d+ points|Ana en tête|Dan\. C'est moi|4 joueurs à égalité/);
     // The three matches fall in this month unless today is the 1st or 2nd.
     if (ms.every(x => monthKey(new Date(x.match.created_at)) === monthKey(new Date()))) {
       expect(screen.getByText("⭐ Pépite du mois").nextSibling).toHaveTextContent("Ana");

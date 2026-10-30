@@ -2,9 +2,11 @@ import { useState, useEffect, type ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { formatDate, PEPITE_POINTS } from '@/utils';
 import { computeResultsSummary } from '@/utils/scoring';
+import { localDateKey } from '@/utils/schedule';
 import { Scoreboard } from './Scoreboard';
 import { PodiumView } from './PodiumView';
 import { EmptyState } from './EmptyState';
+import { MascotTalk } from './MascotTalk';
 import { SharePodiumButton } from './SharePodiumButton';
 import { SeasonTeaser } from './SeasonTeaser';
 import { useVotes, useVoteCount } from '@/hooks/queries';
@@ -177,6 +179,7 @@ export function ResultsView({ players, match, isAdmin, isDark, orgId, isPro, onU
         icon={<><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></>}
         title={t('results.noRecent')}
         subtitle={t('results.noRecentHint')}
+        mascot={<MascotTalk situations={['noResults']} seed={`${orgId}:${localDateKey(new Date())}`} />}
       />
     </div>
   );

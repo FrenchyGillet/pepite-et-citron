@@ -878,4 +878,8 @@ export const en: Messages = {
     nobody: 'nobody',
     tied: { one: '{count} player', other: '{count} players tied' },
   },
+  mascots: {
+    pepite: 'Pépite',
+    citron: 'Citron',
+  },
 };

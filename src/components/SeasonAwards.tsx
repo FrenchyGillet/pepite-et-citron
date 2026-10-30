@@ -5,6 +5,8 @@ import {
   currentStreaks, matchResults, monthKey, monthlyTitles, seasonRecords, seasonTitles, type Title,
 } from '@/utils/awards';
 import type { Match, Player, Vote } from '@/types';
+import type { MascotSituation } from '@/utils/mascots';
+import { MascotTalk } from './MascotTalk';
 
 interface SeasonAwardsProps {
   players: Player[];
@@ -63,6 +65,14 @@ export function SeasonAwards({ players, matches, votes }: SeasonAwardsProps) {
   const names = (title: Title | null) => !title ? t('awards.nobody')
     : title.ids.length > 3 ? t('awards.tied', { count: title.ids.length })
     : holderNames(title.ids, players);
+  // The mascots comment the season titles held by one player (a shared title
+  // would break the singular), and change their line after each match.
+  const single = (title: Title | null) => title?.ids.length === 1 ? holderNames(title.ids, players) : null;
+  const mascotSituations: MascotSituation[] = [
+    ...(single(season.pepite) ? ['seasonPepite' as const] : []),
+    ...(single(season.citron) ? ['seasonCitron' as const] : []),
+    ...((season.attendance?.ids.length ?? 0) > 1 ? ['attendanceTie' as const] : []),
+  ];
   const current = months[0]?.month === monthKey(new Date()) ? months[0] : null;
   const past    = months.filter(m => m !== current);
 
@@ -75,6 +85,15 @@ export function SeasonAwards({ players, matches, votes }: SeasonAwardsProps) {
         <Award label={t('awards.attendance')} holders={season.attendance && names(season.attendance)}
           detail={t('awards.attendanceValue', { count: season.attendance?.value ?? 0, total: season.matches })} />
       </div>
+      {mascotSituations.length > 0 && (
+        <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 16 }}>
+          <MascotTalk situations={mascotSituations} seed={String(results[results.length - 1].matchId)} vars={{
+            pepite: single(season.pepite) ?? '', pepitePts: season.pepite?.value ?? 0,
+            citron: single(season.citron) ?? '', citronPts: season.citron?.value ?? 0,
+            count: season.attendance?.ids.length ?? 0,
+          }} />
+        </div>
+      )}
 
       {current && (
         <>

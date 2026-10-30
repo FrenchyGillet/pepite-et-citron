@@ -880,4 +880,8 @@ export const nl: Messages = {
     nobody: 'niemand',
     tied: { one: '{count} speler', other: '{count} spelers gelijk' },
   },
+  mascots: {
+    pepite: 'Pépite',
+    citron: 'Citron',
+  },
 };

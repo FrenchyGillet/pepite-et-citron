@@ -879,4 +879,8 @@ export const fr = {
     nobody: 'personne',
     tied: { one: '{count} joueur', other: '{count} joueurs ex aequo' },
   },
+  mascots: {
+    pepite: 'Pépite',
+    citron: 'Citron',
+  },
 };

@@ -2,6 +2,8 @@ import { useNavigate } from 'react-router-dom';
 import { useAppStore } from '@/store/appStore';
 import { track, EVENTS } from '@/utils/analytics';
 import { useT } from '@/i18n';
+import type { EntityId } from '@/types';
+import { MascotTalk } from './MascotTalk';
 
 interface GuestPromoViewProps {
   /** null = ?org= flow (can browse results), 'valid' = ?guest= token flow */
@@ -10,9 +12,11 @@ interface GuestPromoViewProps {
   voterName?: string | null;
   /** Name of the current org / team */
   orgName?: string | null;
+  /** The match just voted: picks the mascots' line. */
+  matchId?: EntityId;
 }
 
-export function GuestPromoView({ canSeeResults, voterName, orgName }: GuestPromoViewProps) {
+export function GuestPromoView({ canSeeResults, voterName, orgName, matchId }: GuestPromoViewProps) {
   const t = useT();
   const navigate          = useNavigate();
   const setIsVoterSession = useAppStore(s => s.setIsVoterSession);
@@ -63,6 +67,10 @@ export function GuestPromoView({ canSeeResults, voterName, orgName }: GuestPromo
           ? t('promo.memberOf', { team: orgName })
           : t('promo.thanks')}
       </p>
+
+      <div style={{ display: 'flex', justifyContent: 'center', width: '100%', margin: '-12px 0 28px' }}>
+        <MascotTalk situations={['voted']} seed={String(matchId)} />
+      </div>
 
       {/* Promo card */}
       <div style={{
