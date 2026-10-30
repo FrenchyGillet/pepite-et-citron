@@ -10,7 +10,7 @@ import { saveVoterIdentity } from '@/utils/vote';
 import { sendWelcomeEmail } from '@/hooks/mutations';
 import { parseUpgradePlan, saveUpgradeIntent } from '@/utils/signupIntent';
 import { track, EVENTS } from '@/utils/analytics';
-import { startMascot, type StartSpot } from '@/utils/mascots';
+import { startMascot } from '@/utils/mascots';
 import {
   QUICK_START_MIN_PLAYERS, clearQuickStartDraft, quickStartPepiteCount, readQuickStartDraft,
   saveQuickStartDraft, validateQuickStart, type QuickStartField, type QuickStartForm,
@@ -97,16 +97,11 @@ export function QuickStartView({ onSignOut }: QuickStartViewProps = {}) {
   // The picked name disappears if the organiser edits it out of the list.
   const me = meName && names.includes(meName) ? meName : null;
 
-  // Pépite and Citron: one bubble, where the organiser is (utils/mascots).
+  // Pépite and Citron: one bubble reacting to where the organiser is
+  // (utils/mascots), always in the same slot above the form.
   const mascot = startMascot({
     players: names.length, minPlayers: QUICK_START_MIN_PLAYERS, pepites: pepiteCount, accountFocused, step,
   });
-  // The line changes with the player count, so it keeps up with the typing.
-  const mascotAt = (spot: StartSpot) => mascot.spot === spot && (
-    <div style={{ display: 'flex', justifyContent: 'center' }}>
-      <MascotTalk key={spot} situations={mascot.situations} vars={mascot.vars} seed={`start:${names.length}`} />
-    </div>
-  );
   // Moving from the email to the password keeps the same bubble.
   const accountFocus = {
     onFocus: () => setAccountFocused(true),
@@ -207,9 +202,17 @@ export function QuickStartView({ onSignOut }: QuickStartViewProps = {}) {
         </p>
       </div>
 
-      {mascot.spot === 'intro' && (
-        <div style={{ width: '100%', maxWidth: 400, marginBottom: 16 }}>{mascotAt('intro')}</div>
-      )}
+      {/* The slot keeps the height of its tallest line (the intro duo, laid
+          out hidden underneath): a new line never moves the form while the
+          organiser is typing. */}
+      <div style={{ width: '100%', maxWidth: 400, marginBottom: 16, display: 'grid', alignItems: 'end', justifyItems: 'center' }}>
+        <div aria-hidden="true" style={{ gridArea: '1 / 1', visibility: 'hidden', width: '100%', display: 'flex', justifyContent: 'center' }}>
+          <MascotTalk situations={['startIntro']} seed="start" />
+        </div>
+        <div style={{ gridArea: '1 / 1', width: '100%', display: 'flex', justifyContent: 'center' }}>
+          <MascotTalk key={mascot.spot} situations={mascot.situations} vars={mascot.vars} seed="start" />
+        </div>
+      </div>
 
       <form onSubmit={e => void submit(e)} noValidate style={{
         width: '100%', maxWidth: 400, background: 'var(--bg2)', borderRadius: 'var(--radius-lg)',
@@ -244,8 +247,6 @@ export function QuickStartView({ onSignOut }: QuickStartViewProps = {}) {
           <FieldError msg={errors.playersText} />
         </div>
 
-        {mascotAt('players')}
-
         {names.length > 0 && (
           <div>
             <p id="qs-me-label" style={labelStyle}>{t('quickStart.meLabel')} <span style={{ fontWeight: 400 }}>{t('quickStart.meHint')}</span></p>
@@ -266,7 +267,6 @@ export function QuickStartView({ onSignOut }: QuickStartViewProps = {}) {
         <p style={{ fontSize: 12, color: 'var(--label3)', marginBottom: -4 }}>
           {t('quickStart.accountIntro')}
         </p>
-        {mascotAt('account')}
 
         <div>
           <label htmlFor="qs-email" style={labelStyle}>{t('quickStart.emailLabel')}</label>
@@ -298,8 +298,6 @@ export function QuickStartView({ onSignOut }: QuickStartViewProps = {}) {
             )}
           </div>
         )}
-
-        {mascotAt('launch')}
 
         <button type="submit" className="btn btn-primary" disabled={!!step} style={{ fontSize: 16, fontWeight: 800, padding: '14px' }}>
           {step ? t(STEP_LABELS[step])

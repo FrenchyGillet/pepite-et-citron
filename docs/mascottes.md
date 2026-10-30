@@ -144,7 +144,7 @@ Les deux mascottes commentent chaque écran. Version relue et validée ligne par
 
 ## Parcours /start (création d'équipe)
 
-Les gens découvrent l'app et ne connaissent pas encore les personnages : répliques courtes, compréhensibles sans connaître le Citron. Une seule bulle à la fois, là où se trouve l'organisateur. Pas de mascotte sur les messages d'erreur.
+Les gens découvrent l'app et ne connaissent pas encore les personnages : répliques courtes, compréhensibles sans connaître le Citron. Une seule bulle, toujours au même endroit au-dessus du formulaire, dans un emplacement de hauteur fixe : elle réagit à ce que fait l'organisateur sans jamais faire bouger les champs pendant la saisie. Pas de mascotte sur les messages d'erreur.
 
 ### En haut, avant de taper les joueurs
 - ⭐ *ravie* Ce soir, quelqu'un devient une légende. / 🍋 *sourire en coin* Et quelqu'un d'autre, un citron. Un très beau citron.

@@ -142,9 +142,9 @@ const START_STEPS: Record<StartStep, MascotSituation> = {
 };
 
 /**
- * /start shows one bubble at a time, where the organiser is: the intro until
- * players are typed, then the player count, the account while they fill it,
- * and the launch steps.
+ * /start shows one bubble, reacting to where the organiser is: the intro
+ * until players are typed, then the player count, the account while they
+ * fill it, and the launch steps.
  */
 export function startMascot(s: {
   players: number; minPlayers: number; pepites: number; accountFocused: boolean; step: StartStep | null;

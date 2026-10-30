@@ -45,17 +45,19 @@ describe("/start — premier vote en une minute", () => {
     renderAt("/start", <QuickStartView />);
     const user = userEvent.setup();
 
-    // Pépite and Citron: one bubble, following the organiser down the form.
-    expect(screen.getByText("Ce soir, quelqu'un devient une légende.")).toBeInTheDocument();
+    // Pépite and Citron: one bubble reacting to the organiser (the slot also
+    // lays the intro out hidden, to keep its height).
+    const bubble = (text) => screen.queryAllByText(text).filter(el => !el.closest('[aria-hidden="true"]'));
+    expect(bubble("Ce soir, quelqu'un devient une légende.")).toHaveLength(1);
     await user.type(screen.getByLabelText("Nom de l'équipe"), "FC Lions");
     await user.type(screen.getByLabelText("Les joueurs"), "Zoé\nYann\nXavier\nWilly");
     expect(screen.getByText("4 joueurs · vote à 3 pépites + 1 citron")).toBeInTheDocument();
-    expect(screen.queryByText("Ce soir, quelqu'un devient une légende.")).toBeNull();
-    expect(screen.getByText(/^4 joueurs\. (3 pépites, un citron|Une équipe magnifique)/)).toBeInTheDocument();
+    expect(bubble("Ce soir, quelqu'un devient une légende.")).toHaveLength(0);
+    expect(bubble(/^4 joueurs\. (3 pépites, un citron|Une équipe magnifique)/)).toHaveLength(1);
     await user.click(screen.getByRole("button", { name: "Yann" }));
     await user.type(screen.getByLabelText("Adresse email"), "coach@club.fr");
-    expect(screen.getByText(/^Toi, tu as un compte\./)).toBeInTheDocument();
-    expect(screen.queryByText(/^4 joueurs\. (3 pépites, un citron|Une équipe magnifique)/)).toBeNull();
+    expect(bubble(/^Toi, tu as un compte\./)).toHaveLength(1);
+    expect(bubble(/^4 joueurs\. (3 pépites, un citron|Une équipe magnifique)/)).toHaveLength(0);
     await user.type(screen.getByLabelText("Mot de passe"), "motdepasse");
     await user.click(screen.getByRole("button", { name: "Lancer le vote · 4 joueurs" }));
 
