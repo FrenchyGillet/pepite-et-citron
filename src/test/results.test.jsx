@@ -85,14 +85,13 @@ describe("Results view phases", () => {
 
     await screen.findByText("Dépouillement");
 
-    // Click "Voir le classement final →" (only 1 vote so this is the last)
-    const nextBtn = await screen.findByRole("button", {
-      name: /Voir le classement final →/i,
-    });
-    await user.click(nextBtn);
-
-    // Baptiste should appear in the running scoreboard
-    expect(await screen.findByText("Baptiste")).toBeInTheDocument();
+    // The last ballot leads straight to the podium: closed, no second
+    // « Révéler » step for the organiser who just counted.
+    await user.click(await screen.findByRole("button", { name: /Voir le podium/i }));
+    expect(await screen.findByText("Clôturé")).toBeInTheDocument();
+    expect(await screen.findAllByText("Baptiste")).not.toHaveLength(0);
+    expect(screen.queryByRole("button", { name: /Révéler le classement/i })).toBeNull();
+    expect((await __demoAPI.getMatchById(match.id)).phase).toBe("closed");
   });
 
   it("counting: 3-pépite mode shows the 3-2-1 scale and the 3rd pick (B5)", async () => {
@@ -131,8 +130,8 @@ describe("Results view phases", () => {
 
     expect(await screen.findByText(/Ce vote n'est plus disponible/i)).toBeInTheDocument();
     // the advance button still works → dépouillement can finish
-    await user.click(await screen.findByRole("button", { name: /classement final/i }));
-    expect(await screen.findByText(/Tous les votes ont été révélés/i)).toBeInTheDocument();
+    await user.click(await screen.findByRole("button", { name: /Voir le podium/i }));
+    expect(await screen.findByText("Clôturé")).toBeInTheDocument();
   });
 
   it("counting: a non-admin watcher gets a status view, no reveal controls", async () => {
@@ -152,6 +151,6 @@ describe("Results view phases", () => {
     expect(screen.getByText(/Vote 1 \/ 3 révélé par l/i)).toBeInTheDocument();
     // no reveal controls for a watcher
     expect(screen.queryByRole("button", { name: /vote suivant/i })).toBeNull();
-    expect(screen.queryByRole("button", { name: /classement final/i })).toBeNull();
+    expect(screen.queryByRole("button", { name: /classement final|podium/i })).toBeNull();
   });
 });

@@ -95,9 +95,9 @@ export interface Org {
 }
 
 /**
- * A scheduled match (20260021): once (starts_at) or every week (weekday +
- * start_time, in the team's timezone). The vote opens on its own at kick-off
- * + the team's delay.
+ * A scheduled match (20260021): once (starts_at) or every week or every
+ * other week (weekday + start_time, in the team's timezone; 20260025). The
+ * vote opens on its own at kick-off + the team's delay.
  */
 export interface MatchSchedule {
   id: EntityId;
@@ -110,6 +110,8 @@ export interface MatchSchedule {
   timezone: string;
   team_id: EntityId | null;
   pepite_count: 2 | 3;
+  /** Repeating: every week (1) or every other week (2). */
+  interval_weeks: 1 | 2;
   /** Next kick-off whose vote has not opened yet, and its opening time. */
   next_kick_off: string;
   opens_at: string;
@@ -124,6 +126,9 @@ export interface MatchScheduleInput {
   team_id: EntityId | null;
   pepite_count: 2 | 3;
   locale: 'fr' | 'en' | 'nl';
+  interval_weeks: 1 | 2;
+  /** Repeating: local "YYYY-MM-DD" of the first match (sets the weeks off). */
+  first_on: string | null;
 }
 
 export interface OrgMember {
@@ -240,6 +245,8 @@ export interface API {
   deleteSchedule(id: EntityId): Promise<void>;
   /** « Ouvrir maintenant »: opens the schedule's next occurrence now. */
   openScheduleNow(id: EntityId): Promise<Match>;
+  /** « Pas de match ce jour-là »: skips a repeating match's next occurrence; returns the one after. */
+  skipNextOccurrence(id: EntityId): Promise<string | null>;
   /** Minutes between kick-off and the vote opening; null = never set (90). */
   getVoteOpenDelay(orgId: string): Promise<number | null>;
   setVoteOpenDelay(orgId: string, minutes: number): Promise<void>;
