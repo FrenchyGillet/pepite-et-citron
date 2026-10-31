@@ -1,3 +1,4 @@
+import { existsSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { MASCOT_LINES } from '@/i18n/mascots';
 import { hashSeed, MASCOT_MOODS, palmaresMascot, pickMascotLine, rankingMascot, startMascot, type MascotCatalogue } from './mascots';
@@ -44,6 +45,16 @@ describe('hashSeed', () => {
     expect(hashSeed('abc')).toBe(hashSeed('abc'));
     expect(hashSeed('abc')).not.toBe(hashSeed('abd'));
     expect(hashSeed('')).toBeGreaterThanOrEqual(0);
+  });
+});
+
+describe('MASCOT_MOODS', () => {
+  it('has a drawing for every mood', () => {
+    for (const [who, moods] of Object.entries(MASCOT_MOODS)) {
+      for (const mood of moods) {
+        expect(existsSync(`public/mascots/${who}-${mood}.png`), `${who}-${mood}`).toBe(true);
+      }
+    }
   });
 });
 

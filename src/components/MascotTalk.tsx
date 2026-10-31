@@ -2,19 +2,9 @@ import { MASCOT_LINES } from '@/i18n/mascots';
 import { useLang, useT } from '@/i18n';
 import { pickMascotLine, type MascotBubble, type MascotSituation } from '@/utils/mascots';
 
-/**
- * Drawn expressions in public/mascots/. A mood not drawn yet falls back to the
- * character's reference drawing.
- */
-const DRAWN = new Set([
-  'pepite-ravie', 'pepite-fiere', 'pepite-emerveillee',
-  'citron-impassible',
-]);
-const FALLBACK = { pepite: 'pepite-ravie', citron: 'citron-impassible' } as const;
-
+/** Every mood is drawn in public/mascots/ (checked by utils/mascots.test.ts). */
 function imageOf(b: MascotBubble): string {
-  const name = `${b.who}-${b.mood}`;
-  return `/mascots/${DRAWN.has(name) ? name : FALLBACK[b.who]}.png`;
+  return `/mascots/${b.who}-${b.mood}.png`;
 }
 
 interface MascotTalkProps {
