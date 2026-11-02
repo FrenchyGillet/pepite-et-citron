@@ -45,6 +45,37 @@ const fr: MascotCatalogue = {
     [C('impassible', "Pas de résultats. Personne n'a encore déçu personne.")],
     [P('bienveillante', "En attendant, je garde la place au chaud.")],
   ],
+  // Résultats during the vote: the wait itself is the joke.
+  waitingNone: [
+    [C('impassible', "Aucun vote pour l'instant. L'élection la plus propre de l'histoire.")],
+    [P('lassee', "Zéro vote. Je m'étais pourtant faite belle.")],
+    [C('triomphant', "Zéro vote. Le calme avant la plus grande tempête jamais vue. Énorme, la tempête.")],
+  ],
+  waiting: [
+    [C('soupconneux', "On attend les derniers votes. Certains réfléchissent. D'autres complotent. Beaucoup de gens le disent.")],
+    [C('triomphant', "Le dépouillement le plus long de l'histoire. Et le plus beau. Les gens adorent attendre.")],
+    [C('sourire-en-coin', "Je connais déjà le résultat. Je ne dirai rien. Pas encore.")],
+    [P('clin-doeil', "Patience. Je brille mieux quand on m'a attendue.")],
+    [P('bienveillante', "L'or ne se trouve pas en cinq minutes. Les résultats non plus.")],
+    [
+      C('outre', "Ça traîne. Quand un résultat tarde, c'est qu'on le trafique. Tout le monde le sait."),
+      P('lassee', "Ou que quelqu'un cherche encore son téléphone."),
+    ],
+  ],
+  waitingAll: [
+    [C('triomphant', "Cent pour cent de participation. Historique. Des pays entiers nous envient.")],
+    [C('soupconneux', "Tout le monde a voté. Trop beau pour être vrai. J'exige un recomptage avant le comptage.")],
+    [P('ravie', "Tous les votes sont là. Il ne manque qu'une main pour ouvrir l'urne.")],
+  ],
+  seasonHidden: [
+    [C('sourire-en-coin', "Ne pas influencer le vote. Moi, je n'influence jamais. Je suggère très fortement.")],
+    [P('fiere', "Le classement est au coffre. Rangé à côté des lingots.")],
+    [C('triomphant', "Le classement est gelé. Le plus beau classement jamais gelé. Des experts du froid se déplacent pour le voir.")],
+    [
+      C('outre', "On nous cache le classement. Qu'est-ce qu'ils ont à cacher, je pose la question."),
+      P('clin-doeil', "Le résultat de ce soir, justement."),
+    ],
+  ],
   pepiteStreak: [
     [P('ravie', "{pepite}, {pepiteRun}e pépite d'affilée. On tient un filon.")],
     [C('soupconneux', "{pepiteRun} pépites d'affilée. Suspect. Très, très suspect. Des gens enquêtent.")],
