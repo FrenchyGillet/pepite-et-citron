@@ -65,6 +65,7 @@ export const EVENTS = {
   VOTE_DEADLINE_EXTENDED:     'vote_deadline_extended',
   VOTE_REMINDER_SENT:         'vote_reminder_sent',
   VOTE_CANCELLED_BY_ADMIN:    'vote_cancelled_by_admin',
+  VOTERS_EDITED:              'voters_edited',
   MATCH_CLOSED_WITHOUT_COUNT: 'match_closed_without_count',
   COUNTING_STARTED:           'counting_started',
   COUNTING_FINISHED:          'counting_finished',

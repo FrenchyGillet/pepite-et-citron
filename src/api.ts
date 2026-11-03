@@ -7,6 +7,8 @@ import type {
 } from '@/types';
 import { t } from '@/i18n';
 import { UserError } from '@/utils/errors';
+import { voterEditProblem } from '@/utils/voters';
+import { fr } from '@/i18n/fr';
 
 export const DEMO_MODE = SUPABASE_URL.includes("VOTRE_PROJET");
 
@@ -233,6 +235,20 @@ export const demoAPI: API = {
     const m = demoState.matches.find(m => m.id === id);
     if (m) Object.assign(m, data);
     return Promise.resolve(true);
+  },
+  // Same rules as set_match_voters (20260026), same French messages.
+  setMatchVoters: (id, playerIds) => {
+    const m = demoState.matches.find(m => m.id === id);
+    if (!m || m.phase !== "voting" || !m.is_open) return Promise.reject(new Error(fr.errors.server.voteClosed));
+    const wanted = [...new Set(playerIds)];
+    const known = wanted.every(pid => demoState.players.some(p =>
+      p.id === pid && (!p.archived_at || m.present_ids.includes(pid))));
+    if (!known) return Promise.reject(new Error(fr.errors.server.unknownPlayer));
+    const problem = voterEditProblem(wanted, demoState.votes.filter(v => v.match_id === id), m.pepite_count ?? 2);
+    if (problem === 'locked') return Promise.reject(new Error(fr.errors.server.voterLocked));
+    if (problem === 'tooFew') return Promise.reject(new Error(fr.errors.server.tooFewVoters));
+    m.present_ids = wanted;
+    return Promise.resolve(wanted);
   },
   deleteMatch:   (id) => {
     demoState.matches = demoState.matches.filter(m => m.id !== id);
@@ -647,6 +663,13 @@ export const realAPI: API = {
     if (error) throw new Error(error.message);
     return true;
   },
+  // Server-side checks (set_match_voters, 20260026). Idempotent: retry is safe.
+  setMatchVoters: (id, playerIds) =>
+    withRetry(async () => {
+      const { data, error } = await supabase.rpc("set_match_voters", { p_match_id: id, p_player_ids: playerIds });
+      if (error) throw new Error(error.message);
+      return data;
+    }),
   deleteMatch: async (id) => {
     const { error: e1 } = await supabase.from("votes").delete().eq("match_id", id);
     if (e1) throw new Error(e1.message);

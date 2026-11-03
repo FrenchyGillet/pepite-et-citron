@@ -73,6 +73,8 @@ export const en: Messages = {
       alreadyPro: 'Your team is already Pro. Manage your subscription in Admin → Settings.',
       voteAlreadyOpen: 'A vote is already in progress.',
       scheduleNotFound: 'Scheduled match not found.',
+      voterLocked: 'A player who already voted or got a vote can no longer be removed.',
+      tooFewVoters: 'Not enough voters for this pépite mode.',
       lastAdmin: "You're the only admin of {names}. Make someone else admin (Admin → Settings → Members) before deleting your account.",
     },
   },
@@ -631,6 +633,13 @@ export const en: Messages = {
     closing: 'Closing…',
     closeLink: 'Close without a reveal…',
     countingInResults: 'The reveal is happening in the Results tab.',
+    editVoters: '✏️ Edit voters',
+    editVotersHint: 'Remove the absent, add the latecomers. A player who voted or got a pépite vote stays on the list.',
+    lockedVoter: '{name}: voted or got a vote',
+    saveVoters: { one: 'Save · {count} voter', other: 'Save · {count} voters' },
+    savingVoters: 'Saving…',
+    votersSaved: 'Voters updated',
+    tooFewVoters: 'This mode needs at least {min} voters.',
   },
 
   launcher: {

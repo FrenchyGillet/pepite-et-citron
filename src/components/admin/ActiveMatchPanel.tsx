@@ -12,6 +12,7 @@ import { useCloseMatch, useStartCounting, useUpdateMatch, useSendVoteReminder, u
 import type { Match, Org, Player } from '@/types';
 import { QrCode } from '@/components/QrCode';
 import { NotifyTeamButton } from './NotifyTeamButton';
+import { VoterEditor } from './VoterEditor';
 import type { ConfirmFn, Notify } from './shared';
 import { t } from '@/i18n';
 
@@ -41,6 +42,7 @@ export function ActiveMatchPanel({ activeMatch, players, currentOrg, notify, con
   const navigate = useNavigate();
   const [voterTrackingOpen, setVoterTrackingOpen] = useState(false);
   const [qrOpen,            setQrOpen]            = useState(firstVote);
+  const [votersEditOpen,    setVotersEditOpen]    = useState(false);
 
   const { data: matchVotes = [] } = useVotes(activeMatch.id);
   const voteCount = matchVotes.length;
@@ -295,6 +297,16 @@ export function ActiveMatchPanel({ activeMatch, players, currentOrg, notify, con
                 </div>
               )}
             </div>
+          )}
+
+          {/* ── Edit voters: absents out, latecomers in ─────── */}
+          <button className="btn btn-secondary btn-full" style={{ fontSize: 14 }} aria-expanded={votersEditOpen}
+            onClick={() => setVotersEditOpen(o => !o)}>
+            {t('activeMatch.editVoters')}
+          </button>
+          {votersEditOpen && (
+            <VoterEditor key={String(activeMatch.id)} match={activeMatch} players={players} votes={matchVotes}
+              orgId={currentOrg?.id} notify={notify} onDone={() => setVotersEditOpen(false)} />
           )}
 
           {/* Kept discreet, away from the main action: closing skips the

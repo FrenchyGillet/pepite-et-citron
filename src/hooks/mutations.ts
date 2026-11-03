@@ -276,6 +276,19 @@ export function useUpdateMatch(orgId?: string | null) {
   });
 }
 
+export function useSetMatchVoters(orgId?: string | null) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, playerIds }: { id: EntityId; playerIds: EntityId[] }) =>
+      api.setMatchVoters(id, playerIds),
+    onSuccess: (_data, vars) => {
+      qc.invalidateQueries({ queryKey: queryKeys.activeMatch(orgId) });
+      qc.invalidateQueries({ queryKey: queryKeys.matchById(vars.id) });
+      qc.invalidateQueries({ queryKey: queryKeys.matches(orgId) });
+    },
+  });
+}
+
 export function useDeleteMatch(orgId?: string | null) {
   const qc = useQueryClient();
   return useMutation({
