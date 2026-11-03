@@ -23,10 +23,8 @@ describe("F1 — vote deadline", () => {
     await user.click(await screen.findByRole("button", { name: /admin/i }));
     await screen.findByText("Match du soir");
 
-    await user.type(screen.getByPlaceholderText(/vs Dragons/i), "Match test");
-    for (const name of ["Antoine", "Baptiste", "Clément"]) {
-      await user.click(screen.getAllByRole("button", { name })[0]);
-    }
+    await user.type(screen.getByLabelText(/nom du match/i), "Match test");
+    await user.click(screen.getByRole("button", { name: /Options/ }));
     await user.click(screen.getByRole("button", { name: "30 min" }));
     expect(screen.getByRole("button", { name: "30 min" })).toHaveAttribute("aria-pressed", "true");
     await user.click(screen.getByRole("button", { name: /Lancer le vote/i }));
@@ -43,10 +41,6 @@ describe("F1 — vote deadline", () => {
     const user = userEvent.setup();
     await user.click(await screen.findByRole("button", { name: /admin/i }));
     await screen.findByText("Match du soir");
-    await user.type(screen.getByPlaceholderText(/vs Dragons/i), "Match test");
-    for (const name of ["Antoine", "Baptiste", "Clément"]) {
-      await user.click(screen.getAllByRole("button", { name })[0]);
-    }
     await user.click(screen.getByRole("button", { name: /Lancer le vote/i }));
     await screen.findByText("Match ouvert !");
     expect((await __demoAPI.getActiveMatch('org-123')).vote_deadline).toBeNull();

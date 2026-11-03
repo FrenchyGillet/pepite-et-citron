@@ -33,7 +33,7 @@ describe("Accessibility — names and labels", () => {
 
   it("admin match form: the match name field is labelled", async () => {
     renderApp({ initialPath: "/admin" });
-    expect(await screen.findByLabelText("Nom du match ou de l'adversaire")).toBeInTheDocument();
+    expect(await screen.findByLabelText("Adversaire ou nom du match (optionnel)")).toBeInTheDocument();
   });
 
   it("collapsible admin sections expose their state", async () => {
