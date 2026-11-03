@@ -184,6 +184,31 @@ describe("Close match without reveal (confirmation dialog)", () => {
   });
 });
 
+describe("Launch match — choosing the line-up", () => {
+  it("lists the teams and launches with the picked one", async () => {
+    const a = await __demoAPI.createTeam("org-123", "Équipe A", [1, 2, 3, 4]);
+    const b = await __demoAPI.createTeam("org-123", "Équipe B", [5, 6, 7]);
+    renderApp();
+    const user = userEvent.setup();
+    await user.click(await screen.findByRole("button", { name: /admin/i }));
+
+    const select = await screen.findByRole("combobox", { name: "Qui joue ?" });
+    expect(within(select).getAllByRole("option").map(o => o.textContent)).toEqual([
+      "Tout l'effectif · 10 joueurs", "Équipe A · 4 joueurs", "Équipe B · 3 joueurs",
+    ]);
+    expect(select).toHaveValue("");
+
+    await user.selectOptions(select, String(b.id));
+    expect(screen.getByText("3 présents")).toBeInTheDocument();
+    await user.selectOptions(select, String(a.id));
+    await user.click(screen.getByRole("button", { name: "Lancer le vote · 4 joueurs" }));
+    await screen.findByText("Match ouvert !");
+    const match = await __demoAPI.getActiveMatch("org-123");
+    expect(match.team_id).toBe(a.id);
+    expect(match.present_ids).toEqual([1, 2, 3, 4]);
+  });
+});
+
 describe("Launch match — minimum players validation", () => {
   // Opens the launcher's player list and keeps only these players.
   async function keepOnly(user, names) {
