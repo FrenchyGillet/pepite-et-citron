@@ -4,7 +4,7 @@ import { DEMO_MODE } from '@/api';
 import { track, EVENTS } from '@/utils/analytics';
 import { isActive } from '@/utils/player';
 import { copyToClipboard } from '@/utils/clipboard';
-import { useTeams, useCurrentSeason } from '@/hooks/queries';
+import { useTeams, useCurrentSeason, useUpcomingSchedules } from '@/hooks/queries';
 import { useConfirm } from '@/hooks/useConfirm';
 import { CollapsibleSection } from '@/components/admin/CollapsibleSection';
 import { ActiveMatchPanel } from '@/components/admin/ActiveMatchPanel';
@@ -15,6 +15,7 @@ import { GuestLinksSection } from '@/components/admin/GuestLinksSection';
 import { PlayersSection } from '@/components/admin/PlayersSection';
 import { TeamsSection } from '@/components/admin/TeamsSection';
 import { SettingsSection } from '@/components/admin/SettingsSection';
+import { sectionTitleStyle } from '@/components/admin/shared';
 import type { Player, Match, Org } from '@/types';
 import { Toast } from './Toast';
 import { SetupChecklist } from './SetupChecklist';
@@ -46,8 +47,10 @@ export function AdminView({ isAdmin = true, players, activeMatch, currentOrg, on
     currentOrg?.id ? !!localStorage.getItem(`pepite_match_launched_${currentOrg.id}`) : false
   );
 
-  // "Match du soir": open the vote now, or schedule it (20260021).
+  // « Lancer un vote »: open the vote now, or schedule it (20260021).
   const [launchMode, setLaunchMode] = useState<'now' | 'schedule'>('now');
+  // Folded while a match is scheduled: opening that one is the usual case.
+  const [launchOpen, setLaunchOpen] = useState(false);
 
   // Collapsible zones
   const [effectifOpen, setEffectifOpen] = useState(players.length === 0);
@@ -59,6 +62,8 @@ export function AdminView({ isAdmin = true, players, activeMatch, currentOrg, on
     && (activeMatch?.phase ?? 'closed') === 'voting';
   const { data: teams         = [] } = useTeams(currentOrg?.id);
   const { data: currentSeason = 1  } = useCurrentSeason(currentOrg?.id);
+  const { data: schedules     = [] } = useUpcomingSchedules(currentOrg?.id);
+  const hasSchedule = schedules.length > 0;
 
   // Archived players keep their history but leave every picker.
   const activePlayers = players.filter(isActive);
@@ -121,78 +126,79 @@ export function AdminView({ isAdmin = true, players, activeMatch, currentOrg, on
         />
       )}
 
-      {/* ── ZONE 1 : Match du soir ─────────────────────────────────────── */}
+      {/* ── ZONE 1 : the vote ─────────────────────────────────────────────
+          No vote: the next scheduled match (one action: open it), then
+          « Lancer un vote », folded when a match is scheduled. During a vote:
+          its panel, the next match after it. */}
       <div style={{ marginBottom: 4 }}>
-        <div style={{ marginBottom: 10, paddingTop: 4 }}>
-          <div style={{ fontSize: 18, fontWeight: 700, color: 'var(--label)', letterSpacing: '-0.02em', marginBottom: 2 }}>
-            {t('admin.tonight')}
-          </div>
-          <p style={{ fontSize: 13, color: 'var(--label3)' }}>
-            {activeMatch ? t('admin.voteInProgress') : t('admin.launchInSeconds')}
-          </p>
-        </div>
-
-        {/* The next scheduled match first: nobody schedules it twice. During a
-            vote it comes after the vote panel. */}
-        {!activeMatch && (
-          <UpcomingMatches orgId={currentOrg?.id} notify={setToast} confirm={confirm} canManage
-            canOpenNow onOpened={markMatchLaunched} />
-        )}
-
         {activeMatch ? (
-          <ActiveMatchPanel
-            {...shared}
-            activeMatch={activeMatch}
-            players={players}
-            currentOrg={currentOrg}
-            onCopyOrgLink={() => void copyOrgLink()}
-            onLinkShared={markLinkShared}
-            onGoToResults={onGoToResults}
-            canManageVoters={isAdmin}
-            firstVote={firstVote}
-          />
-        ) : activePlayers.length === 0 ? (
-          <div className="group">
-            <div className="row">
-              <div className="row-body">
-                <div className="row-title" style={{ color: 'var(--label3)' }}>{t('admin.noPlayers')}</div>
-                <div className="row-sub">
-                  {isAdmin ? t('admin.addPlayersBelow') : t('admin.adminMustAdd')}
-                </div>
-              </div>
-            </div>
-          </div>
+          <>
+            <h2 style={sectionTitleStyle}>{t('admin.voteInProgressTitle')}</h2>
+            <ActiveMatchPanel
+              {...shared}
+              activeMatch={activeMatch}
+              players={players}
+              currentOrg={currentOrg}
+              onCopyOrgLink={() => void copyOrgLink()}
+              onLinkShared={markLinkShared}
+              onGoToResults={onGoToResults}
+              canManageVoters={isAdmin}
+              firstVote={firstVote}
+            />
+            <UpcomingMatches orgId={currentOrg?.id} notify={setToast} confirm={confirm} canManage
+              canOpenNow={false} below />
+          </>
         ) : (
           <>
-            <div role="tablist" style={{ display: 'flex', gap: 4, marginBottom: 10, background: 'var(--bg3)', borderRadius: 'var(--radius-sm)', padding: 4 }}>
-              {(['now', 'schedule'] as const).map(mode => (
-                <button key={mode} role="tab" aria-selected={launchMode === mode} onClick={() => setLaunchMode(mode)} style={{
-                  flex: 1, padding: '8px 0', borderRadius: 'var(--radius-sm)', border: 'none',
-                  fontSize: 13, fontWeight: 600, cursor: 'pointer',
-                  background: launchMode === mode ? 'var(--bg)' : 'transparent',
-                  color: launchMode === mode ? 'var(--label)' : 'var(--label3)',
-                }}>
-                  {t(mode === 'now' ? 'schedule.tabNow' : 'schedule.tabSchedule')}
-                </button>
-              ))}
-            </div>
-            {launchMode === 'now' ? (
-              <MatchLauncher
-                activePlayers={activePlayers}
-                teams={teams}
-                currentSeason={currentSeason}
-                orgId={currentOrg?.id}
-                notify={setToast}
-                onLaunched={markMatchLaunched}
-              />
+            <UpcomingMatches orgId={currentOrg?.id} notify={setToast} confirm={confirm} canManage
+              canOpenNow onOpened={markMatchLaunched} />
+
+            <h2 style={sectionTitleStyle}>{t('admin.launchTitle')}</h2>
+            {activePlayers.length === 0 ? (
+              <div className="group">
+                <div className="row">
+                  <div className="row-body">
+                    <div className="row-title" style={{ color: 'var(--label3)' }}>{t('admin.noPlayers')}</div>
+                    <div className="row-sub">
+                      {isAdmin ? t('admin.addPlayersBelow') : t('admin.adminMustAdd')}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ) : hasSchedule && !launchOpen ? (
+              <button className="btn btn-secondary btn-full" style={{ marginBottom: 12 }} aria-expanded={false}
+                onClick={() => setLaunchOpen(true)}>
+                {t('admin.otherMatch')}
+              </button>
             ) : (
-              <ScheduleMatchForm teams={teams} orgId={currentOrg?.id} notify={setToast} />
+              <>
+                <div role="tablist" style={{ display: 'flex', gap: 4, marginBottom: 10, background: 'var(--bg3)', borderRadius: 'var(--radius-sm)', padding: 4 }}>
+                  {(['now', 'schedule'] as const).map(mode => (
+                    <button key={mode} role="tab" aria-selected={launchMode === mode} onClick={() => setLaunchMode(mode)} style={{
+                      flex: 1, padding: '8px 0', borderRadius: 'var(--radius-sm)', border: 'none',
+                      fontSize: 13, fontWeight: 600, cursor: 'pointer',
+                      background: launchMode === mode ? 'var(--bg)' : 'transparent',
+                      color: launchMode === mode ? 'var(--label)' : 'var(--label3)',
+                    }}>
+                      {t(mode === 'now' ? 'schedule.tabNow' : 'schedule.tabSchedule')}
+                    </button>
+                  ))}
+                </div>
+                {launchMode === 'now' ? (
+                  <MatchLauncher
+                    activePlayers={activePlayers}
+                    teams={teams}
+                    currentSeason={currentSeason}
+                    orgId={currentOrg?.id}
+                    notify={setToast}
+                    onLaunched={markMatchLaunched}
+                  />
+                ) : (
+                  <ScheduleMatchForm teams={teams} orgId={currentOrg?.id} notify={setToast} />
+                )}
+              </>
             )}
           </>
-        )}
-        {activeMatch && (
-          <UpcomingMatches orgId={currentOrg?.id} notify={setToast} confirm={confirm} canManage
-            canOpenNow={false} below />
         )}
       </div>
 

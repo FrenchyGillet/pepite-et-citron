@@ -59,7 +59,7 @@ export function GlobalStyle() {
 
     button { font-family: inherit; cursor: pointer; border: none; transition: all 0.15s ease; }
 
-    input, textarea {
+    input, textarea, select.field-select {
       font-family: inherit;
       background: var(--bg3);
       border: none;
@@ -73,7 +73,16 @@ export function GlobalStyle() {
       -webkit-font-smoothing: antialiased;
       transition: box-shadow 0.15s ease;
     }
-    input:focus, textarea:focus {
+    /* A form menu (class field-select): native menus render small and
+       unaligned on iOS, so the same box as the inputs, with our own chevron. */
+    select.field-select {
+      -webkit-appearance: none; appearance: none;
+      padding-right: 40px;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' fill='none' stroke='%238E8E93' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 16px center;
+    }
+    input:focus, textarea:focus, select.field-select:focus {
       box-shadow: 0 0 0 3px rgba(255,214,10,0.25);
     }
     input::placeholder, textarea::placeholder { color: var(--label3); }
@@ -352,7 +361,8 @@ export function GlobalStyle() {
     [data-theme="light"] .header { background: rgba(242,242,247,0.88); border-bottom-color: rgba(0,0,0,0.08); }
     [data-theme="light"] .tab-bar { background: rgba(242,242,247,0.92); border-top-color: rgba(0,0,0,0.08); }
     [data-theme="light"] input,
-    [data-theme="light"] textarea { background: var(--bg3); color: var(--label); }
+    [data-theme="light"] textarea,
+    [data-theme="light"] select.field-select { background-color: var(--bg3); color: var(--label); }
     [data-theme="light"] .demo-banner { background: rgba(255,180,0,0.08); color: #7a5400; border-color: rgba(255,180,0,0.15); }
     /* the translucent dark-theme yellow is unreadable on white */
     [data-theme="light"] .player-chip.sel-2nd { color: var(--gold); }

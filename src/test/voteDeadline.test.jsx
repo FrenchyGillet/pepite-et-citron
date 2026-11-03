@@ -21,7 +21,7 @@ describe("F1 — vote deadline", () => {
     renderApp();
     const user = userEvent.setup();
     await user.click(await screen.findByRole("button", { name: /admin/i }));
-    await screen.findByText("Match du soir");
+    await screen.findByText("Lancer un vote");
 
     await user.type(screen.getByLabelText(/nom du match/i), "Match test");
     await user.click(screen.getByRole("button", { name: /Options/ }));
@@ -40,7 +40,7 @@ describe("F1 — vote deadline", () => {
     renderApp();
     const user = userEvent.setup();
     await user.click(await screen.findByRole("button", { name: /admin/i }));
-    await screen.findByText("Match du soir");
+    await screen.findByText("Lancer un vote");
     await user.click(screen.getByRole("button", { name: /Lancer le vote/i }));
     await screen.findByText("Match ouvert !");
     expect((await __demoAPI.getActiveMatch('org-123')).vote_deadline).toBeNull();

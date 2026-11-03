@@ -137,7 +137,7 @@ describe("Capitaine — onglet du match", () => {
     renderWithProviders(
       <AdminView isAdmin={false} players={players} activeMatch={null} currentOrg={ORG} onShowGuide={() => {}} />,
     );
-    expect(await screen.findByText("Match du soir")).toBeInTheDocument();
+    expect(await screen.findByText("Lancer un vote")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /Lancer le vote/ })).toBeInTheDocument();
     expect(screen.queryByText("Effectif")).toBeNull();
     expect(screen.queryByText("Paramètres")).toBeNull();

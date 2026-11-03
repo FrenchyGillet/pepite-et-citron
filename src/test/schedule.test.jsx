@@ -53,7 +53,8 @@ describe("Programmer un match (Admin)", () => {
     expect(demoState.schedules[0]).toMatchObject({
       weekday: tomorrow.getDay(), start_time: "20:00", starts_at: null, interval_weeks: 1, first_on: day,
     });
-    // Asked once: the next time only a hint.
+    // A match is scheduled: « Lancer un vote » folds. Asked once: the next time only a hint.
+    await user.click(screen.getByRole("button", { name: "Autre match ? Lancer un vote maintenant" }));
     expect(screen.queryByText(/Combien de temps après le début/)).toBeNull();
     expect(screen.getByText(/Le vote ouvrira 2 h après le début du match/)).toBeInTheDocument();
   });
@@ -131,19 +132,32 @@ describe("Prochain match en haut de l'Admin", () => {
     await __demoAPI.createSchedule('org-123', schedule({ starts_at: new Date(Date.now() + 2 * 86_400_000).toISOString() }));
     renderAdmin();
     const user = userEvent.setup();
+    await user.click(await screen.findByRole("button", { name: "Autre match ? Lancer un vote maintenant" }));
     await user.click(screen.getByRole("tab", { name: "Programmer" }));
     expect(await screen.findByRole("note")).toHaveTextContent(/Déjà prévu : .+ · \d{2}:\d{2}\. Tu peux quand même/);
   });
 });
 
-describe("Ouvrir maintenant (le match finit plus tôt)", () => {
+describe("Lancer un vote, replié quand un match est programmé", () => {
+  it("shows one main action, and the form on demand", async () => {
+    await __demoAPI.createSchedule('org-123', schedule({ starts_at: new Date(Date.now() + 2 * 86_400_000).toISOString() }));
+    renderAdmin();
+    const user = userEvent.setup();
+    expect(await screen.findByRole("button", { name: "Ouvrir le vote maintenant" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /Lancer le vote ·/ })).toBeNull();
+    await user.click(screen.getByRole("button", { name: "Autre match ? Lancer un vote maintenant" }));
+    expect(screen.getByRole("button", { name: /Lancer le vote ·/ })).toBeInTheDocument();
+  });
+});
+
+describe("Ouvrir le vote maintenant (le match finit plus tôt)", () => {
   it("opens this occurrence now, dated at kick-off, and not again at the usual time", async () => {
     // Kick-off 60 min ago, vote planned 30 min from now.
     await __demoAPI.createSchedule('org-123', schedule({ starts_at: minutesAgo(60) }));
     demoState.schedules[0].created_at = minutesAgo(24 * 60);
     renderAdmin();
     const user = userEvent.setup();
-    await user.click(await screen.findByRole("button", { name: "Ouvrir maintenant" }));
+    await user.click(await screen.findByRole("button", { name: "Ouvrir le vote maintenant" }));
 
     expect(await screen.findByText("Match ouvert !")).toBeInTheDocument();
     expect(demoState.matches).toHaveLength(1);
@@ -158,7 +172,7 @@ describe("Ouvrir maintenant (le match finit plus tôt)", () => {
     const active = await __demoAPI.createMatch('org-123', "En cours", [1, 2, 3], null, 1);
     renderAdmin(active);
     expect(await screen.findByText("Prochain match")).toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: "Ouvrir maintenant" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Ouvrir le vote maintenant" })).toBeNull();
   });
 
   it("a vote launched by hand during the match stands for it", async () => {

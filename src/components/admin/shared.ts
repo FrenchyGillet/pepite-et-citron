@@ -15,3 +15,9 @@ export const sectionLabelStyle = {
   fontSize: 13, fontWeight: 600, color: 'var(--label3)',
   textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 10,
 } as const;
+
+/** Heading of an Admin section (« Prochain match », « Lancer un vote »). */
+export const sectionTitleStyle = {
+  fontSize: 18, fontWeight: 700, color: 'var(--label)', letterSpacing: '-0.02em',
+  margin: '4px 0 10px',
+} as const;
