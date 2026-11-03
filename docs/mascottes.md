@@ -59,6 +59,24 @@ Les deux mascottes commentent chaque écran. Version relue et validée ligne par
 - 🍋 *serein* Pas de résultats. Personne n'a encore déçu personne.
 - ⭐ *patiente* En attendant, je garde la place au chaud. *(suit « Les résultats s'afficheront ici… »)*
 
+### Vote en cours, aucun vote reçu
+- 🍋 *impassible* Aucun vote pour l'instant. L'élection la plus propre de l'histoire.
+- ⭐ *lassée* Zéro vote. Je m'étais pourtant faite belle.
+- 🍋 *triomphant* Zéro vote. Le calme avant la plus grande tempête jamais vue. Énorme, la tempête.
+
+### Vote en cours, des votes arrivent *(suit « Résultats masqués » et le compteur, sans le répéter)*
+- 🍋 *soupçonneux* On attend les derniers votes. Certains réfléchissent. D'autres complotent. Beaucoup de gens le disent.
+- 🍋 *triomphant* Le dépouillement le plus long de l'histoire. Et le plus beau. Les gens adorent attendre.
+- 🍋 *sourire en coin* Je connais déjà le résultat. Je ne dirai rien. Pas encore.
+- ⭐ *clin d'œil* Patience. Je brille mieux quand on m'a attendue.
+- ⭐ *bienveillante* L'or ne se trouve pas en cinq minutes. Les résultats non plus.
+- 🍋 *outré* Ça traîne. Quand un résultat tarde, c'est qu'on le trafique. Tout le monde le sait. / ⭐ *lassée* Ou que quelqu'un cherche encore son téléphone.
+
+### Vote en cours, tous les présents ont voté (on attend la clôture)
+- 🍋 *triomphant* Cent pour cent de participation. Historique. Des pays entiers nous envient.
+- 🍋 *soupçonneux* Tout le monde a voté. Trop beau pour être vrai. J'exige un recomptage avant le comptage.
+- ⭐ *ravie* Tous les votes sont là. Il ne manque qu'une main pour ouvrir l'urne.
+
 ### Révélation : la pépite du soir (cas général)
 - ⭐ *émerveillée* {pepite}. On ne commente pas, on contemple.
 - ⭐ *ravie* {pepite} est une mine d'or. {citron}, lui, fait grise mine.
@@ -103,6 +121,12 @@ Les deux mascottes commentent chaque écran. Version relue et validée ligne par
 ---
 
 ## Saison
+
+### Classements masqués pendant le vote *(suit « … pour ne pas influencer les choix. »)*
+- 🍋 *sourire en coin* Ne pas influencer le vote. Moi, je n'influence jamais. Je suggère très fortement.
+- ⭐ *fière* Le classement est au coffre. Rangé à côté des lingots.
+- 🍋 *triomphant* Le classement est gelé. Le plus beau classement jamais gelé. Des experts du froid se déplacent pour le voir.
+- 🍋 *outré* On nous cache le classement. Qu'est-ce qu'ils ont à cacher, je pose la question. / ⭐ *clin d'œil* Le résultat de ce soir, justement.
 
 ### Pépite de la saison
 - ⭐ *faussement inquiète* {pepite}, {pts} points. Ça commence à me faire de l'ombre.

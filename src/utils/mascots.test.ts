@@ -1,11 +1,12 @@
 import { existsSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { MASCOT_LINES } from '@/i18n/mascots';
-import { hashSeed, MASCOT_MOODS, palmaresMascot, pickMascotLine, rankingMascot, startMascot, type MascotCatalogue } from './mascots';
+import { hashSeed, MASCOT_MOODS, palmaresMascot, pickMascotLine, rankingMascot, startMascot, waitingMascot, type MascotCatalogue } from './mascots';
 
 const catalogue: MascotCatalogue = {
   upcoming: [[{ who: 'citron', mood: 'impassible', text: 'Le vote ouvre à {time}.' }]],
   noMatch: [], voted: [], closedNotVoted: [], noResults: [],
+  waitingNone: [], waiting: [], waitingAll: [], seasonHidden: [],
   seasonPepite: [
     [{ who: 'pepite', mood: 'ravie', text: 'A {pepite}' }],
     [{ who: 'pepite', mood: 'fiere', text: 'B {pepite}' }],
@@ -117,5 +118,18 @@ describe('startMascot', () => {
     expect(at({ players: 15 })).toMatchObject({ spot: 'players', situations: ['startMany'] });
     expect(at({ players: 8, accountFocused: true })).toMatchObject({ spot: 'account', situations: ['startAccount'] });
     expect(at({ players: 8, accountFocused: true, step: 'team' })).toMatchObject({ spot: 'launch', situations: ['startStepTeam'] });
+  });
+});
+
+describe('waitingMascot', () => {
+  it('follows the ballot box, from empty to full', () => {
+    expect(waitingMascot(0, 10)).toEqual({ situations: ['waitingNone'], vars: { count: 0, present: 10 } });
+    expect(waitingMascot(4, 10).situations).toEqual(['waiting']);
+    expect(waitingMascot(10, 10).situations).toEqual(['waitingAll']);
+    expect(waitingMascot(11, 10).situations).toEqual(['waitingAll']);
+  });
+
+  it('never claims a full box without a roll call', () => {
+    expect(waitingMascot(3, 0).situations).toEqual(['waiting']);
   });
 });

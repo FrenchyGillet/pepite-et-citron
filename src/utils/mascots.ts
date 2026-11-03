@@ -31,6 +31,10 @@ export type MascotSituation =
   | 'voted'           // vote saved, waiting for the reveal
   | 'closedNotVoted'  // vote just closed, this device did not vote
   | 'noResults'       // Résultats, no match yet
+  | 'waitingNone'     // Résultats during the vote, no vote in yet
+  | 'waiting'         // Résultats during the vote, some votes in
+  | 'waitingAll'      // Résultats during the vote, every present player voted
+  | 'seasonHidden'    // Saison during the vote, rankings hidden
   | 'pepiteStreak'    // Saison → palmarès, a pépite streak running
   | 'citronStreak'    // Saison → palmarès, a citron streak running
   | 'seasonRecord'    // Saison → palmarès, the season's best score
@@ -129,6 +133,16 @@ export function rankingMascot(tab: RankingTab, season: SeasonTitles, nameOf: (id
     situations: perfect ? ['attendancePerfect', 'attendanceLeader'] : ['attendanceLeader'],
     vars: { name: nameOf(title.ids[0]), played: title.value, total: season.matches },
   };
+}
+
+/**
+ * Résultats while the vote is open: the mascots play on the wait, from the
+ * empty ballot box to the full one waiting for an organiser to close it.
+ */
+export function waitingMascot(count: number, present: number): MascotCue {
+  const situation: MascotSituation =
+    count === 0 ? 'waitingNone' : present > 0 && count >= present ? 'waitingAll' : 'waiting';
+  return { situations: [situation], vars: { count, present } };
 }
 
 /** A list this long gets its own line on /start. */

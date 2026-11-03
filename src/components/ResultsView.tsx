@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { formatDate, PEPITE_POINTS } from '@/utils';
 import { computeResultsSummary } from '@/utils/scoring';
 import { localDateKey } from '@/utils/schedule';
+import { waitingMascot } from '@/utils/mascots';
 import { Scoreboard } from './Scoreboard';
 import { PodiumView } from './PodiumView';
 import { EmptyState } from './EmptyState';
@@ -211,6 +212,15 @@ export function ResultsView({ players, match, isAdmin, isDark, orgId, isPro, onU
             <span style={{ color: 'var(--label2)', fontWeight: 500 }}>{voteCount}</span> {t('results.received', { count: voteCount, present: present.length })}
           </div>
         </div>
+        {(() => {
+          // Same line for the whole team on this match, until the box fills up.
+          const cue = waitingMascot(voteCount, present.length);
+          return (
+            <div style={{ display: 'flex', justifyContent: 'center', marginTop: 20 }}>
+              <MascotTalk key={cue.situations[0]} situations={cue.situations} vars={cue.vars} seed={String(match.id)} />
+            </div>
+          );
+        })()}
       </div>
     );
   }
