@@ -111,7 +111,7 @@ export function ScheduleMatchForm({ teams, orgId, notify, initial, onScheduled }
       {teams.length > 0 && (
         <>
           <label htmlFor="schedule-team" style={fieldLabel}>{t('schedule.present')}</label>
-          <select id="schedule-team" value={teamId ?? ''} onChange={e => setTeamId(e.target.value || null)} style={{ marginBottom: 14 }}>
+          <select className="field-select" id="schedule-team" value={teamId ?? ''} onChange={e => setTeamId(e.target.value || null)} style={{ marginBottom: 14 }}>
             <option value="">{t('schedule.allSquad')}</option>
             {teams.map(tm => <option key={String(tm.id)} value={String(tm.id)}>{tm.name}</option>)}
           </select>

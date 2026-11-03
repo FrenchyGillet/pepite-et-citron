@@ -21,7 +21,7 @@ interface MatchLauncherProps {
 }
 
 /**
- * "Match du soir" form. In the usual case the organiser just taps « Lancer »:
+ * « Lancer un vote » → « Maintenant » form. In the usual case the organiser just taps « Lancer »:
  * the name is optional (« Match du 3 nov. »), the line-up is the last vote's
  * team, and the player list, pépite mode and duration stay folded.
  */
@@ -107,7 +107,7 @@ export function MatchLauncher({ activePlayers, teams, currentSeason, orgId, noti
       {teams.length > 0 && (
         <>
           <label htmlFor="admin-match-team" style={fieldLabel}>{t('launcher.lineup')}</label>
-          <select id="admin-match-team" value={teamId != null ? String(teamId) : ''} onChange={e => pickTeam(e.target.value)}
+          <select className="field-select" id="admin-match-team" value={teamId != null ? String(teamId) : ''} onChange={e => pickTeam(e.target.value)}
             style={{ marginBottom: 14 }}>
             <option value="">{t('launcher.teamPlayers', { team: t('schedule.allSquad'), count: activePlayers.length })}</option>
             {teams.map(tm => (

@@ -19,7 +19,7 @@ describe("Admin flow", () => {
     const user = userEvent.setup();
     const adminBtn = await screen.findByRole("button", { name: /admin/i });
     await user.click(adminBtn);
-    expect(await screen.findByText("Match du soir")).toBeInTheDocument();
+    expect(await screen.findByText("Lancer un vote")).toBeInTheDocument();
   });
 
   it("shows admin UI when navigating to admin tab", async () => {
@@ -27,7 +27,7 @@ describe("Admin flow", () => {
     const user = userEvent.setup();
     const adminBtn = await screen.findByRole("button", { name: /admin/i });
     await user.click(adminBtn);
-    expect(await screen.findByText("Match du soir")).toBeInTheDocument();
+    expect(await screen.findByText("Lancer un vote")).toBeInTheDocument();
     expect(await screen.findByText("Effectif")).toBeInTheDocument();
   });
 
@@ -35,7 +35,7 @@ describe("Admin flow", () => {
     renderApp();
     const user = userEvent.setup();
     await user.click(await screen.findByRole("button", { name: /admin/i }));
-    await screen.findByText("Match du soir");
+    await screen.findByText("Lancer un vote");
 
     // The whole squad by default: one tap opens the vote.
     await user.type(screen.getByLabelText(/nom du match/i), "Match test");

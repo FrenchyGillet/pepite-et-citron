@@ -7,7 +7,7 @@ import { useUpcomingSchedules } from '@/hooks/queries';
 import { useDeleteSchedule, useOpenScheduleNow, useSkipNextOccurrence } from '@/hooks/mutations';
 import { track, EVENTS } from '@/utils/analytics';
 import type { MatchSchedule } from '@/types';
-import { sectionLabelStyle, type ConfirmFn, type Notify } from './shared';
+import { sectionLabelStyle, sectionTitleStyle, type ConfirmFn, type Notify } from './shared';
 
 interface UpcomingMatchesProps {
   orgId?: string;
@@ -34,6 +34,11 @@ export function UpcomingMatches({ orgId, notify, confirm, canManage, canOpenNow,
   const openNow = useOpenScheduleNow(orgId);
   const skipNext = useSkipNextOccurrence(orgId);
   if (schedules.length === 0) return null;
+
+  const linkStyle = {
+    background: 'none', border: 'none', cursor: 'pointer', padding: '8px 4px',
+    fontSize: 13, color: 'var(--label3)', textDecoration: 'underline',
+  } as const;
 
   // Winter break, school holidays: no match that day, the next ones stay.
   const skip = async (s: MatchSchedule) => {
@@ -74,8 +79,10 @@ export function UpcomingMatches({ orgId, notify, confirm, canManage, canOpenNow,
   };
 
   return (
-    <div style={below ? { marginTop: 16 } : { marginBottom: 16 }}>
-      <p style={sectionLabelStyle}>{t('schedule.nextMatch')}</p>
+    <div style={below ? { marginTop: 16 } : { marginBottom: 20 }}>
+      {below
+        ? <p style={sectionLabelStyle}>{t('schedule.nextMatch')}</p>
+        : <h2 style={sectionTitleStyle}>{t('schedule.nextMatch')}</h2>}
       <div className="group">
         {(showOthers ? schedules : schedules.slice(0, 1)).map(s => {
           const weekly = s.weekday != null && s.start_time != null;
@@ -90,30 +97,29 @@ export function UpcomingMatches({ orgId, notify, confirm, canManage, canOpenNow,
             t('schedule.voteAt', { time: formatClockTime(s.opens_at) }),
           ].filter(Boolean).join(' · ');
           return (
-            <div key={String(s.id)} className="row">
-              <div className="row-body">
-                <div className="row-title">{weekly ? '🔁 ' : '📅 '}{title}</div>
-                <div className="row-sub">{sub}</div>
-              </div>
+            // Text on its own line, one main action, the rest as discreet links.
+            <div key={String(s.id)} style={{ padding: '14px 16px' }}>
+              <div style={{ fontSize: 16, fontWeight: 600, color: 'var(--label)' }}>{weekly ? '🔁 ' : '📅 '}{title}</div>
+              <div style={{ fontSize: 13, color: 'var(--label3)', marginTop: 2 }}>{sub}</div>
               {canManage && (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 6, flexShrink: 0 }}>
+                <>
                   {canOpenNow && (
-                    <button className="btn btn-primary" style={{ padding: '5px 12px', fontSize: 13 }}
+                    <button className="btn btn-primary btn-full" style={{ marginTop: 12 }}
                       disabled={openNow.isPending} onClick={() => open(s)}>
                       {t('schedule.openNow')}
                     </button>
                   )}
-                  {weekly && (
-                    <button className="btn btn-secondary" style={{ padding: '5px 12px', fontSize: 13 }}
-                      disabled={skipNext.isPending} onClick={() => void skip(s)}>
-                      {t('schedule.skip')}
+                  <div style={{ display: 'flex', justifyContent: 'center', gap: 20, marginTop: 8 }}>
+                    {weekly && (
+                      <button style={linkStyle} disabled={skipNext.isPending} onClick={() => void skip(s)}>
+                        {t('schedule.skip')}
+                      </button>
+                    )}
+                    <button style={linkStyle} disabled={deleteSchedule.isPending} onClick={() => void cancel(s)}>
+                      {t(weekly ? 'schedule.stopSeries' : 'schedule.cancel')}
                     </button>
-                  )}
-                  <button className="btn btn-secondary" style={{ padding: '5px 12px', fontSize: 13 }}
-                    disabled={deleteSchedule.isPending} onClick={() => void cancel(s)}>
-                    {t(weekly ? 'schedule.stop' : 'schedule.cancel')}
-                  </button>
-                </div>
+                  </div>
+                </>
               )}
             </div>
           );
