@@ -75,6 +75,8 @@ export const nl: Messages = {
       alreadyPro: 'Je ploeg is al Pro. Beheer je abonnement in Admin → Instellingen.',
       voteAlreadyOpen: 'Er is al een stemming bezig.',
       scheduleNotFound: 'Geplande match niet gevonden.',
+      voterLocked: 'Een speler die al gestemd heeft of een stem kreeg, kan niet meer verwijderd worden.',
+      tooFewVoters: 'Niet genoeg stemmers voor deze pépite-modus.',
       lastAdmin: 'Je bent de enige beheerder van {names}. Maak eerst iemand anders beheerder (Admin → Instellingen → Leden) voor je je account verwijdert.',
     },
   },
@@ -633,6 +635,13 @@ export const nl: Messages = {
     closing: 'Sluiten…',
     closeLink: 'Sluiten zonder onthulling…',
     countingInResults: 'De onthulling is bezig in het tabblad Resultaten.',
+    editVoters: '✏️ Stemmers aanpassen',
+    editVotersHint: 'Haal de afwezigen weg, voeg de laatkomers toe. Wie gestemd heeft of een pépite-stem kreeg, blijft op de lijst.',
+    lockedVoter: '{name}: heeft gestemd of kreeg een stem',
+    saveVoters: { one: 'Opslaan · {count} stemmer', other: 'Opslaan · {count} stemmers' },
+    savingVoters: 'Opslaan…',
+    votersSaved: 'Stemmers bijgewerkt',
+    tooFewVoters: 'Deze modus vraagt minstens {min} stemmers.',
   },
 
   launcher: {

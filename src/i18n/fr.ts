@@ -74,6 +74,8 @@ export const fr = {
       alreadyPro: 'Ton équipe est déjà en Pro. Gère ton abonnement dans Admin → Paramètres.',
       voteAlreadyOpen: 'Un vote est déjà en cours.',
       scheduleNotFound: 'Match programmé introuvable.',
+      voterLocked: 'Un joueur qui a déjà voté ou reçu une voix ne peut plus être retiré.',
+      tooFewVoters: 'Pas assez de votants pour ce mode pépite.',
       lastAdmin: 'Tu es le seul administrateur de {names}. Nomme un autre admin (Admin → Paramètres → Membres) avant de supprimer ton compte.',
     },
   },
@@ -632,6 +634,13 @@ export const fr = {
     closing: 'Clôture…',
     closeLink: 'Clore sans dépouiller…',
     countingInResults: "Le dépouillement est en cours dans l'onglet Résultats.",
+    editVoters: '✏️ Modifier les votants',
+    editVotersHint: 'Retire les absents, ajoute les retardataires. Un joueur qui a voté ou reçu une voix pépite reste dans la liste.',
+    lockedVoter: '{name} : a voté ou reçu une voix',
+    saveVoters: { one: 'Enregistrer · {count} votant', other: 'Enregistrer · {count} votants' },
+    savingVoters: 'Enregistrement…',
+    votersSaved: 'Votants mis à jour',
+    tooFewVoters: 'Il faut au moins {min} votants pour ce mode.',
   },
 
   launcher: {

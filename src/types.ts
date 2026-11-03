@@ -236,6 +236,8 @@ export interface API {
   startCounting(id: EntityId, order: EntityId[]): Promise<unknown>;
   revealNext(id: EntityId, count: number): Promise<unknown>;
   updateMatch(id: EntityId, data: Partial<Match>): Promise<unknown>;
+  /** Voting phase: replace who votes (set_match_voters, 20260026). */
+  setMatchVoters(id: EntityId, playerIds: EntityId[]): Promise<unknown>;
   deleteMatch(id: EntityId): Promise<unknown>;
 
   // Scheduled matches (20260021)
