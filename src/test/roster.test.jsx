@@ -59,8 +59,8 @@ describe("Admin — roster management", () => {
     await user.click(within(dialog).getByRole("button", { name: "Archiver" }));
 
     expect(await screen.findByText("Baptiste archivé")).toBeInTheDocument();
-    // gone from the "who's here tonight" picker…
-    expect(screen.queryByRole("button", { name: "Baptiste" })).toBeNull();
+    // gone from the line-up of the next vote…
+    expect(screen.getByRole("button", { name: "Lancer le vote · 9 joueurs" })).toBeInTheDocument();
     // …but still in the data, with the ballots that name him
     expect((await __demoAPI.getPlayers('org-123')).find(p => p.name === "Baptiste")?.archived_at).toBeTruthy();
     expect((await __demoAPI.getVotes(m.id))[0].best1_id).toBe(2);
@@ -68,7 +68,7 @@ describe("Admin — roster management", () => {
     await user.click(screen.getByRole("button", { name: /Archivés · 1/ }));
     await user.click(screen.getByRole("button", { name: "Réactiver Baptiste" }));
     expect(await screen.findByText("Baptiste réactivé")).toBeInTheDocument();
-    expect(await screen.findByRole("button", { name: "Baptiste" })).toBeInTheDocument();
+    expect(await screen.findByRole("button", { name: "Lancer le vote · 10 joueurs" })).toBeInTheDocument();
   });
 
   it("permanent deletion is only offered for archived players, behind a warning", async () => {
