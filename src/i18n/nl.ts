@@ -21,6 +21,8 @@ export const nl: Messages = {
     terms: 'Voorwaarden',
     contact: 'Contact',
     language: 'Taal',
+    privacyUrl: '/nl/privacy',
+    termsUrl: '/nl/voorwaarden',
     votes: { one: '{count} stem', other: '{count} stemmen' },
   },
 

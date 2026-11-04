@@ -9,6 +9,17 @@ Allow: /sitemap.xml
 # SEO guides (rewritten to public/guides/*.html in vercel.json)
 Allow: /homme-du-match
 Allow: /guide.css
+# English and Dutch pages (rewritten to public/en/, public/nl/ in vercel.json)
+Allow: /en$
+Allow: /en/man-of-the-match
+Allow: /en/privacy
+Allow: /en/terms
+Allow: /nl$
+Allow: /nl/man-van-de-match
+Allow: /nl/privacy
+Allow: /nl/voorwaarden
+Allow: /lang-switch.css
+Allow: /lang-switch.js
 # Share image and icons: previews and Google Images need them.
 Allow: /api/og
 Allow: /icon.svg

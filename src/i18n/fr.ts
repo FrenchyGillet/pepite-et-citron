@@ -18,6 +18,9 @@ export const fr = {
     terms: 'CGU',
     contact: 'Contact',
     language: 'Langue',
+    // Static pages of the site, in this language (public/, vercel.json).
+    privacyUrl: '/privacy.html',
+    termsUrl: '/terms.html',
     votes: { one: '{count} vote', other: '{count} votes' },
   },
 

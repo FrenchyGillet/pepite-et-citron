@@ -277,7 +277,7 @@ export function AuthView({ onAuth }: AuthViewProps) {
         <p style={{ marginTop: 12, fontSize: 11, color: 'var(--label4)' }}>
           {t('auth.acceptPrefix')}{' '}
           <a
-            href="/terms.html"
+            href={t('common.termsUrl')}
             target="_blank"
             rel="noopener noreferrer"
             style={{ color: 'var(--label3)', textDecoration: 'underline', textUnderlineOffset: 2 }}
@@ -286,7 +286,7 @@ export function AuthView({ onAuth }: AuthViewProps) {
           </a>
           {' '}{t('quickStart.acceptAnd')}{' '}
           <a
-            href="/privacy.html"
+            href={t('common.privacyUrl')}
             target="_blank"
             rel="noopener noreferrer"
             style={{ color: 'var(--label3)', textDecoration: 'underline', textUnderlineOffset: 2 }}

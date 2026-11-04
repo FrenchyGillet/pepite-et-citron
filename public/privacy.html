@@ -5,6 +5,13 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Politique de confidentialité — Pépite & Citron</title>
   <meta name="description" content="Politique de confidentialité de l'application Pépite & Citron." />
+  <link rel="canonical" href="https://pepite-citron.com/privacy.html" />
+  <link rel="alternate" hreflang="fr" href="https://pepite-citron.com/privacy.html" />
+  <link rel="alternate" hreflang="en" href="https://pepite-citron.com/en/privacy" />
+  <link rel="alternate" hreflang="nl" href="https://pepite-citron.com/nl/privacy" />
+  <link rel="alternate" hreflang="x-default" href="https://pepite-citron.com/privacy.html" />
+  <link rel="stylesheet" href="/lang-switch.css" />
+  <script defer src="/lang-switch.js"></script>
   <!-- Umami Analytics (sans cookies) -->
   <script defer src="https://cloud.umami.is/script.js" data-website-id="49c8f860-14d7-49c4-897b-9c547febd823" data-domains="pepite-citron.com"></script>
   <style>
@@ -59,6 +66,7 @@
       text-decoration: none;
     }
     .nav-back:hover { opacity: .8; }
+    .nav-actions { display: flex; align-items: center; gap: 14px; flex-shrink: 0; }
 
     /* ─── CONTENT ─── */
     .page-wrap {
@@ -155,7 +163,17 @@
   <a href="/" class="nav-logo">
     <span style="color:var(--pepite)">⭐</span> Pépite &amp; <span style="color:var(--citron)">🍋</span> Citron
   </a>
-  <a href="/" class="nav-back">← Retour à l'app</a>
+  <div class="nav-actions">
+    <a href="/" class="nav-back">← Retour à l'app</a>
+    <details class="lang-switch">
+      <summary aria-label="Changer de langue (Français)"><svg class="globe" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c2.5 2.7 3.8 5.7 3.8 9s-1.3 6.3-3.8 9c-2.5-2.7-3.8-5.7-3.8-9S9.5 5.7 12 3z"/></svg>FR<svg class="chev" viewBox="0 0 10 10" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M2 3.5l3 3 3-3"/></svg></summary>
+      <ul class="lang-menu">
+        <li><a href="/privacy.html" hreflang="fr" lang="fr" data-lang="fr" aria-current="page">Français</a></li>
+        <li><a href="/en/privacy" hreflang="en" lang="en" data-lang="en" data-umami-event="lang_switch" data-umami-event-to="en">English</a></li>
+        <li><a href="/nl/privacy" hreflang="nl" lang="nl" data-lang="nl" data-umami-event="lang_switch" data-umami-event-to="nl">Nederlands</a></li>
+      </ul>
+    </details>
+  </div>
 </nav>
 
 <div class="page-wrap">
@@ -334,7 +352,7 @@
 
   <p>
     L'application utilise le <strong>stockage local du navigateur</strong> (<code>localStorage</code>)
-    uniquement pour mémoriser vos préférences locales (thème, jeton de session invité).
+    uniquement pour mémoriser vos préférences locales (thème, langue, jeton de session invité).
     Aucun cookie de traçage ou publicitaire n'est déposé.
   </p>
   <p>
@@ -386,6 +404,7 @@
     <a href="/privacy.html" style="color:var(--label-secondary)">Confidentialité</a>
     <a href="/terms.html">CGU</a>
   </div>
+  <p class="footer-langs"><span aria-hidden="true">🌐</span> <a href="/privacy.html" hreflang="fr" lang="fr" data-lang="fr" aria-current="page">Français</a> <a href="/en/privacy" hreflang="en" lang="en" data-lang="en" data-umami-event="lang_switch" data-umami-event-to="en">English</a> <a href="/nl/privacy" hreflang="nl" lang="nl" data-lang="nl" data-umami-event="lang_switch" data-umami-event-to="nl">Nederlands</a></p>
   <div class="footer-copy">© 2026 Pépite &amp; Citron</div>
 </footer>
 
