@@ -248,8 +248,8 @@ export function AdminView({ isAdmin = true, players, activeMatch, currentOrg, on
         marginTop: 8,
       }}>
         {[
-          { label: t('common.privacy'), href: '/privacy.html' },
-          { label: t('common.terms'), href: '/terms.html' },
+          { label: t('common.privacy'), href: t('common.privacyUrl') },
+          { label: t('common.terms'), href: t('common.termsUrl') },
           { label: t('common.contact'), href: 'mailto:contact@pepite-citron.com' },
         ].map(link => (
           <a

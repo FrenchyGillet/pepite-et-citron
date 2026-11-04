@@ -1,0 +1,54 @@
+/* Language switcher of the static pages (landing, guides, legal pages).
+   Markup: <details class="lang-switch"> in the nav, <p class="footer-langs">
+   in the footer. Same dark palette as the pages, no web font. */
+.lang-switch { position: relative; flex-shrink: 0; }
+.lang-switch summary {
+  list-style: none; cursor: pointer; user-select: none;
+  display: flex; align-items: center; gap: 5px;
+  height: 34px; padding: 0 10px;
+  border: 1px solid rgba(84,84,88,0.65); border-radius: 17px;
+  color: rgba(235,235,245,0.8);
+  font: 600 13px/1 system-ui, -apple-system, 'Segoe UI', sans-serif;
+  letter-spacing: .3px;
+}
+.lang-switch summary::-webkit-details-marker { display: none; }
+.lang-switch summary:hover,
+.lang-switch[open] summary { color: #FFFFFF; border-color: rgba(235,235,245,0.4); }
+.lang-switch summary:focus-visible { outline: 2px solid #FFD700; outline-offset: 2px; }
+.lang-switch .globe { width: 16px; height: 16px; }
+.lang-switch .chev { width: 10px; height: 10px; transition: transform .15s; }
+.lang-switch[open] .chev { transform: rotate(180deg); }
+
+.lang-menu {
+  position: absolute; right: 0; top: calc(100% + 8px); z-index: 200;
+  min-width: 170px; margin: 0; padding: 6px; list-style: none;
+  background: #1C1C1E; border: 1px solid rgba(84,84,88,0.65); border-radius: 14px;
+  box-shadow: 0 16px 40px rgba(0,0,0,0.6);
+}
+.lang-menu a {
+  display: flex; align-items: center; justify-content: space-between; gap: 16px;
+  padding: 10px 12px; border-radius: 9px;
+  color: #FFFFFF; text-decoration: none;
+  font: 500 15px/1.2 system-ui, -apple-system, 'Segoe UI', sans-serif;
+}
+.lang-menu a:hover, .lang-menu a:focus-visible { background: #2C2C2E; outline: none; }
+.lang-menu a[aria-current] { color: #FFD700; font-weight: 700; }
+.lang-menu a[aria-current]::after { content: '✓'; }
+
+/* Phones: the code alone (FR ▾), so the logo and the main button keep their room. */
+@media (max-width: 440px) {
+  .lang-switch .globe { display: none; }
+  .lang-switch summary { padding: 0 8px; }
+}
+@media (max-width: 340px) {
+  .lang-switch .chev { display: none; }
+  .lang-switch summary { padding: 0 9px; }
+}
+
+.footer-langs {
+  display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: 6px 16px;
+  margin: 18px 0 0; font-size: 13px; color: rgba(235,235,245,0.55);
+}
+.footer-langs a { color: rgba(235,235,245,0.55); text-decoration: none; }
+.footer-langs a:hover { color: #FFFFFF; }
+.footer-langs a[aria-current] { color: #FFFFFF; font-weight: 700; }

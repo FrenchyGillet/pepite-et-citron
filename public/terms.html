@@ -5,6 +5,13 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Conditions générales d'utilisation — Pépite & Citron</title>
   <meta name="description" content="Conditions générales d'utilisation de l'application Pépite & Citron." />
+  <link rel="canonical" href="https://pepite-citron.com/terms.html" />
+  <link rel="alternate" hreflang="fr" href="https://pepite-citron.com/terms.html" />
+  <link rel="alternate" hreflang="en" href="https://pepite-citron.com/en/terms" />
+  <link rel="alternate" hreflang="nl" href="https://pepite-citron.com/nl/voorwaarden" />
+  <link rel="alternate" hreflang="x-default" href="https://pepite-citron.com/terms.html" />
+  <link rel="stylesheet" href="/lang-switch.css" />
+  <script defer src="/lang-switch.js"></script>
   <script defer src="https://cloud.umami.is/script.js" data-website-id="49c8f860-14d7-49c4-897b-9c547febd823" data-domains="pepite-citron.com"></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -58,6 +65,7 @@
       text-decoration: none;
     }
     .nav-back:hover { opacity: .8; }
+    .nav-actions { display: flex; align-items: center; gap: 14px; flex-shrink: 0; }
 
     /* ─── CONTENT ─── */
     .page-wrap {
@@ -132,12 +140,22 @@
 <body>
 
 <nav>
-  <a href="landing.html" class="nav-logo">
+  <a href="/" class="nav-logo">
     <span style="color: var(--pepite)">Pépite</span>
     <span style="color: var(--label-secondary)"> & </span>
     <span style="color: var(--citron)">Citron</span>
   </a>
-  <a href="landing.html" class="nav-back">← Retour</a>
+  <div class="nav-actions">
+    <a href="/" class="nav-back">← Retour</a>
+    <details class="lang-switch">
+      <summary aria-label="Changer de langue (Français)"><svg class="globe" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c2.5 2.7 3.8 5.7 3.8 9s-1.3 6.3-3.8 9c-2.5-2.7-3.8-5.7-3.8-9S9.5 5.7 12 3z"/></svg>FR<svg class="chev" viewBox="0 0 10 10" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M2 3.5l3 3 3-3"/></svg></summary>
+      <ul class="lang-menu">
+        <li><a href="/terms.html" hreflang="fr" lang="fr" data-lang="fr" aria-current="page">Français</a></li>
+        <li><a href="/en/terms" hreflang="en" lang="en" data-lang="en" data-umami-event="lang_switch" data-umami-event-to="en">English</a></li>
+        <li><a href="/nl/voorwaarden" hreflang="nl" lang="nl" data-lang="nl" data-umami-event="lang_switch" data-umami-event-to="nl">Nederlands</a></li>
+      </ul>
+    </details>
+  </div>
 </nav>
 
 <div class="page-wrap">
@@ -235,7 +253,7 @@
   <h2>7. Données personnelles</h2>
   <p>
     Le traitement de vos données personnelles est décrit dans notre
-    <a href="privacy.html">Politique de confidentialité</a>.
+    <a href="/privacy.html">Politique de confidentialité</a>.
     Conformément au RGPD et à la loi belge du 30 juillet 2018, vous disposez d'un droit d'accès,
     de rectification et d'effacement de vos données.
   </p>
@@ -282,10 +300,11 @@
 
 <footer>
   <p>© 2026 Drill Faktory ·
-    <a href="privacy.html">Confidentialité</a> ·
-    <a href="terms.html">CGU</a> ·
+    <a href="/privacy.html">Confidentialité</a> ·
+    <a href="/terms.html">CGU</a> ·
     <a href="mailto:contact@pepite-citron.com">Contact</a>
   </p>
+  <p class="footer-langs"><span aria-hidden="true">🌐</span> <a href="/terms.html" hreflang="fr" lang="fr" data-lang="fr" aria-current="page">Français</a> <a href="/en/terms" hreflang="en" lang="en" data-lang="en" data-umami-event="lang_switch" data-umami-event-to="en">English</a> <a href="/nl/voorwaarden" hreflang="nl" lang="nl" data-lang="nl" data-umami-event="lang_switch" data-umami-event-to="nl">Nederlands</a></p>
 </footer>
 
 </body>

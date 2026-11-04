@@ -19,6 +19,8 @@ export const en: Messages = {
     terms: 'Terms',
     contact: 'Contact',
     language: 'Language',
+    privacyUrl: '/en/privacy',
+    termsUrl: '/en/terms',
     votes: { one: '{count} vote', other: '{count} votes' },
   },
 
