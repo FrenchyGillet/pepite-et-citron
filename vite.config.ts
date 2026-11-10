@@ -131,7 +131,9 @@ export default defineConfig({
       injectManifest: {
         // Precache all build output
         globPatterns: ["**/*.{js,css,html,ico,png,svg,webmanifest}"],
-        globIgnores:  ["**/*.map"],
+        // en/, nl/: translated static pages (site, legal), read online: no need
+        // to download them into every installed app.
+        globIgnores:  ["**/*.map", "en/**", "nl/**"],
       },
 
       // Silence dev-mode logs

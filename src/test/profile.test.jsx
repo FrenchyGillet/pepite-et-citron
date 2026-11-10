@@ -63,10 +63,13 @@ describe('VoteView — player tracking', () => {
     // One tap per choice: pépite, 2ème, citron
     await screen.findByText('La Pépite');
     await user.click(screen.getByRole('button', { name: 'Baptiste' }));
+    await user.click(screen.getByRole('button', { name: 'Suivant →' }));
     await screen.findByText('2ème meilleur');
     await user.click(screen.getByRole('button', { name: 'Clément' }));
+    await user.click(screen.getByRole('button', { name: 'Suivant →' }));
     await screen.findByText('Le Citron');
     await user.click(screen.getByRole('button', { name: 'David' }));
+    await user.click(screen.getByRole('button', { name: 'Suivant →' }));
 
     // Récapitulatif → submit
     await screen.findByText('Récapitulatif');
@@ -92,10 +95,13 @@ describe('VoteView — player tracking', () => {
     // Starts directly at step 1 (no step-0 grid)
     await screen.findByText('La Pépite');
     await user.click(screen.getByRole('button', { name: 'Baptiste' }));
+    await user.click(screen.getByRole('button', { name: 'Suivant →' }));
     await screen.findByText('2ème meilleur');
     await user.click(screen.getByRole('button', { name: 'Clément' }));
+    await user.click(screen.getByRole('button', { name: 'Suivant →' }));
     await screen.findByText('Le Citron');
     await user.click(screen.getByRole('button', { name: 'Antoine' }));
+    await user.click(screen.getByRole('button', { name: 'Suivant →' }));
 
     await screen.findByText('Récapitulatif');
     await user.click(screen.getByRole('button', { name: 'Rendre mon verdict →' }));

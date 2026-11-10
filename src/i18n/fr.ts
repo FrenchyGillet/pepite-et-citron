@@ -18,6 +18,9 @@ export const fr = {
     terms: 'CGU',
     contact: 'Contact',
     language: 'Langue',
+    // Static pages of the site, in this language (public/, vercel.json).
+    privacyUrl: '/privacy.html',
+    termsUrl: '/terms.html',
     votes: { one: '{count} vote', other: '{count} votes' },
   },
 
@@ -450,6 +453,7 @@ export const fr = {
     citronHint: 'Qui a souffert ce soir ?',
     absents: 'Absents · {count}',
     back: 'Retour',
+    next: 'Suivant →',
     summary: 'Récapitulatif',
     commentAria: 'Commentaire sur {name} (optionnel)',
     commentPlaceholder: 'Pourquoi {name} ? (optionnel)',

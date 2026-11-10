@@ -91,7 +91,8 @@ L'app utilise **React Router v7** avec `BrowserRouter` (dans `main.tsx`) :
   - Langue : choix enregistré sur l'appareil (Profil, écran de vote, /login, /start), sinon celle du navigateur, sinon anglais
   - Seul le français est dans le bundle principal : l'anglais et le néerlandais (`en.ts`, `nl.ts`, `mascots.en.ts`, `mascots.nl.ts`) sont chargés à la demande par `loadLanguage` (avant le premier rendu dans `main.tsx`, ou par `setLang`)
   - Les messages d'erreur de la base restent en français : `humanizeError` les traduit (`errors.server`) ; un message déjà écrit pour l'utilisateur côté app est une `UserError`
-  - Pas encore traduits : emails et notifications envoyés par `api/`, pages statiques de `public/`
+  - Pas encore traduits : emails et notifications envoyés par `api/`
+  - Pages statiques de `public/` (accueil, guides, confidentialité, CGU) : le français à la racine, `public/en/` sous `/en/…`, `public/nl/` sous `/nl/…` (slugs traduits). Chaque page liste ses 3 versions (`hreflang`, `x-default` = français) et porte le menu de langue (`lang-switch.css/.js`, qui transmet la langue choisie à l'app via `pepite_lang`). Les URL des pages légales pour l'app : `common.privacyUrl` / `common.termsUrl`
 - **Commits** : anglais, format Conventional Commits (`feat:`, `fix:`, `chore:`, etc.)
 
 ### TypeScript strict
@@ -169,7 +170,7 @@ Les contrastes texte/fond sont vérifiés (WCAG AA) par `src/utils/contrast.test
 - Script Umami dans `app.html` et les pages statiques de `public/` ; pages vues de la SPA suivies automatiquement.
 - Events : `track(EVENTS.X, data)` depuis `src/utils/analytics.ts` — ajouter tout nouvel event au catalogue `EVENTS` (nom `snake_case`). Sur la landing : attributs `data-umami-event` / `landing.js`.
 - **Jamais de donnée personnelle** : ni noms, emails, ids, libellés de match ou jetons — seulement des compteurs, booléens et petites énumérations.
-- Pages SEO statiques (`public/guides/*.html`) : servies par des rewrites exactes dans `vercel.json` (reprises en dev par `vite.config.ts`). Une nouvelle page = rewrite avant le catch-all + entrée `sitemap.xml` + `Allow` dans `robots.txt` ; la FAQ JSON-LD doit reprendre mot pour mot les `<summary>` visibles. `src/test/seoPages.test.ts` vérifie tout ça.
+- Pages SEO statiques (`public/guides/*.html`, `public/en/`, `public/nl/`) : servies par des rewrites exactes dans `vercel.json` (reprises en dev par `vite.config.ts`). Une nouvelle page = ses 3 langues, chacune avec rewrite avant le catch-all + entrée `sitemap.xml` + `Allow` dans `robots.txt` + `hreflang` et menu de langue identiques ; la FAQ JSON-LD doit reprendre mot pour mot les `<summary>` visibles. `src/test/seoPages.test.ts` vérifie tout ça.
 - `app.html` exclut query string et hash des pages vues (`?guest=` à usage unique, `#access_token` de récupération) : ne pas retirer ces attributs. `data-domains` : rien n'est envoyé depuis localhost ni les previews Vercel.
 
 ---

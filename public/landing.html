@@ -18,6 +18,12 @@
   <title>Vote de l'homme du match et du citron | Pépite & Citron</title>
   <meta name="description" content="Élisez l'homme du match (la pépite) et le citron de votre équipe en 30 secondes, depuis le téléphone, sans compte pour les joueurs. Foot, hockey, rugby, basket, volley…" />
   <link rel="canonical" href="https://pepite-citron.com/" />
+  <link rel="alternate" hreflang="fr" href="https://pepite-citron.com/" />
+  <link rel="alternate" hreflang="en" href="https://pepite-citron.com/en" />
+  <link rel="alternate" hreflang="nl" href="https://pepite-citron.com/nl" />
+  <link rel="alternate" hreflang="x-default" href="https://pepite-citron.com/" />
+  <link rel="stylesheet" href="/lang-switch.css" />
+  <script defer src="/lang-switch.js"></script>
 
   <!-- Open Graph -->
   <meta property="og:type"        content="website" />
@@ -29,6 +35,8 @@
   <meta property="og:image:height" content="630" />
   <meta property="og:locale"      content="fr_BE" />
   <meta property="og:locale:alternate" content="fr_FR" />
+  <meta property="og:locale:alternate" content="en_GB" />
+  <meta property="og:locale:alternate" content="nl_BE" />
   <meta property="og:site_name"   content="Pépite & Citron" />
 
   <!-- Twitter / X Card -->
@@ -85,7 +93,7 @@
       "url": "https://pepite-citron.com"
     },
     "inLanguage": "fr",
-    "availableLanguage": "fr"
+    "availableLanguage": ["fr", "en", "nl"]
   }
   </script>
 
@@ -873,6 +881,13 @@
       .how-phone { max-width: 130px; }
       .story-card { padding: 32px 24px; }
     }
+    /* Phones: room for the logo, the language menu and the button (the hero
+       has its own pricing button). Declared after .nav-cta, which would
+       otherwise win over the 380px rule above. */
+    @media (max-width: 540px) { .nav-tarifs { display: none; } }
+    @media (max-width: 440px) { nav { padding: 0 16px; } .nav-actions { gap: 8px; } .nav-logo { font-size: 15px; } }
+    @media (max-width: 380px) { .nav-logo { font-size: 14px; } .nav-cta { padding: 7px 12px; font-size: 13px; } }
+    @media (max-width: 340px) { .nav-logo .star, .nav-logo .lemon { display: none; } }
   </style>
 </head>
 <body>
@@ -884,6 +899,14 @@
   </div>
   <div class="nav-actions">
     <a href="#tarifs" class="nav-tarifs" data-umami-event="landing_nav_tarifs">Tarifs</a>
+    <details class="lang-switch">
+      <summary aria-label="Changer de langue (Français)"><svg class="globe" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c2.5 2.7 3.8 5.7 3.8 9s-1.3 6.3-3.8 9c-2.5-2.7-3.8-5.7-3.8-9S9.5 5.7 12 3z"/></svg>FR<svg class="chev" viewBox="0 0 10 10" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M2 3.5l3 3 3-3"/></svg></summary>
+      <ul class="lang-menu">
+        <li><a href="/" hreflang="fr" lang="fr" data-lang="fr" aria-current="page">Français</a></li>
+        <li><a href="/en" hreflang="en" lang="en" data-lang="en" data-umami-event="lang_switch" data-umami-event-to="en">English</a></li>
+        <li><a href="/nl" hreflang="nl" lang="nl" data-lang="nl" data-umami-event="lang_switch" data-umami-event-to="nl">Nederlands</a></li>
+      </ul>
+    </details>
     <a href="/login" class="nav-cta" data-umami-event="landing_nav_cta">Lancer l'app →</a>
   </div>
 </nav>
@@ -912,7 +935,7 @@
 </section>
 
 <!-- KEY FEATURES -->
-<section class="features" aria-label="Points forts">
+<section class="features" aria-label="Points forts" data-section="features">
   <div class="features-grid">
     <div class="feature-card">
       <div class="feature-emoji" aria-hidden="true">🕶️</div>
@@ -943,7 +966,7 @@
 </div>
 
 <!-- ORIGIN STORY -->
-<div class="story-section">
+<div class="story-section" data-section="story">
   <div class="story-card">
     <div class="story-eyebrow">L'histoire derrière l'app</div>
     <h2 class="story-title">Tout a commencé avec des sous-verres en carton.</h2>
@@ -972,7 +995,7 @@
 </div>
 
 <!-- HOW IT WORKS -->
-<section id="comment-ca-marche">
+<section id="comment-ca-marche" data-section="how">
   <div class="section-inner">
     <div class="section-tag">Comment ça marche</div>
     <h2 class="section-title">Prêt en 2 minutes. Puis 3 taps par match.</h2>
@@ -1094,7 +1117,7 @@
 </section>
 
 <!-- OCCASIONS -->
-<section id="occasions">
+<section id="occasions" data-section="occasions">
   <div class="section-inner">
     <div class="section-tag">Pour quelles occasions</div>
     <h2 class="section-title">Né au bar après le match. Adopté partout.</h2>
@@ -1145,7 +1168,7 @@
 </section>
 
 <!-- PRICING -->
-<section id="tarifs">
+<section id="tarifs" data-section="pricing">
   <div class="section-inner">
     <div class="section-tag">Tarifs</div>
     <h2 class="section-title">Simple. Transparent. Sans surprise.</h2>
@@ -1183,14 +1206,14 @@
       <!-- PRO -->
       <div class="pricing-card pro">
         <div class="pricing-plan-name">Pro ⭐</div>
-        <div class="pricing-price" id="price-display">12,99 €</div>
-        <div class="pricing-price-sub" id="price-sub">par an · soit 1,08 €/mois</div>
+        <div class="pricing-price" id="price-display" data-annual="12,99 €" data-monthly="2,99 €">12,99 €</div>
+        <div class="pricing-price-sub" id="price-sub" data-annual="par an · soit 1,08 €/mois" data-monthly="par mois">par an · soit 1,08 €/mois</div>
         <div class="pricing-divider"></div>
         <div class="pricing-feature"><span class="check">✓</span><span class="pricing-feature-text">Tout du plan gratuit</span></div>
         <div class="pricing-feature"><span class="star">⭐</span><span class="pricing-feature-text"><strong>Statistiques de saison complètes</strong></span></div>
         <div class="pricing-feature"><span class="star">⭐</span><span class="pricing-feature-text"><strong>Historique de tous vos matchs</strong></span></div>
         <div class="pricing-feature"><span class="star">⭐</span><span class="pricing-feature-text">Tendances par joueur &amp; assiduité</span></div>
-        <a href="/start?plan=annual" class="pricing-cta pro" id="pro-cta" data-umami-event="landing_pricing_pro_cta" data-umami-event-plan="annual">Passer Pro : 12,99 €/an →</a>
+        <a href="/start?plan=annual" class="pricing-cta pro" id="pro-cta" data-umami-event="landing_pricing_pro_cta" data-umami-event-plan="annual" data-annual="Passer Pro : 12,99 €/an →" data-monthly="Passer Pro : 2,99 €/mois →">Passer Pro : 12,99 €/an →</a>
         <div style="text-align:center;font-size:11px;color:var(--label-tertiary);margin-top:10px">Résiliation en un clic · Paiement sécurisé Stripe · TVA non applicable</div>
       </div>
 
@@ -1202,10 +1225,10 @@
   </div>
 </section>
 
-<script src="landing.js?v=4" defer></script>
+<script src="/landing.js?v=5" defer></script>
 
 <!-- PWA INSTALL -->
-<section id="installer">
+<section id="installer" data-section="install">
   <div class="section-inner">
     <div class="section-tag">Installer l'app</div>
     <h2 class="section-title">Sur votre écran d'accueil en 30 secondes.</h2>
@@ -1316,7 +1339,7 @@
 </section>
 
 <!-- FOOTER -->
-<footer>
+<footer data-section="footer">
   <div class="footer-logo">
     <span style="color:var(--pepite)">⭐</span> Pépite <span style="color:var(--label-tertiary)">&</span> <span style="color:var(--citron)">🍋</span> Citron
   </div>
@@ -1336,6 +1359,7 @@
     <a href="https://www.instagram.com/pepiteetcitron/" target="_blank" rel="noopener" data-umami-event="landing_footer_link" data-umami-event-link="instagram">Instagram</a>
     <a href="mailto:feedback@pepite-citron.com" data-umami-event="landing_feedback_clicked">💬 Feedback</a>
   </div>
+  <p class="footer-langs"><span aria-hidden="true">🌐</span> <a href="/" hreflang="fr" lang="fr" data-lang="fr" aria-current="page">Français</a> <a href="/en" hreflang="en" lang="en" data-lang="en" data-umami-event="lang_switch" data-umami-event-to="en">English</a> <a href="/nl" hreflang="nl" lang="nl" data-lang="nl" data-umami-event="lang_switch" data-umami-event-to="nl">Nederlands</a></p>
   <div class="footer-copy">© 2026 Pépite &amp; Citron · Fait avec ⭐ et 🍋</div>
 </footer>
 

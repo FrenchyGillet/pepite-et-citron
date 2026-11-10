@@ -19,6 +19,8 @@ export const en: Messages = {
     terms: 'Terms',
     contact: 'Contact',
     language: 'Language',
+    privacyUrl: '/en/privacy',
+    termsUrl: '/en/terms',
     votes: { one: '{count} vote', other: '{count} votes' },
   },
 
@@ -449,6 +451,7 @@ export const en: Messages = {
     citronHint: 'Who struggled tonight?',
     absents: 'Absent · {count}',
     back: 'Back',
+    next: 'Next →',
     summary: 'Summary',
     commentAria: 'Comment on {name} (optional)',
     commentPlaceholder: 'Why {name}? (optional)',

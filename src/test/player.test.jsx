@@ -41,33 +41,38 @@ describe("Player voting flow", () => {
     expect(screen.getByText("Qui es-tu ?")).toBeInTheDocument();
   });
 
-  it("votes in 5 taps: one per choice, comments on the recap, then the verdict", async () => {
+  it("each step: tap a name, optionally comment it right there, then Suivant", async () => {
     renderApp();
     const user = userEvent.setup();
+    const next = () => user.click(screen.getByRole("button", { name: "Suivant →" }));
 
-    // Tap 1 — identity: tapping your name starts the vote (no "Continuer")
+    // Identity: tapping your name starts the vote (no "Continuer")
     await screen.findByText("Qui es-tu ?");
     await user.click(screen.getByRole("button", { name: "Antoine" }));
 
-    // Tap 2 — La Pépite: tapping a player moves on (no "Suivant")
+    // La Pépite: a tap selects without leaving the step, and offers a comment
     expect(await screen.findByText("La Pépite")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Suivant →" })).toBeNull();
     await user.click(screen.getByRole("button", { name: "Baptiste" }));
+    expect(screen.getByText("La Pépite")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Baptiste", pressed: true })).toBeInTheDocument();
+    await user.type(screen.getByRole("textbox", { name: "Commentaire sur Baptiste (optionnel)" }), "Énorme");
+    await next();
 
-    // Tap 3 — 2ème meilleur
+    // 2ème meilleur: no comment, straight on
     expect(await screen.findByText("2ème meilleur")).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Clément" }));
+    await next();
 
-    // Tap 4 — Le Citron
+    // Le Citron
     expect(await screen.findByText("Le Citron")).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "David" }));
+    await next();
 
-    // Recap: optional comments live here, one per choice
+    // Recap: the comment written on the way is there, still editable
     expect(await screen.findByText("Récapitulatif")).toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: "Suivant" })).toBeNull();
-    await user.type(screen.getByRole("textbox", { name: "Commentaire sur Baptiste (optionnel)" }), "Énorme");
+    expect(screen.getByRole("textbox", { name: "Commentaire sur Baptiste (optionnel)" })).toHaveValue("Énorme");
     expect(screen.getByText("Ton vote reste anonyme pour l'équipe.")).toBeInTheDocument();
-
-    // Tap 5 — verdict
     await user.click(screen.getByRole("button", { name: "Rendre mon verdict →" }));
 
     // Stays on the confirmation (results are hidden until the reveal)
@@ -82,15 +87,32 @@ describe("Player voting flow", () => {
     expect(antoineVote.lemon_id).toBe(4); // David
   });
 
-  it("going back and re-picking a pépite drops a now-duplicate later pick", async () => {
+  it("a comment stays with its player: changing the pick clears it", async () => {
     renderApp();
     const user = userEvent.setup();
 
     await screen.findByText("Qui es-tu ?");
     await user.click(screen.getByRole("button", { name: "Antoine" }));
+    await user.click(await screen.findByRole("button", { name: "Baptiste" }));
+    await user.type(screen.getByRole("textbox", { name: "Commentaire sur Baptiste (optionnel)" }), "Énorme");
+
+    // Second thoughts on the same step: the comment was about Baptiste
+    await user.click(screen.getByRole("button", { name: "Clément" }));
+    expect(screen.getByRole("textbox", { name: "Commentaire sur Clément (optionnel)" })).toHaveValue("");
+  });
+
+  it("going back and re-picking a pépite drops a now-duplicate later pick", async () => {
+    renderApp();
+    const user = userEvent.setup();
+    const next = () => user.click(screen.getByRole("button", { name: "Suivant →" }));
+
+    await screen.findByText("Qui es-tu ?");
+    await user.click(screen.getByRole("button", { name: "Antoine" }));
     await user.click(await screen.findByRole("button", { name: "Baptiste" }));   // pépite 1
+    await next();
     await screen.findByText("2ème meilleur");
     await user.click(screen.getByRole("button", { name: "Clément" }));          // pépite 2
+    await next();
     await screen.findByText("Le Citron");
 
     // Back twice, then make Clément the first pépite
@@ -99,6 +121,7 @@ describe("Player voting flow", () => {
     await user.click(screen.getByRole("button", { name: "Retour" }));
     await screen.findByText("La Pépite");
     await user.click(screen.getByRole("button", { name: "Clément" }));
+    await next();
 
     // Clément can't also be 2nd: the old pick is cleared, nothing pre-selected
     await screen.findByText("2ème meilleur");

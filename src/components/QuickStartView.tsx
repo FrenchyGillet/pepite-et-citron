@@ -346,9 +346,9 @@ export function QuickStartView({ onSignOut }: QuickStartViewProps = {}) {
         {!signedIn && (
         <p style={{ marginTop: 12, fontSize: 11, color: 'var(--label4)', lineHeight: 1.6 }}>
           {t('quickStart.acceptPrefix')}{' '}
-          <a href="/terms.html" target="_blank" rel="noopener noreferrer" style={{ color: 'var(--label3)', textDecoration: 'underline' }}>{t('common.terms')}</a>
+          <a href={t('common.termsUrl')} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--label3)', textDecoration: 'underline' }}>{t('common.terms')}</a>
           {' '}{t('quickStart.acceptAnd')}{' '}
-          <a href="/privacy.html" target="_blank" rel="noopener noreferrer" style={{ color: 'var(--label3)', textDecoration: 'underline' }}>{t('quickStart.privacyPolicy')}</a>.
+          <a href={t('common.privacyUrl')} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--label3)', textDecoration: 'underline' }}>{t('quickStart.privacyPolicy')}</a>.
         </p>
         )}
         <LanguagePicker compact />
