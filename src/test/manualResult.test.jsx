@@ -55,7 +55,8 @@ describe("Saison — résultat saisi à la main", () => {
     // Assiduité: the top 3, the 4th folded; the mascots comment the tie.
     await user.click(screen.getByRole("button", { name: "📋 Assiduité" }));
     expect(screen.getAllByText("1/1")).toHaveLength(3);
-    expect(screen.getByText("4 joueurs à égalité. L'assiduité, ça ne départage personne.")).toBeInTheDocument();
+    // One of the attendanceTie lines (src/i18n/mascots.ts), all with the count.
+    expect(screen.getByText(/^4 (joueurs à égalité|ex aequo|à égalité)\./)).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Voir 1 autre joueur" }));
     expect(screen.getAllByText("1/1")).toHaveLength(4);
   });

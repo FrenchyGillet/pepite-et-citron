@@ -3,7 +3,9 @@ import { useNavigate } from 'react-router-dom';
 import { formatDate, PEPITE_POINTS } from '@/utils';
 import { computeResultsSummary } from '@/utils/scoring';
 import { localDateKey } from '@/utils/schedule';
-import { waitingMascot } from '@/utils/mascots';
+import { pickMascotLine, revealMascot, waitingMascot } from '@/utils/mascots';
+import { MASCOT_LINES } from '@/i18n/mascots';
+import { holderNames } from './SeasonAwards';
 import { Scoreboard } from './Scoreboard';
 import { PodiumView } from './PodiumView';
 import { EmptyState } from './EmptyState';
@@ -15,7 +17,7 @@ import { useRevealNext, useCloseMatch, useUpdateMatch } from '@/hooks/mutations'
 import { track, EVENTS } from '@/utils/analytics';
 import { sharedLandingUrl } from '@/utils/share';
 import type { Player, Match, EntityId } from '@/types';
-import { t } from '@/i18n';
+import { getLang, t } from '@/i18n';
 import { RevealAnnouncements } from './RevealAnnouncements';
 
 // Organisers only, with the schedule form: kept out of the main bundle.
@@ -415,6 +417,14 @@ export function ResultsView({ players, match, isAdmin, isDark, orgId, isPro, onU
 
   const stepLabel = (n: number) => totalTies > 1 ? `${n}/${totalTies}` : undefined;
 
+  // The mascots' line on the night: on the page and on the shared story image.
+  const revealCue = revealMascot({
+    votes, pepiteRanked, lemonWinners, bestTied,
+    nameOf: id => holderNames([String(id)], players),
+  });
+  const revealSeed = `reveal:${match.id}`;
+  const revealLine = revealCue ? pickMascotLine(MASCOT_LINES[getLang()], revealCue.situations, revealSeed, revealCue.vars) : null;
+
   return (
     <div className="content">
       <MatchHeader match={match} badge={<span className="badge badge-closed">{t('results.closed')}</span>} />
@@ -452,12 +462,18 @@ export function ResultsView({ players, match, isAdmin, isDark, orgId, isPro, onU
       ) : (
         <div style={{ animation: 'podiumReveal 0.5s cubic-bezier(0.22, 1, 0.36, 1)' }}>
           <PodiumView votes={votes} present={present} allPlayers={players} tiebreakers={tiebreakers} pepiteCount={pepiteCount} />
+          {revealCue && (
+            <div style={{ display: 'flex', justifyContent: 'center', marginTop: 16 }}>
+              <MascotTalk situations={revealCue.situations} vars={revealCue.vars} seed={revealSeed} />
+            </div>
+          )}
           {pepiteRanked.length > 0 && (
             <div style={{ marginTop: 16, display: 'flex', flexDirection: 'column', gap: 10 }}>
               <SharePodiumButton
                 match={match}
                 pepiteRanked={pepiteRanked}
                 lemonRanked={lemonRanked}
+                mascotLine={revealLine}
                 isDark={isDark !== false}
               />
               <ShareResultsButton match={match} pepiteRanked={pepiteRanked} lemonWinners={lemonWinners} />

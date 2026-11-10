@@ -89,6 +89,7 @@ L'app utilise **React Router v7** avec `BrowserRouter` (dans `main.tsx`) :
   - Néerlandais : tutoiement (« je »), « ploeg » pour l'équipe, « kern » pour l'effectif ; à faire relire par un Flamand
   - La marque reste française partout : « Pépite & Citron », une pépite, un citron
   - Langue : choix enregistré sur l'appareil (Profil, écran de vote, /login, /start), sinon celle du navigateur, sinon anglais
+  - Seul le français est dans le bundle principal : l'anglais et le néerlandais (`en.ts`, `nl.ts`, `mascots.en.ts`, `mascots.nl.ts`) sont chargés à la demande par `loadLanguage` (avant le premier rendu dans `main.tsx`, ou par `setLang`)
   - Les messages d'erreur de la base restent en français : `humanizeError` les traduit (`errors.server`) ; un message déjà écrit pour l'utilisateur côté app est une `UserError`
   - Pas encore traduits : emails et notifications envoyés par `api/`, pages statiques de `public/`
 - **Commits** : anglais, format Conventional Commits (`feat:`, `fix:`, `chore:`, etc.)
@@ -148,6 +149,7 @@ Les contrastes texte/fond sont vérifiés (WCAG AA) par `src/utils/contrast.test
 
 - Les migrations sont appliquées **à la main** dans le SQL Editor de Supabase, entourées de `begin; … commit;`. L'éditeur n'affiche que le résultat de la dernière instruction : fournir des requêtes de vérification en une seule instruction.
 - Avant d'écrire une migration : `git fetch` et prendre le numéro suivant libre dans `supabase/migrations/` sur `origin/main` (d'autres sessions en écrivent aussi).
+- Chaque migration (depuis 20260027) se termine par `insert into schema_migrations (version) values ('YYYYMMNN') on conflict (version) do nothing;` (vérifié par `src/test/migrations.test.ts`). `npm run db:missing` affiche une requête à coller dans le SQL Editor : elle liste les migrations du dépôt absentes de la base.
 - Fonctions `SECURITY DEFINER` : vérifier l'appelant (`is_org_admin` / `is_org_member` / `auth.uid()`), `set search_path = public, pg_temp`, `revoke … from public, anon`.
 - Si une migration retire un accès dont le front déployé dépend : déployer d'abord un front compatible, puis la migration.
 

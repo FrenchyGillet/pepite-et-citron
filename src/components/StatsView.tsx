@@ -17,6 +17,8 @@ import { SeasonAwards, holderNames } from '@/components/SeasonAwards';
 import { matchResults, seasonTitles } from '@/utils/awards';
 import { rankingMascot, type RankingTab } from '@/utils/mascots';
 import { MascotTalk } from './MascotTalk';
+import { PlayerDuel } from './PlayerDuel';
+import { csvFileName, seasonCsv } from '@/utils/csv';
 
 interface StatsViewProps {
   players: Player[];
@@ -92,6 +94,21 @@ const filterSelect: CSSProperties = {
   width: '100%', background: 'var(--bg2)', color: 'var(--label)', border: 'none',
   borderRadius: 'var(--radius-sm)', padding: '10px 12px', fontSize: 15, outline: 'none',
 };
+/** Pro export: shared as a file where the device allows it (phone), downloaded otherwise. */
+async function exportFile(text: string, name: string): Promise<void> {
+  const file = new File([text], name, { type: 'text/csv' });
+  if (navigator.canShare?.({ files: [file] })) {
+    try { await navigator.share({ files: [file] }); } catch { /* cancelled */ }
+    return;
+  }
+  const url = URL.createObjectURL(file);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = name;
+  link.click();
+  setTimeout(() => URL.revokeObjectURL(url), 5000);
+}
+
 /** Rankings and the match list show this many before "Voir les … autres". */
 const TOP = 3;
 const RECENT_MATCHES = 5;
@@ -155,12 +172,14 @@ export function StatsView({ players, activeMatch, isAdmin, canRunMatches = isAdm
   const filteredMatchIds = new Set(filteredMatches.map(m => m.id));
   const filteredVotes = allVotes.filter(v => filteredMatchIds.has(v.match_id));
 
-  const { rankedBest, rankedLemon, rankedAttendance, maxPts, maxLemonPts, totalMatches } = computeSeasonStats(players, filteredMatches, allVotes, allTeams);
+  const { allStats, rankedBest, rankedLemon, rankedAttendance, maxPts, maxLemonPts, totalMatches } = computeSeasonStats(players, filteredMatches, allVotes, allTeams);
   // Season titles (revealed matches only): the palmarès and the mascots.
   const results = matchResults(players, filteredMatches, allVotes);
   const season  = seasonTitles(results);
   const tabMascot = rankingMascot(rankingTab, season, id => holderNames([id], players));
   const lastResultId = results[results.length - 1]?.matchId;
+  // Ids of the Pépite ranking (PlayerStat has names only), for the duel.
+  const rankedBestIds = rankedBest.map(s => players.find(p => p.name === s.name)?.id).filter(id => id != null).map(String);
   const visibleMatches = showAllMatches ? filteredMatches : filteredMatches.slice(0, RECENT_MATCHES);
 
   const handleDelete = async (match: Match) => {
@@ -218,10 +237,26 @@ export function StatsView({ players, activeMatch, isAdmin, canRunMatches = isAdm
               </label>
             )}
           </div>
-          <p style={{ fontSize: 11, color: 'var(--label4)', marginTop: 8 }}>
-            {t('stats.matches', { count: filteredMatches.length })}
-            {filteredVotes.length > 0 && ` · ${t('common.votes', { count: filteredVotes.length })}`}
-          </p>
+          <div className="flex-between" style={{ marginTop: 8 }}>
+            <p style={{ fontSize: 11, color: 'var(--label4)', margin: 0 }}>
+              {t('stats.matches', { count: filteredMatches.length })}
+              {filteredVotes.length > 0 && ` · ${t('common.votes', { count: filteredVotes.length })}`}
+            </p>
+            {canRunMatches && allStats.length > 0 && (
+              <button className="tag tag-dim" aria-label={t('stats.exportCsvLabel')} title={t('stats.exportCsvLabel')}
+                onClick={() => {
+                  track(EVENTS.STATS_EXPORTED, { players: allStats.length });
+                  const seasonName = seasonNames[activeSeason] || t('stats.season', { n: activeSeason });
+                  void exportFile(seasonCsv(allStats, {
+                    player: t('stats.csv.player'), played: t('stats.csv.played'), absences: t('stats.csv.absences'),
+                    pepitePts: t('stats.csv.pepitePts'), pepites: t('stats.csv.pepites'),
+                    citronPts: t('stats.csv.citronPts'), citrons: t('stats.csv.citrons'),
+                  }), csvFileName('pepite-citron', seasonName));
+                }}>
+                {t('stats.exportCsv')}
+              </button>
+            )}
+          </div>
         </div>
       )}
 
@@ -348,6 +383,9 @@ export function StatsView({ players, activeMatch, isAdmin, canRunMatches = isAdm
                 seed={`${rankingTab}:${lastResultId}`} />
             </div>
           )}
+
+          <PlayerDuel key={`${activeSeason}:${selectedTeamId}`} players={players} results={results}
+            defaultIds={[rankedBestIds[0], rankedBestIds[1]]} />
 
           <div className="flex-between mb-8">
             <p className="section-label">{t('stats.matchList')}</p>

@@ -29,3 +29,28 @@ describe("Saison — loading failures", () => {
     expect(spy).toHaveBeenCalledTimes(2);
   });
 });
+
+describe("Saison — export CSV (Pro)", () => {
+  it("downloads the season rankings as a spreadsheet", async () => {
+    const { __demoAPI } = await import("@/App.jsx");
+    await __demoAPI.createManualMatch("demo-org", {
+      label: "vs Dragons", presentIds: [1, 2, 3, 4], teamId: null, season: 1, pepiteCount: 2,
+      playedAt: new Date().toISOString(),
+      result: { best_ids: [2], lemon_id: 4, best_pts: { 2: 5 }, lemon_pts: { 4: 3 } },
+    });
+    let exported;
+    URL.createObjectURL = vi.fn((file) => { exported = file; return "blob:csv"; });
+    URL.revokeObjectURL = vi.fn();
+    const click = vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(() => {});
+
+    renderApp({ initialPath: "/stats" });
+    await userEvent.setup().click(await screen.findByRole("button", { name: "Exporter le classement de la saison (CSV)" }));
+
+    expect(click).toHaveBeenCalled();
+    expect(exported.name).toBe("pepite-citron-saison-1.csv");
+    const lines = (await exported.text()).replace(/^\uFEFF/, "").split("\r\n");
+    expect(lines[0]).toBe("Joueur;Matchs joués;Absences;Points pépite;Pépites;Points citron;Citrons");
+    expect(lines).toContain("Baptiste;1;0;5;1;0;0");
+    expect(lines).toContain("David;1;0;0;0;3;1");
+  });
+});

@@ -12,7 +12,7 @@ export function LanguagePicker({ compact = false }: { compact?: boolean }) {
   const pick = (next: typeof lang) => {
     if (next === lang) return;
     track(EVENTS.LANGUAGE_CHANGED, { lang: next });
-    setLang(next);
+    void setLang(next);
   };
 
   if (compact) {

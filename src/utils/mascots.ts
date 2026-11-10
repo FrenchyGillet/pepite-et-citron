@@ -1,4 +1,5 @@
 import type { Records, SeasonTitles, Streak } from '@/utils/awards';
+import type { EntityId, Vote } from '@/types';
 
 /**
  * Pépite (the star) and Citron (the lemon) comment on the screens with a
@@ -43,6 +44,12 @@ export type MascotSituation =
   | 'attendanceLeader'   // Saison → Assiduité tab, a single most present player
   | 'attendancePerfect'  // … who played every match
   | 'attendanceTie'   // … several players share the top
+  | 'revealPepite' | 'revealCitron' // podium revealed: the night's Pépite / Citron
+  | 'revealUnanimous' // … every ballot had the same Pépite
+  | 'revealTie'       // … a tie at the top (settled by the organiser)
+  | 'revealClose'     // … one point between the first two
+  | 'revealMixed'     // … the Pépite also got citron votes
+  | 'revealFew'       // … a handful of ballots
   | 'startIntro'      // /start, nothing typed yet
   | 'startFew'        // /start, not enough players to vote
   | 'startReady'      // /start, enough players
@@ -143,6 +150,39 @@ export function waitingMascot(count: number, present: number): MascotCue {
   const situation: MascotSituation =
     count === 0 ? 'waitingNone' : present > 0 && count >= present ? 'waitingAll' : 'waiting';
   return { situations: [situation], vars: { count, present } };
+}
+
+/**
+ * Podium revealed (Résultats, and the shared story image): the most telling
+ * fact of the night, else a line on the Pépite or the Citron.
+ */
+export function revealMascot(r: {
+  votes: Vote[];
+  /** Tiebreaker-aware, best first. */
+  pepiteRanked: Array<{ id: EntityId; pts: number }>;
+  lemonWinners: Array<{ id: EntityId }>;
+  bestTied: boolean;
+  nameOf: (id: EntityId) => string;
+}): MascotCue | null {
+  const [first, second] = r.pepiteRanked;
+  if (!first || first.pts === 0) return null;
+  const vars = {
+    pepite: r.nameOf(first.id),
+    citron: r.lemonWinners.length === 1 ? r.nameOf(r.lemonWinners[0].id) : '',
+    n: r.votes.length,
+  };
+  const ballots = r.votes.length;
+  const situation: MascotSituation | null =
+    ballots >= 3 && r.votes.every(v => v.best1_id === first.id) ? 'revealUnanimous'
+    : r.bestTied ? 'revealTie'
+    : second && first.pts - second.pts === 1 ? 'revealClose'
+    : r.votes.some(v => v.lemon_id === first.id) ? 'revealMixed'
+    // Two or three: the lines say « {n} votes », plural in every language.
+    : ballots >= 2 && ballots <= 3 ? 'revealFew'
+    : null;
+  if (situation) return { situations: [situation], vars };
+  // A tie for the citron has no single name to put in the lines.
+  return { situations: vars.citron ? ['revealPepite', 'revealCitron'] : ['revealPepite'], vars };
 }
 
 /** A list this long gets its own line on /start. */

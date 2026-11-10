@@ -8,7 +8,7 @@ import { createSyncStoragePersister } from '@tanstack/query-sync-storage-persist
 import * as Sentry from '@sentry/react';
 import App from '@/App';
 import { trackAppLaunch } from '@/utils/analytics';
-import { t } from '@/i18n';
+import { getLang, loadLanguage, t } from '@/i18n';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -117,7 +117,10 @@ if (IS_PROD && !SENTRY_DSN) {
 
 trackAppLaunch();
 
-createRoot(document.getElementById('root')!).render(
+// English and Dutch are separate chunks (precached by the service worker):
+// load the device's language before the first render, so the app does not
+// flash in French. If it fails, the app starts in French.
+const renderApp = () => createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <Sentry.ErrorBoundary
       fallback={() => (
@@ -160,3 +163,5 @@ createRoot(document.getElementById('root')!).render(
     </Sentry.ErrorBoundary>
   </StrictMode>
 );
+
+void loadLanguage(getLang()).catch((err: unknown) => console.error('i18n: could not load', getLang(), err)).finally(renderApp);

@@ -64,6 +64,9 @@ export function ActiveMatchPanel({ activeMatch, players, currentOrg, notify, con
   const hasPlayerVoted = (p: Player) => votedPlayerIds.has(p.id) || voterNameSet.has(p.name);
   const votedPlayers   = presentPlayers.filter(hasPlayerVoted);
   const pendingPlayers = presentPlayers.filter(p => !hasPlayerVoted(p));
+  // « Ce n'était pas moi » (20260028): the player says someone voted in their name.
+  const disputedIds    = new Set(matchVotes.filter(v => v.disputed_at && v.voter_player_id != null).map(v => v.voter_player_id));
+  const disputedPlayers = votedPlayers.filter(p => disputedIds.has(p.id));
 
   const voteDeadline = phase === 'voting' ? activeMatch.vote_deadline ?? null : null;
   const now = useNow(30_000, !!voteDeadline);
@@ -235,6 +238,23 @@ export function ActiveMatchPanel({ activeMatch, players, currentOrg, notify, con
             {startCountingMutation.isPending ? t('activeMatch.preparing') : t('activeMatch.startCounting', { count: voteCount })}
           </button>
           {/* ── Voter tracking toggle ───────────────────────── */}
+          {canManageVoters && disputedPlayers.length > 0 && (
+            <div role="alert" style={{
+              padding: '10px 12px', borderRadius: 12, fontSize: 13, lineHeight: 1.45,
+              background: 'var(--bg3)', border: '1px solid var(--red)', color: 'var(--label)',
+            }}>
+              {t('activeMatch.disputed', { count: disputedPlayers.length, names: disputedPlayers.map(p => p.name).join(', ') })}
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 8 }}>
+                {disputedPlayers.map(p => (
+                  <button key={String(p.id)} className="btn btn-secondary"
+                    style={{ fontSize: 13, padding: '6px 12px', minHeight: 0 }}
+                    onClick={() => void cancelVote(p)}>
+                    {t('activeMatch.cancelVoteOf', { name: p.name })}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
           {canManageVoters && presentPlayers.length > 0 && (
             <div>
               <button
@@ -278,7 +298,7 @@ export function ActiveMatchPanel({ activeMatch, players, currentOrg, notify, con
                         color: hasVoted ? 'var(--green)' : 'var(--label2)',
                         border: `1px solid ${hasVoted ? 'rgba(48,209,88,0.3)' : 'transparent'}`,
                       }}>
-                        {hasVoted ? '✓' : '⏳'} {p.name}
+                        {disputedIds.has(p.id) ? '⚠️' : hasVoted ? '✓' : '⏳'} {p.name}
                         {hasVoted && (
                           <button
                             onClick={() => void cancelVote(p)}

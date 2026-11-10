@@ -339,6 +339,17 @@ export const demoAPI: API = {
     demoState.votes = demoState.votes.filter(v => v.id !== voteId);
     return Promise.resolve();
   },
+  reportVoteDispute: (matchId, voterPlayerId) => {
+    // Mirrors report_vote_dispute (20260028): voting phase only, first date kept.
+    const match = demoState.matches.find(m => m.id === matchId);
+    if (!match || (match.phase ?? 'voting') !== 'voting' || !match.is_open) {
+      return Promise.reject(new Error("Le vote est clôturé pour ce match."));
+    }
+    for (const v of demoState.votes) {
+      if (v.match_id === matchId && v.voter_player_id === voterPlayerId) v.disputed_at ??= new Date().toISOString();
+    }
+    return Promise.resolve();
+  },
   getTeams:         () => Promise.resolve([...demoState.teams]),
   createTeam:       (_orgId, name, playerIds) => {
     const t: Team = { id: demoState.nextId++, name, player_ids: playerIds };
@@ -829,6 +840,15 @@ export const realAPI: API = {
     const { error } = await supabase.rpc("delete_vote", { p_vote_id: voteId });
     if (error) throw new Error(error.message);
   },
+  // Anyone who can vote on the match (20260028). Only sets a flag: an UPDATE
+  // that keeps the first date, safe to retry.
+  reportVoteDispute: (matchId, voterPlayerId, orgSlug) =>
+    withRetry(async () => {
+      const { error } = await supabase.rpc("report_vote_dispute", {
+        p_match_id: matchId, p_voter_player_id: voterPlayerId, p_org_slug: orgSlug || null,
+      });
+      if (error) throw new Error(error.message);
+    }),
 
   // ── Équipes ───────────────────────────────────────────────────────────────
   getTeams: (orgId) =>

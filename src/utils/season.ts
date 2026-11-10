@@ -18,6 +18,8 @@ export interface PlayerStat {
 }
 
 export interface SeasonStats {
+  /** Every player with a match, an absence or a point, by name (CSV export). */
+  allStats:          PlayerStat[];
   rankedBest:        PlayerStat[];
   rankedLemon:       PlayerStat[];
   rankedAttendance:  PlayerStat[];
@@ -130,5 +132,8 @@ export function computeSeasonStats(
   const maxPts      = rankedBest[0]?.bestPts   || 1;
   const maxLemonPts = rankedLemon[0]?.lemonPts || 1;
 
-  return { rankedBest, rankedLemon, rankedAttendance, maxPts, maxLemonPts, totalMatches: sortedMatches.length };
+  return {
+    allStats: [...allStats].sort((a, b) => a.name.localeCompare(b.name)),
+    rankedBest, rankedLemon, rankedAttendance, maxPts, maxLemonPts, totalMatches: sortedMatches.length,
+  };
 }
