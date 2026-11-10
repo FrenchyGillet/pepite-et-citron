@@ -130,6 +130,8 @@ export const nl: Messages = {
   },
 
   quickStart: {
+    backToSite: '← Terug naar de site',
+    siteLabel: 'Pépite & Citron, terug naar de site',
     confirmEmail: 'Account aangemaakt: bevestig je e-mailadres en meld je daarna aan om de stemming te openen.',
     teamNameMissing: 'Geef je ploeg een naam.',
     teamNameTooLong: 'Te lang (max. 60 tekens).',

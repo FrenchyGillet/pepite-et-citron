@@ -54,6 +54,7 @@ export const EVENTS = {
   VOTE_ALREADY_CAST:          'vote_already_cast',
   VOTE_DISPUTED:              'vote_disputed',
   STATS_EXPORTED:             'stats_exported',
+  START_BACK_TO_SITE:         'start_back_to_site',
   PLAYERS_COMPARED:           'players_compared',
   VOTE_COMPLETED:             'vote_completed',
   VOTE_FAILED:                'vote_failed',

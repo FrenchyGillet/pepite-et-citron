@@ -128,6 +128,8 @@ export const en: Messages = {
   },
 
   quickStart: {
+    backToSite: '← Back to the site',
+    siteLabel: 'Pépite & Citron, back to the site',
     confirmEmail: 'Account created: confirm your email address, then sign in to open the vote.',
     teamNameMissing: 'Give your team a name.',
     teamNameTooLong: 'Too long (60 characters max).',
