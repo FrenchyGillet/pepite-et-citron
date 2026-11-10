@@ -1,7 +1,7 @@
 import { existsSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { MASCOT_LINES } from '@/i18n/mascots';
-import { hashSeed, MASCOT_MOODS, palmaresMascot, pickMascotLine, rankingMascot, startMascot, waitingMascot, type MascotCatalogue } from './mascots';
+import { hashSeed, MASCOT_MOODS, palmaresMascot, pickMascotLine, rankingMascot, revealMascot, startMascot, waitingMascot, type MascotCatalogue } from './mascots';
 
 const catalogue: MascotCatalogue = {
   upcoming: [[{ who: 'citron', mood: 'impassible', text: 'Le vote ouvre à {time}.' }]],
@@ -14,6 +14,7 @@ const catalogue: MascotCatalogue = {
   seasonCitron: [[{ who: 'citron', mood: 'outre', text: 'C {citron}' }]],
   pepiteStreak: [], citronStreak: [], seasonRecord: [],
   attendanceLeader: [], attendancePerfect: [], attendanceTie: [],
+  revealPepite: [], revealCitron: [], revealUnanimous: [], revealTie: [], revealClose: [], revealMixed: [], revealFew: [],
   startIntro: [], startFew: [], startReady: [], startMany: [], startAccount: [],
   startStepAccount: [], startStepTeam: [], startStepPlayers: [], startStepMatch: [],
 };
@@ -68,6 +69,9 @@ const VARS: Record<keyof MascotCatalogue, string[]> = {
   pepiteStreak: ['pepite', 'pepiteRun'], citronStreak: ['citron', 'citronRun'], seasonRecord: [],
   seasonPepite: ['pepite', 'pepitePts'], seasonCitron: ['citron', 'citronPts'],
   attendanceLeader: ['name', 'played', 'total'], attendancePerfect: ['name', 'played', 'total'], attendanceTie: ['count'],
+  revealPepite: ['pepite', 'citron', 'n'], revealCitron: ['pepite', 'citron', 'n'],
+  revealUnanimous: ['pepite', 'citron', 'n'], revealTie: ['pepite', 'citron', 'n'],
+  revealClose: ['pepite', 'citron', 'n'], revealMixed: ['pepite', 'citron', 'n'], revealFew: ['pepite', 'citron', 'n'],
   startIntro: [], startFew: ['count', 'pepites'], startReady: ['count', 'pepites'], startMany: ['count', 'pepites'],
   startAccount: [], startStepAccount: [], startStepTeam: [], startStepPlayers: [], startStepMatch: [],
 };
@@ -154,5 +158,31 @@ describe('waitingMascot', () => {
 
   it('never claims a full box without a roll call', () => {
     expect(waitingMascot(3, 0).situations).toEqual(['waiting']);
+  });
+});
+
+describe('revealMascot', () => {
+  const nameOf = (id: unknown) => `P${String(id)}`;
+  const ballot = (best1_id: number, best2_id: number, lemon_id: number) =>
+    ({ match_id: 1, voter_name: 'x', best1_id, best2_id, lemon_id });
+  const at = (votes: ReturnType<typeof ballot>[], pts: number[], o = {}) => revealMascot({
+    votes, pepiteRanked: pts.map((p, i) => ({ id: i + 1, pts: p })),
+    lemonWinners: [{ id: 4 }], bestTied: false, nameOf, ...o,
+  });
+
+  it('picks the most telling fact of the night', () => {
+    const four = [ballot(1, 2, 4), ballot(1, 3, 4), ballot(1, 2, 3), ballot(1, 3, 4)];
+    expect(at(four, [8, 3])?.situations).toEqual(['revealUnanimous']);
+    expect(at([...four.slice(0, 3), ballot(2, 1, 4)], [6, 6], { bestTied: true })?.situations).toEqual(['revealTie']);
+    expect(at([...four.slice(0, 3), ballot(2, 1, 4)], [6, 5])?.situations).toEqual(['revealClose']);
+    expect(at([...four.slice(0, 3), ballot(2, 3, 1)], [6, 3])?.situations).toEqual(['revealMixed']);
+    expect(at([ballot(1, 2, 4), ballot(2, 1, 4)], [3, 1])?.situations).toEqual(['revealFew']);
+  });
+
+  it('otherwise talks about the Pépite or the Citron, with their names', () => {
+    const votes = [ballot(1, 2, 4), ballot(2, 1, 4), ballot(1, 3, 4), ballot(3, 1, 4)];
+    expect(at(votes, [7, 3])).toEqual({ situations: ['revealPepite', 'revealCitron'], vars: { pepite: 'P1', citron: 'P4', n: 4 } });
+    expect(at(votes, [7, 3], { lemonWinners: [{ id: 3 }, { id: 4 }] })?.situations).toEqual(['revealPepite']);
+    expect(at([], [0])).toBeNull();
   });
 });

@@ -175,6 +175,43 @@ const fr: MascotCatalogue = {
     [P('bienveillante', "{count} ex aequo. Il faudra une plus grande photo.")],
     [C('sourire-en-coin', "{count} à égalité. Pour départager, je propose un tirage au citron.")],
   ],
+  // Podium revealed: one line, the same for the whole team (seed: match id).
+  revealPepite: [
+    [P('emerveillee', "{pepite}. On ne commente pas, on contemple.")],
+    [P('ravie', "{pepite} est une mine d'or. {citron} fait grise mine.")],
+    [C('outre', "Je n'ai rien trouvé contre {pepite}. Pourtant, j'ai cherché.")],
+    [P('fiere', "{pepite}, pépite du soir. Je prête ma couronne. Pour une nuit.")],
+    [C('impassible', "{pepite} devant tout le monde. Je dois l'admettre. Ça me coûte.")],
+  ],
+  revealCitron: [
+    [C('emu', "Plus de jus en deuxième mi-temps, visiblement.")],
+    [C('emu', "Avantage du titre pour {citron} : plus aucun chat ne l'approchera.")],
+    [C('impassible', "{citron} a tourné dans Pulpe Fiction, visiblement.")],
+    [C('sourire-en-coin', "Je ne suis pas méchant. Je suis acide, c'est différent.")],
+    [P('bienveillante', "{citron}, citron du soir. Ce n'est qu'un titre. Il change de mains chaque semaine.")],
+    [C('triomphant', "{citron}. Bienvenue dans la famille. On a des t-shirts.")],
+  ],
+  revealUnanimous: [
+    [P('emerveillee', "Unanimité. Même dans ce pays, c'est donc possible.")],
+    [C('soupconneux', "Un vote aussi propre, ça sent le produit ménager.")],
+  ],
+  revealTie: [
+    [C('triomphant', "Égalité. La plus belle égalité de l'histoire. Tout le monde le dit.")],
+    [P('bienveillante', "Égalité en tête. L'or se partage mal, alors on a tranché.")],
+  ],
+  revealClose: [
+    [C('outre', "Un point d'écart. Il y a eu fraude. Beaucoup de gens le disent. Des gens très bien.")],
+    [P('fiere', "Un point d'écart. Des carrières se sont jouées à moins.")],
+  ],
+  revealMixed: [
+    [C('impassible', "Pépite et citron le même soir. La crise d'identité, je connais : techniquement, je suis une baie. Une très grande baie.")],
+    [C('outre', "{pepite} a reçu des voix pépite et des voix citron. Je propose qu'on arrête de compter.")],
+  ],
+  revealFew: [
+    [C('impassible', "{n} votes. Une élection intime.")],
+    [P('fiere', "Peu de votants, mais des votants de qualité.")],
+    [C('triomphant', "{n} votes. Une participation record. Les chiffres disent le contraire, mais les chiffres mentent.")],
+  ],
   // /start: people discover the app and do not know the characters yet, so
   // the lines must read right without knowing Citron.
   startIntro: [

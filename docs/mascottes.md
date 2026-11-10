@@ -56,6 +56,8 @@ Les versions anglaise et néerlandaise sont des adaptations (jeux de mots refait
 
 ## Résultats
 
+*Les répliques de révélation (pépite du soir → peu de votants) s'affichent sous le podium et sur l'image partagée en story. Le choix suit cet ordre : unanimité, égalité, un point d'écart (au lieu d'« une voix »), même joueur pépite et citron, peu de votants, sinon pépite ou citron du soir. Les séries ne sont pas commentées ici : l'encadré « Les faits du match » les annonce déjà. Quelques répliques ont été ajustées pour rester neutres en genre.*
+
 ### Aucun match récent
 - 🍋 *nostalgique* En 1849, les chercheurs d'or me payaient un dollar pièce. Aujourd'hui, je commente vos matchs. / ⭐ *fière* Les chercheurs d'or. Donc, mes fans.
 - 🍋 *serein* Pas de résultats. Personne n'a encore déçu personne.

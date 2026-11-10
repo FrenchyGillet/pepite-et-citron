@@ -4,18 +4,22 @@ import { track, EVENTS } from '@/utils/analytics';
 import { sharedLandingUrl } from '@/utils/share';
 import type { RankedPlayer, RankedLemonPlayer } from '@/utils/scoring';
 import type { Match } from '@/types';
+import type { MascotLine } from '@/utils/mascots';
+import { INSTAGRAM_HANDLE } from '@/config';
 import { dateLocale, t } from '@/i18n';
 
 interface SharePodiumButtonProps {
   match: Match;
   pepiteRanked: RankedPlayer[];
   lemonRanked: RankedLemonPlayer[];
+  /** The mascots' line on the podium, drawn on the image. */
+  mascotLine?: MascotLine | null;
   isDark: boolean;
 }
 
 type ShareState = 'idle' | 'generating' | 'done' | 'error';
 
-export function SharePodiumButton({ match, pepiteRanked, lemonRanked, isDark }: SharePodiumButtonProps) {
+export function SharePodiumButton({ match, pepiteRanked, lemonRanked, mascotLine = null, isDark }: SharePodiumButtonProps) {
   const [state, setState] = useState<ShareState>('idle');
 
   const handleShare = async () => {
@@ -27,14 +31,15 @@ export function SharePodiumButton({ match, pepiteRanked, lemonRanked, isDark }: 
         day: 'numeric', month: 'short', year: 'numeric',
       });
 
-      const blob = await generatePodiumImage({ matchLabel: match.label, matchDate, pepiteRanked, lemonRanked, isDark });
+      const blob = await generatePodiumImage({ matchLabel: match.label, matchDate, pepiteRanked, lemonRanked, mascotLine, isDark });
       const file = new File([blob], `podium-${match.label}.png`, { type: 'image/png' });
 
       if (navigator.canShare?.({ files: [file] })) {
         await navigator.share({
           files: [file],
           title: t('share.title', { match: match.label }),
-          text:  t('share.text', { url: sharedLandingUrl('podium') }),
+          // The story shows @handle; the text carries it where a caption is kept.
+          text:  t('share.text', { url: sharedLandingUrl('podium') }) + (INSTAGRAM_HANDLE ? ` @${INSTAGRAM_HANDLE}` : ''),
         });
         track(EVENTS.PODIUM_SHARED, { method: 'share' });
         setState('done');

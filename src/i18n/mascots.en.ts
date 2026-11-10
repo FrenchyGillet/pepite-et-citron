@@ -154,6 +154,42 @@ export const mascotsEn: MascotCatalogue = {
     [P('bienveillante', "{count} level at the top. We'll need a wider photo.")],
     [C('sourire-en-coin', "{count} tied. To settle it, I suggest squeezing a lemon.")],
   ],
+  revealPepite: [
+    [P('emerveillee', "{pepite}. No comment. Just admiration.")],
+    [P('ravie', "{pepite} struck gold. {citron} struck out.")],
+    [C('outre', "I found nothing against {pepite}. And I looked.")],
+    [P('fiere', "{pepite}, tonight's pépite. I'm lending my crown. For one night.")],
+    [C('impassible', "{pepite} ahead of everyone. I have to admit it. It hurts.")],
+  ],
+  revealCitron: [
+    [C('emu', "Ran out of juice in the second half, apparently.")],
+    [C('emu', "One perk of the title for {citron}: cats will keep their distance now.")],
+    [C('impassible', "{citron} went full Pulp Fiction tonight.")],
+    [C('sourire-en-coin', "I'm not mean. I'm sour. There's a difference.")],
+    [P('bienveillante', "{citron}, tonight's citron. It's only a title. It changes hands every week.")],
+    [C('triomphant', "{citron}. Welcome to the family. We have t-shirts.")],
+  ],
+  revealUnanimous: [
+    [P('emerveillee', "Unanimous. So it is possible after all.")],
+    [C('soupconneux', "A vote this clean smells of washing-up liquid.")],
+  ],
+  revealTie: [
+    [C('triomphant', "A tie. The most beautiful tie in history. Everybody says so.")],
+    [P('bienveillante', "Level at the top. Gold doesn't split well, so it was settled.")],
+  ],
+  revealClose: [
+    [C('outre', "One point in it. Somebody fiddled with something. I'm just saying.")],
+    [P('fiere', "One point in it. Careers have turned on less.")],
+  ],
+  revealMixed: [
+    [C('impassible', "Pépite and citron votes on the same night. Identity crisis. I know the feeling: technically, I'm a berry.")],
+    [C('outre', "{pepite} got pépite votes and citron votes. I suggest we stop counting.")],
+  ],
+  revealFew: [
+    [C('impassible', "{n} votes. An intimate election.")],
+    [P('fiere', "Few voters, but quality voters.")],
+    [C('triomphant', "{n} votes. Record turnout. The numbers say otherwise, but numbers lie.")],
+  ],
   startIntro: [
     [
       P('ravie', "Tonight, someone becomes a legend."),

@@ -1,5 +1,7 @@
 import { t } from '@/i18n';
 import { isAvatarColor, playerAvatar } from '@/utils/avatar';
+import type { MascotLine } from '@/utils/mascots';
+import { INSTAGRAM_HANDLE } from '@/config';
 // ── Canvas-local helpers (no external imports needed) ─────────────────────────
 
 /** Deterministic HSL color from a seed string (matches avatarColor in player.ts) */
@@ -34,23 +36,40 @@ interface GeneratePodiumImageOptions {
   matchDate: string;
   pepiteRanked: RankedEntry[];
   lemonRanked: RankedEntry[];
+  /** Pépite and Citron's line on the night (revealMascot), drawn under the podium. */
+  mascotLine?: MascotLine | null;
   isDark?: boolean;
 }
 
+/** A mascot drawing from public/mascots/, or null if it cannot load. */
+function loadImage(src: string): Promise<HTMLImageElement | null> {
+  return new Promise(resolve => {
+    const img = new Image();
+    img.onload  = () => resolve(img);
+    img.onerror = () => resolve(null);
+    img.src = src;
+  });
+}
+
 /**
- * Génère une image PNG du podium à partir des données du match.
- * Retourne un Blob PNG prêt à partager.
+ * The podium as a PNG, in story format (1080×1920): Instagram and WhatsApp
+ * stories, and any team chat. The top and bottom 180 px stay clear of the
+ * story interface. Pépite and Citron comment the night under the podium.
  */
 export async function generatePodiumImage({
   matchLabel,
   matchDate,
   pepiteRanked,
   lemonRanked,
+  mascotLine = null,
   isDark = true,
 }: GeneratePodiumImageOptions): Promise<Blob> {
   await document.fonts.ready;
+  const mascotImages = await Promise.all((mascotLine ?? []).map(b => loadImage(`/mascots/${b.who}-${b.mood}.png`)));
 
-  const W = 1080, H = 1350;
+  const W = 1080, H = 1920;
+  // The podium block (designed at 1080×1350) starts below the story's top bar.
+  const TOP = 180;
   const canvas = document.createElement('canvas');
   canvas.width  = W;
   canvas.height = H;
@@ -106,6 +125,8 @@ export async function generatePodiumImage({
   ctx.fillRect(0, 0, W, H);
 
   // Header
+  ctx.save();
+  ctx.translate(0, TOP);
   const PAD = 80;
   ctx.textAlign = 'left';
   ctx.textBaseline = 'alphabetic';
@@ -258,15 +279,53 @@ export async function generatePodiumImage({
     ctx.fillText(t('vote.pts', { count: lemonWinner.pts }), W - PAD, CITRON_Y + 68);
   }
 
+  ctx.restore();
+
+  // Pépite and Citron comment the night: Citron speaks from the left, Pépite
+  // from the right, as in the app.
+  const wrap = (text: string, maxW: number): string[] => {
+    const lines: string[] = [];
+    let line = '';
+    for (const word of text.split(' ')) {
+      const next = line ? `${line} ${word}` : word;
+      if (ctx.measureText(next).width > maxW && line) { lines.push(line); line = word; }
+      else line = next;
+    }
+    if (line) lines.push(line);
+    return lines;
+  };
+  let y = TOP + BOTTOM + 50 + 120 + 70;
+  const FACE = 150, LINE_H = 44, BUBBLE_PAD = 26;
+  (mascotLine ?? []).slice(0, 2).forEach((b, i) => {
+    const right = b.who === 'pepite';
+    const faceX = right ? W - PAD - FACE : PAD;
+    const bubbleX = right ? PAD : PAD + FACE + 24;
+    const bubbleW = W - PAD * 2 - FACE - 24;
+    ctx.font = `500 34px ${FONT}`;
+    const lines = wrap(b.text, bubbleW - BUBBLE_PAD * 2).slice(0, 4);
+    const bubbleH = lines.length * LINE_H + BUBBLE_PAD * 2 - 8;
+    rrect(bubbleX, y, bubbleW, bubbleH, 28);
+    ctx.fillStyle = c.bg2;
+    ctx.fill();
+    ctx.fillStyle = c.t1;
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'top';
+    lines.forEach((l, k) => ctx.fillText(l, bubbleX + BUBBLE_PAD, y + BUBBLE_PAD + k * LINE_H));
+    const img = mascotImages[i];
+    if (img) ctx.drawImage(img, faceX, y + bubbleH - FACE + 20, FACE, FACE);
+    y += Math.max(bubbleH, FACE) + 36;
+  });
+
   // Footer — the image travels through team chats: say where it comes from.
+  const FOOT = H - TOP;
   ctx.textAlign = 'center';
   ctx.textBaseline = 'alphabetic';
   ctx.font = `700 30px ${FONT}`;
   ctx.fillStyle = c.gold;
-  ctx.fillText('pepite-citron.com', W / 2, H - 75);
-  ctx.font = `400 24px ${FONT}`;
+  ctx.fillText(INSTAGRAM_HANDLE ? `pepite-citron.com  ·  @${INSTAGRAM_HANDLE}` : 'pepite-citron.com', W / 2, FOOT - 40);
+  ctx.font = `400 26px ${FONT}`;
   ctx.fillStyle = c.t3;
-  ctx.fillText(t('podiumImage.tagline'), W / 2, H - 38);
+  ctx.fillText(t('podiumImage.tagline'), W / 2, FOOT);
 
   return new Promise((resolve, reject) => {
     canvas.toBlob(blob => {

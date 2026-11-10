@@ -92,6 +92,8 @@ describe("Results view phases", () => {
     expect(await screen.findAllByText("Baptiste")).not.toHaveLength(0);
     expect(screen.queryByRole("button", { name: /Révéler le classement/i })).toBeNull();
     expect((await __demoAPI.getMatchById(match.id)).phase).toBe("closed");
+    // Pépite or Citron comment the night under the podium.
+    expect(screen.getAllByRole("img", { name: /^(Pépite|Citron)$/ }).length).toBeGreaterThan(0);
   });
 
   it("counting: 3-pépite mode shows the 3-2-1 scale and the 3rd pick (B5)", async () => {
