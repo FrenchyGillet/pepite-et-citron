@@ -449,6 +449,7 @@ export const nl: Messages = {
     citronHint: 'Wie had het zwaar vanavond?',
     absents: 'Afwezig · {count}',
     back: 'Terug',
+    next: 'Volgende →',
     summary: 'Overzicht',
     commentAria: 'Commentaar over {name} (optioneel)',
     commentPlaceholder: 'Waarom {name}? (optioneel)',

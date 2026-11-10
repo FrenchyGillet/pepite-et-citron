@@ -112,29 +112,42 @@ export function VoteView({ players, match, onVoted, guestName = null, onGuestVot
     scrollToTop();
   };
 
-  // Comments are typed on the recap: keep the draft in sync so a screen-lock
-  // does not lose them.
+  // Picks and comments change without leaving the step: keep the draft in sync
+  // so a refresh or screen-lock does not lose them.
   useEffect(() => {
-    if (step === summaryStep && !guestName) saveVoteDraft(match.id, buildDraft(summaryStep));
-    // buildDraft reads the latest state; only comment edits should re-save.
+    if (step >= 1 && !guestName) saveVoteDraft(match.id, buildDraft(step));
+    // buildDraft reads the latest state; only picks and comments should re-save.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [best1Comment, best2Comment, best3Comment, lemonComment]);
+  }, [best1, best2, best3, lemon, best1Comment, best2Comment, best3Comment, lemonComment]);
 
-  // ── Tap handlers: one tap = one pick = next step ──────────────────────────
-  // Re-picking an earlier rank drops a later pick that became a duplicate
-  // (submit_vote rejects the same player twice).
+  // ── Tap handlers: a tap selects, "Suivant" moves on ───────────────────────
+  // The voter stays on the step so the comment can be written while the idea
+  // is fresh. A comment belongs to the player it was written about: picking
+  // someone else for that rank clears it. Re-picking an earlier rank drops a
+  // later pick that became a duplicate (submit_vote rejects the same player
+  // twice), along with its comment.
   const pickBest1 = (p: Player) => {
-    const next = { best1: p, best2: best2?.id === p.id ? null : best2, best3: best3?.id === p.id ? null : best3 };
-    setBest1(next.best1); setBest2(next.best2); setBest3(next.best3);
-    goToStep(2, next);
+    if (best1?.id !== p.id) setBest1Comment('');
+    if (best2?.id === p.id) { setBest2(null); setBest2Comment(''); }
+    if (best3?.id === p.id) { setBest3(null); setBest3Comment(''); }
+    setBest1(p);
   };
   const pickBest2 = (p: Player) => {
-    const next = { best2: p, best3: best3?.id === p.id ? null : best3 };
-    setBest2(next.best2); setBest3(next.best3);
-    goToStep(3, next); // 3 = third pépite (3-pépite mode) or citron (2-pépite mode)
+    if (best2?.id !== p.id) setBest2Comment('');
+    if (best3?.id === p.id) { setBest3(null); setBest3Comment(''); }
+    setBest2(p);
   };
-  const pickBest3 = (p: Player) => { setBest3(p); goToStep(lemonStep, { best3: p }); };
-  const pickLemon = (p: Player) => { setLemon(p); goToStep(summaryStep, { lemon: p }); };
+  const pickBest3 = (p: Player) => { if (best3?.id !== p.id) setBest3Comment(''); setBest3(p); };
+  const pickLemon = (p: Player) => { if (lemon?.id !== p.id) setLemonComment(''); setLemon(p); };
+
+  // Once a name is tapped, bring its comment field and "Suivant" into view:
+  // with a long roster they would otherwise sit below the fold.
+  const pickFooterRef = useRef<HTMLDivElement>(null);
+  const currentPickId = (step === 1 ? best1 : step === 2 ? best2 : step === lemonStep ? lemon : step === 3 ? best3 : null)?.id;
+  useEffect(() => {
+    if (currentPickId != null) requestAnimationFrame(() =>
+      pickFooterRef.current?.scrollIntoView?.({ behavior: 'smooth', block: 'nearest' }));
+  }, [currentPickId]);
 
   // Absent players are collapsed by default on the lemon step.
   // Reset the collapsed state every time the lemon step is entered.
@@ -262,6 +275,26 @@ export function VoteView({ players, match, onVoted, guestName = null, onGuestVot
       icon: '🍋', iconClass: 'row-icon lemon', iconStyle: undefined,
       tagClass: 'tag tag-lemon', tag: t('vote.citron') },
   ];
+
+  // Under the name grid, once a player is picked: optional comment + next.
+  // The keyboard is not opened for the voter: most don't comment.
+  const renderPickFooter = (player: Player | null, comment: string, setComment: (c: string) => void, nextStep: number) =>
+    player && (
+      <div ref={pickFooterRef} style={{ marginTop: 14 }}>
+        <input
+          aria-label={t('vote.commentAria', { name: player.name })}
+          placeholder={t('vote.commentPlaceholder', { name: player.name })}
+          value={comment}
+          maxLength={COMMENT_MAX_LENGTH}
+          onChange={e => setComment(e.target.value)}
+          onKeyDown={e => { if (e.key === 'Enter') goToStep(nextStep); }}
+          style={{ width: '100%', minHeight: 44, padding: '10px 14px' }}
+        />
+        <button className="btn btn-primary btn-full mt-12" onClick={() => goToStep(nextStep)}>
+          {t('vote.next')}
+        </button>
+      </div>
+    );
 
   return (
     <div className="content" ref={topRef}>
@@ -425,6 +458,7 @@ export function VoteView({ players, match, onVoted, guestName = null, onGuestVot
                     onClick={() => pickBest1(p)}>{p.name}</button>
                 ))}
               </div>
+              {renderPickFooter(best1, best1Comment, setBest1Comment, 2)}
             </>
           )}
 
@@ -447,6 +481,8 @@ export function VoteView({ players, match, onVoted, guestName = null, onGuestVot
                     onClick={() => pickBest2(p)}>{p.name}</button>
                 ))}
               </div>
+              {/* 3 = third pépite (3-pépite mode) or citron (2-pépite mode) */}
+              {renderPickFooter(best2, best2Comment, setBest2Comment, 3)}
               <button className="btn btn-secondary btn-full mt-12" onClick={() => goToStep(1)}>{t('vote.back')}</button>
             </>
           )}
@@ -470,6 +506,7 @@ export function VoteView({ players, match, onVoted, guestName = null, onGuestVot
                     onClick={() => pickBest3(p)}>{p.name}</button>
                 ))}
               </div>
+              {renderPickFooter(best3, best3Comment, setBest3Comment, lemonStep)}
               <button className="btn btn-secondary btn-full mt-12" onClick={() => goToStep(2)}>{t('vote.back')}</button>
             </>
           )}
@@ -528,6 +565,7 @@ export function VoteView({ players, match, onVoted, guestName = null, onGuestVot
                   )}
                 </>
               )}
+              {renderPickFooter(lemon, lemonComment, setLemonComment, summaryStep)}
               <button className="btn btn-secondary btn-full mt-12" onClick={() => goToStep(lemonStep - 1)}>{t('vote.back')}</button>
             </>
           )}

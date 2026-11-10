@@ -75,10 +75,13 @@ describe("Guest token flow", () => {
     // One tap per choice: pépite, 2ème, citron
     await screen.findByText("La Pépite");
     await user.click(screen.getByRole("button", { name: "Baptiste" }));
+    await user.click(screen.getByRole("button", { name: "Suivant →" }));
     await screen.findByText("2ème meilleur");
     await user.click(screen.getByRole("button", { name: "Clément" }));
+    await user.click(screen.getByRole("button", { name: "Suivant →" }));
     await screen.findByText("Le Citron");
     await user.click(screen.getByRole("button", { name: "David" }));
+    await user.click(screen.getByRole("button", { name: "Suivant →" }));
 
     // Submit
     await screen.findByText("Récapitulatif");
@@ -132,18 +135,22 @@ describe("3-pépite mode", () => {
     // Step 1 — La Pépite (3 pts)
     await screen.findByText("La Pépite");
     await user.click(screen.getByRole("button", { name: "Baptiste" }));
+    await user.click(screen.getByRole("button", { name: "Suivant →" }));
 
     // Step 2 — 2ème meilleur (2 pts)
     await screen.findByText("2ème meilleur");
     await user.click(screen.getByRole("button", { name: "Clément" }));
+    await user.click(screen.getByRole("button", { name: "Suivant →" }));
 
     // Step 3 — 3ème meilleur (1 pt) — only exists in 3-pépite mode
     await screen.findByText("3ème meilleur");
     await user.click(screen.getByRole("button", { name: "David" }));
+    await user.click(screen.getByRole("button", { name: "Suivant →" }));
 
     // Step 4 — Le Citron
     await screen.findByText("Le Citron");
     await user.click(screen.getByRole("button", { name: "Étienne" }));
+    await user.click(screen.getByRole("button", { name: "Suivant →" }));
 
     // Summary — verify all 3 pépites appear
     await screen.findByText("Récapitulatif");
@@ -170,9 +177,11 @@ describe("3-pépite mode", () => {
 
     await screen.findByText("La Pépite");
     await user.click(screen.getByRole("button", { name: "Baptiste" }));
+    await user.click(screen.getByRole("button", { name: "Suivant →" }));
 
     await screen.findByText("2ème meilleur");
     await user.click(screen.getByRole("button", { name: "Clément" }));
+    await user.click(screen.getByRole("button", { name: "Suivant →" }));
 
     // Next step must be Citron, NOT 3ème meilleur
     await screen.findByText("Le Citron");

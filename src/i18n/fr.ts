@@ -449,6 +449,7 @@ export const fr = {
     citronHint: 'Qui a souffert ce soir ?',
     absents: 'Absents · {count}',
     back: 'Retour',
+    next: 'Suivant →',
     summary: 'Récapitulatif',
     commentAria: 'Commentaire sur {name} (optionnel)',
     commentPlaceholder: 'Pourquoi {name} ? (optionnel)',

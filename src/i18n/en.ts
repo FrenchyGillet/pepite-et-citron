@@ -447,6 +447,7 @@ export const en: Messages = {
     citronHint: 'Who struggled tonight?',
     absents: 'Absent · {count}',
     back: 'Back',
+    next: 'Next →',
     summary: 'Summary',
     commentAria: 'Comment on {name} (optional)',
     commentPlaceholder: 'Why {name}? (optional)',
