@@ -129,6 +129,8 @@ export const fr = {
   },
 
   quickStart: {
+    backToSite: '← Retour au site',
+    siteLabel: 'Pépite & Citron, retour au site',
     confirmEmail: 'Compte créé : confirme ton adresse email puis connecte-toi pour lancer le vote.',
     teamNameMissing: 'Donne un nom à ton équipe.',
     teamNameTooLong: 'Trop long (60 caractères max).',

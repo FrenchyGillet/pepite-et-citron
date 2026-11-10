@@ -188,12 +188,33 @@ export function QuickStartView({ onSignOut }: QuickStartViewProps = {}) {
       minHeight: '100dvh', display: 'flex', flexDirection: 'column', alignItems: 'center',
       padding: '32px 16px 24px', background: 'var(--bg)',
     }}>
-      <div style={{ textAlign: 'center', marginBottom: 20 }}>
-        <div className="header-logo" style={{ fontSize: 26 }}>
-          <span className="header-pepite">Pépite</span>
-          <span className="header-amp"> & </span>
-          <span className="header-citron">Citron</span>
+      {/* Visitors from the landing or Instagram can change their mind: the
+          logo and a back link lead to the site (a page load: "/" is static).
+          Not while the team is being created. */}
+      {!step && (
+        // Aligned with the form's left edge (400 px column).
+        <div style={{ width: '100%', maxWidth: 400, marginBottom: 8 }}>
+          <a href="/" onClick={() => track(EVENTS.START_BACK_TO_SITE, { via: 'link' })} style={{
+            fontSize: 13, color: 'var(--label3)', textDecoration: 'none',
+          }}>{t('quickStart.backToSite')}</a>
         </div>
+      )}
+      <div style={{ textAlign: 'center', marginBottom: 20 }}>
+        {step ? (
+          <div className="header-logo" style={{ fontSize: 26 }}>
+            <span className="header-pepite">Pépite</span>
+            <span className="header-amp"> & </span>
+            <span className="header-citron">Citron</span>
+          </div>
+        ) : (
+          <a href="/" className="header-logo" aria-label={t('quickStart.siteLabel')}
+            onClick={() => track(EVENTS.START_BACK_TO_SITE, { via: 'logo' })}
+            style={{ fontSize: 26, textDecoration: 'none', display: 'inline-block' }}>
+            <span className="header-pepite">Pépite</span>
+            <span className="header-amp"> & </span>
+            <span className="header-citron">Citron</span>
+          </a>
+        )}
         <h1 style={{ fontSize: 20, fontWeight: 800, color: 'var(--label)', marginTop: 14, letterSpacing: '-0.02em' }}>
           {t('quickStart.title')}
         </h1>

@@ -112,6 +112,14 @@ describe("/start — premier vote en une minute", () => {
   });
 });
 
+describe("/start — back to the site", () => {
+  it("the logo and a link lead back to the landing", () => {
+    renderAt("/start", <QuickStartView />);
+    expect(screen.getByRole("link", { name: "Pépite & Citron, retour au site" })).toHaveAttribute("href", "/");
+    expect(screen.getByRole("link", { name: "← Retour au site" })).toHaveAttribute("href", "/");
+  });
+});
+
 describe("Signup form", () => {
   it("'Créer un compte' sends team creators to /start", async () => {
     renderAt("/login", <AuthView onAuth={vi.fn()} />, { startElement: <StartProbe /> });

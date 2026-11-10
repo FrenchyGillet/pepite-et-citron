@@ -11,4 +11,4 @@ export const SUPPORT_URL       = import.meta.env.VITE_SUPPORT_URL       || "";
  * The app's Instagram account, without the @. Shown on the shared podium
  * image and in its share text, so teams tag it; nothing shown while empty.
  */
-export const INSTAGRAM_HANDLE  = "";
+export const INSTAGRAM_HANDLE  = "pepiteetcitron";
