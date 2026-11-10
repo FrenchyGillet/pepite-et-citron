@@ -4,6 +4,8 @@ import { markVotedLocally, classifyVoteError, getStoredVoterIdentity, saveVoterI
 import type { VoteDraft } from '@/utils/vote';
 import { saveOfflineVote, isNetworkError } from '@/utils/offlineVote';
 import { useVoteCount } from '@/hooks/queries';
+import { useReportVoteDispute } from '@/hooks/mutations';
+import { humanizeError } from '@/utils/errors';
 import { useNow } from '@/hooks/useNow';
 import { formatClockTime, formatDeadline, isDeadlinePassed } from '@/utils/deadline';
 import { useAppStore } from '@/store/appStore';
@@ -75,6 +77,9 @@ export function VoteView({ players, match, onVoted, guestName = null, onGuestVot
   const [alreadyVoted, setAlreadyVoted] = useState(false);
   const [checking,     setChecking]     = useState(false);
   const [checkError,   setCheckError]   = useState<string | null>(null);
+  // « Ce n'était pas moi » once « Tu as déjà voté » shows: flags the vote for the admins.
+  const [disputeState, setDisputeState] = useState<'idle' | 'sent' | 'error'>('idle');
+  const reportDispute = useReportVoteDispute(match.id);
 
   // With auto-advance, the next step would otherwise open wherever the long
   // player list left the page — bring the top of the vote card back into view.
@@ -155,6 +160,7 @@ export function VoteView({ players, match, onVoted, guestName = null, onGuestVot
     setVoterName(p.name);
     setSelectedVoterPlayer(p);
     setAlreadyVoted(false);
+    setDisputeState('idle');
     setCheckError(null);
     setChecking(true);
     let voted = false;
@@ -325,6 +331,20 @@ export function VoteView({ players, match, onVoted, guestName = null, onGuestVot
               <div style={{ color: 'var(--red)', fontSize: 13, marginTop: 8 }}>
                 {t('vote.alreadyVoted')}
               </div>
+            )}
+            {alreadyVoted && selectedVoterPlayer && (
+              disputeState === 'sent'
+                ? <div style={{ color: 'var(--label2)', fontSize: 13, marginTop: 6, lineHeight: 1.45 }}>{t('vote.notMeSent')}</div>
+                : (
+                  <button type="button" className="btn btn-secondary" disabled={reportDispute.isPending}
+                    style={{ marginTop: 8, fontSize: 13, padding: '6px 12px', minHeight: 0 }}
+                    onClick={() => reportDispute.mutate(selectedVoterPlayer.id, {
+                      onSuccess: () => { setDisputeState('sent'); track(EVENTS.VOTE_DISPUTED); },
+                      onError: (err) => { setDisputeState('error'); setCheckError(humanizeError(err)); },
+                    })}>
+                    {t('vote.notMe')}
+                  </button>
+                )
             )}
             {checkError && (
               <div style={{ color: 'var(--red)', fontSize: 13, marginTop: 8 }}>

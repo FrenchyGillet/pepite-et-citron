@@ -52,6 +52,7 @@ export const EVENTS = {
   GUEST_LINK_INVALID:         'guest_link_invalid',
   VOTE_STARTED:               'vote_started',
   VOTE_ALREADY_CAST:          'vote_already_cast',
+  VOTE_DISPUTED:              'vote_disputed',
   VOTE_COMPLETED:             'vote_completed',
   VOTE_FAILED:                'vote_failed',
   VOTE_QUEUED_OFFLINE:        'vote_queued_offline',

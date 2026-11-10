@@ -34,6 +34,16 @@ export function useDeleteVote(matchId: EntityId | null | undefined) {
   });
 }
 
+/** « Ce n'était pas moi » : the admins see the flag on the vote. */
+export function useReportVoteDispute(matchId: EntityId | null | undefined) {
+  const qc = useQueryClient();
+  const orgSlug = useAppStore(s => s.currentOrg?.slug);
+  return useMutation({
+    mutationFn: (voterPlayerId: EntityId) => api.reportVoteDispute(matchId!, voterPlayerId, orgSlug),
+    onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.votes(matchId) }),
+  });
+}
+
 export function useAddPlayer(orgId?: string | null) {
   const qc = useQueryClient();
   return useMutation({

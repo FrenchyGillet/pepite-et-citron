@@ -72,6 +72,8 @@ export interface Vote {
   best2_comment?: string;
   best3_comment?: string;
   lemon_comment?: string;
+  /** Set when the player said « Ce n'était pas moi » (report_vote_dispute). */
+  disputed_at?: string | null;
   /** Client-side only: single-use invite link, consumed by submit_vote. Not a column. */
   guest_token?: string;
 }
@@ -266,6 +268,8 @@ export interface API {
   getVotes(matchId: EntityId, orgSlug?: string | null): Promise<Vote[]>;
   getAllVotes(orgId: string): Promise<Vote[]>;
   deleteVote(voteId: EntityId): Promise<void>;
+  /** « Ce n'était pas moi » : flags the vote cast under this player, for the admins. */
+  reportVoteDispute(matchId: EntityId, voterPlayerId: EntityId, orgSlug?: string | null): Promise<void>;
 
   // Teams
   getTeams(orgId: string): Promise<Team[]>;
