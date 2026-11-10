@@ -89,6 +89,7 @@ L'app utilise **React Router v7** avec `BrowserRouter` (dans `main.tsx`) :
   - Néerlandais : tutoiement (« je »), « ploeg » pour l'équipe, « kern » pour l'effectif ; à faire relire par un Flamand
   - La marque reste française partout : « Pépite & Citron », une pépite, un citron
   - Langue : choix enregistré sur l'appareil (Profil, écran de vote, /login, /start), sinon celle du navigateur, sinon anglais
+  - Seul le français est dans le bundle principal : l'anglais et le néerlandais (`en.ts`, `nl.ts`, `mascots.en.ts`, `mascots.nl.ts`) sont chargés à la demande par `loadLanguage` (avant le premier rendu dans `main.tsx`, ou par `setLang`)
   - Les messages d'erreur de la base restent en français : `humanizeError` les traduit (`errors.server`) ; un message déjà écrit pour l'utilisateur côté app est une `UserError`
   - Pas encore traduits : emails et notifications envoyés par `api/`, pages statiques de `public/`
 - **Commits** : anglais, format Conventional Commits (`feat:`, `fix:`, `chore:`, etc.)

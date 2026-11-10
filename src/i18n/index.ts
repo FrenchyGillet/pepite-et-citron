@@ -1,8 +1,7 @@
 import { useCallback } from 'react';
 import { create } from 'zustand';
 import { fr } from './fr';
-import { en } from './en';
-import { nl } from './nl';
+import { MASCOT_LINES } from './mascots';
 
 /**
  * UI translations. French is the source language: `fr.ts` defines every key,
@@ -39,7 +38,27 @@ export type Lang = typeof LANGS[number];
 /** Shown in the language picker, each in its own language. */
 export const LANG_NAMES: Record<Lang, string> = { fr: 'Français', en: 'English', nl: 'Nederlands' };
 
-const MESSAGES: Record<Lang, Messages> = { fr, en, nl };
+// French is the fallback and ships with the app; the other languages are
+// separate chunks, loaded before the first render (main.tsx) or on a switch.
+const MESSAGES: Partial<Record<Lang, Messages>> = { fr };
+const LOADERS: Record<Exclude<Lang, 'fr'>, () => Promise<void>> = {
+  en: async () => {
+    const [{ en }, { mascotsEn }] = await Promise.all([import('./en'), import('./mascots.en')]);
+    MESSAGES.en = en;
+    MASCOT_LINES.en = mascotsEn;
+  },
+  nl: async () => {
+    const [{ nl }, { mascotsNl }] = await Promise.all([import('./nl'), import('./mascots.nl')]);
+    MESSAGES.nl = nl;
+    MASCOT_LINES.nl = mascotsNl;
+  },
+};
+
+/** Loads a language's texts (no-op once loaded, or for French). */
+export async function loadLanguage(lang: Lang): Promise<void> {
+  if (MESSAGES[lang] || lang === 'fr') return;
+  await LOADERS[lang]();
+}
 const LANG_KEY = 'pepite_lang';
 
 const isLang = (v: unknown): v is Lang => typeof v === 'string' && (LANGS as readonly string[]).includes(v);
@@ -83,7 +102,20 @@ export const useLangStore = create<LangState>(set => ({
 applyToDocument(useLangStore.getState().lang);
 
 export const getLang = (): Lang => useLangStore.getState().lang;
-export const setLang = (lang: Lang): void => useLangStore.getState().setLang(lang);
+/**
+ * Switches the language once its texts are loaded (at once if they already
+ * are). A failed load (offline, first visit) keeps the current language.
+ */
+export const setLang = (lang: Lang): Promise<void> => {
+  if (MESSAGES[lang]) {
+    useLangStore.getState().setLang(lang);
+    return Promise.resolve();
+  }
+  return loadLanguage(lang).then(
+    () => useLangStore.getState().setLang(lang),
+    (err: unknown) => console.error('i18n: could not load', lang, err),
+  );
+};
 
 /** BCP 47 locale for dates and numbers. */
 export function dateLocale(lang: Lang = getLang()): string {
@@ -103,7 +135,7 @@ const isPlural = (v: unknown): v is Plural =>
   typeof v === 'object' && v !== null && 'one' in v && 'other' in v;
 
 export function translate(lang: Lang, key: TKey, vars?: TVars): string {
-  let value = lookup(MESSAGES[lang], key) ?? lookup(fr, key);
+  let value = lookup(MESSAGES[lang] ?? fr, key) ?? lookup(fr, key);
   if (isPlural(value)) {
     const count = Number(vars?.count ?? 0);
     value = new Intl.PluralRules(lang).select(count) === 'one' ? value.one : value.other;
