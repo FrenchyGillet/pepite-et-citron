@@ -1,11 +1,14 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { MemoryRouter } from "react-router-dom";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { __resetDemoState, __demoAPI } from "@/App.jsx";
 import { ResultsView } from "@/components/ResultsView";
+import { api } from "@/api";
 import { renderApp } from "./renderApp";
+
+afterEach(() => { vi.restoreAllMocks(); });
 
 /** Render ResultsView in isolation (needed to exercise isAdmin=false). */
 function renderResults(props) {
@@ -154,5 +157,26 @@ describe("Results view phases", () => {
     // no reveal controls for a watcher
     expect(screen.queryByRole("button", { name: /vote suivant/i })).toBeNull();
     expect(screen.queryByRole("button", { name: /classement final|podium/i })).toBeNull();
+  });
+});
+
+describe("Starting the reveal", () => {
+  it("opens Results on the reveal at once, without waiting for the match refetch", async () => {
+    const m = await __demoAPI.createMatch('org-123', "vs Dragons", [1, 2, 3], null, 1);
+    await __demoAPI.submitVote({ match_id: m.id, voter_name: "Antoine", voter_player_id: 1, best1_id: 2, best2_id: 3, lemon_id: 1 });
+    // Like a real database, hand out copies: the demo's shared objects would
+    // update the cache behind React Query's back.
+    const getActiveMatch = api.getActiveMatch;
+    const spy = vi.spyOn(api, "getActiveMatch").mockImplementation(async (orgId) => structuredClone(await getActiveMatch(orgId)));
+    renderApp({ initialPath: "/admin" });
+    const user = userEvent.setup();
+    const start = await screen.findByRole("button", { name: /Lancer le dépouillement · 1 vote/ });
+
+    // A slow network: the refetch of the match never comes back
+    spy.mockReturnValue(new Promise(() => {}));
+    await user.click(start);
+
+    expect(await screen.findByText("Dépouillement")).toBeInTheDocument();
+    expect(screen.queryByText("Résultats masqués")).toBeNull();
   });
 });

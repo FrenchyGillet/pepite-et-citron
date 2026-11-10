@@ -256,6 +256,13 @@ export function useStartCounting(orgId?: string | null, matchLabel?: string) {
     mutationFn: ({ id, order }: { id: EntityId; order: EntityId[] }) =>
       api.startCounting(id, order),
     onSuccess: (_data, vars) => {
+      // The admin is sent to Results right away: write the new phase into the
+      // cache so it opens on the reveal, not on « Résultats masqués » until
+      // the refetch (or Realtime) catches up.
+      qc.setQueryData<Match | null>(queryKeys.activeMatch(orgId), m =>
+        m && m.id === vars.id
+          ? { ...m, is_open: false, phase: 'counting', reveal_order: vars.order, revealed_count: 0 }
+          : m);
       qc.invalidateQueries({ queryKey: queryKeys.activeMatch(orgId) });
       qc.invalidateQueries({ queryKey: queryKeys.votes(vars.id) });
       // Fire-and-forget push notification — failure is silently ignored
