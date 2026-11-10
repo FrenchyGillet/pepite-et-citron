@@ -1,9 +1,11 @@
 # Pépite & Citron : catalogue des répliques (FR)
 
-Les deux mascottes commentent chaque écran. Version relue et validée ligne par ligne.
+Les deux mascottes commentent chaque écran. Les répliques ci-dessous ont été relues et validées ligne par ligne, sauf la dernière section (« Nouvelles répliques, à relire »).
+
+Les versions anglaise et néerlandaise sont des adaptations (jeux de mots refaits, mauvais perdant plus discret en anglais) : elles vivent directement dans `src/i18n/mascots.ts`.
 
 - ⭐ **Pépite** : l'étoile du logo. Grandiloquente, mais elle sait qu'elle en fait trop.
-- 🍋 **Citron** : pince-sans-rire, lucide, « acide, pas méchant ». Dès qu'il est question de vote, de chiffres ou de défaite, il bascule en mauvais perdant mégalomane, à la Trump (jamais nommé) : « beaucoup de gens le disent », superlatifs absurdes, fraude imaginaire, il récompense la loyauté et s'attribue les mérites.
+- 🍋 **Citron** : pince-sans-rire, lucide, « acide, pas méchant ». De temps en temps, quand il est question de vote, de chiffres ou de défaite, il bascule en mauvais perdant mégalomane, à la Trump (jamais nommé) : « beaucoup de gens le disent », superlatifs absurdes, fraude imaginaire, il récompense la loyauté et s'attribue les mérites. Pas à chaque réplique : la plupart du temps, il est simplement pince-sans-rire.
 
 **Règles**
 - Second degré : on sous-entend, fausse solennité, pas de point d'exclamation.
@@ -210,3 +212,98 @@ Les gens découvrent l'app et ne connaissent pas encore les personnages : répli
 - Menton et ses 500 000 élastiques : remplacé par le Citron flatteur. À recaser ailleurs ?
 - Casanova et le demi-citron : pas pour un écran de vote (équipes de jeunes).
 - Anglais et néerlandais : à réécrire plus tard avec des jeux de mots propres à chaque langue, pas à traduire.
+
+
+---
+
+## Nouvelles répliques, à relire
+
+Ajoutées pour varier les écrans vus à chaque match et moins « trumpiser » le Citron. Classées par situation (le nom de la situation dans `src/i18n/mascots.ts`).
+
+### `upcoming`
+- 🍋 *impassible* Pour l'instant, personne n'a raté une passe. Profitez-en.
+- ⭐ *fière* Je fais chauffer mon éclat. Ça ne s'improvise pas.
+- 🍋 *sourire en coin* Le match n'a pas commencé et j'ai déjà quelques idées. Je les garde au frais.
+- ⭐ *bienveillante* Échauffez-vous bien. Les excuses aussi, ça se prépare.
+- 🍋 *impassible* Rien n'est joué. C'est le bon moment pour promettre un grand match.
+
+### `noMatch`
+- ⭐ *lassée* Pas de match. Je brille dans le vide, c'est un peu triste.
+- 🍋 *impassible* Semaine sans match. Les genoux vous remercient.
+- 🍋 *sourire en coin* Rien de prévu. Je mûris tranquillement.
+- ⭐ *clin d'œil* Profitez du repos. Le talent, ça se repose aussi. Surtout le mien.
+
+### `voted`
+- 🍋 *impassible* Vote reçu. Ni repris, ni échangé.
+- ⭐ *bienveillante* Merci. Je ne dirai pas pour qui tu as voté. Même si on insiste.
+- 🍋 *soupçonneux* Vote rapide. Une conviction, ou une rancune bien préparée.
+- ⭐ *ravie* C'est dans l'urne. Maintenant, on fait comme si de rien n'était.
+- 🍋 *impassible* Voilà. Tu peux reprendre un air innocent.
+
+### `closedNotVoted`
+- 🍋 *sourire en coin* Pas de vote. L'abstention est une opinion. Pas la plus intéressante, mais une opinion.
+- ⭐ *bienveillante* Raté pour cette fois. Il y aura un prochain match, donc un prochain citron.
+- 🍋 *impassible* Les urnes ont fermé sans toi. Elles s'en remettront.
+
+### `noResults`
+- ⭐ *fière* Le trophée attend son premier propriétaire. Il est très patient.
+- 🍋 *impassible* Rien à afficher. Le calme avant le premier citron.
+- ⭐ *clin d'œil* Page blanche. Comme un carnet d'autographes avant la gloire.
+
+### `waitingNone`
+- 🍋 *sourire en coin* Personne n'a encore voté. Tout le monde attend de voir ce que font les autres.
+- ⭐ *bienveillante* L'urne est vide. Elle a encore tout son suspense.
+- 🍋 *impassible* Zéro vote. Pour l'instant, tout le monde est à égalité. Savourez ce moment.
+
+### `waiting`
+- 🍋 *impassible* {count} sur {present}. Les autres sont sous la douche, j'imagine.
+- ⭐ *ravie* Les votes arrivent. Je fais semblant de ne pas regarder.
+- 🍋 *soupçonneux* {count} sur {present}. Certains votent vite. D'autres négocient.
+- 🍋 *sourire en coin* Le suspense monte. Moins vite que la file à la buvette, mais il monte.
+
+### `waitingAll`
+- 🍋 *impassible* Tout le monde a voté. On peut ouvrir l'urne, ou attendre la saison prochaine.
+- ⭐ *émerveillée* Participation complète. Je suis émue. Un peu.
+- 🍋 *sourire en coin* Tous les bulletins sont là. Quelque part, quelqu'un commence à transpirer.
+
+### `seasonHidden`
+- 🍋 *impassible* Le classement attend la fin du vote. Comme nous tous.
+- ⭐ *clin d'œil* Pas de spoiler. Je suis une star, pas une commère.
+- 🍋 *sourire en coin* Classement caché. Ça laisse le temps de préparer les réclamations.
+
+### `pepiteStreak`
+- ⭐ *émerveillée* {pepiteRun} d'affilée pour {pepite}. Je commence à me sentir remplaçable.
+- 🍋 *impassible* {pepite}, {pepiteRun} fois de suite. À ce stade, ce n'est plus un vote, c'est une habitude.
+- ⭐ *clin d'œil* {pepiteRun} pépites d'affilée. Je vais finir par demander des droits d'image.
+
+### `citronStreak`
+- 🍋 *impassible* {citronRun} citrons d'affilée pour {citron}. À ce rythme, je vais devoir partager mon nom.
+- ⭐ *bienveillante* {citronRun} d'affilée. Les séries finissent toujours par s'arrêter. Statistiquement.
+- 🍋 *ému* {citron} garde le titre. D'habitude, je ne m'attache pas.
+
+### `seasonRecord`
+- ⭐ *fière* Record de la saison. Je l'ai fait polir.
+- 🍋 *impassible* Un record. Rien n'est éternel, sauf les captures d'écran.
+- ⭐ *ravie* Record de la saison. On l'affiche au vestiaire, entre la trousse de secours et le tableau tactique.
+
+### `seasonPepite`
+- ⭐ *fière* {pepite} mène avec {pepitePts} points. Je surveille ma place.
+- 🍋 *impassible* {pepite}, {pepitePts} points. Rien à redire. C'est presque agaçant.
+- ⭐ *bienveillante* {pepite} en tête. La saison n'est pas finie, mais le discours peut s'écrire.
+
+### `seasonCitron`
+- 🍋 *ému* {citron}, {citronPts} points. Je crois qu'on a beaucoup en commun.
+- ⭐ *bienveillante* {citron} en tête. Il reste des matchs pour changer de fruit.
+- 🍋 *impassible* {citron}, {citronPts} points. Une régularité exemplaire. Dans la mauvaise colonne.
+
+### `attendanceLeader`
+- ⭐ *fière* {name}, {played} sur {total}. Si la présence était un poste, ce serait un titulaire indiscutable.
+- 🍋 *sourire en coin* {name}, {played} matchs sur {total}. Je soupçonne un lit de camp au vestiaire.
+
+### `attendancePerfect`
+- 🍋 *impassible* {name}, tous les matchs. Aucune excuse utilisée. Elles sont encore sous blister.
+- ⭐ *émerveillée* {name}, {total} sur {total}. Je n'ai rien à ajouter. C'est rare, chez moi.
+
+### `attendanceTie`
+- ⭐ *bienveillante* {count} ex aequo. Il faudra une plus grande photo.
+- 🍋 *sourire en coin* {count} à égalité. Pour départager, je propose un tirage au citron.

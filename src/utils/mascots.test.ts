@@ -59,15 +59,38 @@ describe('MASCOT_MOODS', () => {
   });
 });
 
+// The variables each situation is given (MascotCue.vars in ./mascots).
+const VARS: Record<keyof MascotCatalogue, string[]> = {
+  upcoming: [], noMatch: [], voted: [], closedNotVoted: [], noResults: [],
+  waitingNone: ['count', 'present'], waiting: ['count', 'present'], waitingAll: ['count', 'present'],
+  seasonHidden: [],
+  // Pooled together on the palmarès: the record must not name anybody.
+  pepiteStreak: ['pepite', 'pepiteRun'], citronStreak: ['citron', 'citronRun'], seasonRecord: [],
+  seasonPepite: ['pepite', 'pepitePts'], seasonCitron: ['citron', 'citronPts'],
+  attendanceLeader: ['name', 'played', 'total'], attendancePerfect: ['name', 'played', 'total'], attendanceTie: ['count'],
+  startIntro: [], startFew: ['count', 'pepites'], startReady: ['count', 'pepites'], startMany: ['count', 'pepites'],
+  startAccount: [], startStepAccount: [], startStepTeam: [], startStepPlayers: [], startStepMatch: [],
+};
+
 describe('MASCOT_LINES', () => {
-  it('has French lines for every situation, with known moods and no exclamation mark', () => {
-    const fr = MASCOT_LINES.fr!;
-    for (const [situation, lines] of Object.entries(fr)) {
+  it.each(['fr', 'en', 'nl'] as const)('%s: lines for every situation, known moods and variables, no exclamation mark', (lang) => {
+    const catalogue = MASCOT_LINES[lang]!;
+    expect(Object.keys(catalogue).sort()).toEqual(Object.keys(VARS).sort());
+    for (const [situation, lines] of Object.entries(catalogue) as [keyof MascotCatalogue, MascotCatalogue[keyof MascotCatalogue]][]) {
       expect(lines.length, situation).toBeGreaterThan(0);
       for (const bubble of lines.flat()) {
         expect((MASCOT_MOODS[bubble.who] as readonly string[]).includes(bubble.mood), bubble.text).toBe(true);
         expect(bubble.text, situation).not.toContain('!');
+        for (const [, name] of bubble.text.matchAll(/\{(\w+)\}/g)) {
+          expect(VARS[situation], `${situation}: ${bubble.text}`).toContain(name);
+        }
       }
+    }
+  });
+
+  it('gives the screens seen at every match plenty of lines', () => {
+    for (const situation of ['upcoming', 'voted', 'waiting'] as const) {
+      expect(MASCOT_LINES.fr![situation].length, situation).toBeGreaterThanOrEqual(8);
     }
   });
 });
