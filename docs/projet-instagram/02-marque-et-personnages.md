@@ -9,9 +9,9 @@
 - Votes anonymes pour l'équipe ; l'organisateur peut lancer une révélation des votes un par un, pour le suspense.
 - 2 ou 3 pépites selon la taille de l'équipe, plus un citron.
 - Matchs programmés : le vote s'ouvre tout seul après le coup d'envoi, avec rappels.
-- Podium à partager en story, commenté par la Pépite et le Citron *(à annoncer une fois en ligne)*.
+- Podium à partager en story, commenté par la Pépite et le Citron.
 - Disponible en français, anglais et néerlandais. Fonctionne sur tous les téléphones, s'installe comme une app.
-- Pro (2,99 €/mois ou 12,99 €/an pour toute l'équipe) : statistiques de la saison, palmarès et séries, historique des matchs, tendances par joueur, assiduité, comparaison de deux joueurs et export du classement *(ces deux-là : à annoncer une fois en ligne)*.
+- Pro (2,99 €/mois ou 12,99 €/an pour toute l'équipe) : statistiques de la saison, palmarès et séries, historique des matchs, tendances par joueur, assiduité, comparaison de deux joueurs et export du classement.
 
 ## Les personnages
 
