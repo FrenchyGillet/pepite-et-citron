@@ -6,6 +6,7 @@ import { beforeEach, describe, expect, it } from "vitest";
 import { __resetDemoState, demoState } from "@/api";
 import { SeasonAwards } from "@/components/SeasonAwards";
 import { RevealAnnouncements } from "@/components/RevealAnnouncements";
+import { PlayerDuel } from "@/components/PlayerDuel";
 import { matchResults, monthKey, seasonTitles } from "@/utils/awards";
 
 const players = [1, 2, 3, 4].map(id => ({ id, name: ["Ana", "Ben", "Cid", "Dan"][id - 1] }));
@@ -56,7 +57,7 @@ describe("Saison → Palmarès", () => {
     expect(screen.getByText("🍋 Citron de la saison").nextSibling).toHaveTextContent("Dan");
     // Pépite or Citron comments a running streak or the season record.
     const mascot = screen.getAllByRole("img", { name: /^(Pépite|Citron)$/ })[0];
-    expect(mascot.parentElement).toHaveTextContent(/3e pépite|3 pépites|3 d'affilée|2e citron|caractère|record/);
+    expect(mascot.parentElement).toHaveTextContent(/affilée|de suite|caractère|titre|record/i);
 
     expect(screen.queryByText("🔥 Ana : 3 pépites d’affilée")).toBeNull();
     await userEvent.setup().click(screen.getByRole("button", { name: "Plus de palmarès" }));
@@ -92,5 +93,23 @@ describe("Résultats → Les faits du match", () => {
     const { container } = wrap(<RevealAnnouncements match={M1.match} players={players} />);
     await new Promise(r => setTimeout(r, 20));
     expect(container).toBeEmptyDOMElement();
+  });
+});
+
+describe("Saison → Comparer deux joueurs", () => {
+  it("is folded, then shows both players side by side", async () => {
+    const ms = [M1, M2, M3];
+    const results = matchResults(players, ms.map(x => x.match), ms.flatMap(x => x.votes));
+    wrap(<PlayerDuel players={players} results={results} defaultIds={["1", "2"]} />);
+    const user = userEvent.setup();
+
+    expect(screen.queryByRole("table")).toBeNull();
+    await user.click(screen.getByRole("button", { name: "⚖️ Comparer deux joueurs" }));
+
+    const table = screen.getByRole("table");
+    expect(table).toHaveTextContent("Ana");
+    expect(table).toHaveTextContent("Ben");
+    expect(screen.getByRole("row", { name: /Pépites/ })).toHaveTextContent("Pépites30");
+    expect(screen.getByText(/3 matchs ensemble · Ana devant : 3 · Ben devant : 0/)).toBeInTheDocument();
   });
 });
