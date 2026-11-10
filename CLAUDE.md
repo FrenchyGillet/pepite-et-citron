@@ -148,6 +148,7 @@ Les contrastes texte/fond sont vérifiés (WCAG AA) par `src/utils/contrast.test
 
 - Les migrations sont appliquées **à la main** dans le SQL Editor de Supabase, entourées de `begin; … commit;`. L'éditeur n'affiche que le résultat de la dernière instruction : fournir des requêtes de vérification en une seule instruction.
 - Avant d'écrire une migration : `git fetch` et prendre le numéro suivant libre dans `supabase/migrations/` sur `origin/main` (d'autres sessions en écrivent aussi).
+- Chaque migration (depuis 20260027) se termine par `insert into schema_migrations (version) values ('YYYYMMNN') on conflict (version) do nothing;` (vérifié par `src/test/migrations.test.ts`). `npm run db:missing` affiche une requête à coller dans le SQL Editor : elle liste les migrations du dépôt absentes de la base.
 - Fonctions `SECURITY DEFINER` : vérifier l'appelant (`is_org_admin` / `is_org_member` / `auth.uid()`), `set search_path = public, pg_temp`, `revoke … from public, anon`.
 - Si une migration retire un accès dont le front déployé dépend : déployer d'abord un front compatible, puis la migration.
 

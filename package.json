@@ -11,7 +11,8 @@
     "test:watch": "vitest",
     "test:ui": "vitest --ui",
     "typecheck": "tsc --noEmit && tsc -p tsconfig.api.json --noEmit",
-    "lint": "eslint ."
+    "lint": "eslint .",
+    "db:missing": "node scripts/db-missing.mjs"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",
