@@ -3,6 +3,7 @@ import react from "@vitejs/plugin-react";
 import fs from "fs";
 import path from "path";
 import { VitePWA } from "vite-plugin-pwa";
+import { sweatRedirect } from "./middleware";
 
 /**
  * Exact-path rewrites to static HTML pages declared in vercel.json (SEO
@@ -48,8 +49,16 @@ function devRouting(): Plugin {
     }
     return null;
   };
-  const middleware = (server: { middlewares: { use: (fn: (req: { url?: string }, res: unknown, next: () => void) => void) => void } }) => {
-    server.middlewares.use((req, _res, next) => {
+  type DevResponse = { writeHead: (status: number, headers: Record<string, string>) => void; end: () => void };
+  const middleware = (server: { middlewares: { use: (fn: (req: { url?: string }, res: DevResponse, next: () => void) => void) => void } }) => {
+    server.middlewares.use((req, res, next) => {
+      // Printed QR code redirects (middleware.ts, Edge Middleware in production).
+      const redirect = req.url ? sweatRedirect(new URL(req.url, "http://localhost")) : undefined;
+      if (redirect) {
+        res.writeHead(redirect.status, Object.fromEntries(redirect.headers));
+        res.end();
+        return;
+      }
       if (req.url) {
         const to = resolve(req.url);
         if (to) req.url = to;
