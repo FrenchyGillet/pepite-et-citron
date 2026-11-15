@@ -1,5 +1,5 @@
 /**
- * Vercel Edge Middleware — Rate limiting for /api/* routes
+ * Vercel Edge Middleware — printed-QR redirects + rate limiting for /api/* routes
  *
  * Uses the native Web Request/Response APIs (no next/server dependency).
  * In-memory sliding window per IP — resets on cold starts, acceptable for
@@ -11,6 +11,30 @@
  *   - /api/delete-account           → 3 req / minute
  *   - All other /api/*              → 60 req / minute
  */
+
+import { printedLinkTarget } from './src/utils/printedLinks';
+
+// ── Printed QR codes ─────────────────────────────────────────────────────────
+// /sweat is printed on sweatshirts: destination and rules in printedLinks.ts.
+// 302 on purpose (not 301): phones must not cache the destination, so it can
+// change later.
+export { SWEAT_DESTINATION } from './src/utils/printedLinks';
+
+/** 302 to the printed link's destination, or undefined for any other path. */
+export function sweatRedirect(url: URL): Response | undefined {
+  const target = printedLinkTarget(url.pathname, url.search);
+  if (!target) return undefined;
+  return new Response(null, {
+    status: 302,
+    headers: {
+      Location:        target,
+      'Cache-Control': 'no-store',
+      'X-Robots-Tag':  'noindex',
+    },
+  });
+}
+
+// ── Rate limiting ────────────────────────────────────────────────────────────
 
 interface RateWindow {
   count:   number;
@@ -57,7 +81,11 @@ function maybeCleanup() {
 }
 
 export default function middleware(req: Request): Response | undefined {
-  const { pathname } = new URL(req.url);
+  const url = new URL(req.url);
+  const { pathname } = url;
+
+  const redirect = sweatRedirect(url);
+  if (redirect) return redirect;
 
   if (!pathname.startsWith('/api/')) return undefined;
 
@@ -92,5 +120,11 @@ export default function middleware(req: Request): Response | undefined {
 }
 
 export const config = {
-  matcher: '/api/:path*',
+  // The sweat paths are spelled out (any case, with or without the trailing
+  // slash) so the middleware never runs on the other pages.
+  matcher: [
+    '/api/:path*',
+    '/:sweat([sS][wW][eE][aA][tT])',
+    '/:sweat([sS][wW][eE][aA][tT])/',
+  ],
 };

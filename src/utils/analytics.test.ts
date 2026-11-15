@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { EVENTS, identify, track } from '@/utils/analytics';
+import { EVENTS, campaignFromQuery, identify, track, trackCampaign } from '@/utils/analytics';
 
 describe('analytics', () => {
   afterEach(() => {
@@ -35,5 +35,24 @@ describe('analytics', () => {
     const names = Object.values(EVENTS);
     expect(new Set(names).size).toBe(names.length);
     for (const name of names) expect(name).toMatch(/^[a-z_]{1,50}$/);
+  });
+
+  it('counts campaign visits from utm parameters (sweatshirt QR code)', () => {
+    const umami = { track: vi.fn(), identify: vi.fn() };
+    window.umami = umami;
+
+    trackCampaign('?utm_source=sweat&utm_medium=qr&utm_campaign=sweat&plan=pro');
+    expect(umami.track).toHaveBeenCalledWith('campaign_landing', { source: 'sweat', medium: 'qr', campaign: 'sweat' });
+
+    umami.track.mockClear();
+    trackCampaign('?guest=abc123');
+    expect(umami.track).not.toHaveBeenCalled();
+  });
+
+  it('only keeps short slug utm values', () => {
+    expect(campaignFromQuery('?utm_source=SWEAT')).toEqual({ source: 'sweat' });
+    expect(campaignFromQuery('?utm_source=sweat&utm_campaign=jean.dupont@mail.com')).toEqual({ source: 'sweat' });
+    expect(campaignFromQuery('?utm_source=a%20b')).toBeNull();
+    expect(campaignFromQuery('')).toBeNull();
   });
 });

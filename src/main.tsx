@@ -8,7 +8,15 @@ import { createSyncStoragePersister } from '@tanstack/query-sync-storage-persist
 import * as Sentry from '@sentry/react';
 import App from '@/App';
 import { trackAppLaunch } from '@/utils/analytics';
+import { printedLinkTarget } from '@/utils/printedLinks';
 import { getLang, loadLanguage, t } from '@/i18n';
+
+// Printed QR codes (/sweat): normally redirected by middleware.ts before the
+// app loads. If the app loads on that path anyway (redirect not deployed,
+// middleware skipped), go to the destination instead of /login — before the
+// router starts and before trackAppLaunch counts the campaign.
+const printedTarget = printedLinkTarget(window.location.pathname, window.location.search);
+if (printedTarget) window.history.replaceState(null, '', printedTarget);
 
 const queryClient = new QueryClient({
   defaultOptions: {

@@ -21,6 +21,7 @@ type TrackData = Record<string, string | number | boolean>;
 export const EVENTS = {
   // App lifecycle
   APP_LAUNCHED:               'app_launched',
+  CAMPAIGN_LANDING:           'campaign_landing',
   PWA_INSTALLED:              'pwa_installed',
   SCREEN_CRASHED:             'screen_crashed',
   THEME_TOGGLED:              'theme_toggled',
@@ -156,5 +157,33 @@ export function displayMode(): 'standalone' | 'browser' {
 /** Call once at startup: app launch (installed or not) + PWA installation. */
 export function trackAppLaunch(): void {
   track(EVENTS.APP_LAUNCHED, { display: displayMode(), online: navigator.onLine });
+  trackCampaign(window.location.search);
   window.addEventListener('appinstalled', () => track(EVENTS.PWA_INSTALLED));
+}
+
+const UTM_KEYS = ['source', 'medium', 'campaign'] as const;
+// Short slugs only (sweat, qr, flyer…): anything else is dropped, so a
+// tampered link cannot push free text into analytics.
+const UTM_VALUE = /^[a-z0-9_-]{1,32}$/;
+
+/**
+ * utm_* parameters of a URL query, as Umami event data. Page views strip the
+ * query string (app.html, for ?guest= tokens), so campaigns are counted with
+ * this event instead: e.g. the QR code on the sweatshirts (/sweat → /start?
+ * utm_source=sweat…) shows up as `campaign_landing` with source = sweat.
+ */
+export function campaignFromQuery(search: string): Record<string, string> | null {
+  const params = new URLSearchParams(search);
+  const data: Record<string, string> = {};
+  for (const key of UTM_KEYS) {
+    const value = params.get(`utm_${key}`)?.trim().toLowerCase();
+    if (value && UTM_VALUE.test(value)) data[key] = value;
+  }
+  return data.source ? data : null;
+}
+
+/** Counts a visit that came from a campaign link (utm_source present). */
+export function trackCampaign(search: string): void {
+  const data = campaignFromQuery(search);
+  if (data) track(EVENTS.CAMPAIGN_LANDING, data);
 }
