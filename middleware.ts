@@ -12,30 +12,22 @@
  *   - All other /api/*              → 60 req / minute
  */
 
+import { printedLinkTarget } from './src/utils/printedLinks';
+
 // ── Printed QR codes ─────────────────────────────────────────────────────────
-// ⚠️ https://pepite-citron.com/sweat is PRINTED on promotional sweatshirts (QR
-// code): it must keep working forever. Change the destination here, never the
-// path. 302 on purpose (not 301): phones must not cache the destination, so it
-// can change later. /start has no language prefix: the app picks the language
-// (device choice, else browser), so the redirect never forces French.
-export const SWEAT_DESTINATION = '/start?utm_source=sweat&utm_medium=qr&utm_campaign=sweat';
+// /sweat is printed on sweatshirts: destination and rules in printedLinks.ts.
+// 302 on purpose (not 301): phones must not cache the destination, so it can
+// change later.
+export { SWEAT_DESTINATION } from './src/utils/printedLinks';
 
-// /sweat, /sweat/, /SWEAT, /Sweat/… (also listed in config.matcher below).
-const SWEAT_PATH = /^\/sweat\/?$/i;
-
-/**
- * 302 to SWEAT_DESTINATION for /sweat (any case, optional trailing slash).
- * Query parameters already on the scanned URL are kept, and win over the
- * destination's (e.g. /sweat?utm_campaign=sweat2 for a second batch).
- */
+/** 302 to the printed link's destination, or undefined for any other path. */
 export function sweatRedirect(url: URL): Response | undefined {
-  if (!SWEAT_PATH.test(url.pathname)) return undefined;
-  const target = new URL(SWEAT_DESTINATION, url.origin);
-  url.searchParams.forEach((value, key) => target.searchParams.set(key, value));
+  const target = printedLinkTarget(url.pathname, url.search);
+  if (!target) return undefined;
   return new Response(null, {
     status: 302,
     headers: {
-      Location:        target.pathname + target.search,
+      Location:        target,
       'Cache-Control': 'no-store',
       'X-Robots-Tag':  'noindex',
     },
