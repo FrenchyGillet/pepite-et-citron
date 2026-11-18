@@ -96,8 +96,8 @@ function ShareResultsButton({
       style={{
         width: '100%',
         display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
-        background: shared ? 'rgba(48,209,88,0.12)' : 'var(--bg2)',
-        border: `1px solid ${shared ? 'var(--green)' : 'var(--separator2)'}`,
+        background: shared ? 'rgba(48,209,88,0.12)' : 'var(--bg3)',
+        border: 'none',
         borderRadius: 'var(--radius)',
         padding: '13px 20px',
         fontSize: 15, fontWeight: 600,
@@ -472,17 +472,14 @@ export function ResultsView({ players, match, isAdmin, isDark, orgId, isPro, onU
                 pepiteRanked={pepiteRanked} lemonRanked={lemonRanked}
                 pepiteWinners={pepiteWinners} lemonWinners={lemonWinners}
                 podiumLine={revealLine} isDark={isDark !== false}
-              />
+              >
+                <ShareResultsButton match={match} pepiteRanked={pepiteRanked} lemonWinners={lemonWinners} />
+              </ShareStoryPanel>
             </div>
           )}
           {revealCue && (
             <div style={{ display: 'flex', justifyContent: 'center', marginTop: 16 }}>
               <MascotTalk situations={revealCue.situations} vars={revealCue.vars} seed={revealSeed} />
-            </div>
-          )}
-          {pepiteRanked.length > 0 && (
-            <div style={{ marginTop: 16 }}>
-              <ShareResultsButton match={match} pepiteRanked={pepiteRanked} lemonWinners={lemonWinners} />
             </div>
           )}
         </div>

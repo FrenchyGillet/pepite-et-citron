@@ -197,17 +197,21 @@ describe("Sharing the night", () => {
     await userEvent.setup().click(await screen.findByRole("button", { name: /Révéler le classement/ }));
   }
 
-  it("offers the Pépite's card first, right under the podium, then the Citron's and the podium", async () => {
+  it("offers the Pépite's card, the rest behind « Autres partages »", async () => {
     await revealed('org-123');
     expect(await screen.findByRole("button", { name: /Partager la carte de Baptiste/ })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Carte du citron" })).toBeNull();
+    await userEvent.setup().click(screen.getByRole("button", { name: /Autres partages/ }));
     expect(screen.getByRole("button", { name: "Carte du citron" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Podium" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Podium complet" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Envoyer les résultats/ })).toBeInTheDocument();
   });
 
   it("offers the viewer their own card when they won", async () => {
     localStorage.setItem('pepite_voter_identity_org-123', JSON.stringify({ name: 'David', playerId: 4 }));
     await revealed('org-123');
     expect(await screen.findByRole("button", { name: /Partager ma carte de citron/ })).toBeInTheDocument();
+    await userEvent.setup().click(screen.getByRole("button", { name: /Autres partages/ }));
     expect(screen.getByRole("button", { name: "Carte de la pépite" })).toBeInTheDocument();
     localStorage.removeItem('pepite_voter_identity_org-123');
   });

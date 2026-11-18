@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, type ReactNode } from 'react';
 import { generatePodiumImage } from '@/utils/generatePodiumImage';
 import { generateWinnerCard } from '@/utils/generateWinnerCard';
 import { storyCards, type StoryCard } from '@/utils/storyCards';
@@ -23,18 +23,22 @@ interface ShareStoryPanelProps {
   /** The mascots' line on the podium, drawn on the podium image. */
   podiumLine: MascotLine | null;
   isDark: boolean;
+  /** More ways to share, under « Autres partages » (the text recap). */
+  children?: ReactNode;
 }
 
 type ShareState = 'idle' | 'generating' | 'error';
 
 /**
  * Right under the podium, while the team is still looking at it: one main
- * button (the viewer's own card, else the Pépite's), the other images next
- * to it, and a reminder to mention the account once something is shared.
+ * button (the viewer's own card, else the Pépite's), the other images and
+ * the text recap behind « Autres partages », and a reminder to mention the
+ * account once something is shared.
  */
 export function ShareStoryPanel({
-  orgId, match, pepiteRanked, lemonRanked, pepiteWinners, lemonWinners, podiumLine, isDark,
+  orgId, match, pepiteRanked, lemonRanked, pepiteWinners, lemonWinners, podiumLine, isDark, children,
 }: ShareStoryPanelProps) {
+  const [moreOpen, setMoreOpen] = useState(false);
   const [busy, setBusy] = useState<{ kind: StoryCard['kind']; state: ShareState } | null>(null);
   const [shared, setShared] = useState(false);
 
@@ -105,14 +109,22 @@ export function ShareStoryPanel({
         <ShareIcon />
         {label(main, true)}
       </button>
-      {others.length > 0 && (
-        <div style={{ display: 'flex', gap: 10 }}>
+      {/* One obvious action; the other images and the text recap one tap away. */}
+      <button type="button" aria-expanded={moreOpen} onClick={() => setMoreOpen(o => !o)} style={{
+        alignSelf: 'center', background: 'none', border: 'none', padding: '4px 8px',
+        fontSize: 14, fontWeight: 600, color: 'var(--label2)', cursor: 'pointer',
+      }}>
+        {t('share.more')} {moreOpen ? '▴' : '▾'}
+      </button>
+      {moreOpen && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
           {others.map(card => (
-            <button key={card.kind} className="btn btn-secondary" disabled={disabled} onClick={() => share(card)}
-              style={{ flex: 1, fontSize: 14, fontWeight: 600 }}>
+            <button key={card.kind} className="btn btn-secondary btn-full" disabled={disabled} onClick={() => share(card)}
+              style={{ fontSize: 15 }}>
               {label(card, false)}
             </button>
           ))}
+          {children}
         </div>
       )}
       {shared && INSTAGRAM_HANDLE && (
