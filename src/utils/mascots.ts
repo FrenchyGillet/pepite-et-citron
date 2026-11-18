@@ -5,8 +5,9 @@ import type { EntityId, Vote } from '@/types';
  * Pépite (the star) and Citron (the lemon) comment on the screens with a
  * line picked from a catalogue (src/i18n/mascots.ts, see docs/mascottes.md).
  *
- * The pick is deterministic: the same seed (a match id, a day…) gives the same
- * line, so the whole team reads the same joke and can talk about it.
+ * The pick is deterministic: the same seed gives the same line. Screens add
+ * the device to the seed (utils/viewer), so each phone keeps its own line and
+ * teammates can compare what the mascots told them.
  */
 
 export type MascotName = 'pepite' | 'citron';

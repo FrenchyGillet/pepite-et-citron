@@ -69,9 +69,11 @@ const VARS: Record<keyof MascotCatalogue, string[]> = {
   pepiteStreak: ['pepite', 'pepiteRun'], citronStreak: ['citron', 'citronRun'], seasonRecord: [],
   seasonPepite: ['pepite', 'pepitePts'], seasonCitron: ['citron', 'citronPts'],
   attendanceLeader: ['name', 'played', 'total'], attendancePerfect: ['name', 'played', 'total'], attendanceTie: ['count'],
-  revealPepite: ['pepite', 'citron', 'n'], revealCitron: ['pepite', 'citron', 'n'],
-  revealUnanimous: ['pepite', 'citron', 'n'], revealTie: ['pepite', 'citron', 'n'],
-  revealClose: ['pepite', 'citron', 'n'], revealMixed: ['pepite', 'citron', 'n'], revealFew: ['pepite', 'citron', 'n'],
+  // {citron} is empty when several players share the citron: only the
+  // revealCitron lines, shown when there is a single one, may name it.
+  revealPepite: ['pepite', 'n'], revealCitron: ['pepite', 'citron', 'n'],
+  revealUnanimous: ['pepite', 'n'], revealTie: ['pepite', 'n'],
+  revealClose: ['pepite', 'n'], revealMixed: ['pepite', 'n'], revealFew: ['pepite', 'n'],
   startIntro: [], startFew: ['count', 'pepites'], startReady: ['count', 'pepites'], startMany: ['count', 'pepites'],
   startAccount: [], startStepAccount: [], startStepTeam: [], startStepPlayers: [], startStepMatch: [],
 };
@@ -92,9 +94,13 @@ describe('MASCOT_LINES', () => {
     }
   });
 
+  // Each phone draws its own line: teammates comparing should mostly differ.
   it('gives the screens seen at every match plenty of lines', () => {
-    for (const situation of ['upcoming', 'voted', 'waiting'] as const) {
-      expect(MASCOT_LINES.fr![situation].length, situation).toBeGreaterThanOrEqual(8);
+    for (const situation of ['upcoming', 'voted', 'waiting', 'revealPepite', 'revealCitron'] as const) {
+      expect(MASCOT_LINES.fr![situation].length, situation).toBeGreaterThanOrEqual(12);
+    }
+    for (const situation of ['revealUnanimous', 'revealTie', 'revealClose', 'revealMixed', 'revealFew'] as const) {
+      expect(MASCOT_LINES.fr![situation].length, situation).toBeGreaterThanOrEqual(5);
     }
   });
 });

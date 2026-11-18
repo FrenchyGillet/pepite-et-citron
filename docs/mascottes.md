@@ -15,7 +15,7 @@ Les versions anglaise et néerlandaise sont des adaptations (jeux de mots refait
 - Le Citron n'est candidat à rien : sa mauvaise foi porte sur le camp de Pépite ou sur ses records, jamais sur sa propre « élection ».
 - Une réplique prolonge le titre et le sous-titre de l'écran, elle ne les répète pas.
 - Les répliques sur un joueur restent neutres en genre (équipes mixtes).
-- Une à deux bulles par écran. La même réplique pour toute l'équipe sur un même match.
+- Une à deux bulles par écran. Chaque téléphone tire sa propre réplique et la garde : les joueurs peuvent comparer ce que les mascottes leur ont dit. Il faut donc beaucoup de répliques par situation.
 - `{pepite}`, `{citron}`, `{n}`… : variables remplies par l'app.
 - *En italique* : l'expression du personnage. Elle fait partie de la blague, surtout pour les répliques piquantes.
 
@@ -83,10 +83,10 @@ Les versions anglaise et néerlandaise sont des adaptations (jeux de mots refait
 
 ### Révélation : la pépite du soir (cas général)
 - ⭐ *émerveillée* {pepite}. On ne commente pas, on contemple.
-- ⭐ *ravie* {pepite} est une mine d'or. {citron}, lui, fait grise mine.
 - 🍋 *contrarié* Je n'ai rien trouvé contre {pepite}. Pourtant, j'ai cherché.
 
 ### Révélation : le citron du soir (cas général)
+- ⭐ *ravie* {pepite} est une mine d'or. {citron}, lui, fait grise mine. *(ici : elle nomme le citron, absent quand il y en a plusieurs)*
 - 🍋 *compatissant* Plus de jus en deuxième mi-temps, visiblement.
 - 🍋 *protecteur* Avantage du titre : plus aucun chat ne l'approchera.
 - 🍋 *impassible* {citron} s'est cru dans Pulpe Fiction.
@@ -309,3 +309,144 @@ Ajoutées pour varier les écrans vus à chaque match et moins « trumpiser » l
 ### `attendanceTie`
 - ⭐ *bienveillante* {count} ex aequo. Il faudra une plus grande photo.
 - 🍋 *sourire en coin* {count} à égalité. Pour départager, je propose un tirage au citron.
+
+### Deuxième fournée (novembre 2026), pour que chaque téléphone ait sa réplique
+
+#### `upcoming`
+- ⭐ *fière* Je ne joue pas, mais je me suis quand même échauffée.
+- 🍋 *sourire en coin* Avant le match, tout le monde a un plan. Après, tout le monde a une explication.
+- 🍋 *impassible* Pensez à boire. De l'eau. Le jus, c'est mon rayon.
+- ⭐ *clin d'œil* Ce soir, quelqu'un écrit sa légende. Quelqu'un d'autre, son communiqué.
+- 🍋 *triomphant* Ce sera un grand match. Peut-être le plus grand. Je l'ai prédit avant tout le monde.
+- ⭐ *bienveillante* Lacets doublés, gourde pleine. Le reste, c'est du talent.
+- 🍋 *soupçonneux* Calme plat avant le match. Je n'aime pas ça. Je n'aime jamais ça.
+
+#### `noMatch`
+- 🍋 *impassible* Pas de match cette semaine. Les statistiques respirent.
+- ⭐ *fière* Repos. J'en profite pour faire briller mes trophées. Il y en a beaucoup.
+- 🍋 *sourire en coin* Rien au calendrier. J'en profite pour relire les anciens votes. Instructif.
+- ⭐ *bienveillante* Une pause, c'est aussi un entraînement. Pour la patience.
+- 🍋 *triomphant* Pas de match, donc aucune défaite. Une série d'invincibilité historique.
+- ⭐ *lassée* Sans match, je ne suis qu'une étoile parmi d'autres. C'est vexant.
+
+#### `voted`
+- 🍋 *impassible* Enregistré. Si tu as un doute, il est trop tard. Bonne soirée.
+- ⭐ *clin d'œil* Je n'ai rien vu. Et d'habitude, je vois tout.
+- 🍋 *sourire en coin* Bulletin plié, rangé, oublié. Officiellement.
+- ⭐ *ravie* Un vote de plus. L'urne te remercie. Moi aussi, un peu.
+- 🍋 *triomphant* Un vote magnifique. Ferme, juste, inattaquable. On n'en fait plus des comme ça.
+- ⭐ *bienveillante* Si on te demande pour qui tu as voté, souris. Ça suffit.
+- 🍋 *soupçonneux* Tu as voté. Les autres te regardent. Garde ton calme.
+- ⭐ *fière* Merci pour ton vote. Les autographes, ce sera après les résultats.
+
+#### `closedNotVoted`
+- 🍋 *impassible* Trop tard. L'histoire s'est écrite sans ta signature.
+- ⭐ *lassée* J'aurais aimé ton avis. Je l'aurais ignoré, mais j'aurais aimé l'avoir.
+- 🍋 *sourire en coin* Pas de vote, pas de réclamation. Enfin, si, mais personne n'écoutera.
+- ⭐ *bienveillante* Le prochain vote t'attend déjà. Il est moins rancunier que moi.
+
+#### `noResults`
+- 🍋 *impassible* Aucun résultat. Pas de gagnant, pas de perdant. Ça ne va pas durer.
+- ⭐ *ravie* Tout reste à écrire. J'ai déjà sorti le stylo doré.
+- 🍋 *sourire en coin* Le premier citron n'est pas encore désigné. Je suis impatient, pour une fois.
+
+#### `waitingNone`
+- ⭐ *clin d'œil* Personne n'ose voter en premier. Il faut du courage pour lancer une carrière.
+- 🍋 *soupçonneux* Zéro vote. Soit tout le monde réfléchit, soit tout le monde fait semblant.
+- 🍋 *triomphant* Aucun vote, aucune fraude. Un bilan parfait. Je le dis depuis le début.
+- ⭐ *ravie* J'attends le premier vote. Le premier a toujours quelque chose de spécial.
+
+#### `waiting`
+- 🍋 *impassible* {count} sur {present}. Les autres cherchent leur mot de passe. Il n'y en a pas.
+- ⭐ *bienveillante* Prenez votre temps. Mais pas tout.
+- 🍋 *soupçonneux* Certains ont voté en dix secondes. D'autres réfléchissent depuis dix minutes. Je note.
+- ⭐ *fière* Chaque vote me rapproche de quelqu'un. Je suis très demandée.
+- 🍋 *triomphant* Les votes affluent. Une affluence record. Les photos aériennes sont formidables.
+- 🍋 *sourire en coin* {count} sur {present}. Je ne regarde pas les écrans des autres. Pas souvent.
+- ⭐ *clin d'œil* L'urne se remplit. On évite de regarder par-dessus les épaules.
+- ⭐ *lassée* Encore quelques votes. Je retouche ma pose en attendant.
+
+#### `waitingAll`
+- 🍋 *impassible* Tous les votes sont là. Le dernier mot revient à qui a le bouton.
+- ⭐ *clin d'œil* Plus qu'un clic. Je retiens mon éclat.
+- 🍋 *soupçonneux* L'urne est pleine. Personne ne bouge. Personne ne sort.
+- ⭐ *ravie* Une urne pleine. Il n'y a pas de plus beau bruit.
+
+#### `seasonHidden`
+- ⭐ *bienveillante* Le classement revient après le vote. Il pourrait vous souffler des idées.
+- 🍋 *soupçonneux* Classement masqué. Je vois très bien ce que certains en auraient fait.
+- 🍋 *impassible* Ne cherchez pas. Même moi, je n'y ai pas accès. Et j'ai essayé.
+
+#### `pepiteStreak`
+- 🍋 *sourire en coin* {pepite}, {pepiteRun} d'affilée. Le reste de l'équipe commence à prendre des notes.
+- ⭐ *fière* {pepiteRun} de suite pour {pepite}. Je reconnais une collègue.
+
+#### `citronStreak`
+- 🍋 *triomphant* {citronRun} citrons d'affilée pour {citron}. Une constance incroyable. On voit ça une fois par siècle.
+- ⭐ *bienveillante* {citron}, {citronRun} de suite. La prochaine pépite n'en sera que plus belle.
+
+#### `seasonRecord`
+- 🍋 *soupçonneux* Un record. Je demande à revoir les images.
+- ⭐ *émerveillée* Record de la saison. Il faudra un sacré match pour le décrocher.
+
+#### `seasonPepite`
+- 🍋 *soupçonneux* {pepite}, {pepitePts} points. Personne ne monte aussi haut sans aide. Je dis ça, je ne dis rien.
+- ⭐ *ravie* {pepite} en tête avec {pepitePts} points. Je prépare mon plus beau discours. Pour moi, d'abord.
+
+#### `seasonCitron`
+- 🍋 *sourire en coin* {citron} en tête. Je ne fais pas de favoritisme. Mais je fais des exceptions.
+- ⭐ *clin d'œil* {citron}, {citronPts} points. Un titre reste un titre. Pas celui dont on rêve, mais un titre.
+
+#### `attendanceLeader`
+- ⭐ *bienveillante* {name}, {played} sur {total}. Le genre de présence qu'on ne remarque que le jour où elle manque.
+
+#### `attendanceTie`
+- 🍋 *impassible* {count} ex aequo. Personne ne veut céder sa place. Ni sur le terrain, ni ici.
+
+#### `revealPepite`
+- ⭐ *fière* {pepite}, pépite du soir. Sur la photo, je me mets juste à côté.
+- 🍋 *soupçonneux* {pepite} en tête. Je ne dis pas que c'est arrangé. Je dis que c'est beau, et que c'est suspect.
+- ⭐ *émerveillée* {pepite}. Tout ce qui brille n'est pas or. Ce soir, si.
+- 🍋 *triomphant* J'avais vu venir {pepite} avant tout le monde. Bien avant. Personne ne me croyait.
+- ⭐ *ravie* {pepite}, pépite du soir. Les autographes, c'est par ici.
+- ⭐ *clin d'œil* {pepite} brille ce soir. Je ne suis pas jalouse. Un peu éblouie, c'est tout.
+- 🍋 *sourire en coin* {pepite}, pépite du soir. Profite. Une pépite, ça ne se garde qu'une semaine.
+- ⭐ *bienveillante* {pepite}, pépite du soir. Savoure. La semaine prochaine, il faudra recommencer.
+
+#### `revealCitron`
+- 🍋 *ému* {citron}, citron du soir. Je ne vais pas mentir, ça me touche.
+- 🍋 *sourire en coin* {citron}. Ce n'est pas une sanction, c'est une distinction. Acide, mais une distinction.
+- ⭐ *bienveillante* {citron} a une semaine pour préparer sa revanche. Une semaine, c'est long.
+- 🍋 *triomphant* {citron}, citron du soir. Le titre le plus prestigieux du club. Je suis objectif, évidemment.
+- 🍋 *impassible* {citron}. On ne choisit pas son fruit. Les autres s'en chargent.
+- 🍋 *outré* {citron}, citron du soir. Un coup du camp de Pépite. Je n'ai pas de preuves. Je n'en ai pas besoin.
+- ⭐ *clin d'œil* {citron} hérite du citron. Rendez-vous la semaine prochaine pour le passer à quelqu'un d'autre.
+
+#### `revealUnanimous`
+- 🍋 *impassible* {n} bulletins, un seul nom. Il n'y a rien à ajouter. Je vais quand même essayer.
+- ⭐ *ravie* Tout le monde d'accord sur {pepite}. Je n'avais jamais vu ça. Moi qui ai tout vu.
+- 🍋 *soupçonneux* Unanimité pour {pepite}. Personne n'a voté pour moi. Ah, je ne suis pas candidat. Ça explique.
+- 🍋 *triomphant* Unanimité. Le plus beau score depuis l'invention du vote. Je l'avais prédit.
+- ⭐ *émerveillée* {pepite} sur tous les bulletins. Je laisse ma place sur l'étagère. Pour ce soir.
+
+#### `revealTie`
+- 🍋 *soupçonneux* Égalité, puis un choix de l'organisateur. Une démocratie très particulière.
+- ⭐ *bienveillante* Égalité au sommet. Il a fallu trancher. Une petite rancune est autorisée.
+- 🍋 *outré* Égalité tranchée en coulisses. Je n'accuse personne. Je constate.
+- ⭐ *clin d'œil* Ex aequo, puis un choix. De quoi animer le vestiaire jusqu'au prochain match.
+
+#### `revealClose`
+- 🍋 *soupçonneux* Un point d'écart. Quelqu'un a mal compté. Ou très bien compté.
+- ⭐ *émerveillée* Un point. Le plus petit écart, la plus grande gloire.
+- 🍋 *impassible* Un point d'écart. Un bulletin dans l'autre sens, et c'était une autre histoire.
+- 🍋 *triomphant* Un point. Une victoire écrasante, à condition de regarder de très près.
+
+#### `revealMixed`
+- ⭐ *clin d'œil* {pepite} a reçu des voix pépite et des voix citron. Le talent divise. C'est bon signe.
+- 🍋 *impassible* Quelqu'un a voté citron pour {pepite}. Courageux. Isolé, mais courageux.
+- 🍋 *sourire en coin* Pépite pour les uns, citron pour les autres. {pepite} vient d'inventer l'agrume doré.
+
+#### `revealFew`
+- 🍋 *impassible* {n} votes. Au moins, le dépouillement a été rapide.
+- ⭐ *bienveillante* {n} votes. Une petite élection, mais un vrai titre.
+- 🍋 *soupçonneux* {n} votants. Tout le monde se connaît. Personne n'avouera.

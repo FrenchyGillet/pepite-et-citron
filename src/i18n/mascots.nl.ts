@@ -155,7 +155,6 @@ export const mascotsNl: MascotCatalogue = {
   ],
   revealPepite: [
     [P('emerveillee', "{pepite}. Geen commentaar, gewoon bewondering.")],
-    [P('ravie', "{pepite} is een goudmijn. {citron} kijkt zuur.")],
     [C('outre', "Ik heb niets gevonden tegen {pepite}. Nochtans heb ik gezocht.")],
     [P('fiere', "{pepite}, pépite van de avond. Ik leen mijn kroon uit. Voor één nacht.")],
     [C('impassible', "{pepite} voor iedereen. Ik moet het toegeven. Het doet pijn.")],
@@ -167,6 +166,7 @@ export const mascotsNl: MascotCatalogue = {
     [C('sourire-en-coin', "Ik ben niet gemeen. Ik ben zuur, dat is iets anders.")],
     [P('bienveillante', "{citron}, citron van de avond. Het is maar een titel. Hij wisselt elke week van eigenaar.")],
     [C('triomphant', "{citron}. Welkom in de familie. We hebben T-shirts.")],
+    [P('ravie', "{pepite} is een goudmijn. {citron} kijkt zuur.")],
   ],
   revealUnanimous: [
     [P('emerveillee', "Unaniem. Zelfs in dit land kan het dus.")],

@@ -4,6 +4,7 @@ import { formatDate, PEPITE_POINTS } from '@/utils';
 import { computeResultsSummary } from '@/utils/scoring';
 import { localDateKey } from '@/utils/schedule';
 import { pickMascotLine, revealMascot, waitingMascot } from '@/utils/mascots';
+import { viewerSeed } from '@/utils/viewer';
 import { MASCOT_LINES } from '@/i18n/mascots';
 import { holderNames } from './SeasonAwards';
 import { Scoreboard } from './Scoreboard';
@@ -417,13 +418,14 @@ export function ResultsView({ players, match, isAdmin, isDark, orgId, isPro, onU
 
   const stepLabel = (n: number) => totalTies > 1 ? `${n}/${totalTies}` : undefined;
 
-  // The mascots' line on the night: on the page and on the shared story image.
+  // The mascots' line on the night: on the page and on the shared story image
+  // (the one this device drew, like MascotTalk).
   const revealCue = revealMascot({
     votes, pepiteRanked, lemonWinners, bestTied,
     nameOf: id => holderNames([String(id)], players),
   });
   const revealSeed = `reveal:${match.id}`;
-  const revealLine = revealCue ? pickMascotLine(MASCOT_LINES[getLang()], revealCue.situations, revealSeed, revealCue.vars) : null;
+  const revealLine = revealCue ? pickMascotLine(MASCOT_LINES[getLang()], revealCue.situations, viewerSeed(revealSeed), revealCue.vars) : null;
 
   return (
     <div className="content">
