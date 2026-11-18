@@ -156,7 +156,6 @@ export const mascotsEn: MascotCatalogue = {
   ],
   revealPepite: [
     [P('emerveillee', "{pepite}. No comment. Just admiration.")],
-    [P('ravie', "{pepite} struck gold. {citron} struck out.")],
     [C('outre', "I found nothing against {pepite}. And I looked.")],
     [P('fiere', "{pepite}, tonight's pépite. I'm lending my crown. For one night.")],
     [C('impassible', "{pepite} ahead of everyone. I have to admit it. It hurts.")],
@@ -168,6 +167,7 @@ export const mascotsEn: MascotCatalogue = {
     [C('sourire-en-coin', "I'm not mean. I'm sour. There's a difference.")],
     [P('bienveillante', "{citron}, tonight's citron. It's only a title. It changes hands every week.")],
     [C('triomphant', "{citron}. Welcome to the family. We have t-shirts.")],
+    [P('ravie', "{pepite} struck gold. {citron} struck out.")],
   ],
   revealUnanimous: [
     [P('emerveillee', "Unanimous. So it is possible after all.")],

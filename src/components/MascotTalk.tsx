@@ -1,6 +1,7 @@
 import { MASCOT_LINES } from '@/i18n/mascots';
 import { useLang, useT } from '@/i18n';
 import { pickMascotLine, type MascotBubble, type MascotSituation } from '@/utils/mascots';
+import { viewerSeed } from '@/utils/viewer';
 
 /** Every mood is drawn in public/mascots/ (checked by utils/mascots.test.ts). */
 function imageOf(b: MascotBubble): string {
@@ -10,7 +11,7 @@ function imageOf(b: MascotBubble): string {
 interface MascotTalkProps {
   /** Lines of these situations are pooled. */
   situations: MascotSituation[];
-  /** Same seed, same line: a match id, a day… */
+  /** A match id, a day…: the same seed gives this device the same line (each device draws its own). */
   seed: string;
   vars?: Record<string, string | number>;
 }
@@ -19,7 +20,7 @@ interface MascotTalkProps {
 export function MascotTalk({ situations, seed, vars }: MascotTalkProps) {
   const lang = useLang();
   const t = useT();
-  const line = pickMascotLine(MASCOT_LINES[lang], situations, seed, vars);
+  const line = pickMascotLine(MASCOT_LINES[lang], situations, viewerSeed(seed), vars);
   if (!line) return null;
 
   return (
