@@ -1,6 +1,6 @@
 export const SITE_URL = 'https://pepite-citron.com';
 
-export type ShareCampaign = 'results' | 'podium';
+export type ShareCampaign = 'results' | 'podium' | 'card';
 
 /**
  * Landing link appended to what teams share in their chats, tagged with

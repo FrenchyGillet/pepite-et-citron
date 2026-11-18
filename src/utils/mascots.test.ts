@@ -15,6 +15,7 @@ const catalogue: MascotCatalogue = {
   pepiteStreak: [], citronStreak: [], seasonRecord: [],
   attendanceLeader: [], attendancePerfect: [], attendanceTie: [],
   revealPepite: [], revealCitron: [], revealUnanimous: [], revealTie: [], revealClose: [], revealMixed: [], revealFew: [],
+  cardPepite: [], cardCitron: [],
   startIntro: [], startFew: [], startReady: [], startMany: [], startAccount: [],
   startStepAccount: [], startStepTeam: [], startStepPlayers: [], startStepMatch: [],
 };
@@ -74,6 +75,7 @@ const VARS: Record<keyof MascotCatalogue, string[]> = {
   revealPepite: ['pepite', 'n'], revealCitron: ['pepite', 'citron', 'n'],
   revealUnanimous: ['pepite', 'n'], revealTie: ['pepite', 'n'],
   revealClose: ['pepite', 'n'], revealMixed: ['pepite', 'n'], revealFew: ['pepite', 'n'],
+  cardPepite: [], cardCitron: [],
   startIntro: [], startFew: ['count', 'pepites'], startReady: ['count', 'pepites'], startMany: ['count', 'pepites'],
   startAccount: [], startStepAccount: [], startStepTeam: [], startStepPlayers: [], startStepMatch: [],
 };
@@ -90,6 +92,15 @@ describe('MASCOT_LINES', () => {
         for (const [, name] of bubble.text.matchAll(/\{(\w+)\}/g)) {
           expect(VARS[situation], `${situation}: ${bubble.text}`).toContain(name);
         }
+      }
+    }
+  });
+
+  // The card shows one mascot, the one of its title, and one bubble.
+  it.each(['fr', 'en', 'nl'] as const)('%s: each card is spoken by its own mascot', (lang) => {
+    for (const [situation, who] of [['cardPepite', 'pepite'], ['cardCitron', 'citron']] as const) {
+      for (const line of MASCOT_LINES[lang]![situation]) {
+        expect(line.map(b => b.who), `${situation}: ${line[0].text}`).toEqual([who]);
       }
     }
   });

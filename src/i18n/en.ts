@@ -339,7 +339,14 @@ export const en: Messages = {
     done: '✓ Image ready',
     error: 'Error, try again',
     title: 'Podium: {match}',
-    text: 'Podium via Pépite & Citron 🏆 {url}',
+    text: 'Via Pépite & Citron 🏆 {url}',
+    podium: 'Podium',
+    myPepite: 'Share my pépite card',
+    myCitron: 'Share my citron card',
+    cardOf: "Share {name}'s card",
+    pepiteCard: 'Pépite card',
+    citronCard: 'Citron card',
+    mention: 'In your story, mention @{handle}: we repost the best ones.',
   },
 
   push: {
@@ -824,6 +831,8 @@ export const en: Messages = {
     citronsTie: 'Tied citrons',
     citron: 'The Citron',
     tagline: "Vote for your team's pépite and citron",
+    cardPepite: "TONIGHT'S PÉPITE",
+    cardCitron: "TONIGHT'S CITRON",
   },
 
   manualForm: {

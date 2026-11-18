@@ -51,6 +51,7 @@ export type MascotSituation =
   | 'revealClose'     // … one point between the first two
   | 'revealMixed'     // … the Pépite also got citron votes
   | 'revealFew'       // … a handful of ballots
+  | 'cardPepite' | 'cardCitron' // the story card of the night's Pépite / Citron: its own mascot speaks, seen outside the team
   | 'startIntro'      // /start, nothing typed yet
   | 'startFew'        // /start, not enough players to vote
   | 'startReady'      // /start, enough players

@@ -180,3 +180,35 @@ describe("Starting the reveal", () => {
     expect(screen.queryByText("Résultats masqués")).toBeNull();
   });
 });
+
+describe("Sharing the night", () => {
+  const players = [
+    { id: 1, name: "Antoine" }, { id: 2, name: "Baptiste" }, { id: 3, name: "Clément" }, { id: 4, name: "David" },
+  ];
+
+  async function revealed(orgId) {
+    const m = await __demoAPI.createMatch('org-123', "vs Dragons", [1, 2, 3, 4], null, 1);
+    for (const [voter, best1, best2] of [[1, 2, 3], [3, 2, 4], [4, 2, 1]]) {
+      await __demoAPI.submitVote({ match_id: m.id, voter_name: players[voter - 1].name, voter_player_id: voter, best1_id: best1, best2_id: best2, lemon_id: 4 });
+    }
+    await __demoAPI.closeMatch(m.id);
+    const match = { ...(await __demoAPI.getMatchById(m.id)) };
+    renderResults({ players, match, isAdmin: false, orgId });
+    await userEvent.setup().click(await screen.findByRole("button", { name: /Révéler le classement/ }));
+  }
+
+  it("offers the Pépite's card first, right under the podium, then the Citron's and the podium", async () => {
+    await revealed('org-123');
+    expect(await screen.findByRole("button", { name: /Partager la carte de Baptiste/ })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Carte du citron" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Podium" })).toBeInTheDocument();
+  });
+
+  it("offers the viewer their own card when they won", async () => {
+    localStorage.setItem('pepite_voter_identity_org-123', JSON.stringify({ name: 'David', playerId: 4 }));
+    await revealed('org-123');
+    expect(await screen.findByRole("button", { name: /Partager ma carte de citron/ })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Carte de la pépite" })).toBeInTheDocument();
+    localStorage.removeItem('pepite_voter_identity_org-123');
+  });
+});

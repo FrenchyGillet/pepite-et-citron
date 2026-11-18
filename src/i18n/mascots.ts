@@ -305,6 +305,26 @@ const fr: MascotCatalogue = {
     [P('bienveillante', "{n} votes. Une petite élection, mais un vrai titre.")],
     [C('soupconneux', "{n} votants. Tout le monde se connaît. Personne n'avouera.")],
   ],
+  cardPepite: [
+    [P('ravie', "Ce soir, j'ai trouvé plus brillant que moi. Ça n'arrive pas souvent.")],
+    [P('fiere', "Choix de l'équipe. Le jury le plus exigeant qui soit.")],
+    [P('emerveillee', "Je prête ma couronne. Pour une semaine, pas plus.")],
+    [P('clin-doeil', "Encadrez cette image. Elle ne reviendra peut-être pas.")],
+    [P('bienveillante', "Toute l'équipe a voté. Et c'est tombé ici.")],
+    [P('fiere', "Pépite du soir. Je connais la sensation. Profite.")],
+    [P('ravie', "Les autographes, c'est après la douche.")],
+    [P('clin-doeil', "Ce n'est pas moi qui le dis, c'est le vote. Moi, je confirme.")],
+  ],
+  cardCitron: [
+    [C('emu', "Il faut du cran pour poster cette image. Je respecte.")],
+    [C('sourire-en-coin', "Acide, pas méchant. Comme moi.")],
+    [C('impassible', "Le titre change de mains chaque semaine. Profite de la vue.")],
+    [C('triomphant', "Le titre le plus disputé du vestiaire. Personne ne le veut. Tout le monde en parle.")],
+    [C('emu', "Bienvenue dans la famille. Ici, on assume.")],
+    [C('impassible', "Choix de l'équipe. Je n'y suis pour rien. Presque rien.")],
+    [C('sourire-en-coin', "Revanche dans une semaine. Je garde la place au frais.")],
+    [C('triomphant', "Un très grand citron. Un des plus grands. Les gens en parlent.")],
+  ],
   // /start: people discover the app and do not know the characters yet, so
   // the lines must read right without knowing Citron.
   startIntro: [

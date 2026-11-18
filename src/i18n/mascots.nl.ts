@@ -189,6 +189,20 @@ export const mascotsNl: MascotCatalogue = {
     [P('fiere', "Weinig stemmers, maar kwaliteitsstemmers.")],
     [C('triomphant', "{n} stemmen. Een recordopkomst. De cijfers zeggen iets anders, maar cijfers liegen.")],
   ],
+  cardPepite: [
+    [P('ravie', "Vanavond vond ik iemand die meer schittert dan ik. Dat gebeurt niet vaak.")],
+    [P('fiere', "Gekozen door de ploeg. De strengste jury die er is.")],
+    [P('emerveillee', "Ik leen mijn kroon uit. Voor een week, niet langer.")],
+    [P('clin-doeil', "Lijst deze in. Misschien komt ze niet terug.")],
+    [P('ravie', "Handtekeningen na de douche.")],
+  ],
+  cardCitron: [
+    [C('emu', "Dit posten vraagt lef. Respect.")],
+    [C('sourire-en-coin', "Zuur, niet gemeen. Zoals ik.")],
+    [C('impassible', "De titel wisselt elke week van eigenaar. Geniet van het uitzicht.")],
+    [C('emu', "Welkom in de familie. Hier staan we erachter.")],
+    [C('sourire-en-coin', "Revanche over een week. Ik hou je plaats koel.")],
+  ],
   startIntro: [
     [
       P('ravie', "Vanavond wordt iemand een legende."),
