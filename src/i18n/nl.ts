@@ -341,7 +341,15 @@ export const nl: Messages = {
     done: '✓ Afbeelding klaar',
     error: 'Fout, probeer opnieuw',
     title: 'Podium: {match}',
-    text: 'Podium via Pépite & Citron 🏆 {url}',
+    text: 'Via Pépite & Citron 🏆 {url}',
+    podium: 'Volledig podium',
+    more: 'Andere manieren om te delen',
+    myPepite: 'Deel mijn pépitekaart',
+    myCitron: 'Deel mijn citronkaart',
+    cardOf: 'Deel de kaart van {name}',
+    pepiteCard: 'Pépitekaart',
+    citronCard: 'Citronkaart',
+    mention: 'Vermeld @{handle} in je story: we delen de beste opnieuw.',
   },
 
   push: {
@@ -826,6 +834,8 @@ export const nl: Messages = {
     citronsTie: 'Citrons ex aequo',
     citron: 'De Citron',
     tagline: 'Stem de pépite en de citron van je ploeg',
+    cardPepite: 'PÉPITE VAN DE AVOND',
+    cardCitron: 'CITRON VAN DE AVOND',
   },
 
   manualForm: {
@@ -843,7 +853,8 @@ export const nl: Messages = {
     date: 'Datum van de match',
     team: 'Opstelling',
     present: 'Aanwezige spelers',
-    podium: 'Podium',
+    podium: 'Volledig podium',
+    more: 'Andere manieren om te delen',
     pepites: '{count} pépites',
     pickPepite: 'De Pépite kiezen',
     nobody: 'Niemand',

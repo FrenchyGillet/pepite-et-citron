@@ -11,7 +11,7 @@ import { Scoreboard } from './Scoreboard';
 import { PodiumView } from './PodiumView';
 import { EmptyState } from './EmptyState';
 import { MascotTalk } from './MascotTalk';
-import { SharePodiumButton } from './SharePodiumButton';
+import { ShareStoryPanel } from './ShareStoryPanel';
 import { SeasonTeaser } from './SeasonTeaser';
 import { useVotes, useVoteCount } from '@/hooks/queries';
 import { useRevealNext, useCloseMatch, useUpdateMatch } from '@/hooks/mutations';
@@ -96,8 +96,8 @@ function ShareResultsButton({
       style={{
         width: '100%',
         display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
-        background: shared ? 'rgba(48,209,88,0.12)' : 'var(--bg2)',
-        border: `1px solid ${shared ? 'var(--green)' : 'var(--separator2)'}`,
+        background: shared ? 'rgba(48,209,88,0.12)' : 'var(--bg3)',
+        border: 'none',
         borderRadius: 'var(--radius)',
         padding: '13px 20px',
         fontSize: 15, fontWeight: 600,
@@ -216,7 +216,7 @@ export function ResultsView({ players, match, isAdmin, isDark, orgId, isPro, onU
           </div>
         </div>
         {(() => {
-          // Same line for the whole team on this match, until the box fills up.
+          // The same line on this phone for this match, until the box fills up.
           const cue = waitingMascot(voteCount, present.length);
           return (
             <div style={{ display: 'flex', justifyContent: 'center', marginTop: 20 }}>
@@ -393,7 +393,7 @@ export function ResultsView({ players, match, isAdmin, isDark, orgId, isPro, onU
   const tiebreakers = match.tiebreakers || {};
 
   const {
-    pepiteRanked, lemonRanked, lemonWinners, ghosts,
+    pepiteRanked, lemonRanked, pepiteWinners, lemonWinners, ghosts,
     bestTied, lemonTied, bestTiedPlayers, lemonTiedPlayers,
   } = computeResultsSummary(votes, present, players, pepiteCount, tiebreakers);
 
@@ -464,21 +464,22 @@ export function ResultsView({ players, match, isAdmin, isDark, orgId, isPro, onU
       ) : (
         <div style={{ animation: 'podiumReveal 0.5s cubic-bezier(0.22, 1, 0.36, 1)' }}>
           <PodiumView votes={votes} present={present} allPlayers={players} tiebreakers={tiebreakers} pepiteCount={pepiteCount} />
+          {/* Sharing comes first: the team is still looking at the podium. */}
+          {pepiteRanked.length > 0 && (
+            <div style={{ marginTop: 16 }}>
+              <ShareStoryPanel
+                orgId={orgId} match={match}
+                pepiteRanked={pepiteRanked} lemonRanked={lemonRanked}
+                pepiteWinners={pepiteWinners} lemonWinners={lemonWinners}
+                podiumLine={revealLine} isDark={isDark !== false}
+              >
+                <ShareResultsButton match={match} pepiteRanked={pepiteRanked} lemonWinners={lemonWinners} />
+              </ShareStoryPanel>
+            </div>
+          )}
           {revealCue && (
             <div style={{ display: 'flex', justifyContent: 'center', marginTop: 16 }}>
               <MascotTalk situations={revealCue.situations} vars={revealCue.vars} seed={revealSeed} />
-            </div>
-          )}
-          {pepiteRanked.length > 0 && (
-            <div style={{ marginTop: 16, display: 'flex', flexDirection: 'column', gap: 10 }}>
-              <SharePodiumButton
-                match={match}
-                pepiteRanked={pepiteRanked}
-                lemonRanked={lemonRanked}
-                mascotLine={revealLine}
-                isDark={isDark !== false}
-              />
-              <ShareResultsButton match={match} pepiteRanked={pepiteRanked} lemonWinners={lemonWinners} />
             </div>
           )}
         </div>

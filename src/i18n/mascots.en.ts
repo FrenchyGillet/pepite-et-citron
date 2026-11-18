@@ -190,6 +190,20 @@ export const mascotsEn: MascotCatalogue = {
     [P('fiere', "Few voters, but quality voters.")],
     [C('triomphant', "{n} votes. Record turnout. The numbers say otherwise, but numbers lie.")],
   ],
+  cardPepite: [
+    [P('ravie', "Tonight I found someone shinier than me. That doesn't happen often.")],
+    [P('fiere', "Picked by the team. The toughest jury there is.")],
+    [P('emerveillee', "I'm lending my crown. For a week, no more.")],
+    [P('clin-doeil', "Frame this one. It might not come back.")],
+    [P('ravie', "Autographs after the shower.")],
+  ],
+  cardCitron: [
+    [C('emu', "Posting this takes guts. Respect.")],
+    [C('sourire-en-coin', "Sour, not mean. Like me.")],
+    [C('impassible', "The title changes hands every week. Enjoy the view.")],
+    [C('emu', "Welcome to the family. We own it here.")],
+    [C('sourire-en-coin', "Rematch in a week. I'll keep your seat chilled.")],
+  ],
   startIntro: [
     [
       P('ravie', "Tonight, someone becomes a legend."),

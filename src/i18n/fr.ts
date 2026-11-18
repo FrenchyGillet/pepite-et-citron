@@ -341,7 +341,15 @@ export const fr = {
     done: '✓ Image prête',
     error: 'Erreur, réessaie',
     title: 'Podium : {match}',
-    text: 'Podium via Pépite & Citron 🏆 {url}',
+    text: 'Via Pépite & Citron 🏆 {url}',
+    podium: 'Podium complet',
+    more: 'Autres partages',
+    myPepite: 'Partager ma carte de pépite',
+    myCitron: 'Partager ma carte de citron',
+    cardOf: 'Partager la carte de {name}',
+    pepiteCard: 'Carte de la pépite',
+    citronCard: 'Carte du citron',
+    mention: 'Dans ta story, mentionne @{handle} : on repartage les meilleures.',
   },
 
   push: {
@@ -826,6 +834,8 @@ export const fr = {
     citronsTie: 'Citrons ex-aequo',
     citron: 'Le Citron',
     tagline: 'Votez la pépite et le citron de votre équipe',
+    cardPepite: 'PÉPITE DU SOIR',
+    cardCitron: 'CITRON DU SOIR',
   },
 
   manualForm: {
@@ -843,7 +853,8 @@ export const fr = {
     date: 'Date du match',
     team: 'Équipe',
     present: 'Joueurs présents',
-    podium: 'Podium',
+    podium: 'Podium complet',
+    more: 'Autres partages',
     pepites: '{count} pépites',
     pickPepite: 'Choisir la Pépite',
     nobody: 'Personne',
